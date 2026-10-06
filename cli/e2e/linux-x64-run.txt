@@ -1,0 +1,106 @@
+== Linux 6.6.114.1-microsoft-standard-WSL2 x86_64; "Debian GNU/Linux 12 (bookworm)"
+$ curl -fsSL <install.sh> | sh
+Downloading amber-linux-x64.tar.gz
+Installed amber 0.2.0 to /root/.local/bin/amber
+Next: amber login
+
+$ amber login     # no display here
+Open this in a browser:
+
+  http://127.0.0.1:8787/mcp/authorize?response_type=code&client_id=amb_client_d7efa5aa566024d4a9449866741e8d88&redirect_uri=http%3A%2F%2F127.0.0.1%3A34233%2Fcallback&code_challenge=QFYz1NZsZLHyrfQx96kDhDdvOgmbf1F2CDjmG__B5Js&code_challenge_method=S256&state=s6VeCbQwoemO_g2m2uQs9Q&scope=notes%3Aread+notes%3Awrite&resource=http%3A%2F%2F127.0.0.1%3A8787%2Fmcp
+
+Approve in Amber Notes. If the browser is on another machine, it ends on a page that won't load:
+copy that page's address (it starts with http://127.0.0.1) and paste it here.
+Address: http://127.0.0.1:34233/callback?state=s6VeCbQwoemO_g2m2uQs9Q&iss=http%3A%2F%2F127.0.0.1%3A8787%2Fmcp&code=…
+Connected to Amber Notes (read & edit). Tokens are kept in ~/.config/amber/credentials.json.
+Disconnect any time: amber logout, or Settings › Connect an AI in the app.
+
+600 /root/.config/amber/credentials.json
++ stat -c '%a %n' /root/.config/amber/credentials.json
++ amber status
+server  http://127.0.0.1:8787/mcp
+access  read & edit (signed in; tokens in ~/.config/amber/credentials.json)
+tools   files
++ amber search milk
+Groceries.md
+  Groceries ## Dairy - [ ] «Milk» - [ ] Butter See [[Recipes]] for ideas
++ amber read Groceries.md
+Groceries
+
+## Dairy
+- [ ] Milk
+- [ ] Butter
+
+See [[Recipes]] for ideas.
++ amber edit Groceries.md '- [ ] Milk' '- [x] Milk'
+Edited Groceries.md (version 2)
++ printf 'Made on Linux\n'
++ amber create Work/Linux.md
+Created Work/Linux.md
++ amber move Work/Linux.md Archive/
+Moved to Archive/Linux.md
++ amber history Groceries.md
+"Groceries", now version 2. Earlier versions, newest first:
+  1       2026-10-06 07:22  An app on this computer  Groceries
+
+Bring one back with: amber restore <note> <version>
++ amber pin Archive/Linux.md
+Pinned Archive/Linux.md
++ amber delete Archive/Linux.md
+Moved "Linux" to Recently Deleted. Bring it back with: amber restore f8146fcc-4865-4193-9854-2433b0b6fec7
++ amber list 'Recently Deleted/'
+Recently Deleted/
+  Archive/Linux.md  2026-10-06 07:22  deleted 2026-10-06 07:22
++ set +x
+(access token expiry set in the past)
++ pids=
++ for i in 1 2 3 4 5
++ pids=' 2962'
++ for i in 1 2 3 4 5
++ amber list Work/
++ pids=' 2962 2963'
++ for i in 1 2 3 4 5
++ amber list Work/
++ pids=' 2962 2963 2964'
++ for i in 1 2 3 4 5
++ amber list Work/
++ pids=' 2962 2963 2964 2965'
++ for i in 1 2 3 4 5
++ amber list Work/
++ pids=' 2962 2963 2964 2965 2966'
++ amber list Work/
++ codes=
++ for p in $pids
++ wait 2962
++ codes=' 0'
++ for p in $pids
++ wait 2963
++ codes=' 0 0'
++ for p in $pids
++ wait 2964
+exit codes: 0 0 0 0 0
+/tmp/par.1:1
+/tmp/par.2:1
+/tmp/par.3:1
+/tmp/par.4:1
+/tmp/par.5:1
++ codes=' 0 0 0'
++ for p in $pids
++ wait 2965
++ codes=' 0 0 0 0'
++ for p in $pids
++ wait 2966
++ codes=' 0 0 0 0 0'
++ echo 'exit codes: 0 0 0 0 0'
++ grep -c 'Work/Weekly review.md' /tmp/par.1 /tmp/par.2 /tmp/par.3 /tmp/par.4 /tmp/par.5
++ amber read Groceries.md --json
++ grep -c '"version"'
+1
++ amber logout
+Disconnected this terminal from Amber Notes.
++ amber list
+amber: Not signed in. Run `amber login`.
+== any token on disk or in the output above?
++ true
++ set +x
+none
