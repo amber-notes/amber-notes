@@ -14,22 +14,22 @@ class AmberNotes < Formula
   on_macos do
     on_arm do
       url "https://github.com/amber-notes/amber-notes/releases/download/cli-v0.2.0/amber-macos-arm64.tar.gz"
-      sha256 "622f45ec52c1bd3269c0621cc364a65c8f42899005dbc44a21382c0eda25cb7d"
+      sha256 "22bdbc62f7a10416961dc12fa67f342b5feac6ece6702fbd774ab41de57b46eb"
     end
     on_intel do
       url "https://github.com/amber-notes/amber-notes/releases/download/cli-v0.2.0/amber-macos-x64.tar.gz"
-      sha256 "371d7f4c00041b14a5aa55684f9f1f57b0fcc984fc87e21d0078f5eef2b0f302"
+      sha256 "4250146ef9b30a9b5f82e04a35fbf8e40f181a8d24896cbe38195e83b908c727"
     end
   end
 
   on_linux do
     on_arm do
       url "https://github.com/amber-notes/amber-notes/releases/download/cli-v0.2.0/amber-linux-arm64.tar.gz"
-      sha256 "41d2f7087e1dd7112e2be5aa569588a6d474a4b5ec2743c8bf71be7ddb9759cd"
+      sha256 "ff48add32734c1e1363e191564d3504a5ad0d27fc19913403a056b5460e921c8"
     end
     on_intel do
       url "https://github.com/amber-notes/amber-notes/releases/download/cli-v0.2.0/amber-linux-x64.tar.gz"
-      sha256 "7cc1e611ea697e2156d9ebb82fd5751145c78b3d0854015a27ba8f6d73f26df0"
+      sha256 "99783fe8deec18586b9e63880bf67c7683eed2dde66fb9d09a00c1282483bc1a"
     end
   end
 

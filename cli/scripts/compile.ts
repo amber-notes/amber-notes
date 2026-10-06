@@ -10,7 +10,8 @@ const targets = [
 ];
 const root = new URL("..", import.meta.url).pathname;
 const run = async (cmd: string, args: string[], cwd = root) => {
-  const out = await new Deno.Command(cmd, { args, cwd, stdout: "inherit", stderr: "inherit" }).output();
+  // COPYFILE_DISABLE and --no-xattrs: no macOS metadata in the archives (GNU tar warns about it).
+  const out = await new Deno.Command(cmd, { args, cwd, env: { COPYFILE_DISABLE: "1" }, stdout: "inherit", stderr: "inherit" }).output();
   if (!out.success) Deno.exit(out.code || 1);
 };
 const sums: string[] = [];
@@ -19,7 +20,7 @@ for (const [target, name] of targets) {
   const stage = await Deno.makeTempDir();
   await Deno.copyFile(`${root}dist/${name}`, `${stage}/amber`);
   await Deno.chmod(`${stage}/amber`, 0o755);
-  await run("tar", ["-czf", `${root}dist/${name}.tar.gz`, "-C", stage, "amber"]);
+  await run("tar", ["--no-xattrs", "--no-mac-metadata", "-czf", `${root}dist/${name}.tar.gz`, "-C", stage, "amber"]);
   await Deno.remove(stage, { recursive: true });
   const d = new Uint8Array(await crypto.subtle.digest("SHA-256", await Deno.readFile(`${root}dist/${name}.tar.gz`)));
   sums.push(`${Array.from(d, (b) => b.toString(16).padStart(2, "0")).join("")}  ${name}.tar.gz`);
