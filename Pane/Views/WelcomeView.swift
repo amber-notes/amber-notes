@@ -176,7 +176,7 @@ struct WelcomeFlow: View {
             .accessibilityIdentifier("welcome.back")
             #endif
             SignInView(backend: backend, heading: returning
-                       ? .beside(title: "Welcome back", line: "Sign in with Apple or your email.")
+                       ? .beside(title: "Welcome back", line: "Sign in with Apple, Google or your email.")
                        : .beside(title: "Create your account", line: "Already have one? This signs you in too."),
                        focusEmail: focusEmail)
                 #if os(macOS)

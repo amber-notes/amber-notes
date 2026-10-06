@@ -10,7 +10,7 @@ import { fromBase64, handoffPayload, sealHandoff } from "@/lib/e2ee";
 import { decodeQRMarkup } from "@/lib/qr.test-helpers";
 import ConnectFlow from "./ConnectFlow";
 import { APPLE_INSTEAD, MatchNumber, NotifySignInScreen } from "./ConnectScreens";
-import { APPLE_ON_WEB } from "@/lib/connect";
+import { APPLE_ON_WEB, GOOGLE_ON_WEB } from "@/lib/connect";
 
 const v = JSON.parse(readFileSync(resolve(__dirname, "../../../supabase/functions/_shared/e2ee-vectors.json"), "utf8"));
 
@@ -259,6 +259,50 @@ describe("signing in for a notification", () => {
     expect(APPLE_ON_WEB).toBe(true);
     expect(html).toContain("Sign in with Apple");
     expect(html).not.toContain(APPLE_INSTEAD.replace(/'/g, "&#x27;"));
+  });
+});
+
+describe("signing in with Google", () => {
+  it("puts Sign in with Google directly under Sign in with Apple, before the email", () => {
+    const html = renderToStaticMarkup(
+      <NotifySignInScreen to="claude.ai" onSubmit={() => {}} onScan={() => {}} email="" password="" onEmail={() => {}} onPassword={() => {}}
+        onApple={() => {}} onGoogle={() => {}} busy={false} ready failure={null} />,
+    );
+    expect(GOOGLE_ON_WEB).toBe(true);
+    const apple = html.indexOf("Sign in with Apple"), google = html.indexOf("Sign in with Google"), email = html.indexOf("connect-email");
+    expect(apple).toBeGreaterThan(-1);
+    expect(google).toBeGreaterThan(apple);
+    expect(email).toBeGreaterThan(google);
+    // Google's four-colour G, as Google draws it.
+    for (const colour of ["#EA4335", "#4285F4", "#FBBC05", "#34A853"]) expect(html).toContain(colour);
+  });
+
+  it("leaves for Google through Supabase with a PKCE challenge, and keeps only the verifier, the request and the provider", async () => {
+    const server = fakeServer(() => ({ state: "waiting" }));
+    vi.stubGlobal("fetch", server.fetch);
+    sessionStorage.clear();
+    render();
+    await until(() => !!container.querySelector("svg path"));
+    await act(async () => button("Get a notification instead").click());
+    await act(async () => [...container.querySelectorAll("button")].find((b) => b.textContent?.includes("Sign in with Google"))!.click());
+    await until(() => assigned.length > 0);
+    const to = new URL(assigned[0]);
+    expect(to.origin + to.pathname).toBe(`${SUPABASE}/auth/v1/authorize`);
+    expect(to.searchParams.get("provider")).toBe("google");
+    expect(to.searchParams.get("redirect_to")).toBe(`${window.location.origin}/connect?request=${ID}`);
+    const saved = JSON.parse(sessionStorage.getItem("amber.connect.pkce")!);
+    expect(Object.keys(saved).sort()).toEqual(["provider", "request", "verifier"]);
+    expect(saved).toMatchObject({ provider: "google", request: ID });
+    const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(saved.verifier)));
+    expect(to.searchParams.get("code_challenge")).toBe(Buffer.from(digest).toString("base64url"));
+  });
+
+  it("names Google when the round trip comes back without a session", async () => {
+    vi.stubGlobal("fetch", fakeServer(() => ({ state: "waiting" })).fetch);
+    sessionStorage.setItem("amber.connect.pkce", JSON.stringify({ verifier: "v", request: ID, provider: "google" }));
+    act(() => root.render(<ConnectFlow requestId={ID} supabaseURL={SUPABASE} anonKey="anon" label={LABEL} recover={false} authError="access_denied" pollMs={20} />));
+    await until(() => container.textContent!.includes("Sign in with Google didn't finish. Try again."));
+    expect(sessionStorage.getItem("amber.connect.pkce")).toBeNull();
   });
 });
 
