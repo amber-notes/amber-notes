@@ -107,6 +107,22 @@ extension CollabStore {
         }.sorted { ($0.isMe ? 0 : 1, $0.role == "owner" ? 0 : 1) < ($1.isMe ? 0 : 1, $1.role == "owner" ? 0 : 1) }
     }
 
+    /// What you share, for the export's Sharing.md: the open shared notes and notes with a link,
+    /// with their people and link setting, and the templates you published.
+    func exportSharing() -> NoteExport.Sharing {
+        let ids = Set(sessions.keys).union(links.keys).sorted { $0.uuidString < $1.uuidString }
+        let notes = ids.map { id in
+            let people = sessions[id].map { s in
+                s.members.map { NoteExport.Sharing.Person(name: $0.name, role: $0.role, isMe: $0.id == s.me) }
+            } ?? []
+            let link: ShareState.Access? = links[id] == nil ? nil : linkOff.contains(id) ? .off : editable.contains(id) ? .edit : .view
+            return NoteExport.Sharing.SharedNote(note: id, people: people, link: link)
+        }
+        let templates = templates.sorted { $0.key.uuidString < $1.key.uuidString }
+            .map { NoteExport.Sharing.Template(note: $0.key, url: URL(string: "\(Self.site)/t/\($0.value)")!) }
+        return .init(notes: notes, templates: templates)
+    }
+
     // MARK: Opening a link
 
     /// A link's id and secret, from `…/s/<id>#<secret>` (or ambernotes://s/<id>#<secret>).
