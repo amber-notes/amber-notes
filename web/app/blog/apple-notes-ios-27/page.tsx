@@ -1,4 +1,9 @@
+import { Figure } from "@/lib/blog";
+import { Loop } from "@/lib/Loop";
+import { PostCta } from "@/lib/PostCta";
 import { PostPage, postMetadata } from "@/lib/PostPage";
+import { Answer, Paths, Steps } from "@/lib/PostParts";
+import { SHOTS } from "@/lib/posts";
 
 export const dynamic = "force-static";
 export const metadata = postMetadata("apple-notes-ios-27", { title: "What's new in Apple Notes in iOS 27, and how to use it" });
@@ -22,10 +27,28 @@ export default function Page() {
   return (
     <PostPage
       slug="apple-notes-ios-27"
-      intro={<>iOS 27 and macOS 27 came out on 14 September, and Apple Notes got some of the features I&apos;ve wanted for years: divider lines, links to a section of a note, Markdown both ways, and a Siri that can find your notes and write into them. Here&apos;s what&apos;s new, how to use each one, and where ChatGPT and Claude fit.</>}
+      intro={<>iOS 27 and macOS 27 came out on 14 September, and Apple Notes got some of the features I&apos;ve wanted for years. Here&apos;s what&apos;s new, how to use each one, and where ChatGPT and Claude fit.</>}
+      answer={
+        <Answer jump={[
+          { href: "#divider-lines", label: "Divider lines" },
+          { href: "#section-links", label: "Section links" },
+          { href: "#markdown", label: "Markdown" },
+          { href: "#siri-ai", label: "Siri AI" },
+          { href: "#chatgpt-and-claude", label: "ChatGPT and Claude" },
+        ]}>
+          <ul>
+            <li><strong>Divider lines.</strong> On iPhone, Insert Divider Line in the edit menu; on a Mac, Command-L.</li>
+            <li><strong>Links to a section of a note.</strong> Add Link, then Link to Section, and pick a heading.</li>
+            <li><strong>Markdown both ways.</strong> Pasted Markdown turns into headings and lists, and Copy as Markdown takes it out.</li>
+            <li><strong>Siri AI.</strong> Finds notes, searches inside them, and adds to or reformats one. In beta, in English, on iPhone 15 Pro and later, not yet in the EU.</li>
+            <li><strong>ChatGPT and Claude</strong> still can&apos;t search or edit Apple Notes from iPhone or the web.</li>
+          </ul>
+        </Answer>
+      }
+      art="/blog/art/apple-notes-ios-27"
       faq={FAQ}
     >
-      <h2>What&apos;s new, in one table</h2>
+      <h2 id="in-one-table">What&apos;s new, in one table</h2>
       <div className="tableWrap">
         <table>
           <thead>
@@ -42,7 +65,11 @@ export default function Page() {
         </table>
       </div>
 
-      <h2>Divider lines</h2>
+      <h2 id="divider-lines">Divider lines</h2>
+      <Paths rows={[
+        { on: "iPhone", steps: ["Edit menu", "Expand", "Insert Divider Line"] },
+        { on: "Mac", steps: ["Edit", "Insert Divider Line"], keys: "⌘L" },
+      ]} />
       <p>
         A plain horizontal line between parts of a note. On iPhone, tap where you want it, tap the Expand button in the edit menu, and choose
         Insert Divider Line. On a Mac, choose Edit, Insert Divider Line, or press Command-L. Apple describes both in its
@@ -53,23 +80,28 @@ export default function Page() {
         in Apple Notes</a> covers what they do and the workarounds.
       </p>
 
-      <h2>Links to a section of a note</h2>
+      <h2 id="section-links">Links to a section of a note</h2>
       <p>
         Headings in a note are now places you can link to, in the same note or in another one. It&apos;s the feature that turns a long note into
         something you can navigate: a contents list at the top, or a link from your weekly plan straight to the right day.
       </p>
-      <ol>
+      <Steps>
         <li>Make the sections first: select a line, tap the Format button, and choose Heading or Subheading.</li>
         <li>Select the text for the link, or tap where it should go, then choose Add Link from the edit menu (on a Mac, Edit, Add Link).</li>
         <li>Choose Link to Section and pick a heading. Turn on Use Section Title to name the link after it, or type your own name.</li>
-      </ol>
+      </Steps>
       <p>
         To link to a section in another note, link to that note first, then choose Link to Section. There&apos;s a shortcut on iPhone: type
         <code>&gt;&gt;</code> and the note&apos;s title, then <code>/</code> to pick one of its sections. If a heading is renamed, links named after
         it update too. The steps are in <a href="https://support.apple.com/guide/iphone/iph908d1558b/ios" rel="noopener">Add links in Notes on iPhone</a>.
       </p>
 
-      <h2>Markdown in and out</h2>
+      <h2 id="markdown">Markdown in and out</h2>
+      <Paths rows={[
+        { on: "iPhone", steps: ["Select text", "Edit menu", "Copy as Markdown"] },
+        { on: "Mac", steps: ["Edit", "Copy as Markdown"] },
+        { on: "Export, Mac", steps: ["File", "Export To", "Markdown"] },
+      ]} />
       <p>
         iOS 26 and macOS 26 added Markdown export and import, one note at a time. iOS 27 and macOS 27 add the everyday half: paste Markdown
         into a note and it becomes headings, lists and bold text, and select part of a note and choose Copy as Markdown to take it out
@@ -80,8 +112,9 @@ export default function Page() {
         On a Mac, the export menu moved: it&apos;s now File, Export To, then Markdown or PDF. <a href="/blog/export-apple-notes-to-markdown">How
         to export Apple Notes to Markdown</a> has the steps for both versions, what to check in the file, and what to use for every note at once.
       </p>
+      <Figure shot={SHOTS.notesExportMenu} caption="The menu before the move: File, Export as, Markdown, in Notes on macOS 26. On macOS 27 it reads File, Export To." />
 
-      <h2>Siri AI and your notes</h2>
+      <h2 id="siri-ai">Siri AI and your notes</h2>
       <p>
         The new Siri, called Siri AI, can search for notes and search inside them. Apple&apos;s example is &ldquo;What was the note with the
         cookie recipe?&rdquo;, in <a href="https://support.apple.com/en-us/118442" rel="noopener">Use Notes on your iPhone</a>. It can also
@@ -96,7 +129,7 @@ export default function Page() {
         <li>It isn&apos;t available in the EU on iPhone at first, and some requests count against a daily limit.</li>
       </ul>
 
-      <h2>Where ChatGPT and Claude fit</h2>
+      <h2 id="chatgpt-and-claude">Where ChatGPT and Claude fit</h2>
       <p>
         Siri now works in your notes, but ChatGPT and Claude mostly still can&apos;t. Apple Notes has no public API, so everything an
         outside AI does with it goes through your device, and it stops there:
@@ -122,17 +155,23 @@ export default function Page() {
         the <a href="/blog/apple-notes-api">Apple Notes API</a> post covers what AppleScript and Shortcuts can do.
       </p>
 
-      <h2>If you want your AI to work in your notes</h2>
+      <h2 id="amber-notes">If you want your AI to work in your notes</h2>
       <p>
         iOS 27 makes Apple Notes a nicer place to write, and Siri can now help in it. It doesn&apos;t let ChatGPT or Claude keep a list for you, fix a note while you&apos;re
         on the train, or write your standup into it. That&apos;s the gap I built Amber Notes for: a notes app for iPhone and Mac that looks and
         works like Apple Notes, with a server built in that ChatGPT, Claude, Claude Code, Codex and Incredible can use to search, read and
         edit your notes. You approve each app once, every AI change shows up tinted with an Undo, and older versions stay in the history.
       </p>
+      <Loop src="/blog/loops/amber-notes-chatgpt-edit.mp4" poster="/blog/loops/amber-notes-chatgpt-edit.webp" width={1120} height={1136}
+        label="A Lisbon trip note in Amber Notes on a Mac. ChatGPT changes day 3 to Sintra and adds a dinner spot to the table; the two changed lines turn amber, a bar says ChatGPT changed 2 lines with Undo, and the tint fades."
+        caption="ChatGPT edits a note in Amber Notes: the two lines it changed are tinted, with an Undo, then the tint fades." />
       <p>
         <a href="/blog/connect-chatgpt-to-your-notes">Connecting ChatGPT or Claude</a> takes a couple of minutes. For the full comparison,
         including what Apple Notes still does better, see <a href="/blog/amber-notes-vs-apple-notes">Amber Notes vs Apple Notes</a>.
       </p>
+      <PostCta slug="apple-notes-ios-27" position="how-amber-helps" title="Notes ChatGPT and Claude can work in">
+        <p>Amber Notes looks and works like Apple Notes, and imports your notes from it on the Mac.</p>
+      </PostCta>
     </PostPage>
   );
 }
