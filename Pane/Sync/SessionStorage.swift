@@ -5,7 +5,7 @@ import Supabase
 /// Stores the auth session in the Keychain; falls back to a protected file in the
 /// app's own container when the Keychain isn't available (unsigned dev builds).
 final class SessionStorage: AuthLocalStorage, @unchecked Sendable {
-    private let service = "dev.emilwagman.pane.auth"
+    private let service = AppIdentity.keychainPrefix + ".auth"
     private let lock = NSLock()
 
     /// Unsigned (ad-hoc) Mac builds get a new code identity on every build, so the

@@ -4,7 +4,7 @@ import Foundation
 /// The share extension writes items into the shared App Group container; the app
 /// turns each into a note the next time it's active.
 enum Inbox {
-    static let appGroup = "group.dev.emilwagman.pane"
+    static let appGroup = AppIdentity.appGroup
 
     struct Item: Codable {
         var id = UUID()

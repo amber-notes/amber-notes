@@ -5,7 +5,7 @@ import { closeBrowser, renderPage } from "../page-render/render.ts";
 import { TASKS } from "./tasks.ts";
 const dir = new URL(`results/${Deno.args[0]}/`, import.meta.url).pathname;
 const arms = new Map<string, number[]>();
-for (const e of [...Deno.readDirSync(dir)].filter((x) => x.name.endsWith(".json") && (!Deno.args[1] || x.name.includes(Deno.args[1]))).sort((a, b) => a.name.localeCompare(b.name))) {
+for (const e of [...Deno.readDirSync(dir)].filter((x) => (x.name.endsWith(".json") && !x.name.endsWith(".trace.json")) && (!Deno.args[1] || x.name.includes(Deno.args[1]))).sort((a, b) => a.name.localeCompare(b.name))) {
   const r = JSON.parse(Deno.readTextFileSync(dir + e.name));
   const task = TASKS.find((t) => t.id === r.task);
   const page = Deno.readTextFileSync(dir + e.name.replace(/\.json$/, ".page.html"));

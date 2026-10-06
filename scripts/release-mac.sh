@@ -21,6 +21,10 @@
 #   ASC_KEY_PATH, ASC_KEY_ID, ASC_ISSUER_ID   the notarization key
 #   SPARKLE_KEY_FILE           the Sparkle private key as a file (instead of the Keychain)
 #   SKIP_DEPLOY=1, SKIP_TAG=1  the workflow deploys the site and tags the release itself
+#
+# CHANNEL=beta builds Amber Notes Beta instead (Config/Beta.xcconfig: its own bundle id, name, URL
+# scheme and sandbox, on the staging backend; docs/Technical/staging.md): from the current checkout,
+# notarized, as build/dist-beta/Amber-Notes-Beta-<version>.dmg. No appcast, site deploy or tag.
 set -euo pipefail
 MAIN="$(cd "$(dirname "$0")/.." && pwd)"
 CLEAN="$MAIN/../AmberNotes-install"
@@ -28,12 +32,21 @@ DIST="$MAIN/build/dist"
 DD="$MAIN/build/dddirect"
 [[ -n ${DEVELOPER_DIR:-} ]] || export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 IN_PLACE=${IN_PLACE:-0}
+CHANNEL=${CHANNEL:-release}
+beta=()
+if [[ $CHANNEL == beta ]]; then
+  IN_PLACE=1; SKIP_DEPLOY=1; SKIP_TAG=1
+  DIST="$MAIN/build/dist-beta"; DD="$MAIN/build/dddirect-beta"
+  [[ -f $MAIN/Config/Backend.staging.local.xcconfig ]] || { echo "No Config/Backend.staging.local.xcconfig: run scripts/staging.sh app-config first." >&2; exit 1; }
+  beta=(-xcconfig "$MAIN/Config/Beta.xcconfig")
+fi
 [[ $IN_PLACE == 1 ]] && CLEAN="$MAIN"
 
 VERSION=${1:?usage: scripts/release-mac.sh <version> [release notes]}
 NOTES=${2:-}
 BUILD=$(date -u +%Y%m%d%H%M)   # CFBundleVersion: always increasing, which is what Sparkle compares
 FILE="Amber-Notes-$VERSION.dmg"   # for Sparkle (the appcast points here)
+[[ $CHANNEL == beta ]] && FILE="Amber-Notes-Beta-$VERSION.dmg"
 STABLE="Amber-Notes.dmg"          # for people (the download buttons point here)
 MIN_OS=26.0
 
@@ -63,7 +76,7 @@ echo "→ Archive $VERSION ($BUILD) from $COMMIT"
 rm -rf "$DIST" && mkdir -p "$DIST"
 xcodebuild -project "$CLEAN/Pane.xcodeproj" -scheme AmberNotesDirect -configuration Release \
   -destination 'generic/platform=macOS' -derivedDataPath "$DD" -archivePath "$DIST/AmberNotes.xcarchive" \
-  -allowProvisioningUpdates "${auth[@]}" DEVELOPMENT_TEAM=4UM3XVUN9Y CODE_SIGN_STYLE=Automatic CODE_SIGN_IDENTITY="Apple Development" \
+  -allowProvisioningUpdates "${auth[@]}" "${beta[@]}" DEVELOPMENT_TEAM=4UM3XVUN9Y CODE_SIGN_STYLE=Automatic CODE_SIGN_IDENTITY="Apple Development" \
   MARKETING_VERSION="$VERSION" CURRENT_PROJECT_VERSION="$BUILD" archive | grep -E ": error: |\*\* ARCHIVE" || true
 [[ -d $DIST/AmberNotes.xcarchive ]] || { echo "Archive failed." >&2; exit 1; }
 
@@ -80,7 +93,7 @@ cat > "$DIST/ExportDeveloperID.plist" <<EOF
 EOF
 xcodebuild -exportArchive -archivePath "$DIST/AmberNotes.xcarchive" -exportOptionsPlist "$DIST/ExportDeveloperID.plist" \
   -exportPath "$DIST/export" -allowProvisioningUpdates "${auth[@]}" | grep -E "error|EXPORT" || true
-APP="$DIST/export/Amber Notes.app"
+APP="$DIST/export/Amber Notes$([[ $CHANNEL == beta ]] && echo " Beta").app"
 [[ -d $APP ]] || { echo "Export failed." >&2; exit 1; }
 codesign --verify --deep --strict "$APP"
 
@@ -108,6 +121,11 @@ xcrun stapler staple "$DIST/$FILE"
 # spctl can't assess an unsigned DMG, so that line is informational only.
 spctl -a -vv "$APP" 2>&1 | grep -q "source=Notarized Developer ID" || { echo "The app didn't pass Gatekeeper." >&2; spctl -a -vv "$APP"; exit 1; }
 xcrun stapler validate "$DIST/$FILE" >/dev/null || { echo "The DMG has no notarization ticket." >&2; exit 1; }
+
+if [[ $CHANNEL == beta ]]; then
+  echo "✓ Amber Notes Beta $VERSION ($BUILD) from $COMMIT: $DIST/$FILE"
+  exit 0
+fi
 
 echo "→ Sparkle signature and appcast"
 SIGN=$(ls "$DD"/SourcePackages/artifacts/sparkle/Sparkle/bin/sign_update)

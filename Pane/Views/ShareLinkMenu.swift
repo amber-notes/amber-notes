@@ -361,7 +361,7 @@ final class MemoryStoppedShares: StoppedShareStore, @unchecked Sendable {
 /// slugs. Builds without the data protection keychain keep it on this device only, as they keep
 /// the data key.
 struct KeychainStoppedShares: StoppedShareStore {
-    static let service = "dev.emilwagman.pane.stopped-shares"
+    static let service = AppIdentity.keychainPrefix + ".stopped-shares"
 
     private static func query(_ account: UUID) -> [String: Any] {
         [kSecClass as String: kSecClassGenericPassword,

@@ -34,15 +34,16 @@
 // the PKCE verifier for one Sign in with Apple round trip (sessionStorage, removed on return).
 // Sign in with Apple comes back to /connect?request=<id>[&recover=1]&code=<one-time code>, so
 // Supabase must list https://ambernotes.app/connect** among its redirect URLs.
+import { APP_LINK_ORIGIN, appURL } from "./app-scheme";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const validRequest = (id: string | undefined): id is string => !!id && UUID.test(id);
 
 /// The universal link: opens the app's consent sheet for the request where the app is installed.
-export const universalLink = (id: string) => `https://ambernotes.app/open/connect?request=${id.toLowerCase()}`;
+export const universalLink = (id: string) => `${APP_LINK_ORIGIN}/open/connect?request=${id.toLowerCase()}`;
 
 /// The app's own scheme, for when the universal link stays in the browser.
-export const appLink = (id: string) => `ambernotes://connect?request=${id.toLowerCase()}`;
+export const appLink = (id: string) => appURL(`connect?request=${id.toLowerCase()}`);
 
 /// The scan secret and key fingerprint a QR code carries in its fragment (#s=<22>&k=<43>), as
 /// "#s=…&k=…", or null for anything else. The fragment never reaches a server, so /open/connect reads

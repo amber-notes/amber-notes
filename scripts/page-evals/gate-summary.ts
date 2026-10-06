@@ -4,7 +4,7 @@
 //   deno run -A scripts/page-evals/gate-summary.ts <round>
 type R = { test_shape?: { tests: number; expects: number; skipped: number } | null; task: string; model: string; seconds: number; tool_calls: number; checks: { name: string; pass: boolean }[]; tests_written?: number; gate?: { held_back_saves: number; live_saves: number; ended_with_draft: boolean }; calls: { name: string; result?: string }[] };
 const dir = new URL(`results/${Deno.args[0]}/`, import.meta.url);
-const runs: R[] = [...Deno.readDirSync(dir)].filter((e) => e.name.endsWith(".json")).map((e) => JSON.parse(Deno.readTextFileSync(new URL(e.name, dir))));
+const runs: R[] = [...Deno.readDirSync(dir)].filter((e) => (e.name.endsWith(".json") && !e.name.endsWith(".trace.json"))).map((e) => JSON.parse(Deno.readTextFileSync(new URL(e.name, dir))));
 // Counted from each save's answer (the "live" field), compact or spaced JSON.
 for (const r of runs) {
   const held = r.calls.filter((c) => /"live":\s*"Held back/.test(c.result ?? "")).length;

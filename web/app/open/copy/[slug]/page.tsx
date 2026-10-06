@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { copyableMarkdown, sharedNote, validSlug } from "@/lib/shared";
 import OpenCard from "../../OpenCard";
 import { EmptyState, Stage, ui } from "@/lib/ui";
+import { appURL } from "@/lib/app-scheme";
 
 // The universal link behind a shared page's "Use this note" (https://ambernotes.app/open/copy/<slug>).
 // Read on every visit, like the shared page: Stop Sharing takes this down at once too.
@@ -24,7 +25,7 @@ export default async function Page({ params }: Props) {
   }
   return (
     <OpenCard
-      href={`ambernotes://copy/${slug}`}
+      href={appURL(`copy/${slug}`)}
       what="this note"
       lede={<>Amber Notes adds a copy of <b>{note.title}</b> to your notes. Photos and files stay with the person who shared it.</>}
       markdown={copyableMarkdown(note.body)}

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { scanFragment } from "@/lib/connect";
 import styles from "../../connect/connect.module.css";
+import { appURL } from "@/lib/app-scheme";
 
 /// The "Open Amber Notes" button, and one try of the app's own scheme when the page loads. `href`
 /// is built on the server from a checked request id. A scanned QR code also carries the scan secret
@@ -11,7 +12,7 @@ import styles from "../../connect/connect.module.css";
 export default function TryApp({ href }: { href: string }) {
   const [target, setTarget] = useState(href);
   useEffect(() => {
-    if (!href.startsWith("ambernotes://connect?request=")) return;
+    if (!href.startsWith(appURL("connect?request="))) return;
     const fragment = scanFragment(window.location.hash);
     const to = href + (fragment ?? "");
     setTarget(to);
