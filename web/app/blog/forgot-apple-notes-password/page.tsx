@@ -1,7 +1,8 @@
 import { Figure } from "@/lib/blog";
 import { PostCta } from "@/lib/PostCta";
 import { PostPage, postMetadata } from "@/lib/PostPage";
-import { Answer, Paths, Steps } from "@/lib/PostParts";
+import { Answer, Keep, Paths, Steps } from "@/lib/PostParts";
+import { ResetChooser } from "@/lib/ResetChooser";
 import { SHOTS } from "@/lib/posts";
 
 export const dynamic = "force-static";
@@ -24,6 +25,14 @@ const FAQ = [
     "Use your device passcode instead of a separate notes password (iOS 16 or later, with iCloud Keychain on), or keep the notes password in a password manager.",
   ] },
 ];
+
+const CHECKLIST = `Before I reset my Apple Notes password
+Face ID or Touch ID on the locked note
+Two wrong tries, then read the hint
+My iPhone passcode, or my Mac login password
+Any older notes password I've used
+My password manager: search for "notes"
+Only then: reset (old locked notes keep the old password)`;
 
 export default function Page() {
   return (
@@ -50,6 +59,10 @@ export default function Page() {
       art="/blog/art/forgot-apple-notes-password"
       faq={FAQ}
     >
+      <h2 id="which-applies">Which one applies to you</h2>
+      <p>Three questions, and it tells you the one thing to do next.</p>
+      <ResetChooser />
+
       <h2 id="why">Why nobody can open it for you</h2>
       <p>
         A locked note is end-to-end encrypted with a key made from your notes password. Apple&apos;s security guide describes it: the key
@@ -84,6 +97,8 @@ export default function Page() {
           If you use one, search it for &ldquo;notes&rdquo;; you may have saved the password there when you set it.
         </li>
       </Steps>
+      <Keep title="Before you reset: a checklist" text={CHECKLIST}
+        note="Paste it into a note, select the lines and tap the checklist button, then tick them off as you go. If one works, you never need to reset." />
       <p>
         Don&apos;t reset first. Resetting is safe, and it won&apos;t delete anything, but once you have two passwords it gets harder to tell
         which note needs which.

@@ -1,3 +1,4 @@
+import CopyButton from "@/app/templates/CopyButton";
 import s from "./post-parts.module.css";
 
 /// The parts a how-to post is built from. The short answer comes first, so someone from a search
@@ -50,6 +51,22 @@ export function Banner({ src }: { src: string }) {
         <source type="image/avif" srcSet={`${src}.avif`} />
         <img src={`${src}.webp`} alt="" width={1200} height={480} decoding="async" fetchPriority="high" />
       </picture>
+    </div>
+  );
+}
+
+/// Something to keep: a checklist, a cheat sheet, a prompt or a script, with a Copy button that copies
+/// `text` exactly. What shows is `children`, or the text itself in a code block. Copies are counted as
+/// blog_copy_clicked (lib/posthog.ts reads data-event).
+export function Keep({ title, note, text, code = false, children }: { title: string; note?: React.ReactNode; text: string; code?: boolean; children?: React.ReactNode }) {
+  return (
+    <div className={s.keep}>
+      <div className={s.keepHead}>
+        <p className={s.keepTitle}>{title}</p>
+        <CopyButton text={text} label="Copy" className={s.copy} event="blog_copy_clicked" />
+      </div>
+      {children ?? (code ? <pre tabIndex={0}><code>{text}</code></pre> : <pre className={s.plain} tabIndex={0}>{text}</pre>)}
+      {note && <p className={s.keepNote}>{note}</p>}
     </div>
   );
 }

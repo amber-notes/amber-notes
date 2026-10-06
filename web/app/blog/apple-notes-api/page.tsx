@@ -1,7 +1,7 @@
 import { Figure } from "@/lib/blog";
 import { PostCta } from "@/lib/PostCta";
 import { PostPage, postMetadata } from "@/lib/PostPage";
-import { Answer } from "@/lib/PostParts";
+import { Answer, Keep } from "@/lib/PostParts";
 import { SHOTS } from "@/lib/posts";
 
 export const dynamic = "force-static";
@@ -18,6 +18,20 @@ const FAQ = [
     "Only on a Mac, through community MCP servers or Claude's desktop extension, which drive the Notes app with AppleScript. Nothing in the cloud can reach Apple Notes, so ChatGPT or Claude on the web and on iPhone can't.",
   ] },
 ];
+
+const APPLESCRIPT = `tell application "Notes"
+	set titles to name of every note
+	set firstBody to body of note 1
+	make new note at folder "Notes" with properties {name:"Groceries", body:"<h1>Groceries</h1><div>Milk</div>"}
+end tell`;
+
+const PYTHON = `import subprocess
+
+script = 'tell application "Notes" to get name of every note'
+out = subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
+print(out.stdout)`;
+
+const PROMPT = `Write an AppleScript for the Notes app on macOS that [what you want, for example: appends today's date and a line of text to the note called "Work log"]. Notes stores note bodies as HTML, so read and write the body as HTML. Then show me how to run it from Terminal with osascript.`;
 
 export default function Page() {
   return (
@@ -87,23 +101,17 @@ export default function Page() {
         On a Mac, the Notes app answers AppleScript. This lists every note&apos;s title, reads the first note&apos;s body (it comes back as
         HTML) and makes a new note in the Notes folder:
       </p>
-      <pre tabIndex={0}><code>{`tell application "Notes"
-	set titles to name of every note
-	set firstBody to body of note 1
-	make new note at folder "Notes" with properties {name:"Groceries", body:"<h1>Groceries</h1><div>Milk</div>"}
-end tell`}</code></pre>
+      <Keep title="AppleScript: list, read and make notes" text={APPLESCRIPT} code note="Run it in Script Editor, or save it and run osascript notes.applescript in Terminal." />
       <p>
         Python has no Notes library of its own; it runs the same script through <code>osascript</code>. The first time, macOS asks whether
         your terminal may control Notes, under Privacy &amp; Security, Automation.
       </p>
-      <pre tabIndex={0}><code>{`import subprocess
-
-script = 'tell application "Notes" to get name of every note'
-out = subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
-print(out.stdout)`}</code></pre>
+      <Keep title="Python: every note's title" text={PYTHON} code />
       <p>
         Locked notes don&apos;t open this way, and the script runs only on a Mac that&apos;s on and signed in.
       </p>
+      <Keep title="Or ask an AI to write the script" text={PROMPT}
+        note="Fill in the brackets and paste it into ChatGPT, Claude or Gemini. Read the script before you run it: it can change your notes." />
 
       <h2 id="what-people-build">What people build on it</h2>
       <p>

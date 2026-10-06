@@ -2,7 +2,7 @@ import { Figure } from "@/lib/blog";
 import { Loop } from "@/lib/Loop";
 import { PostCta } from "@/lib/PostCta";
 import { PostPage, postMetadata } from "@/lib/PostPage";
-import { Answer, Paths, Steps } from "@/lib/PostParts";
+import { Answer, Keep, Paths, Steps } from "@/lib/PostParts";
 import { SHOTS } from "@/lib/posts";
 
 export const dynamic = "force-static";
@@ -22,6 +22,28 @@ const FAQ = [
     "Not on their own. Siri can pass a request to ChatGPT if you turn on the ChatGPT extension, and you choose what goes with it. Claude isn't offered there. Apple Notes still has no API, so the ChatGPT and Claude apps can't search or edit your notes from iPhone or the web.",
   ] },
 ];
+
+const CHEAT_SHEET = `# Apple Notes in iOS 27
+
+## Divider line
+- iPhone: edit menu, Expand, Insert Divider Line
+- Mac: Edit, Insert Divider Line (Command-L)
+
+## Link to a section
+- Make headings first: Format, Heading
+- Add Link, then Link to Section, and pick a heading
+- iPhone shortcut: type >> and a note's title, then / for a section
+
+## Markdown
+- Paste Markdown and it turns into headings and lists
+- Copy as Markdown: select text, then Copy as Markdown
+- Mac export: File, Export To, Markdown
+
+## Siri AI
+- "What was the note with the cookie recipe?"
+- Ask it to add to a note, or to reformat one`;
+
+const PROMPT = "Answer in Markdown, with short headings and bullet lists, so I can paste it straight into Apple Notes. No tables, no emoji.";
 
 export default function Page() {
   return (
@@ -48,6 +70,9 @@ export default function Page() {
       art="/blog/art/apple-notes-ios-27"
       faq={FAQ}
     >
+      <Keep title="The cheat sheet, as Markdown" text={CHEAT_SHEET} code
+        note="Copy it and paste it into a new note on iOS 27 or macOS 27: it arrives as headings and lists, which makes it a good first test of the new Markdown paste." />
+
       <h2 id="in-one-table">What&apos;s new, in one table</h2>
       <div className="tableWrap">
         <table>
@@ -112,6 +137,8 @@ export default function Page() {
         On a Mac, the export menu moved: it&apos;s now File, Export To, then Markdown or PDF. <a href="/blog/export-apple-notes-to-markdown">How
         to export Apple Notes to Markdown</a> has the steps for both versions, what to check in the file, and what to use for every note at once.
       </p>
+      <Keep title="A prompt for ChatGPT, Claude or Gemini" text={PROMPT}
+        note="Add it to the end of a question, then paste the answer into a note. It arrives formatted instead of full of asterisks." />
       <Figure shot={SHOTS.notesExportMenu} caption="The menu before the move: File, Export as, Markdown, in Notes on macOS 26. On macOS 27 it reads File, Export To." />
 
       <h2 id="siri-ai">Siri AI and your notes</h2>
@@ -167,7 +194,8 @@ export default function Page() {
         caption="ChatGPT edits a note in Amber Notes: the two lines it changed are tinted, with an Undo, then the tint fades." />
       <p>
         <a href="/blog/connect-chatgpt-to-your-notes">Connecting ChatGPT or Claude</a> takes a couple of minutes. For the full comparison,
-        including what Apple Notes still does better, see <a href="/blog/amber-notes-vs-apple-notes">Amber Notes vs Apple Notes</a>.
+        including what Apple Notes still does better, see <a href="/blog/amber-notes-vs-apple-notes">Amber Notes vs Apple Notes</a>,
+        and the <a href="/templates">free templates</a> are ready-made notes, like a trip plan or a weekly review, to start from.
       </p>
       <PostCta slug="apple-notes-ios-27" position="how-amber-helps" title="Notes ChatGPT and Claude can work in">
         <p>Amber Notes looks and works like Apple Notes, and imports your notes from it on the Mac.</p>
