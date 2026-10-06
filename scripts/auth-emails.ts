@@ -21,44 +21,44 @@ export type AuthEmail = {
   subject: string;
   preview: string;
   title: string;
-  body: string[];
+  /// One sentence. {{ .Email }} and {{ .NewEmail }} are wrapped so Gmail and Apple Mail don't link them.
+  line: string;
   code?: string;
   button?: { label: string; href: string };
-  after?: string[];
-  /// What to do if it wasn't you; empty where the body already says it.
-  ignore: string;
-  why: string;
+  /// One short grey line: how long it works, and what to do if it wasn't you.
+  note: string;
+  /// The address for "Or open:", where the button or code has a link behind it.
+  link?: string;
 };
 
 const SITE = "https://ambernotes.app";
 const ASSETS = `${SITE}/email`;
 const RESET = "{{ .SiteURL }}/reset-password#token_hash={{ .TokenHash }}&amp;type=recovery";
+const CONFIRM = "{{ .SiteURL }}/account/confirm?token_hash={{ .TokenHash }}&type=email";
+const CHANGE = "{{ .SiteURL }}/account/confirm?token_hash={{ .TokenHash }}&type=email_change";
 
 export const EMAILS: AuthEmail[] = [
   {
     file: "recovery.html",
     key: "recovery",
     subject: "Reset your Amber Notes password",
-    preview: "Choose a new password. The link works once, for one hour.",
+    preview: "Choose a new password. The link works for one hour.",
     title: "Let's get you back in",
-    body: ["Someone, hopefully you, asked to reset the password for **{{ .Email }}**. Press the button to choose a new one."],
+    line: "Press the button to choose a new password for {{ .Email }}.",
     button: { label: "Choose a new password", href: RESET },
-    after: ["The link works once, for one hour. Your notes are safe either way: they're locked with your key, not your password."],
-    ignore: "Didn't ask for this? Ignore this email and your password stays as it is.",
-    why: "someone asked to reset the password of the Amber Notes account with this address",
+    note: "The link works for one hour. Didn't ask for this? Ignore this email.",
+    link: RESET,
   },
   {
     file: "magic_link.html",
     key: "magic_link",
     subject: "Your Amber Notes sign-in code",
-    preview: "Your code is inside. It works once, for one hour.",
+    preview: "Your code is inside. It works for one hour.",
     title: "Here's your way in",
-    body: ["Type this code in Amber Notes to sign in as **{{ .Email }}**."],
+    line: "Type this code in Amber Notes to sign in as {{ .Email }}.",
     code: "{{ .Token }}",
-    button: { label: "Sign in to Amber Notes", href: "{{ .ConfirmationURL }}" },
-    after: ["Or press the button on the device you're signing in on. The code and the button work once, for one hour."],
-    ignore: "Didn't try to sign in? Ignore this email. Nobody gets in without this code.",
-    why: "someone asked to sign in to Amber Notes with this address",
+    note: "The code works for one hour. Didn't ask for it? Ignore this email.",
+    link: "{{ .ConfirmationURL }}",
   },
   {
     file: "confirmation.html",
@@ -66,10 +66,10 @@ export const EMAILS: AuthEmail[] = [
     subject: "Confirm your email for Amber Notes",
     preview: "One quick check that this address is yours.",
     title: "One quick check",
-    body: ["You made an Amber Notes account with **{{ .Email }}**. Confirm that it's your address and you're all set."],
-    button: { label: "Confirm my email", href: "{{ .SiteURL }}/account/confirm?token_hash={{ .TokenHash }}&type=email" },
-    ignore: "Didn't make an account? Ignore this email. An account that isn't confirmed can't be used.",
-    why: "someone made an Amber Notes account with this address",
+    line: "Press the button to confirm that {{ .Email }} is yours.",
+    button: { label: "Confirm my email", href: CONFIRM },
+    note: "Didn't make an Amber Notes account? Ignore this email.",
+    link: CONFIRM,
   },
   {
     file: "email_change.html",
@@ -77,13 +77,10 @@ export const EMAILS: AuthEmail[] = [
     subject: "Confirm your new email for Amber Notes",
     preview: "Confirm the change, and you'll sign in with your new address.",
     title: "New address, same notes",
-    body: [
-      "You asked to change the email you sign in with, from **{{ .Email }}** to **{{ .NewEmail }}**.",
-      "This goes to both addresses, and the change happens once both are confirmed.",
-    ],
-    button: { label: "Confirm the change", href: "{{ .SiteURL }}/account/confirm?token_hash={{ .TokenHash }}&type=email_change" },
-    ignore: "Didn't ask for this? Ignore this email and your address stays the same. Then change your password, just in case.",
-    why: "someone asked to change the email of an Amber Notes account",
+    line: "Press the button to sign in with {{ .NewEmail }} instead of {{ .Email }}.",
+    button: { label: "Confirm the change", href: CHANGE },
+    note: "Both addresses get this email. Didn't ask for this? Ignore it.",
+    link: CHANGE,
   },
   {
     file: "invite.html",
@@ -91,10 +88,10 @@ export const EMAILS: AuthEmail[] = [
     subject: "You're invited to Amber Notes",
     preview: "Make your account, and you're in.",
     title: "Come on in",
-    body: ["You've been invited to make an Amber Notes account with **{{ .Email }}**. Amber Notes is a notes app for iPhone and Mac."],
+    line: "You're invited to make an Amber Notes account with {{ .Email }}.",
     button: { label: "Accept the invite", href: "{{ .ConfirmationURL }}" },
-    ignore: "Not expecting this? Ignore it and nothing happens.",
-    why: "someone invited this address to Amber Notes",
+    note: "Not expecting this? Ignore this email.",
+    link: "{{ .ConfirmationURL }}",
   },
   {
     file: "reauthentication.html",
@@ -102,11 +99,9 @@ export const EMAILS: AuthEmail[] = [
     subject: "Your Amber Notes code",
     preview: "Type the code inside to confirm it's you.",
     title: "Just checking it's you",
-    body: ["Amber Notes needs to check that **{{ .Email }}** is really you. Type this code there."],
+    line: "Type this code in Amber Notes to confirm it's you, {{ .Email }}.",
     code: "{{ .Token }}",
-    after: ["It works once, and only for a short while."],
-    ignore: "Didn't ask for a code? Ignore this email: nothing changes without it. If it keeps coming, change your password.",
-    why: "someone asked to confirm it's them in the Amber Notes account with this address",
+    note: "Didn't ask for a code? Ignore this email.",
   },
   {
     file: "password_changed.html",
@@ -114,15 +109,9 @@ export const EMAILS: AuthEmail[] = [
     subject: "Your Amber Notes password was changed",
     preview: "If this was you, there's nothing to do.",
     title: "Your password was changed",
-    body: [
-      "The password for **{{ .Email }}** was just changed. If that was you, you're all set.",
-      "Your notes stay as they are. They're locked with your key, not your password, and for 72 hours nobody can delete them with Start fresh or Delete Account.",
-      "Wasn't you? Choose a new password now.",
-    ],
+    line: "If you didn't change the password for {{ .Email }}, reset it now.",
     button: { label: "Reset my password", href: `${SITE}/reset-password` },
-    after: ["Then reply to this email, or write to [hello@ambernotes.app](mailto:hello@ambernotes.app), and I'll help."],
-    ignore: "",
-    why: "the password of your Amber Notes account changed",
+    note: "If it was you, there's nothing to do. Questions? Just reply.",
   },
 ];
 
@@ -136,17 +125,15 @@ const L = { ground: "#fff4e6", page: "#fffdf9", chrome: "#f6f5f3", edge: "#ebe6d
 
 const table = (attrs = "") => `<table role="presentation" cellpadding="0" cellspacing="0" border="0"${attrs}>`;
 
-/// **bold** and [label](href); everything else is written as is (the copy is ours, and holds Go actions).
-function inline(s: string, linkClass: string): string {
-  return s
-    .replace(/\*\*([^*]+)\*\*/g, `<b class="ink" style="color:${L.text};font-weight:600;">$1</b>`)
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, `<a class="${linkClass}" href="$2" style="color:${L.link};text-decoration:underline;">$1</a>`);
-}
+/// An address in the sentence, bold, inside a link with no target: Gmail and Apple Mail link bare
+/// addresses themselves (in blue), but leave text that is already in a link alone.
+const addresses = (s: string) =>
+  s.replace(/\{\{ \.(Email|NewEmail) \}\}/g, `<a class="ink" style="color:${L.text};font-weight:600;text-decoration:none;">{{ .$1 }}</a>`);
 
-const para = (s: string) =>
-  `<p class="ink body" style="margin:0 0 18px;font-size:17px;line-height:1.5;mso-line-height-rule:exactly;color:${L.text};">${inline(s, "lnk")}</p>`;
-const small = (s: string) =>
-  `<p class="sec small" style="margin:0 0 16px;font-size:14px;line-height:1.5;mso-line-height-rule:exactly;color:${L.secondary};">${inline(s, "lnk")}</p>`;
+const lineHTML = (s: string) =>
+  `<p class="ink body" style="margin:0 0 20px;font-size:17px;line-height:1.5;mso-line-height-rule:exactly;color:${L.text};">${addresses(s)}</p>`;
+const grey = (s: string) =>
+  `<p class="sec small" style="margin:0 0 10px;font-size:14px;line-height:1.5;mso-line-height-rule:exactly;color:${L.secondary};">${s}</p>`;
 
 /// The code, large, on its own so a long press or a double click selects all of it and nothing else.
 const codeHTML = (code: string) => `${table(' width="100%" style="margin:4px 0 20px;"')}<tr>
@@ -161,19 +148,19 @@ const buttonHTML = (b: { label: string; href: string }) => `${table(' width="100
 <a href="${b.href}" target="_blank" style="display:block;padding:15px 20px;font-family:${SANS};font-size:17px;font-weight:600;line-height:22px;color:${L.ctaInk};text-decoration:none;border-radius:14px;"><span class="btn-ink" style="color:${L.ctaInk};">${b.label}</span></a>
 </td></tr></table>`;
 
-/// The button's address in plain text, for a mail app that drops the button.
-const fallbackHTML = (href: string) =>
-  `<p class="sec small" style="margin:0 0 16px;font-size:14px;line-height:1.5;mso-line-height-rule:exactly;color:${L.secondary};">Button not working? Paste this into your browser:<br><a class="lnk" href="${href}" style="color:${L.link};word-break:break-all;overflow-wrap:anywhere;">${href}</a></p>`;
+/// The link in plain text, for a mail app that drops the button.
+const openHTML = (href: string) =>
+  `<p class="sec small" style="margin:0 0 10px;font-size:13px;line-height:1.5;mso-line-height-rule:exactly;color:${L.secondary};word-break:break-all;overflow-wrap:anywhere;">Or open: <a class="lnk" href="${href}" style="color:${L.link};">${href}</a></p>`;
 
 export function html(e: AuthEmail): string {
   const dot = (color: string) => `<td width="10" height="10" bgcolor="${color}" style="width:10px;height:10px;border-radius:5px;background:${color};font-size:0;line-height:0;">&nbsp;</td><td width="6" style="width:6px;font-size:0;line-height:0;">&nbsp;</td>`;
   const body = [
-    ...e.body.map(para),
+    lineHTML(e.line),
     e.code ? codeHTML(e.code) : "",
     e.button ? buttonHTML(e.button) : "",
-    ...(e.after ?? []).map(small),
-    e.button && e.button.href.includes("{{") ? fallbackHTML(e.button.href) : "",
-  ].filter(Boolean).join("\n");
+    grey(e.note),
+    e.link ? openHTML(e.link) : "",
+].filter(Boolean).join("\n");
   return `<!doctype html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
@@ -192,6 +179,9 @@ export function html(e: AuthEmail): string {
     .body { line-height: 1.6 !important; }
     .code { font-size: 32px !important; letter-spacing: 6px !important; padding-left: 6px !important; }
   }
+</style>
+<style>
+  a[x-apple-data-detectors] { color: inherit !important; text-decoration: none !important; font: inherit !important; }
 </style>
 <style>
   :root { color-scheme: light dark; supported-color-schemes: light dark; }
@@ -241,10 +231,9 @@ ${table(' width="100%" style="width:100%;max-width:520px;"')}
           <td width="70" style="width:70px;">&nbsp;</td>
         </tr></table>
       </td></tr>
-      <tr><td class="pad" style="padding:26px 32px 6px;font-family:${SANS};overflow-wrap:break-word;word-wrap:break-word;">
+      <tr><td class="pad" style="padding:26px 32px 14px;font-family:${SANS};overflow-wrap:break-word;word-wrap:break-word;">
         <h1 class="ink h1" style="margin:0 0 16px;font-family:${DISPLAY};font-size:27px;line-height:1.2;font-weight:700;color:${L.text};">${e.title}</h1>
 ${body}
-${e.ignore ? `        <p class="ink small" style="margin:0 0 22px;font-size:15px;line-height:1.5;mso-line-height-rule:exactly;color:${L.text};">${inline(e.ignore, "lnk")}</p>` : ""}
       </td></tr>
       <tr><td class="pad" style="padding:0 32px 26px;font-family:${SANS};">
         ${table(' width="100%"')}<tr><td class="rule" style="border-top:1px solid ${L.edge};padding-top:18px;">
@@ -260,7 +249,6 @@ ${e.ignore ? `        <p class="ink small" style="margin:0 0 22px;font-size:15px
     </table>
   </td></tr>
   <tr><td class="muted" style="padding:20px 8px 0;font-family:${SANS};font-size:13px;line-height:1.55;color:${L.muted};">
-    You got this email because ${e.why}.<br><br>
     Amber Notes, made by Emil Wagman in Sweden. <a class="foot-lnk" href="${SITE}/help" style="color:${L.link};">Help</a> &middot; <a class="foot-lnk" href="${SITE}/privacy" style="color:${L.link};">Privacy</a>
   </td></tr>
 </table>
