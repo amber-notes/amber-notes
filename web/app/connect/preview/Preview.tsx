@@ -27,7 +27,7 @@ export default function Preview({ state, number, action, both }: {
   const [password, setPassword] = useState("");
   const [recoveryKey, setRecoveryKey] = useState("");
   const [write, setWrite] = useState(true);
-  const signIn = { email, password, onEmail: setEmail, onPassword: setPassword, onApple: noop, busy: false, ready: true, failure: null };
+  const signIn = { email, password, onEmail: setEmail, onPassword: setPassword, onApple: noop, onGoogle: noop, busy: false, ready: true, failure: null };
   switch (state) {
     case "scan":
       return <ScanScreen to={TO} link={PREVIEW_LINK} macLink={null} onNotify={noop} onRecover={noop} />;
