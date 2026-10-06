@@ -172,20 +172,27 @@ export async function runFileTool(name: string, args: Args, ctx: ToolContext): P
 
 // MARK: What this session has read
 
+/** What's stored for an item: a note's or app's id stays (ids aren't the person's words); an app
+ *  file's path is tagged. */
+const itemKey = async (c: Call, raw: string) => raw.startsWith("file:") ? `file:${raw.slice(5, 41)}:${await c.v.tag(raw)}` : raw;
+
 /** The read-before-edit rule's record, per session (mcp_reads): what was read, at which version. */
 const sessionOf = (c: Call) => c.ctx.session ?? "unknown";
-async function markRead(tx: Tx, c: Call, item: string, stamp: string) {
+async function markRead(tx: Tx, c: Call, raw: string, stamp: string) {
+  const item = await itemKey(c, raw);
   await tx`insert into public.mcp_reads (session, item, stamp) values (${sessionOf(c)}, ${item}, ${stamp})
     on conflict (user_id, session, item) do update set stamp = excluded.stamp, read_at = now()`;
   // Old rows go as new ones come in (a day is longer than any session works on one thing).
   if (Math.random() < 0.05) await tx`delete from public.mcp_reads where read_at < now() - interval '1 day'`;
 }
-async function mustHaveRead(tx: Tx, c: Call, item: string, stamp: string, path: string) {
+async function mustHaveRead(tx: Tx, c: Call, raw: string, stamp: string, path: string) {
+  const item = await itemKey(c, raw);
   const [r] = await tx<{ stamp: string }[]>`select stamp from public.mcp_reads where session = ${sessionOf(c)} and item = ${item} and read_at > now() - interval '1 day'`;
   if (!r) throw new ToolError(`Read ${path} with fetch before changing it.`);
   if (r.stamp !== stamp) throw new ToolError(`${path} changed since you read it. Fetch it again, then make the change.`);
 }
-const hash = async (s: string) => [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)))].slice(0, 12).map((b) => b.toString(16).padStart(2, "0")).join("");
+// A file's name and text are the person's: what's stored is a keyed tag of them (Vault.tag), never them.
+const hash = (c: Call, s: string) => c.v.tag(s);
 const noteItem = (id: string) => `note:${id}`;
 const fileItem = (id: string, path: string) => `file:${id}:${path}`;
 const dataItem = (id: string) => `data:${id}`;
@@ -394,7 +401,7 @@ async function saveData(tx: Tx, c: Call, n: Note, base: string, before: PageData
   next = { ...next, values: next.values ?? {}, collections: next.collections ?? {} };
   if (JSON.stringify(next) === JSON.stringify(before)) return { path: `${base}/data.json`, unchanged: true };
   await storePageData(tx, c, n.id, next);
-  await markRead(tx, c, dataItem(n.id), await hash(dataText(await pageDataOf(tx, c, n.id))));
+  await markRead(tx, c, dataItem(n.id), await hash(c, dataText(await pageDataOf(tx, c, n.id))));
   return { saved: `${base}/data.json`, note: "One change: the open app shows it at once, and the person can undo it." };
 }
 
@@ -643,7 +650,7 @@ export const fileHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
       // What the app's own notes say its data means: docs/README.md, else README.md, under "## Data".
       const files = (await projectOf(tx, c, r.note.id)).project.files;
       const readme = [files["/docs/README.md"], files["/README.md"]].map((t) => t?.match(/^##\s*Data\s*\n([\s\S]*?)(?=^##\s|(?![\s\S]))/m)?.[1]?.trim()).find(Boolean);
-      await markRead(tx, c, dataItem(r.note.id), await hash(text));
+      await markRead(tx, c, dataItem(r.note.id), await hash(c, text));
       return { id: `${r.base}/data.json`, title: `${r.note.title}: data.json`, text: shown.text, url: `ambernotes://note/${r.note.id}`,
         metadata: { path: `${r.base}/data.json`, lines: shown.lines, shape: { values: dataShape(d.values), collections: dataShape(d.collections) }, ...(readme ? { readme_data: readme } : {}), ...(shown.truncated ? { truncated: shown.truncated } : {}),
           about: "values.localStorage holds what the app keeps in localStorage, parsed; it's saved back as the app expects." } };
@@ -658,7 +665,7 @@ export const fileHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
     const file = appPath(r.file);
     if (p.files[file] === undefined) throw new ToolError(`No ${r.base}${file}. Its files: list "${r.base}".`);
     const shown = numberedLines(p.files[file], a.offset, a.limit);
-    await markRead(tx, c, fileItem(r.note.id, file), await hash(p.files[file]));
+    await markRead(tx, c, fileItem(r.note.id, file), await hash(c, p.files[file]));
     return { id: `${r.base}${file}`, title: file.slice(1), text: shown.text, url: `ambernotes://note/${r.note.id}`, metadata: { path: `${r.base}${file}`, lines: shown.lines, ...(shown.truncated ? { truncated: shown.truncated } : {}) } };
   },
 
@@ -686,7 +693,7 @@ export const fileHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
       const result = await saveProject(tx, c, await full(tx, c, n.id), proj, "a new React project", a) as Record<string, unknown>;
       const base = (await pathsOf(tx, c, true)).pathOf(n.id)!.replace(/\.md$/, ".app");
       // The starter counts as read: its files are what the AI starts from.
-      for (const [f, text] of Object.entries(proj.files)) await markRead(tx, c, fileItem(n.id, f), await hash(text));
+      for (const [f, text] of Object.entries(proj.files)) await markRead(tx, c, fileItem(n.id, f), await hash(c, text));
       const { app: _, ...rest } = result;
       return { ...rest, app: `${base}/`, next: `Read ${base}/README.md, then build the app with write and edit (files under ${base}/src/). Its data is ${base}/data.json.` };
     }
@@ -722,17 +729,17 @@ export const fileHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
     if (r.kind === "data") {
       const before = await pageDataOf(tx, c, r.note.id);
       const text = dataText(before);
-      await mustHaveRead(tx, c, dataItem(r.note.id), await hash(text), `${r.base}/data.json`);
+      await mustHaveRead(tx, c, dataItem(r.note.id), await hash(c, text), `${r.base}/data.json`);
       return await saveData(tx, c, r.note, r.base, before, replaceIn(text, a.old_string, a.new_string, all, `${r.base}/data.json`));
     }
     if (r.kind === "appfile") {
       const p = await appProject(tx, c, r.note);
       const file = appPath(r.file);
       if (p.files[file] === undefined) throw new ToolError(`No ${r.base}${file}. To make a new file, use write.`);
-      await mustHaveRead(tx, c, fileItem(r.note.id, file), await hash(p.files[file]), `${r.base}${file}`);
+      await mustHaveRead(tx, c, fileItem(r.note.id, file), await hash(c, p.files[file]), `${r.base}${file}`);
       const text = replaceIn(p.files[file], a.old_string, a.new_string, all, `${r.base}${file}`);
       const out = await saveProject(tx, c, await full(tx, c, r.note.id), await withFile(p, file, text), `${file}`, a) as Record<string, unknown>;
-      await markRead(tx, c, fileItem(r.note.id, file), await hash(text));
+      await markRead(tx, c, fileItem(r.note.id, file), await hash(c, text));
       return appResult(out, `${r.base}${file}`);
     }
     throw new ToolError("edit changes a note, an app file or an app's data.json.");
@@ -769,16 +776,16 @@ export const fileHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
     }
     if (r.kind === "data") {
       const before = await pageDataOf(tx, c, r.note.id);
-      await mustHaveRead(tx, c, dataItem(r.note.id), await hash(dataText(before)), `${r.base}/data.json`);
+      await mustHaveRead(tx, c, dataItem(r.note.id), await hash(c, dataText(before)), `${r.base}/data.json`);
       return await saveData(tx, c, r.note, r.base, before, content);
     }
     if (r.kind === "appfile") {
       const p = await appProject(tx, c, r.note);
       const file = appPath(r.file);
       if (p.files[file] === content) return { path: `${r.base}${file}`, unchanged: true };
-      if (p.files[file] !== undefined) await mustHaveRead(tx, c, fileItem(r.note.id, file), await hash(p.files[file]), `${r.base}${file}`);
+      if (p.files[file] !== undefined) await mustHaveRead(tx, c, fileItem(r.note.id, file), await hash(c, p.files[file]), `${r.base}${file}`);
       const out = await saveProject(tx, c, await full(tx, c, r.note.id), await withFile(p, file, content), `${file} (${p.files[file] === undefined ? "created" : "replaced"})`, a) as Record<string, unknown>;
-      await markRead(tx, c, fileItem(r.note.id, file), await hash(content));
+      await markRead(tx, c, fileItem(r.note.id, file), await hash(c, content));
       return appResult(out, `${r.base}${file}`);
     }
     throw new ToolError("write writes a note, an app file or an app's data.json.");
@@ -980,6 +987,6 @@ async function moveAppFile(tx: Tx, c: Call, n: Note, base: string, from: string,
   const content = files[src];
   delete files[src]; delete compiled[src];
   const out = await saveProject(tx, c, await full(tx, c, n.id), await withFile({ amberApp: 1, files, compiled }, dst, content), `${src} → ${dst}`, a);
-  await markRead(tx, c, fileItem(n.id, dst), await hash(content));
+  await markRead(tx, c, fileItem(n.id, dst), await hash(c, content));
   return appResult(out as Record<string, unknown>, `${base}${dst}`);
 }

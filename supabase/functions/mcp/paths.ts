@@ -52,7 +52,9 @@ export class Paths {
     const t0 = performance.now();
     const key = `${c.v.userId}:${c.v.keyId}`;
     const now = Date.now();
-    let cache = TITLE_CACHE.get(key);
+    // AMBER_TITLE_CACHE=off: nothing kept between requests (every call opens every title).
+    const keep = Deno.env.get("AMBER_TITLE_CACHE") !== "off";
+    let cache = keep ? TITLE_CACHE.get(key) : undefined;
     if (!cache || now - cache.at > TTL_MS) cache = { at: now, heads: new Map(), folders: new Map() };
     const hit = cache.heads.size > 0;
     const [rows, frows, apps] = await Promise.all([
@@ -90,7 +92,7 @@ export class Paths {
     const live = new Set(rows.map((r) => r.id));
     for (const id of cache.heads.keys()) if (!live.has(id)) cache.heads.delete(id);
     TITLE_CACHE.delete(key);
-    TITLE_CACHE.set(key, cache);
+    if (keep) TITLE_CACHE.set(key, cache);
     while (TITLE_CACHE.size > MAX_ACCOUNTS) TITLE_CACHE.delete(TITLE_CACHE.keys().next().value!);
     const openMs = performance.now() - t1;
     const t2 = performance.now();

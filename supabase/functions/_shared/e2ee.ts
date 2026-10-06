@@ -542,7 +542,7 @@ export async function openFile(bytes: Bytes, key: CryptoKey, id: string): Promis
 
 /** An opened data key for one request. Nothing keeps it past the request. */
 export class Vault {
-  private constructor(readonly keyId: string, private readonly key: CryptoKey, readonly userId: string, private readonly shareKey: CryptoKey) {}
+  private constructor(readonly keyId: string, private readonly key: CryptoKey, readonly userId: string, private readonly shareKey: CryptoKey, private readonly tagKey: CryptoKey) {}
 
   /** Imports the key and wipes the raw bytes it was given. */
   static async from(raw: Bytes, userId: string): Promise<Vault> {
@@ -550,7 +550,11 @@ export class Vault {
     const shareKey = await crypto.subtle.deriveKey(
       { name: "HKDF", hash: "SHA-256", salt: SALT, info: enc.encode("share") },
       ikm, { name: "HMAC", hash: "SHA-256", length: 256 }, false, ["sign"]);
-    const v = new Vault(await keyIdOf(raw), await aesKey(raw), userId, shareKey);
+    // Tags for what an AI has read (mcp_reads): the server can't test a guess at the text without the key.
+    const tagKey = await crypto.subtle.deriveKey(
+      { name: "HKDF", hash: "SHA-256", salt: SALT, info: enc.encode("read-tag") },
+      ikm, { name: "HMAC", hash: "SHA-256", length: 256 }, false, ["sign"]);
+    const v = new Vault(await keyIdOf(raw), await aesKey(raw), userId, shareKey, tagKey);
     raw.fill(0);
     return v;
   }
@@ -563,6 +567,11 @@ export class Vault {
     let diff = 0;
     for (let i = 0; i < 64; i++) diff |= mine.charCodeAt(i) ^ tag.charCodeAt(i);
     return diff === 0;
+  }
+
+  /** A keyed tag of some text (24 hex digits), the same for the same text and account key. */
+  async tag(text: string): Promise<string> {
+    return hex(new Uint8Array(await crypto.subtle.sign("HMAC", this.tagKey, enc.encode(text)))).slice(0, 24);
   }
 
   sealBody(id: string, body: string) { return seal(body, this.key, this.keyId, bodyContext(id)); }

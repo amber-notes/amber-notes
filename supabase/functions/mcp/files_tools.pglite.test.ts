@@ -192,6 +192,10 @@ Deno.test("an app: create, its files, and data.json edited like a file, one chan
   assert(row.data_ct);
   assertStringIncludes(await fails(tool(pg, a, "edit", { path: "Health/Habits.app/data.json", old_string: "\"values\": {", new_string: "\"values\": {{" })), "isn't valid JSON");
   assertEquals((await tool(pg, a, "see_app", { path: "Health/Habits.app" })).previews, "unavailable");
+  // What a session read is kept as ids and keyed tags: no file name or text is readable there.
+  const reads = JSON.stringify((await pg.query(`select item, stamp from public.mcp_reads`)).rows);
+  assert(reads.includes("note:") && reads.includes("file:"), reads.slice(0, 200));
+  for (const plain of ["home.tsx", "screens", "README", "habits", "2026-10"]) assert(!reads.toLowerCase().includes(plain.toLowerCase()), plain);
   // A device that couldn't open the live app says so; the AI sees it when it looks.
   await app(pg, a.id, `insert into public.app_load_failures (note_id, message, device) select note_id, 'TypeError: x is undefined', 'iPhone' from public.note_pages limit 1`);
   assertEquals((await tool(pg, a, "fetch", { id: "Health/Habits.app" })).metadata.load_failure.message, "TypeError: x is undefined");
