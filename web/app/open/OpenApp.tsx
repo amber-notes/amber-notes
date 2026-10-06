@@ -8,10 +8,14 @@ import s from "./open.module.css";
 /// "opened" if the browser left for the app, or "fallback" if it didn't. Without JavaScript the
 /// page shows the fallback. `href` is built on the server from a checked slug, never from anything
 /// else in the address.
+/// The app links a page may try: a template or a shared note, or one of the places the
+/// onboarding emails open (Pane/Model/AppPlace.swift).
+export const APP_LINK = /^ambernotes:\/\/((template|copy)\/[A-Za-z0-9_-]{1,64}|connect-ai|import|history)$/;
+
 export default function OpenApp({ href, children }: { href: string; children: React.ReactNode }) {
   const [state, setState] = useState<"trying" | "opened" | "fallback">("fallback");
   useEffect(() => {
-    if (!/^ambernotes:\/\/(template|copy)\/[A-Za-z0-9_-]{1,64}$/.test(href)) return;
+    if (!APP_LINK.test(href)) return;
     setState("trying");
     let left = false;
     const away = () => { if (document.visibilityState === "hidden" || !document.hasFocus()) left = true; };
