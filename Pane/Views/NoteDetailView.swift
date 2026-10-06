@@ -540,6 +540,7 @@ struct NoteDetailView: View {
         store.markBroken(note.id, page)
         // The new page's receipt goes: the revert says what happened instead.
         withAnimation(.smooth(duration: 0.2)) { receipt = nil }
+        sync?.reportLoadFailure(note: note.id, message: reasons.first ?? "It didn't open.")
         if let good = store.live(note.id), good != page {
             // The last working version runs, with the app's data as it is now. Undo runs the broken
             // one again, if you want to see it.

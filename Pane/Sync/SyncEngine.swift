@@ -237,6 +237,15 @@ final class SyncEngine {
         })
     }
 
+    /// The live version didn't open on this device and an earlier one runs: tell the server, so the
+    /// AI's next look at the app reports it. The error message only.
+    func reportLoadFailure(note id: UUID, message: String) {
+        guard let client = backend.client, case .signedIn = backend.state else { return }
+        struct Row: Encodable { var note_id: UUID; var message: String; var device: String }
+        let row = Row(note_id: id, message: String(message.prefix(1000)), device: Backend.device)
+        Task { _ = try? await client.from("app_load_failures").insert(row).execute().status }
+    }
+
     /// Who wrote a note app's row, for its receipt: an AI's name (the MCP tools set pane.client), or
     /// nil for one of your devices (they send x-pane-device: iPhone, iPad or Mac).
     nonisolated static func writer(_ client: String?) -> String? {
@@ -974,10 +983,11 @@ final class SyncEngine {
         }
         if changed { try? context.save() }
         // Note pages (prototype): a backend without the table leaves this out; it never stops a sync.
-        if let pages: [NotePageDTO] = try? await client.from("note_pages").select("note_id,page_ct,data_ct,client,updated_at,server_updated_at")
+        if let pages: [NotePageDTO] = try? await client.from("note_pages").select("note_id,page_ct,data_ct,client,updated_at,server_updated_at,draft_problems")
             .gt("server_updated_at", value: stamp).order("server_updated_at").execute().value {
             for r in pages {
                 NotePageStore.shared.take(r)
+                NotePageStore.shared.setDraft(r.note_id, problems: r.draft_problems, by: Self.writer(r.client))
                 if let box = r.data_ct, let json = Wire.sealer?.open(box, context: E2EE.pageData(r.note_id)) {
                     NotePageDataStore.shared.take(r.note_id, server: Data(json.utf8), by: Self.writer(r.client))
                 } else if r.data_ct == nil {
@@ -1185,6 +1195,9 @@ struct NotePageDTO: Decodable {
     var client: String?
     var updated_at: Date
     var server_updated_at: Date?
+    /// What failed in an AI's newer version, kept as a draft (it never runs here). Test and check
+    /// names only.
+    var draft_problems: String? = nil
 }
 
 struct NoteDTO: Codable {

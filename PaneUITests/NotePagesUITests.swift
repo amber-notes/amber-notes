@@ -760,4 +760,17 @@ final class NotePagesUITests: XCTestCase {
         mark("lastgood-end")
         pause(1)
     }
+
+    /// An AI's failing version waits on the server as a draft; App Info says so.
+    func testDraftInAppInfo() {
+        launch(["-seedNote", "\(pages)/training.md", "-open", "Training", "-seedPage", "Training=\(pages)/training-react.json",
+                "-aiDraft", "Training=today.test.tsx: expected 3 exercises, got 0", "-aiPageBy", "Claude"])
+        pause(3.5)
+        app.buttons["editor.more"].firstMatch.tap()
+        pause(0.8)
+        app.buttons["editor.appInfo"].firstMatch.tap()
+        pause(1.2)
+        XCTAssertTrue(app.staticTexts["Claude is working on a new version"].waitForExistence(timeout: 3))
+        shot("h1-draft-app-info")
+    }
 }

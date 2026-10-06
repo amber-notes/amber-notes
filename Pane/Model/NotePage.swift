@@ -375,6 +375,15 @@ final class NotePageStore {
     /// Versions that didn't open on this device (a script error, nothing drawn, too slow), by their
     /// text's hash: never shown again unless you ask (Undo on "Reverted…").
     private(set) var broken: [UUID: Set<String>] = [:]
+    /// An AI's newer version that failed its checks, kept on the server as a draft (it never comes
+    /// here): who, and what failed. Shown in App Info.
+    struct Draft: Equatable { var by: String; var problems: String }
+    private(set) var drafts: [UUID: Draft] = [:]
+
+    func setDraft(_ id: UUID, problems: String?, by: String?) {
+        drafts[id] = problems.map { Draft(by: by ?? "Your AI", problems: $0) }
+    }
+
     /// A version you asked for after it was reverted: shown even though it failed.
     private(set) var forced: [UUID: String] = [:]
 
