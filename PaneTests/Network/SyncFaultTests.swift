@@ -156,7 +156,10 @@ extension NetworkFaults {
     /// the front.
     @Test func realtimeDownPollsAndBacksOff() async throws {
         let saved = SyncEngine.fallbackPoll
-        SyncEngine.fallbackPoll = (.milliseconds(200), .milliseconds(600), 1.0)
+        // Slower machines (PANE_PERF_SLACK) stretch every interval and window alike, so the
+        // rates still compare on whole requests.
+        let s = PerfBudget.slack
+        SyncEngine.fallbackPoll = (.milliseconds(200) * s, .milliseconds(600) * s, 1.0 * s)
         defer { SyncEngine.fallbackPoll = saved }
         let n = try await syncedNote("Plan")
         // The socket can't join (as with -netOffline); the network itself is fine.
@@ -165,7 +168,7 @@ extension NetworkFaults {
         NetFault.config = .init()
         #expect(!engine.realtimeUp)
         StubSupabase.edit(n.id, body: "Plan\n- from the phone", updatedAt: .now.addingTimeInterval(1))
-        await waitUntil(1.5) { n.body == "Plan\n- from the phone" }
+        await waitUntil(1.5 * s) { n.body == "Plan\n- from the phone" }
         #expect(n.body == "Plan\n- from the phone", "the poll brought the other device's edit")
 
         func pulls(over seconds: Double) async -> Int {
@@ -173,22 +176,22 @@ extension NetworkFaults {
             try? await Task.sleep(for: .seconds(seconds))
             return StubSupabase.requests.filter { $0.hasPrefix("GET") }.count - before
         }
-        let fast = await pulls(over: 0.8)
+        let fast = await pulls(over: 0.8 * s)
         // Quiet for over `slowAfter`: the poll slows down.
-        try await Task.sleep(for: .seconds(0.6))
-        let slow = await pulls(over: 1.8)
-        print("PERF realtime down: \(fast) GETs in 0.8 s polling fast, \(slow) in 1.8 s once quiet")
+        try await Task.sleep(for: .seconds(0.6 * s))
+        let slow = await pulls(over: 1.8 * s)
+        print("PERF realtime down: \(fast) GETs in \(0.8 * s) s polling fast, \(slow) in \(1.8 * s) s once quiet")
         #expect(fast > 0 && Double(slow) / 1.8 < Double(fast) / 0.8, "polling slows once nothing changes")
 
         engine.realtimeChanged(up: true)
-        try await Task.sleep(for: .milliseconds(700))
-        #expect(await pulls(over: 1) == 0, "realtime is back: no polling")
+        try await Task.sleep(for: .milliseconds(700) * s)
+        #expect(await pulls(over: 1 * s) == 0, "realtime is back: no polling")
 
         engine.realtimeChanged(up: false)
         engine.setActive(false)
-        #expect(await pulls(over: 1) == 0, "in the background: no polling")
+        #expect(await pulls(over: 1 * s) == 0, "in the background: no polling")
         engine.setActive(true)
-        #expect(await pulls(over: 1) > 0, "back in front with realtime down: polling again")
+        #expect(await pulls(over: 1 * s) > 0, "back in front with realtime down: polling again")
         await finish()
         #expect(await pulls(over: 0.6) == 0, "signed out: nothing")
     }
