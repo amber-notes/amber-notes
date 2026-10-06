@@ -135,19 +135,29 @@ import WebKit
         let json = #"{"slug":"evening-tracker","title":"Evening tracker","note":"Evening tracker\n\nA two-minute check-in at the end of the day.\n","description":"A small app for your evenings: how the day went, sleep and mood, with your week and trends. Your AI can change it.","ask":"Add a sleep column to my Evening tracker."}"#
         let template = try JSONDecoder().decode(NoteTemplate.self, from: Data(json.utf8))
         defer { FirstOpen.variant = .a }
-        for (variant, dark) in [(FirstOpen.Variant.a, false), (.b, false), (.c, false), (.a, true)] {
+        let meals = #"{"slug":"meal-plan","title":"Meal plan and groceries","note":"Meal plan and groceries\n\nThis week's dinners and the shopping list that goes with them.\n","description":"A weekly meal plan with the grocery list that goes with it. Your AI plans the dinners and writes the list in Amber Notes.","ask":"Plan dinners for this week. We're out on Friday, and no mushrooms."}"#
+        let mealTemplate = try JSONDecoder().decode(NoteTemplate.self, from: Data(meals.utf8))
+        let runs: [(FirstOpen.Variant, Bool, Bool)] = [(.a, false, false), (.b, false, false), (.c, false, false), (.a, true, false),
+                                                       (.ac, false, false), (.ac, true, false), (.ac, false, true), (.ac, true, true)]
+        for (variant, dark, isNote) in runs {
             FirstOpen.variant = variant
             let c = try Self.library()
             // (The demo library has a text note called "Evening tracker" already.)
-            let note = c.mainContext.createNote(in: .all, body: "Evening check-in\n\nA two-minute check-in at the end of the day.\n")
+            let title = isNote ? "Weekly dinners" : "Evening check-in"
+            let note = c.mainContext.createNote(in: .all, body: isNote
+                ? "\(title)\n\nThis week's dinners and the shopping list that goes with them.\n\n- Monday: lentil soup\n- Tuesday: tacos\n"
+                : "\(title)\n\nA two-minute check-in at the end of the day.\n")
             try c.mainContext.save()
-            NotePageStore.shared[note.id] = .init(html: project, by: FirstOpen.templateWriter, at: .now)
-            var draft = NoteDraft(template: template, link: NoteSourceLink(kind: .template, slug: "evening-tracker"))
-            draft.appProject = project
-            draft.preview = preview
+            var draft = NoteDraft(template: isNote ? mealTemplate : template,
+                                  link: NoteSourceLink(kind: .template, slug: isNote ? "meal-plan" : "evening-tracker"))
+            if !isNote {
+                NotePageStore.shared[note.id] = .init(html: project, by: FirstOpen.templateWriter, at: .now)
+                draft.appProject = project
+                draft.preview = preview
+            }
             FirstOpen.shared.reset()
             FirstOpen.shared.added(note: note.id, draft: draft)
-            let w = await AppSnapshotTests.withLastNote(c, "Evening check-in") {
+            let w = await AppSnapshotTests.withLastNote(c, title) {
                 let w = MacStoreShots.window(RootView().modelContainer(c).environment(SetupStore()), size: CGSize(width: 1280, height: 820), dark: dark)
                 try? await Task.sleep(for: .seconds(1))
                 if let split = AIEditSnapshots.splitView(in: w.contentView) {
@@ -163,7 +173,7 @@ import WebKit
             try? await Task.sleep(for: .seconds(1))
             var windows = [("main", w)]
             if let sheet = w.attachedSheet { windows.append(("sheet", sheet)) }
-            try await MacStoreShots.shoot(dir, "firstopen-\(variant.rawValue)-\(dark ? "dark" : "light")", windows)
+            try await MacStoreShots.shoot(dir, "firstopen-\(variant.rawValue)\(isNote ? "-note" : "")-\(dark ? "dark" : "light")", windows)
         }
     }
 

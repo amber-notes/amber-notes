@@ -7,8 +7,9 @@ import AppKit
 
 /// The first time someone opens an app (or a note) they added from the website: what it is, that
 /// their AI can change it, that nothing is lost, and Start. Once per person for apps and once for
-/// notes; after that, a template only gets "Added to your notes". (Prototype: three designs to
-/// choose from, `-firstOpen a|b|c`: a sheet over the app, a card inside it, a welcome before it.)
+/// notes; after that, a template only gets "Added to your notes". (Prototype: designs to choose
+/// from, `-firstOpen a|b|c|ac`: a sheet over the app, a card inside it, a welcome before it, and
+/// the welcome's picture in the sheet over the app.)
 @MainActor
 @Observable
 final class FirstOpen {
@@ -16,7 +17,7 @@ final class FirstOpen {
     /// Who a template's app is from, for NotePageStore (no "made this note an app" receipt).
     static let templateWriter = "Template"
 
-    enum Variant: String { case a, b, c }
+    enum Variant: String { case a, b, c, ac }
     nonisolated(unsafe) static var variant: Variant = Capture.argument("-firstOpen").flatMap(Variant.init(rawValue:)) ?? .a
 
     struct Moment: Equatable, Identifiable {
@@ -96,6 +97,8 @@ struct FirstOpenContent: View {
     let moment: FirstOpen.Moment
     /// How much room it has: a sheet or a welcome shows the picture large; a card, small.
     var compact = false
+    /// The rows' text: smaller where the whole moment has to fit without scrolling.
+    var text: Font = .body
     let start: () -> Void
     @Environment(Backend.self) private var backend: Backend?
     @Environment(SyncEngine.self) private var sync: SyncEngine?
@@ -144,6 +147,7 @@ struct FirstOpenContent: View {
                 .foregroundStyle(Color.amberInk)
                 .frame(width: 22)
             Text(text)
+                .font(self.text)
                 .foregroundStyle(Color.ink)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -159,6 +163,7 @@ struct FirstOpenContent: View {
                 .frame(width: 22)
             VStack(alignment: .leading, spacing: 8) {
                 Text(moment.isApp ? "Your AI can change it. Try asking:" : "Your AI fills it in. Try asking:")
+                    .font(text)
                     .foregroundStyle(Color.ink)
                 if let ask = moment.ask {
                     Button { copy(ask) } label: {
@@ -289,32 +294,48 @@ struct FirstOpenCard: View {
     }
 }
 
+/// The paper-cut picture with the app itself tucked into it at a tilt, as it will open.
+struct FirstOpenHero: View {
+    let moment: FirstOpen.Moment
+    var height: CGFloat = 230
+    /// Without the app's picture, where there is no room for it.
+    var tucked = true
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var shown = false
+
+    /// How far the app's picture reaches below the illustration.
+    var overhang: CGFloat { moment.preview == nil || !tucked ? 0 : height * 0.18 }
+
+    var body: some View {
+        ZStack(alignment: .bottomTrailing) {
+            FirstOpenArt(moment: moment, height: height)
+            if tucked, let preview = FirstOpen.image(data: moment.preview) {
+                let w = (height * 0.51).rounded()
+                preview.resizable().scaledToFill()
+                    .frame(width: w, height: w * 2, alignment: .top)
+                    .clipShape(.rect(cornerRadius: w * 0.15, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: w * 0.15, style: .continuous).strokeBorder(Color.line, lineWidth: 1))
+                    .shadow(color: .black.opacity(0.22), radius: 14, y: 8)
+                    .rotationEffect(.degrees(shown || reduceMotion ? 4 : 0))
+                    .offset(x: -height * 0.08, y: shown || reduceMotion ? height * 0.2 : height * 0.35)
+                    .opacity(shown ? 1 : 0)
+                    .accessibilityHidden(true)
+            }
+        }
+        .padding(.bottom, overhang)
+        .onAppear { withAnimation(.spring(duration: 0.7, bounce: 0.25).delay(0.15)) { shown = true } }
+    }
+}
+
 /// C: a short welcome before the app, with a picture of it.
 struct FirstOpenWelcome: View {
     let moment: FirstOpen.Moment
     let start: () -> Void
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var shown = false
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
-                ZStack(alignment: .bottomTrailing) {
-                    FirstOpenArt(moment: moment, height: 230)
-                    // The app itself, as it will open.
-                    if let preview = FirstOpen.image(data: moment.preview) {
-                        preview.resizable().scaledToFill()
-                            .frame(width: 118, height: 236, alignment: .top)
-                            .clipShape(.rect(cornerRadius: 18, style: .continuous))
-                            .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Color.line, lineWidth: 1))
-                            .shadow(color: .black.opacity(0.22), radius: 14, y: 8)
-                            .rotationEffect(.degrees(shown || reduceMotion ? 4 : 0))
-                            .offset(x: -18, y: shown || reduceMotion ? 46 : 80)
-                            .opacity(shown ? 1 : 0)
-                            .accessibilityHidden(true)
-                    }
-                }
-                .padding(.bottom, moment.preview == nil ? 0 : 40)
+                FirstOpenHero(moment: moment, height: 230)
                 FirstOpenContent(moment: moment, start: start)
             }
             .padding(.horizontal, 24)
@@ -325,9 +346,66 @@ struct FirstOpenWelcome: View {
         }
         .scrollBounceBehavior(.basedOnSize)
         .background(Color.notePage.ignoresSafeArea())
-        .onAppear { withAnimation(.spring(duration: 0.7, bounce: 0.25).delay(0.15)) { shown = true } }
         #if os(macOS)
         .frame(width: 520, height: 680)
+        #endif
+    }
+}
+
+/// A with C's picture: the welcome's look in a sheet over the app, sized to what it holds so the
+/// app shows above it; Start lowers the sheet and you are already in the app.
+struct FirstOpenRichSheet: View {
+    let moment: FirstOpen.Moment
+    let start: () -> Void
+    @State private var height: CGFloat = 560
+
+    /// The phone's width decides what fits without scrolling: on the 320-point phones the picture
+    /// is a short band without the app in it, and the words a size smaller.
+    static func small(width: CGFloat) -> Bool { width < 360 }
+
+    var body: some View {
+        #if os(iOS)
+        GeometryReader { geo in
+            ScrollView {
+                FirstOpenRichSheetContent(moment: moment, small: Self.small(width: geo.size.width), start: start)
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height = $0 }
+            }
+            .scrollBounceBehavior(.basedOnSize)
+        }
+        .background(Color.notePage)
+        .presentationDetents([.height(height)])
+        .presentationDragIndicator(.hidden)
+        .presentationBackground(Color.notePage)
+        .interactiveDismissDisabled()
+        #else
+        // A Mac sheet takes its content's size.
+        FirstOpenRichSheetContent(moment: moment, start: start)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(width: 460)
+            .background(Color.notePage)
+            .interactiveDismissDisabled()
+        #endif
+    }
+}
+
+/// The rich sheet's insides, apart so a test can measure them at a phone's width.
+struct FirstOpenRichSheetContent: View {
+    let moment: FirstOpen.Moment
+    var small = false
+    let start: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: small ? 14 : 16) {
+            FirstOpenHero(moment: moment, height: small ? 96 : 140, tucked: !small)
+            FirstOpenContent(moment: moment, compact: true, text: small ? .subheadline : .callout, start: start)
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 20)
+        #if os(iOS)
+        // The sheet keeps the home indicator's room below this on its own.
+        .padding(.bottom, 8)
+        #else
+        .padding(.bottom, 20)
         #endif
     }
 }

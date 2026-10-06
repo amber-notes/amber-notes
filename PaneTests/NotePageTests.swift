@@ -2,8 +2,14 @@ import CryptoKit
 import Foundation
 import Network
 import SwiftData
+import SwiftUI
 import Testing
 import WebKit
+#if os(iOS)
+import UIKit
+#else
+import AppKit
+#endif
 @testable import Pane
 
 /// Note pages (prototype): what a page is given, the edits it can ask for, and the sandbox it runs in.
@@ -1140,6 +1146,32 @@ import WebKit
         draft.appProject = nil
         fo.added(note: n, draft: draft)
         #expect(fo.pending[n]?.full == true && fo.pending[n]?.isApp == false, "a note template has its own first time")
+    }
+
+    /// The first-open sheet with the picture (A with C's look) fits on the smallest phones without
+    /// scrolling: an iPhone SE's 320 by 568 leaves about 538 points under the status bar for a sheet.
+    @Test func firstOpenSheetFitsASmallPhone() throws {
+        let preview = try Data(contentsOf: #require(Bundle.main.url(forResource: "firstopen-apps", withExtension: "jpg")))
+        let app = FirstOpen.Moment(note: UUID(), isApp: true, title: "Evening tracker", description: nil,
+                                   ask: "Add a sleep column to my Evening tracker.", slug: "evening-tracker", preview: preview, full: true)
+        let note = FirstOpen.Moment(note: UUID(), isApp: false, title: "Meal plan and groceries",
+                                    description: "A weekly meal plan with the grocery list that goes with it. Your AI plans the dinners and writes the list in Amber Notes.",
+                                    ask: "Plan dinners for this week. We're out on Friday, and no mushrooms.", slug: "meal-plan", preview: nil, full: true)
+        func height(_ m: FirstOpen.Moment, _ width: CGFloat) -> CGFloat {
+            let view = FirstOpenRichSheetContent(moment: m, small: FirstOpenRichSheet.small(width: width)) {}
+            #if os(iOS)
+            return UIHostingController(rootView: view).sizeThatFits(in: CGSize(width: width, height: .greatestFiniteMagnitude)).height
+            #else
+            return NSHostingController(rootView: view).sizeThatFits(in: CGSize(width: width, height: .greatestFiniteMagnitude)).height
+            #endif
+        }
+        for width: CGFloat in [320, 375, 402] {
+            print("firstOpen sheet at \(Int(width)): app \(Int(height(app, width))), note \(Int(height(note, width)))")
+        }
+        #if os(iOS)
+        #expect(height(app, 320) <= 538 && height(note, 320) <= 538)
+        #expect(height(app, 375) <= 600, "an SE (3rd generation), 375 by 667, keeps the app showing above it")
+        #endif
     }
 
     @Test func projectsHaveLimitsAndMustBeCompiled() throws {

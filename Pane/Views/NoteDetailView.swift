@@ -117,7 +117,13 @@ struct NoteDetailView: View {
             .sheet(item: $addingKey) { d in APIKeyForm(draft: d) }
             .sheet(isPresented: $showNetLog) { NotePageNetLogView(noteID: note.id) }
             .sheet(isPresented: $showMakeApp) { MakeAppSheet(title: note.title, body_: note.body) }
-            .sheet(item: firstOpenSheet) { m in FirstOpenSheet(moment: m) { startFirstOpen(m) } }
+            .sheet(item: firstOpenSheet) { m in
+                if FirstOpen.variant == .ac {
+                    FirstOpenRichSheet(moment: m) { startFirstOpen(m) }
+                } else {
+                    FirstOpenSheet(moment: m) { startFirstOpen(m) }
+                }
+            }
             #if os(iOS)
             .fullScreenCover(item: firstOpenWelcome) { m in FirstOpenWelcome(moment: m) { startFirstOpen(m) } }
             #else
@@ -395,7 +401,7 @@ struct NoteDetailView: View {
     private var firstOpenSheet: Binding<FirstOpen.Moment?> {
         Binding(get: {
             guard let m = firstOpen, m.full else { return nil }
-            return !m.isApp || FirstOpen.variant == .a ? m : nil
+            return !m.isApp || FirstOpen.variant == .a || FirstOpen.variant == .ac ? m : nil
         }, set: { if $0 == nil, let m = firstOpen { FirstOpen.shared.start(m) } })
     }
 
