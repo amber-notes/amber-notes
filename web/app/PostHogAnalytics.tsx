@@ -2,22 +2,8 @@
 
 import { useEffect } from "react";
 import type { PostHog } from "posthog-js";
-import { clickEvents, newScrollMarks, posthogAllowed, posthogOptions, scrolledPercent, visitorOptedOut } from "@/lib/posthog";
-
-let loading: Promise<PostHog | null> | undefined;
-
-/// PostHog is fetched and started once, the first time a public page asks for it, and not at all
-/// for a visitor who sends Do Not Track or Global Privacy Control.
-function start(key: string, host: string): Promise<PostHog | null> {
-  loading ??= visitorOptedOut(navigator as Navigator & { globalPrivacyControl?: boolean }, window as Window & { doNotTrack?: string | null })
-    ? Promise.resolve(null)
-    // Dead clicks are a PostHog extension it would otherwise fetch from its own servers; it comes
-    // with the site instead, so the page still talks to the capture endpoint only.
-    : import("posthog-js/dist/dead-clicks-autocapture")
-      .then(() => import("posthog-js"))
-      .then(({ default: posthog }) => posthog.init(key, posthogOptions(host)) ?? posthog).catch(() => null);
-  return loading;
-}
+import { clickEvents, newScrollMarks, posthogAllowed, scrolledPercent } from "@/lib/posthog";
+import { startPostHog } from "./posthog-client";
 
 /// Website usage with PostHog (lib/posthog.ts). SiteAnalytics renders this only on public pages,
 /// and only when the build has a key. Named clicks and scroll depth are sent from here; page views,
@@ -45,7 +31,7 @@ export default function PostHogAnalytics({ apiKey, host, path }: { apiKey: strin
       }
     };
 
-    start(apiKey, host).then((ph) => {
+    startPostHog(apiKey, host).then((ph) => {
       if (gone || !ph) return;
       posthog = ph;
       document.addEventListener("click", onClick, true);

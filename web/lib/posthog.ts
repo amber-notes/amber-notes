@@ -1,13 +1,15 @@
 import type { CaptureResult, PostHogConfig } from "posthog-js";
+import { CONSENT_COOKIE_DAYS, CONSENT_KEY } from "./consent";
 
 // Website usage with PostHog (app/PostHogAnalytics.tsx): page views, clicks on links and buttons,
 // and how far a page is scrolled. On the marketing pages only (heatmapsAllowed), also where on the
 // page clicks land, and rage and dead clicks, counted into heatmaps; never a recording of a visit. Only when NEXT_PUBLIC_POSTHOG_KEY is set at build time; without
 // it nothing loads. Never in the apps, and never on a page that can show something private: shared
-// notes, the connect pages, universal links, report pages and the download redirect. No cookies,
-// nothing kept in the browser, no person profiles, no recordings; visits are told apart for a day
-// only, by a hash made on PostHog's servers. Everything here is decided
-// without PostHog loaded, so the tests can check it.
+// notes, the connect pages, universal links, report pages and the download redirect. Until a visitor
+// accepts the cookie banner (lib/consent.ts): no cookies, nothing kept in the browser, and visits
+// are told apart for a day only, by a hash made on PostHog's servers. After accepting, one
+// first-party cookie recognises return visits for up to a year. Never person profiles or recordings.
+// Everything here is decided without PostHog loaded, so the tests can check it.
 
 export const POSTHOG_DEFAULT_HOST = "https://eu.i.posthog.com";
 
@@ -44,11 +46,23 @@ export function visitorOptedOut(nav: { doNotTrack?: string | null; globalPrivacy
 export function posthogOptions(host: string): Partial<PostHogConfig> {
   return {
     api_host: host,
-    // Nothing stored on the visitor's device. PostHog's servers tell visits apart for a day with a
-    // hash of the connection details and a salt that changes daily (cookieless server hash mode,
-    // turned on in the project's settings); without that setting the events are dropped.
-    cookieless_mode: "always",
-    persistence: "memory",
+    // Until the visitor accepts the cookie banner, nothing is stored on their device: PostHog's
+    // servers tell visits apart for a day with a hash of the connection details and a salt that
+    // changes daily (cookieless server hash mode, turned on in the project's settings; without it
+    // those events are dropped). No answer counts as a rejection (opt_out_capturing_by_default), so
+    // a visitor who ignores the banner is counted cookieless, exactly as before it existed.
+    cookieless_mode: "on_reject",
+    opt_out_capturing_by_default: true,
+    // The answer, 1 or 0, in localStorage under our own name, so the banner can read it without
+    // PostHog loaded.
+    consent_persistence_name: CONSENT_KEY,
+    opt_out_capturing_persistence_type: "localStorage",
+    // After accepting: one first-party cookie on this host only, holding a random id, so a return
+    // visit counts as the same visitor. PostHog also keeps the current tab's window id in
+    // sessionStorage, gone when the tab closes.
+    persistence: "cookie",
+    cookie_expiration: CONSENT_COOKIE_DAYS,
+    cross_subdomain_cookie: false,
     person_profiles: "never",
     respect_dnt: true,
     capture_pageview: "history_change",
