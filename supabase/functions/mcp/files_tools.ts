@@ -15,6 +15,7 @@ import { pageDataOf, storePageData } from "./data_tools.ts";
 import { dataShape } from "./data_ops.ts";
 import { appHandlers } from "./app_tools.ts";
 import type { PageData } from "./page.ts";
+import { type FolderFile, fileAt, fileCounts, fileEntry, filesIn, filesNamed, folderFileById, looksLikeFile, moveFile, restoreFile, trashedFiles, trashFile } from "./folder_files.ts";
 import {
   bodyOf, clampInt, Content, findFolder, folders, type FolderRow, handlers as classic, HEAD_COLUMNS, iso, listedNotes, MAX_READ_CHARS,
   type Note, type NoteRow, notesById, pathOf, quote, refuseLocked, runIn, save, Scan, searchAll, type Tool, type ToolContext, ToolError, type Tx, type Call, UUID,
@@ -26,7 +27,7 @@ const str = (d: string) => ({ type: "string", description: d });
 const read = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false } as const;
 const change = { readOnlyHint: false, destructiveHint: true, openWorldHint: false } as const;
 const add = { readOnlyHint: false, destructiveHint: false, openWorldHint: false } as const;
-const PATH = "A path from list or search: a note \"Work/Acme.md\", a folder \"Work/\", an app file \"Work/Habits.app/src/App.tsx\", an app's data \"Work/Habits.app/data.json\", a file \"pane-file:<id>\"; or a note's id (\"<id>.app/data.json\" for its app).";
+const PATH = "A path from list or search: a note \"Work/Acme.md\", a folder \"Work/\", an app file \"Work/Habits.app/src/App.tsx\", an app's data \"Work/Habits.app/data.json\", a file in a folder \"To read/Paper.pdf\" or any file \"pane-file:<id>\"; or a note's id (\"<id>.app/data.json\" for its app).";
 
 /** Trying an app (see_app steps) and its tests on save; off only in the experiment's control arm. */
 export const tryOn = () => Deno.env.get("AMBER_NO_TRY") !== "1";
@@ -40,13 +41,13 @@ export const FILE_TOOLS: Tool[] = ([
   },
   {
     name: "list", title: "List",
-    description: "What's in the notes, like a file listing. No path: the overview (folders with counts, pinned notes, the most recently edited notes, how many are in Recently Deleted). A folder (\"Work/\"): its notes and sub-folders. An app (\"Work/Habits.app\"): its files. \"Recently Deleted/\": deleted notes, which restore brings back.",
+    description: "What's in the notes, like a file listing. No path: the overview (folders with counts, pinned notes, the most recently edited notes, how many are in Recently Deleted). A folder (\"Work/\"): its notes, sub-folders and files (PDFs, images, spreadsheets). An app (\"Work/Habits.app\"): its files. \"Recently Deleted/\": deleted notes and files, which restore brings back.",
     inputSchema: { type: "object", properties: { path: str("A folder, an app, or \"Recently Deleted/\". Default: the overview.") } },
     annotations: read,
   },
   {
     name: "fetch", title: "Read",
-    description: "Reads anything by its path or id: a note's markdown (with its path, folder, version, sub-notes, and its app if it has one), an app file, an app's data.json (its JSON data, with what the app keeps in localStorage already parsed, and the data's shape), a file (text, image or PDF), or a folder's listing. For long notes, pass lines like \"40-120\".",
+    description: "Reads anything by its path or id: a note's markdown (with its path, folder, version, sub-notes, and its app if it has one), an app file, an app's data.json (its JSON data, with what the app keeps in localStorage already parsed, and the data's shape), a file (\"To read/Paper.pdf\" or \"pane-file:<id>\": text, image or PDF), or a folder's listing. For long notes, pass lines like \"40-120\".",
     inputSchema: { type: "object", properties: { id: str(PATH), lines: str("A line range, like \"40-120\".") }, required: ["id"] },
     annotations: read,
   },
@@ -86,13 +87,13 @@ export const FILE_TOOLS: Tool[] = ([
   },
   {
     name: "move", title: "Move or rename",
-    description: "Moves or renames a note, a folder or an app file. A note to a folder (\"Work/Clients/\", created if needed), or to a new name in place or elsewhere (\"Work/New title.md\"); a folder to a new path or name (\"Archive/2025/\"); an app file within its app.",
+    description: "Moves or renames a note, a folder or an app file. A note to a folder (\"Work/Clients/\", created if needed), or to a new name in place or elsewhere (\"Work/New title.md\"); a folder to a new path or name (\"Archive/2025/\"); an app file within its app; a file in a folder to another folder (\"Archive/\") or a new name (\"To read/Old paper.pdf\", same ending).",
     inputSchema: { type: "object", properties: { id: str(PATH), to: str("Where it goes.") }, required: ["id", "to"] },
     annotations: change,
   },
   {
     name: "delete", title: "Delete",
-    description: "Deletes a note (to Recently Deleted, with its sub-notes; restore brings it back for 30 days), a folder (its notes go to Recently Deleted), an app file, or a note's app (\"Work/Habits.app\": the note stays; the app is kept in history).",
+    description: "Deletes a note (to Recently Deleted, with its sub-notes; restore brings it back for 30 days), a folder (its notes and files go to Recently Deleted), a file in a folder (to Recently Deleted, like a note), an app file, or a note's app (\"Work/Habits.app\": the note stays; the app is kept in history).",
     inputSchema: { type: "object", properties: { id: str(PATH) }, required: ["id"] },
     annotations: change,
   },
@@ -104,7 +105,7 @@ export const FILE_TOOLS: Tool[] = ([
   },
   {
     name: "restore", title: "Restore",
-    description: "Brings back a note from Recently Deleted (no version), or an earlier version from history: of a note's text, or of an app (code and data as they were).",
+    description: "Brings back a note or a file from Recently Deleted (no version), or an earlier version from history: of a note's text, or of an app (code and data as they were).",
     inputSchema: { type: "object", properties: { id: str(PATH), version: { type: "integer", description: "A version id from history." } }, required: ["id"] },
     annotations: change,
   },
@@ -134,7 +135,7 @@ export const FILE_TOOLS: Tool[] = ([
 ] satisfies Tool[]).map((t) => ({ ...t, annotations: { title: t.title, ...t.annotations }, securitySchemes: [{ type: "oauth2" as const, scopes: [t.annotations.readOnlyHint ? "notes:read" : "notes:write"] }] }));
 
 /** What the server tells every client when this tool set is on. */
-export const FILE_INSTRUCTIONS = `Amber Notes is the person's notes app. Their notes work like a folder of files: list shows them, fetch reads anything, edit and write change it, create/move/delete/pin/history/restore do the rest, search finds notes by their words. Paths: a note "Work/Acme.md", a folder "Work/", an app "Work/Habits.app/…", a file "pane-file:<id>"; every path also takes a note's id.
+export const FILE_INSTRUCTIONS = `Amber Notes is the person's notes app. Their notes work like a folder of files: list shows them, fetch reads anything, edit and write change it, create/move/delete/pin/history/restore do the rest, search finds notes by their words. Paths: a note "Work/Acme.md", a folder "Work/", an app "Work/Habits.app/…", a file in a folder "To read/Paper.pdf" (PDFs, images, spreadsheets kept on their own), a file a note embeds "pane-file:<id>"; every path also takes a note's id.
 Notes are markdown; the first line is the title. Keep what's there as written: checklists "- [ ] item" / "- [x] item", tables (a "<!-- pane-table: Date=date; Mood=scale 1-5; Walk=choice Yes|No -->" line above a table makes it a tracker: keep values in range), links to sub-notes [Title](pane-note:<id>) and files ![name](pane-file:<id>). To tick an item, log a row, or add under a heading, edit the note: copy old_text exactly from fetch. edit and write answer with checks; fix anything they report.
 A note can be an app: a React + TypeScript + Tailwind + shadcn/ui project (create type "app"); its README.md says how apps run here, and its docs/ folder is that app's memory: read docs/ first, and keep it current (data shape, decisions and why, known gaps) whenever you change the app. Every feature you add gets a test in tests/ like the starter's (do what the person does, check what they see and what was saved); never weaken, skip or delete a test to make it pass: fix the app instead. Tests run on every save, and a version that fails isn't shown to the person. Its data is data.json: read and edit it like any file to change the person's data without opening the app ("remove these dates"); each edit is one change they can undo. Look at an app with see_app.
 Talk about "notes" and "the note's app", never "pages". Link notes with [[Title]], [[Title|text]] or [[Title#Heading]]: the app follows them by title (fetch "Title" opens one; fetch lists a note's links). Locked notes can't be read here.`;
@@ -153,7 +154,8 @@ type Ref =
   | { kind: "app"; note: Note }
   | { kind: "appfile"; note: Note; path: string }
   | { kind: "data"; note: Note }
-  | { kind: "file"; id: string };
+  /** Any file by id; `file` is set for one that sits in a folder (folder_files.ts). */
+  | { kind: "file"; id: string; file?: FolderFile };
 
 const safeName = (t: string) => t.replace(/\//g, "∕").trim() || "Untitled";
 /** A note's path: its folder's path and its title (sub-notes under their parent's path). */
@@ -214,7 +216,10 @@ async function resolve(tx: Tx, c: Call, raw: unknown, opts: { trashed?: boolean 
   let ref = String(raw ?? "").trim().replace(/^\/+/, "");
   if (!ref) return { kind: "root" };
   if (/^recently deleted\/?$/i.test(ref)) return { kind: "deleted" };
-  if (/^pane-file:/i.test(ref)) return { kind: "file", id: ref.slice(10) };
+  if (/^pane-file:/i.test(ref)) {
+    const id = ref.slice(10).trim();
+    return { kind: "file", id, file: UUID.test(id) ? await folderFileById(tx, c, id) ?? undefined : undefined };
+  }
   const app = (n: Note, rest: string): Ref => {
     const sub = rest.replace(/^\/+/, "");
     if (!sub) return { kind: "app", note: n };
@@ -224,6 +229,10 @@ async function resolve(tx: Tx, c: Call, raw: unknown, opts: { trashed?: boolean 
   const id = ref.slice(0, 36);
   if (UUID.test(id)) {
     const rest = ref.slice(36);
+    if (!rest) {
+      const f = await folderFileById(tx, c, id);
+      if (f) return { kind: "file", id, file: f };
+    }
     const n = await noteById(tx, c, id, opts.trashed ?? false);
     if (!rest || rest === ".md") return { kind: "note", note: n };
     if (rest.startsWith(".app")) return app(n, rest.slice(4));
@@ -231,6 +240,10 @@ async function resolve(tx: Tx, c: Call, raw: unknown, opts: { trashed?: boolean 
   }
   const at = ref.search(/\.app(\/|$)/i);
   if (at >= 0) return app(await noteByPath(tx, c, ref.slice(0, at), opts.trashed ?? false), ref.slice(at + 4));
+  if (looksLikeFile(ref)) {
+    const f = await fileAt(tx, c, ref, opts.trashed ?? false);
+    if (f) return { kind: "file", id: f.id, file: f };
+  }
   if (/\.md$/i.test(ref)) return { kind: "note", note: await noteByPath(tx, c, ref.slice(0, -3), opts.trashed ?? false) };
   const folderPath = ref.replace(/\/+$/, "");
   if (ref.endsWith("/")) return { kind: "folder", folder: await findFolder(tx, c.v, folderPath, false) };
@@ -278,8 +291,11 @@ export const fileHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
     if (!q) return { results: [] };
     const all = await folders(tx, c.v);
     const { results, broad, scan } = await searchAll(tx, c, q, clampInt(a.limit, 10, 30) || 10);
+    // Files kept in folders, by name (their contents aren't searched).
+    const files = await filesNamed(tx, c, q, 10);
     return {
       results: await Promise.all(results.map(async ({ doc: n, snippet }) => ({ id: n.id, title: n.title, url: urlOf(n.id), path: await notePath(tx, c, n, all), snippet }))),
+      ...(files.length ? { files: files.map((f) => fileEntry(f, all)) } : {}),
       ...(broad ? { no_note_has_every_word: true } : {}), ...scan.searched,
     };
   },
@@ -293,14 +309,20 @@ export const fileHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
       const pinned = await Promise.all((await tx<NoteRow[]>`select ${HEAD_COLUMNS(tx)} from public.notes where deleted_at is null and trashed_at is null and is_pinned order by updated_at desc limit 20`).map((x) => withHead(c.v, x)));
       const recent = await notesById(tx, c.v, listed.slice(0, 15).map((n) => n.id));
       const [{ trashed }] = await tx<{ trashed: number }[]>`select count(*)::int as trashed from public.notes where deleted_at is null and trashed_at is not null`;
+      const [{ trashed_files }] = await tx<{ trashed_files: number }[]>`select count(*)::int as trashed_files from public.attachments where folder_id is not null and deleted_at is null and trashed_at is not null`;
+      const fileCount = await fileCounts(tx);
       return {
-        notes: listed.length, folders: all.map((f) => ({ path: pathOf(f.id, all) + "/", notes: counts.get(f.id) ?? 0 })),
-        pinned: await Promise.all(pinned.map(entry)), recently_edited: await Promise.all(recent.map(entry)), recently_deleted: trashed, ...(approximate ? { counts_approximate: true } : {}),
+        notes: listed.length, folders: all.map((f) => ({ path: pathOf(f.id, all) + "/", notes: counts.get(f.id) ?? 0, ...(fileCount.get(f.id) ? { files: fileCount.get(f.id) } : {}) })),
+        pinned: await Promise.all(pinned.map(entry)), recently_edited: await Promise.all(recent.map(entry)), recently_deleted: trashed + trashed_files, ...(approximate ? { counts_approximate: true } : {}),
       };
     }
     if (r.kind === "deleted") {
       const rows = await tx<NoteRow[]>`select ${HEAD_COLUMNS(tx)} from public.notes where deleted_at is null and trashed_at is not null order by trashed_at desc limit 100`;
-      return { path: "Recently Deleted/", notes: await Promise.all((await Promise.all(rows.map((x) => withHead(c.v, x)))).map(async (n) => ({ ...(await entry(n)), deleted: iso(n.trashed_at) }))) };
+      const files = await trashedFiles(tx, c);
+      return {
+        path: "Recently Deleted/", notes: await Promise.all((await Promise.all(rows.map((x) => withHead(c.v, x)))).map(async (n) => ({ ...(await entry(n)), deleted: iso(n.trashed_at) }))),
+        ...(files.length ? { files: files.map((f) => fileEntry(f, all)) } : {}),
+      };
     }
     if (r.kind === "folder") {
       const rows = await tx<NoteRow[]>`select ${HEAD_COLUMNS(tx)} from public.notes where deleted_at is null and trashed_at is null and folder_id = ${r.folder.id} and parent_id is null order by is_pinned desc, updated_at desc limit 300`;
@@ -308,6 +330,7 @@ export const fileHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
         path: pathOf(r.folder.id, all) + "/",
         folders: all.filter((f) => f.parent_id === r.folder.id).map((f) => pathOf(f.id, all) + "/"),
         notes: await Promise.all((await Promise.all(rows.map((x) => withHead(c.v, x)))).map(entry)),
+        files: (await filesIn(tx, c, r.folder.id)).map((f) => fileEntry(f, all)),
       };
     }
     if (r.kind === "app" || r.kind === "appfile" || r.kind === "data") {
@@ -319,13 +342,16 @@ export const fileHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
       const subs = await Promise.all((await tx<NoteRow[]>`select ${HEAD_COLUMNS(tx)} from public.notes where parent_id = ${r.note.id} and deleted_at is null and trashed_at is null`).map((x) => withHead(c.v, x)));
       return { path: await notePath(tx, c, r.note, all), sub_notes: await Promise.all(subs.map(entry)), ...(await hasApp(tx, r.note.id) ? { app: (await notePath(tx, c, r.note, all)).replace(/\.md$/, ".app/") } : {}) };
     }
-    throw new ToolError("Files are listed in the overview's notes; read one with fetch.");
+    throw new ToolError("A file isn't a folder: read it with fetch. Files sit in their folder's listing.");
   },
 
   async fetch(tx, a, c) {
     const r = await resolve(tx, c, a.id, { trashed: true });
     const all = await folders(tx, c.v);
-    if (r.kind === "file") return await classic.get_file(tx, { id: r.id }, c);
+    if (r.kind === "file") {
+      if (r.file?.trashed_at) throw new ToolError(`"${r.file.name}" is in Recently Deleted. Bring it back with restore first.`);
+      return await classic.get_file(tx, { id: r.id }, c);
+    }
     if (r.kind === "root" || r.kind === "folder" || r.kind === "deleted") {
       const listing = await fileHandlers.list(tx, { path: r.kind === "folder" ? pathOf(r.folder.id, all) + "/" : r.kind === "deleted" ? "Recently Deleted/" : "" }, c);
       return { id: String(a.id ?? ""), title: r.kind === "folder" ? r.folder.name : r.kind === "deleted" ? "Recently Deleted" : "Notes", text: JSON.stringify(listing, null, 2), url: "ambernotes://notes", metadata: { kind: "folder" } };
@@ -445,7 +471,7 @@ export const fileHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
       for (const e of edits) { try { text = editText(text, e.old_text, e.new_text, e.replace_all === true).text; } catch (err) { throw new ToolError(`${file}: ${(err as Error).message}`); } }
       return await saveProject(tx, c, r.note, await withFile(p, file, text), `${file} (${edits.length} edit${edits.length > 1 ? "s" : ""})`, a);
     }
-    throw new ToolError("edit changes a note, an app file or an app's data.json.");
+    throw new ToolError(r.kind === "file" ? "Files (PDFs, images, spreadsheets) can't be changed here: read them with fetch; move renames one." : "edit changes a note, an app file or an app's data.json.");
   },
 
   async write(tx, a, c) {
@@ -467,7 +493,7 @@ export const fileHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
       if (p.files[file] === content) return { path: a.id, unchanged: true };
       return await saveProject(tx, c, r.note, await withFile(p, file, content), `${file} (${p.files[file] === undefined ? "created" : "replaced"})`, a);
     }
-    throw new ToolError("write replaces a note, an app file or an app's data.json.");
+    throw new ToolError(r.kind === "file" ? "Files (PDFs, images, spreadsheets) can't be written here yet. Put what you'd write in a note." : "write replaces a note, an app file or an app's data.json.");
   },
 
   async move(tx, a, c) {
@@ -506,7 +532,8 @@ export const fileHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
       const target = to.includes(".app/") ? to.slice(to.indexOf(".app/") + 4) : to;
       return await moveAppFile(tx, c, r.note, r.path, target, a);
     }
-    throw new ToolError("move takes a note, a folder or an app file.");
+    if (r.kind === "file") return await moveFile(tx, c, folderFile(r), to);
+    throw new ToolError("move takes a note, a folder, a file in a folder or an app file.");
   },
 
   async delete(tx, a, c) {
@@ -526,7 +553,8 @@ export const fileHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
       await tx`update public.note_pages set page_ct = null where note_id = ${r.note.id} and page_ct is not null`;
       return { deleted: `the app of "${r.note.title}"`, kept: "The note stays; the app is in its history (restore with a version)." };
     }
-    throw new ToolError("delete takes a note, a folder, an app file or an app.");
+    if (r.kind === "file") return await trashFile(tx, c, folderFile(r));
+    throw new ToolError("delete takes a note, a folder, a file in a folder, an app file or an app.");
   },
 
   async history(tx, a, c) {
@@ -541,7 +569,7 @@ export const fileHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
         select id, client, made_at, replaced_at, reason from public.note_page_versions where note_id = ${r.note.id} order by id desc limit ${limit}`;
       return { app: r.note.title, versions: rows.map((v) => ({ version: Number(v.id), what: v.reason === "data" ? "data" : "code", made_by: v.client, made: iso(v.made_at), replaced: iso(v.replaced_at) })) };
     }
-    throw new ToolError("history takes a note or an app.");
+    throw new ToolError(r.kind === "file" ? "Files have no earlier versions here." : "history takes a note or an app.");
   },
 
   async restore(tx, a, c) {
@@ -559,12 +587,16 @@ export const fileHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
       await tx`update public.note_pages set page_ct = coalesce(${v.page_ct}, page_ct), data_ct = coalesce(${v.data_ct}, data_ct) where note_id = ${r.note.id}`;
       return { restored: `the app of "${r.note.title}" as of version ${want}`, note: "What it replaced is kept in history." };
     }
-    throw new ToolError("restore takes a note (deleted, or with a version) or an app with a version.");
+    if (r.kind === "file") {
+      if (a.version !== undefined && a.version !== null) throw new ToolError("Files have no earlier versions: restore brings one back from Recently Deleted.");
+      return await restoreFile(tx, c, folderFile(r));
+    }
+    throw new ToolError("restore takes a note (deleted, or with a version), a deleted file, or an app with a version.");
   },
 
   async pin(tx, a, c) {
     const r = await resolve(tx, c, a.id);
-    if (r.kind !== "note") throw new ToolError("pin takes a note.");
+    if (r.kind !== "note") throw new ToolError(r.kind === "file" ? "Only notes can be pinned." : "pin takes a note.");
     await classic.pin_note(tx, { id: r.note.id, pinned: a.pinned === true }, c);
     return { path: await notePath(tx, c, r.note, await folders(tx, c.v)), pinned: a.pinned === true };
   },
@@ -580,6 +612,12 @@ export const fileHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
     return seen instanceof Content ? new Content([{ type: "text", text: JSON.stringify(failure) }, ...seen.content], { ...seen.structured, ...failure }) : { ...(seen as object), ...failure };
   },
 };
+
+/** A file that sits in a folder; one that only a note embeds is changed through that note. */
+function folderFile(r: { id: string; file?: FolderFile }): FolderFile {
+  if (!r.file) throw new ToolError(`pane-file:${r.id} is a file inside a note: remove or rename it by editing the note's ![name](pane-file:…) line. Only files kept in a folder move, rename and delete on their own.`);
+  return r.file;
+}
 
 /** The newest time a device couldn't open the live app and went back to an earlier one. */
 async function loadFailure(tx: Tx, id: string): Promise<Record<string, unknown>> {

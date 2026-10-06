@@ -1059,14 +1059,17 @@ export const handlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<unkn
     const q = typeof a.query === "string" ? a.query.trim().toLowerCase() : "";
     const limit = clampInt(a.limit, 30, 200) || 30;
     const scan = await Scan.start(tx, c);
-    const rows = await tx<{ id: string; meta_ct: string; size: string; created_at: Date }[]>`
-      select id, meta_ct, size, created_at from public.attachments where deleted_at is null order by created_at desc`;
-    const files: { id: string; filename: string; type: string; bytes: number; added: string | null; in_notes: { id: string; title: string }[] }[] = [];
+    const rows = await tx<{ id: string; meta_ct: string; size: string; created_at: Date; folder_id: string | null }[]>`
+      select id, meta_ct, size, created_at, folder_id from public.attachments where deleted_at is null and trashed_at is null order by created_at desc`;
+    const all = rows.some((r) => r.folder_id) ? await folders(tx, c.v) : [];
+    const files: { id: string; filename: string; type: string; bytes: number; added: string | null; folder?: string; in_notes: { id: string; title: string }[] }[] = [];
     await scan.timed(async () => {
       for (const r of rows) {
         const meta = await c.v.openFileMeta(r.id, r.meta_ct).catch(() => null);
         if (!meta || (q && !meta.name.toLowerCase().includes(q))) continue;
-        files.push({ id: r.id, filename: meta.name, type: mimeOf(meta.type, meta.name), bytes: Number(r.size), added: iso(r.created_at), in_notes: [] });
+        // A file kept in a folder on its own, next to the folder's notes.
+        const folder = r.folder_id ? pathOf(r.folder_id, all) : "";
+        files.push({ id: r.id, filename: meta.name, type: mimeOf(meta.type, meta.name), bytes: Number(r.size), added: iso(r.created_at), ...(folder ? { folder } : {}), in_notes: [] });
         if (files.length >= limit) break;
       }
     });
@@ -1087,8 +1090,8 @@ export const handlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<unkn
   async get_file(tx, a, c) {
     const id = String(a.id ?? "").replace(/^pane-file:/, "");
     if (!UUID.test(id)) throw new ToolError(`No file with id ${id}. Use list_files.`);
-    const rows = await tx<{ id: string; meta_ct: string; size: string; storage_path: string }[]>`
-      select id, meta_ct, size, storage_path from public.attachments where id = ${id}::uuid and deleted_at is null`;
+    const rows = await tx<{ id: string; meta_ct: string; size: string; storage_path: string; folder_id: string | null }[]>`
+      select id, meta_ct, size, storage_path, folder_id from public.attachments where id = ${id}::uuid and deleted_at is null`;
     if (!rows.length) throw new ToolError(`No file with id ${id}. Use list_files.`);
     const f = rows[0];
     const meta = await c.v.openFileMeta(f.id, f.meta_ct).catch(() => { throw new ToolError("This file can't be opened here. The user can open it in Amber Notes."); });
@@ -1112,6 +1115,7 @@ export const handlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<unkn
     try { plain = await c.v.openFile(f.id, sealed); } catch { throw new ToolError("This file can't be opened here. The user can open it in Amber Notes."); }
     const type = mimeOf(meta.type, meta.name);
     const details: Record<string, unknown> = { id: f.id, filename: meta.name, type, bytes: plain.length };
+    if (f.folder_id) details.folder = pathOf(f.folder_id, await folders(tx, c.v));
     let block: Record<string, unknown>;
     if (isTextType(type)) {
       const text = new TextDecoder().decode(plain);
