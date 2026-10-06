@@ -696,6 +696,12 @@ final class SyncEngine {
         let files = (try? context.fetch(FetchDescriptor<Attachment>(predicate: #Predicate { $0.dirty || !$0.uploaded }))) ?? []
         for a in files where !isRefused(a.id, a.createdAt) {
             let path = Self.storagePath(user: uid, id: a.id)
+            // Deleted for good before it ever went up: nothing to tell the server.
+            if a.deletedAt != nil, !a.uploaded {
+                FileStore.remove(a)
+                context.delete(a)
+                continue
+            }
             do {
                 if !a.uploaded, a.deletedAt == nil {
                     guard FileStore.exists(a) else { continue }
@@ -707,6 +713,8 @@ final class SyncEngine {
                 }
                 try await client.from("attachments").upsert(AttachmentDTO(a, path: path)).execute()
                 a.dirty = false
+                // Deleted for good here: the sealed bytes leave Storage too (the row stays as a tombstone).
+                if a.deletedAt != nil { _ = try? await client.storage.from("files").remove(paths: [path]) }
             } catch {
                 switch Self.refusal(error) {
                 case .tooFast?: return true
@@ -941,6 +949,8 @@ final class SyncEngine {
         for r in folderRows { byID[r.id]?.parent = r.parent_id.flatMap { byID[$0] } }
 
         var fileRows: [AttachmentDTO] = []
+        var goneFromStorage: [String] = []
+        defer { if !goneFromStorage.isEmpty { Task { [goneFromStorage] in _ = try? await client.storage.from("files").remove(paths: goneFromStorage) } } }
         while true {
             let page: [AttachmentDTO] = try await client.from("attachments").select().gt("server_updated_at", value: stamp)
                 .order("server_updated_at").order("id").range(from: fileRows.count, to: fileRows.count + 999).execute().value
@@ -948,17 +958,29 @@ final class SyncEngine {
             if page.count < 1000 { break }
         }
         for r in fileRows where !r.unreadable || skipUnreadable(r.id, "A file") {
-            let a = context.attachment(r.id) ?? {
+            let known = context.attachment(r.id)
+            let a = known ?? {
                 let a = Attachment(id: r.id, filename: r.filename, contentType: r.content_type, size: r.size)
                 context.insert(a)
                 return a
             }()
             guard !a.dirty || a.uploaded else { continue }
+            // Renamed elsewhere (another device, the AI): this device's copy follows.
+            if a.filename != r.filename { FileStore.rename(a.id, from: a.filename, to: r.filename) }
+            // Deleted for good elsewhere, or by the server after 30 days in Recently Deleted: the
+            // bytes go here, and from Storage if nobody removed them yet (a device that had the file).
+            if r.deleted_at != nil, known != nil, a.deletedAt == nil {
+                FileStore.remove(a)
+                if let uid = backend.userID { goneFromStorage.append(Self.storagePath(user: uid, id: a.id)) }
+            }
             a.filename = r.filename
             a.contentType = r.content_type
             a.size = r.size
             a.createdAt = r.created_at
             a.deletedAt = r.deleted_at
+            a.folderID = r.folder_id
+            a.trashedAt = r.trashed_at
+            a.modifiedAt = r.updated_at
             a.uploaded = true
             a.dirty = false
             if let s = r.server_updated_at, s > newest { newest = s }
@@ -1345,22 +1367,29 @@ struct AttachmentDTO: Codable {
     var updated_at: Date
     var deleted_at: Date?
     var server_updated_at: Date?
+    /// The folder a file sits in on its own (nil: only notes embed it), and whether it's in
+    /// Recently Deleted. Older builds neither send nor read these; an upsert keeps what it doesn't send.
+    var folder_id: UUID?
+    var trashed_at: Date?
     /// Doesn't open with this device's key: never applied.
     var unreadable = false
 
-    enum CodingKeys: String, CodingKey { case id, meta_ct, size, storage_path, created_at, updated_at, deleted_at, server_updated_at }
+    enum CodingKeys: String, CodingKey { case id, meta_ct, size, storage_path, created_at, updated_at, deleted_at, server_updated_at, folder_id, trashed_at }
 
     /// Sealing adds the header, the nonce and the tag to the file's bytes.
     static let sealOverhead: Int64 = 5 + 16 + 12 + 16
 
-    init(id: UUID, filename: String, content_type: String, size: Int64, storage_path: String, created_at: Date, updated_at: Date, deleted_at: Date?) {
+    init(id: UUID, filename: String, content_type: String, size: Int64, storage_path: String, created_at: Date, updated_at: Date, deleted_at: Date?,
+         folder_id: UUID? = nil, trashed_at: Date? = nil) {
         self.id = id; self.filename = filename; self.content_type = content_type; self.size = size
         self.storage_path = storage_path; self.created_at = created_at; self.updated_at = updated_at; self.deleted_at = deleted_at
+        self.folder_id = folder_id; self.trashed_at = trashed_at
     }
 
     init(_ a: Attachment, path: String) {
         self.init(id: a.id, filename: String(a.filename.prefix(255)), content_type: a.contentType, size: a.size,
-                  storage_path: path, created_at: a.createdAt, updated_at: .now, deleted_at: a.deletedAt)
+                  storage_path: path, created_at: a.createdAt, updated_at: .now, deleted_at: a.deletedAt,
+                  folder_id: a.folderID, trashed_at: a.trashedAt)
     }
 
     init(from decoder: Decoder) throws {
@@ -1372,6 +1401,8 @@ struct AttachmentDTO: Codable {
         updated_at = try c.decode(Date.self, forKey: .updated_at)
         deleted_at = try c.decodeIfPresent(Date.self, forKey: .deleted_at)
         server_updated_at = try c.decodeIfPresent(Date.self, forKey: .server_updated_at)
+        folder_id = try c.decodeIfPresent(UUID.self, forKey: .folder_id)
+        trashed_at = try c.decodeIfPresent(Date.self, forKey: .trashed_at)
         if let box = try c.decodeIfPresent(String.self, forKey: .meta_ct), let json = Wire.sealer?.open(box, context: E2EE.fileMeta(id)),
            let m = try? JSONDecoder().decode(FileMeta.self, from: Data(json.utf8)) {
             filename = m.name
@@ -1395,6 +1426,8 @@ struct AttachmentDTO: Codable {
         try c.encode(created_at, forKey: .created_at)
         try c.encode(updated_at, forKey: .updated_at)
         try c.encode(deleted_at, forKey: .deleted_at)
+        try c.encode(folder_id, forKey: .folder_id)
+        try c.encode(trashed_at, forKey: .trashed_at)
     }
 }
 

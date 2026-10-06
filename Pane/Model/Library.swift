@@ -33,9 +33,9 @@ extension UTType {
     static let paneItem = UTType(exportedAs: "dev.emilwagman.pane.item")
 }
 
-/// A note or folder being dragged inside the app.
+/// A note, folder or file being dragged inside the app.
 struct PaneDragItem: Codable, Transferable {
-    enum Kind: String, Codable { case note, folder }
+    enum Kind: String, Codable { case note, folder, file }
     var kind: Kind
     var id: UUID
     /// The rest of a multi-selection dragged together with `id` (notes only).
@@ -200,13 +200,14 @@ extension ModelContext {
         try? save()
     }
 
-    /// Deleting a folder sends its notes (and sub-folders' notes) to Recently Deleted.
+    /// Deleting a folder sends its notes and files (and sub-folders') to Recently Deleted.
     func delete(_ folder: Folder) {
         // Marked first, so a loop of folders can't recurse forever.
         folder.deletedAt = .now
         folder.touch()
         for child in folder.liveChildren { delete(child) }
         for note in folder.liveNotes { trash(note) }
+        for file in files(in: folder.id) { trash(file) }
         try? save()
     }
 
@@ -215,13 +216,14 @@ extension ModelContext {
         let cutoff = Date.now.addingTimeInterval(-30 * 24 * 3600)
         let old = ((try? fetch(FetchDescriptor<Note>())) ?? []).filter { ($0.trashedAt ?? .distantFuture) < cutoff && $0.deletedAt == nil }
         old.forEach(purge)
+        purgeExpiredTrashedFiles()
     }
 
-    /// Imports dropped files: markdown and text become notes; anything else
-    /// (PDFs, spreadsheets, images…) becomes a note holding the file.
+    /// Imports dropped files: markdown and text become notes; anything else (PDFs,
+    /// spreadsheets, images…) is kept in the folder as a file of its own. Returns what was made.
     @discardableResult
-    func importFiles(_ urls: [URL], into scope: Scope) -> [Note] {
-        var made: [Note] = []
+    func importFiles(_ urls: [URL], into scope: Scope) -> [UUID] {
+        var made: [UUID] = []
         for url in urls {
             let ext = url.pathExtension.lowercased()
             if ["md", "markdown", "txt", "text"].contains(ext) {
@@ -230,11 +232,9 @@ extension ModelContext {
                 guard let text = try? String(contentsOf: url, encoding: .utf8) else { continue }
                 let name = url.deletingPathExtension().lastPathComponent
                 let body = NoteText.title(of: text) == name || text.hasPrefix("# ") ? text : "# \(name)\n\n\(text)"
-                made.append(createNote(in: scope, body: body))
-            } else if let a = try? FileStore.importFile(at: url) {
-                insert(a)
-                let title = (a.filename as NSString).deletingPathExtension
-                made.append(createNote(in: scope, body: "\(title)\n\n\(a.markdown)\n"))
+                made.append(createNote(in: scope, body: body).id)
+            } else {
+                made += addFiles([url], to: folderForFiles(scope)).map(\.id)
             }
         }
         try? save()
@@ -262,11 +262,26 @@ extension ModelContext {
     }
 }
 
+/// What the list groups by date: notes, and files kept in folders.
+protocol DatedListItem {
+    var listDate: Date { get }
+    var pinnedInList: Bool { get }
+}
+
+extension Note: DatedListItem {
+    var listDate: Date { updatedAt }
+    var pinnedInList: Bool { isPinned && trashedAt == nil }
+}
+
+extension Attachment: DatedListItem {
+    var pinnedInList: Bool { false }
+}
+
 /// Grouping of the note list by recency, like Apple Notes.
 enum DateBucket {
-    static func sections(_ notes: [Note], now: Date = .now, calendar: Calendar = .current) -> [(String, [Note])] {
-        var pinned: [Note] = []
-        var groups: [(key: String, order: Date, notes: [Note])] = []
+    static func sections<Item: DatedListItem>(_ notes: [Item], now: Date = .now, calendar: Calendar = .current) -> [(String, [Item])] {
+        var pinned: [Item] = []
+        var groups: [(key: String, order: Date, notes: [Item])] = []
         var index: [String: Int] = [:]
         let today = calendar.startOfDay(for: now)
         func daysBack(_ n: Int) -> Date { calendar.date(byAdding: .day, value: -n, to: today) ?? today.addingTimeInterval(Double(-n) * 86400) }
@@ -275,9 +290,9 @@ enum DateBucket {
         var monthKeys: [Int: (String, Date)] = [:]
         let thisYear = calendar.component(.year, from: now)
         // Each date read once: model properties aren't free, and a sort reads them often.
-        let dated = notes.map { ($0, $0.updatedAt) }.sorted { $0.1 > $1.1 }
+        let dated = notes.map { ($0, $0.listDate) }.sorted { $0.1 > $1.1 }
         for (n, d) in dated {
-            if n.isPinned && n.trashedAt == nil { pinned.append(n); continue }
+            if n.pinnedInList { pinned.append(n); continue }
             let key: String
             let order: Date
             if d >= today { key = "Today"; order = today }
@@ -296,7 +311,7 @@ enum DateBucket {
             }
             if let i = index[key] { groups[i].notes.append(n) } else { index[key] = groups.count; groups.append((key, order, [n])) }
         }
-        var result: [(String, [Note])] = []
+        var result: [(String, [Item])] = []
         if !pinned.isEmpty { result.append(("Pinned", pinned)) }
         result += groups.sorted { $0.order > $1.order }.map { ($0.key, $0.notes) }
         return result

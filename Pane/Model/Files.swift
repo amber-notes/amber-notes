@@ -4,8 +4,9 @@ import ImageIO
 import UniformTypeIdentifiers
 
 /// A file kept in Pane (PDF, spreadsheet, image…). Notes embed it with
-/// `[name](pane-file:<id>)`; the bytes live in the app's container and, sealed with the
-/// account's key, in Storage at `<user id>/<id>`.
+/// `[name](pane-file:<id>)`, or it sits in a folder on its own, next to the folder's notes
+/// (`folderID`). The bytes live in the app's container and, sealed with the account's key,
+/// in Storage at `<user id>/<id>`.
 @Model
 final class Attachment {
     @Attribute(.unique) var id: UUID
@@ -19,6 +20,12 @@ final class Attachment {
     var uploaded: Bool = false
     /// Metadata changed here and not yet pushed.
     var dirty: Bool = true
+    /// The folder it sits in on its own; nil for a file that only notes embed.
+    var folderID: UUID?
+    /// In Recently Deleted (a file in a folder). Deleted for good after 30 days.
+    var trashedAt: Date?
+    /// When its name, folder or state last changed; the list sorts files by it.
+    var modifiedAt: Date?
 
     init(id: UUID = UUID(), filename: String, contentType: String, size: Int64) {
         self.id = id
@@ -33,6 +40,31 @@ final class Attachment {
     var sizeText: String { ByteCountFormatter.string(fromByteCount: size, countStyle: .file) }
     var kindText: String { type.localizedDescription ?? (filename as NSString).pathExtension.uppercased() }
     var markdown: String { FileStore.markdown(id: id, filename: filename, image: isImage) }
+
+    /// The date the list shows and sorts by.
+    var listDate: Date { modifiedAt ?? createdAt }
+
+    /// The icon for this kind of file, in the list and in a note.
+    var symbol: String {
+        let t = type
+        if t.conforms(to: .pdf) { return "doc.richtext" }
+        if t.conforms(to: .spreadsheet) || ["xlsx", "xls", "csv", "numbers"].contains(ext) { return "tablecells" }
+        if t.conforms(to: .presentation) { return "rectangle.on.rectangle" }
+        if t.conforms(to: .image) { return "photo" }
+        if t.conforms(to: .audiovisualContent) { return "play.rectangle" }
+        if t.conforms(to: .archive) { return "archivebox" }
+        if t.conforms(to: .text) { return "doc.text" }
+        return "doc"
+    }
+
+    private var ext: String { (filename as NSString).pathExtension.lowercased() }
+
+    /// Marks a local change for sync.
+    @MainActor func touch() {
+        modifiedAt = .now
+        dirty = true
+        SyncSignal.changed()
+    }
 }
 
 /// Where attachment bytes live on this device.
@@ -50,6 +82,19 @@ enum FileStore {
 
     static func exists(_ a: Attachment) -> Bool {
         FileManager.default.fileExists(atPath: url(for: a.id, filename: a.filename).path)
+    }
+
+    /// The local copy follows a rename (its name is part of its path here).
+    static func rename(_ id: UUID, from old: String, to new: String) {
+        let from = url(for: id, filename: old), to = url(for: id, filename: new)
+        guard from != to, FileManager.default.fileExists(atPath: from.path) else { return }
+        try? FileManager.default.removeItem(at: to)
+        try? FileManager.default.moveItem(at: from, to: to)
+    }
+
+    /// Removes this device's copy of a file.
+    static func remove(_ a: Attachment) {
+        try? FileManager.default.removeItem(at: url(for: a.id, filename: a.filename).deletingLastPathComponent())
     }
 
     /// Copies a file into Pane and returns its record (not yet inserted).

@@ -549,8 +549,10 @@ struct AppGate: View {
                 sync.schedule()
             } else {
                 connectAsks?.setForeground(false)
-                // Leaving the app: whatever you just typed is written and synced.
+                // Leaving the app: whatever you just typed is written and synced, and the share
+                // sheet gets the folders as they are now.
                 DebouncedSave.flushAll()
+                context.publishFolderChoices()
                 sync.schedule()
             }
         }
