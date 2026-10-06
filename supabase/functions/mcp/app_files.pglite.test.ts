@@ -43,6 +43,8 @@ Deno.test("a project app: the starter and its tests, files, edits, the gate, see
     // A syntax error is refused outright.
     assertStringIncludes(await fails(tool(pg, a, "write_app_file", { id, path: "/src/Bad.tsx", content: "export default () => <div>\n" })), "/src/Bad.tsx:2:");
 
+    const versions = async () => ((await pg.query(`select count(*)::int as n from public.note_page_versions where note_id = $1`, [id])).rows[0] as { n: number }).n;
+    const versionsBefore = await versions();
     // A change that breaks a screen is held back: the person keeps the last good app; the AI works on the draft.
     const broken = await tool(pg, a, "edit_app_file", { id, path: "/src/screens/settings.tsx", old_string: "const [settings, update] = useSettings(DEFAULTS)", new_string: "const [settings, update] = useSettings(DEFAULTS)\n  if (settings) throw new Error(\"settings broke\")" });
     assertStringIncludes(broken.live, "Held back");
@@ -51,6 +53,8 @@ Deno.test("a project app: the starter and its tests, files, edits, the gate, see
     assert(!b.live!.files["/src/screens/settings.tsx"].includes("settings broke") && b.draft!.files["/src/screens/settings.tsx"].includes("settings broke"));
     assertEquals(b.why, "smoke check at 390 px: script error after tapping a control\nsmoke check at 1280 px: script error after tapping a control");
     assertStringIncludes((await tool(pg, a, "read_app_file", { id, path: "/src/screens/settings.tsx" }, false)).content, "settings broke");
+    // Held back: no new version, the live page untouched.
+    assertEquals(await versions(), versionsBefore);
     // Fixed: live again, the draft gone.
     const fixed = await tool(pg, a, "edit_app_file", { id, path: "/src/screens/settings.tsx", old_string: "\n  if (settings) throw new Error(\"settings broke\")", new_string: "" });
     assertStringIncludes(fixed.live, "Live");
