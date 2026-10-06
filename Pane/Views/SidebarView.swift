@@ -109,7 +109,15 @@ struct SidebarView: View {
     let onNewNote: () -> Void
 
     @Query(filter: #Predicate<Folder> { $0.deletedAt == nil }, sort: \Folder.sortIndex) private var folders: [Folder]
-    @Query private var notes: [Note]
+    /// At most one note: this query is here so the sidebar updates whenever any note changes, as a
+    /// query of every note did. The counts come from the store (`counts`). A query of every note
+    /// fetched and sorted all of them again on every save while you type.
+    @Query(SidebarView.anyNote) private var noteChanges: [Note]
+    private static var anyNote: FetchDescriptor<Note> {
+        var d = FetchDescriptor<Note>()
+        d.fetchLimit = 1
+        return d
+    }
 
     @State private var renaming: Folder?
     @State private var newFolderParent: Folder??
@@ -121,13 +129,11 @@ struct SidebarView: View {
     @Environment(Backend.self) private var backend: Backend?
     @Environment(SyncEngine.self) private var sync: SyncEngine?
 
-    /// All Notes and Recently Deleted, counted in one pass: each property read on every note
-    /// costs, and the sidebar is worked out again on every save.
+    /// All Notes and Recently Deleted, counted by the store (unsaved changes included).
     private var counts: (live: Int, trashed: Int) {
-        var live = 0, trashed = 0
-        for n in notes where n.deletedAt == nil {
-            if n.trashedAt == nil { live += 1 } else { trashed += 1 }
-        }
+        _ = noteChanges
+        let live = (try? context.fetchCount(FetchDescriptor<Note>(predicate: #Predicate { $0.deletedAt == nil && $0.trashedAt == nil }))) ?? 0
+        let trashed = (try? context.fetchCount(FetchDescriptor<Note>(predicate: #Predicate { $0.deletedAt == nil && $0.trashedAt != nil }))) ?? 0
         return (live, trashed)
     }
     private var roots: [Folder] { folders.filter { $0.parent == nil || $0.parent?.deletedAt != nil } }
