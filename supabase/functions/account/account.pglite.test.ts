@@ -94,6 +94,17 @@ async function seed(pg: PGlite, me: string) {
   await pg.query(`insert into public.email_replies (user_id) values ($1)`, [me]);
   await pg.query(`insert into auth.sessions (user_id, user_agent, ip) values ($1, 'Amber Notes/1.0 iPhone', '203.0.113.9')`, [me]);
   await pg.query(`insert into auth.audit_log_entries (payload, ip_address) values (json_build_object('actor_id', $1::text, 'actor_username', 'sara@example.com'), '203.0.113.9')`, [me]);
+  // Collaboration (prototype): an identity key, a shared note with its owner as member, a sealed link and a shared template.
+  const b64 = (n: number) => btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(n))));
+  const linkId = (n: number) => crypto.randomUUID().replaceAll("-", "").repeat(2).slice(0, n);
+  await pg.query(`insert into public.identity_keys (user_id, public_key, private_wrap) values ($1, $2, $3)`, [me, b64(65), `amb2.${"0".repeat(16)}.${b64(48)}`]);
+  const together = crypto.randomUUID();
+  await pg.query(`insert into public.shared_notes (id, owner_id) values ($1, $2)`, [together, me]);
+  await pg.query(`insert into public.note_members (note_id, user_id, role, epoch, key_wrap, wrapped_by) values ($1, $2, 'owner', 1, $3, $2)`, [together, me, `amb3k.${b64(120)}`]);
+  await pg.query(`insert into public.sealed_links (id, user_id, note_id, ct) values ($1, $2, $3, $4)`, [linkId(22), me, note, `amb3r.${b64(60)}`]);
+  const template = linkId(16);
+  await pg.query(`insert into public.shared_templates (id, user_id, note_id, template) values ($1, $2, $3, '{"v":1}')`, [template, me, note]);
+  await pg.query(`insert into public.template_takedowns (note_id, user_id, template_id) values ($1, $2, $3)`, [crypto.randomUUID(), me, template]);
   return { folder, note, trashed, locked, slug, tokenHash, acct: a };
 }
 
