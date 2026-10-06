@@ -204,7 +204,8 @@ async function readmeData(tx: Tx, c: Call, id: string): Promise<string | null> {
   const [row] = await tx<{ page_ct: string | null }[]>`select page_ct from public.note_pages where note_id = ${id}`;
   if (!row?.page_ct) return null;
   try {
-    const readme = parseStored(await c.v.openPage(id, row.page_ct)).files["/README.md"] ?? "";
+    const files = parseStored(await c.v.openPage(id, row.page_ct)).files;
+    const readme = files["/docs/README.md"]?.includes("## Data") ? files["/docs/README.md"] : files["/README.md"] ?? "";
     const m = readme.match(/^##\s*Data\s*\n([\s\S]*?)(?=^##\s|$(?![\s\S]))/m);
     return m ? m[1].trim() || null : null;
   } catch { return null; }

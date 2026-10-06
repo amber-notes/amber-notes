@@ -136,7 +136,7 @@ export const FILE_TOOLS: Tool[] = ([
 /** What the server tells every client when this tool set is on. */
 export const FILE_INSTRUCTIONS = `Amber Notes is the person's notes app. Their notes work like a folder of files: list shows them, fetch reads anything, edit and write change it, create/move/delete/pin/history/restore do the rest, search finds notes by their words. Paths: a note "Work/Acme.md", a folder "Work/", an app "Work/Habits.app/…", a file "pane-file:<id>"; every path also takes a note's id.
 Notes are markdown; the first line is the title. Keep what's there as written: checklists "- [ ] item" / "- [x] item", tables (a "<!-- pane-table: Date=date; Mood=scale 1-5; Walk=choice Yes|No -->" line above a table makes it a tracker: keep values in range), links to sub-notes [Title](pane-note:<id>) and files ![name](pane-file:<id>). To tick an item, log a row, or add under a heading, edit the note: copy old_text exactly from fetch. edit and write answer with checks; fix anything they report.
-A note can be an app: a React + TypeScript + Tailwind + shadcn/ui project (create type "app"); its README.md says how apps run here. Its data is data.json: read and edit it like any file to change the person's data without opening the app ("remove these dates"); each edit is one change they can undo. Look at an app with see_app.
+A note can be an app: a React + TypeScript + Tailwind + shadcn/ui project (create type "app"); its README.md says how apps run here, and its docs/ folder is that app's memory: read docs/ first, and keep it current (data shape, decisions and why, known gaps) whenever you change the app. Its data is data.json: read and edit it like any file to change the person's data without opening the app ("remove these dates"); each edit is one change they can undo. Look at an app with see_app.
 Talk about "notes" and "the note's app", never "pages". Link notes with [[Title]], [[Title|text]] or [[Title#Heading]]: the app follows them by title (fetch "Title" opens one; fetch lists a note's links). Locked notes can't be read here.`;
 
 export async function runFileTool(name: string, args: Args, ctx: ToolContext): Promise<unknown> {
@@ -356,7 +356,9 @@ export const fileHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
       const d = await pageDataOf(tx, c, r.note.id);
       const text = dataText(d);
       const shown = fitLines(text, MAX_READ_CHARS);
-      const readme = (await projectOf(tx, c, r.note.id)).project.files["/README.md"]?.match(/^##\s*Data\s*\n([\s\S]*?)(?=^##\s|(?![\s\S]))/m)?.[1]?.trim();
+      // What the app's own notes say its data means: docs/README.md, else README.md, under "## Data".
+      const files = (await projectOf(tx, c, r.note.id)).project.files;
+      const readme = [files["/docs/README.md"], files["/README.md"]].map((t) => t?.match(/^##\s*Data\s*\n([\s\S]*?)(?=^##\s|(?![\s\S]))/m)?.[1]?.trim()).find(Boolean);
       return { id: `${r.note.id}.app/data.json`, title: `${r.note.title}: data.json`, text: shown.text, url: urlOf(r.note.id),
         metadata: { path: `${base}/data.json`, shape: { values: dataShape(d.values), collections: dataShape(d.collections) }, ...(readme ? { readme_data: readme } : {}), ...(shown.truncated ? { truncated: true } : {}),
           about: "values.localStorage holds what the app keeps in localStorage, parsed; it's saved back as the app expects." } };

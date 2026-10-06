@@ -85,12 +85,16 @@ Deno.test("an app: create, its files, and data.json edited like a file, one chan
   const files = await tool(pg, a, "list", { path: "Health/Habits.app" });
   assert(files.files.some((f: { path: string }) => f.path === "Health/Habits.app/src/App.tsx"));
   assertStringIncludes((await tool(pg, a, "fetch", { id: "Health/Habits.app/README.md" })).text, "How this app runs in Amber Notes");
+  // docs/ is the app's memory: the README sends the AI there, and data.json's notes come from it.
+  assertStringIncludes((await tool(pg, a, "fetch", { id: "Health/Habits.app/README.md" })).text, "Read docs/ first");
+  assertStringIncludes((await tool(pg, a, "fetch", { id: "Health/Habits.app/docs/README.md" })).text, "## Known gaps");
   const edited = await tool(pg, a, "edit", { id: "Health/Habits.app/src/screens/home.tsx", edits: [{ old_text: "Nothing here yet", new_text: "No habits yet" }] });
   assertStringIncludes(JSON.stringify(edited), "saved");
   // The app keeps its log in localStorage; the AI sees records and removes three dates.
   const log = ["2026-10-02", "2026-10-03", "2026-10-04", "2026-10-05", "2026-10-06"].map((date) => ({ date, walk: true }));
   await tool(pg, a, "write", { id: "Health/Habits.app/data.json", content: JSON.stringify({ values: { localStorage: { habits: log } }, collections: {} }) });
   const d = await tool(pg, a, "fetch", { id: "Health/Habits.app/data.json" });
+  assertStringIncludes(d.metadata.readme_data, "useCollection(\"items\")");
   assertEquals(JSON.parse(d.text).values.localStorage.habits.length, 5);
   const kept = log.filter((x) => x.date < "2026-10-03" || x.date > "2026-10-05");
   const r = await tool(pg, a, "write", { id: "Health/Habits.app/data.json", content: JSON.stringify({ values: { localStorage: { habits: kept } }, collections: {} }) });
