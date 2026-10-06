@@ -6,7 +6,8 @@ import { browserOptedOut, readConsent, recordChoice } from "./posthog-client";
 
 /// The cookie banner (lib/consent.ts): a small note at the bottom of the window that never covers
 /// the page's middle or blocks it. It asks once; the footer's Cookie settings opens it again.
-/// Accept and Reject look the same. SiteAnalytics renders it only where PostHog may run.
+/// Reject and Accept are the same size and both plainly readable; Accept sits on the right in the
+/// site's primary button colour, like Download for Mac. SiteAnalytics renders it only where PostHog may run.
 export default function ConsentBanner({ apiKey, host }: { apiKey: string; host: string }) {
   const [open, setOpen] = useState(false);
   const [asked, setAsked] = useState(true); // false when the footer link opened it
@@ -53,8 +54,8 @@ export default function ConsentBanner({ apiKey, host }: { apiKey: string; host: 
           <button type="button" className="consent-button" onClick={() => setOpen(false)}>OK</button>
         ) : (
           <>
-            <button type="button" className="consent-button" aria-pressed={!asked ? choice === "accepted" : undefined} onClick={() => choose("accepted")}>Accept</button>
             <button type="button" className="consent-button" aria-pressed={!asked ? choice === "rejected" : undefined} onClick={() => choose("rejected")}>Reject</button>
+            <button type="button" className="consent-button consent-accept" aria-pressed={!asked ? choice === "accepted" : undefined} onClick={() => choose("accepted")}>Accept</button>
           </>
         )}
       </div>
