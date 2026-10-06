@@ -110,7 +110,7 @@ async function bench(url: string, tokenFile: string, repeat: number) {
     ["search grep scoped", "search", { pattern: "todo", path: top, output: "count" }],
     ["edit note", "edit", { path: g, old_string: `## ${pick(3, 1)}\n`, new_string: `## ${pick(3, 1)}!\n` }],
   ];
-  const rows = new Map<string, { cold: number[]; warm: number[]; parts: Record<string, number>; err?: string }>();
+  const rows = new Map<string, { cold: number[]; warm: number[]; coldTotal: number[]; warmTotal: number[]; parts: Record<string, number>; err?: string }>();
   let lastFetch = "";
   for (let r = 0; r < repeat; r++) {
     for (const [label, name, x] of ops) {
@@ -124,17 +124,18 @@ async function bench(url: string, tokenFile: string, repeat: number) {
       }
       const res = await call(name, xx, cold);
       if (label === "fetch note") lastFetch = parse(res.text).text ?? "";
-      const row = rows.get(label) ?? rows.set(label, { cold: [], warm: [], parts: {} }).get(label)!;
+      const row = rows.get(label) ?? rows.set(label, { cold: [], warm: [], coldTotal: [], warmTotal: [], parts: {} }).get(label)!;
       (cold ? row.cold : row.warm).push(res.ms);
+      if (res.timing.total !== undefined) (cold ? row.coldTotal : row.warmTotal).push(res.timing.total);
       if (cold && r === 0) row.parts = res.timing;
       if (res.error) row.err = res.text.slice(0, 80);
     }
   }
   const med = (xs: number[]) => xs.length ? Math.round([...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)]) : NaN;
-  console.log("op".padEnd(22), "no cache".padStart(9), "cached".padStart(8), "  server parts (no cache): db, titles opened, texts opened");
+  console.log("op".padEnd(22), "wall: no index".padStart(15), "index".padStart(7), "  server: no index".padStart(19), "index".padStart(7), "  parts without the index");
   for (const [label, r] of rows) {
     const p = r.parts;
-    console.log(label.padEnd(22), String(med(r.cold)).padStart(9), String(med(r.warm)).padStart(8),
-      `  db ${p.paths_db ?? "-"} ms, ${p.paths_opened ?? 0} titles ${p.paths_open ?? 0} ms, build ${p.paths_build ?? 0} ms${p.search_notes ? `, ${p.search_notes} texts ${p.search_open} ms` : ""}, total ${p.total ?? "-"} ms${r.err ? `  ERR ${r.err}` : ""}`);
+    console.log(label.padEnd(22), String(med(r.cold)).padStart(15), String(med(r.warm)).padStart(7), String(med(r.coldTotal)).padStart(19), String(med(r.warmTotal)).padStart(7),
+      `  db ${p.paths_db ?? "-"} ms, ${p.paths_opened ?? 0} titles ${p.paths_open ?? 0} ms, build ${p.paths_build ?? 0} ms${p.search_notes ? `, ${p.search_notes} texts ${p.search_open} ms` : ""} ${r.err ? `  ERR ${r.err}` : ""}`);
   }
 }
