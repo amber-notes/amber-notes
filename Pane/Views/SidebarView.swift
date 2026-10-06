@@ -137,9 +137,13 @@ struct SidebarView: View {
         for f in folderFiles where f.trashedAt == nil { if let id = f.folderID { counts[id, default: 0] += 1 } }
         return counts
     }
-    /// All Notes and Recently Deleted, counted by the store (unsaved changes included).
     private var counts: (live: Int, trashed: Int) {
         _ = noteChanges
+        return Self.counts(in: context)
+    }
+
+    /// All Notes and Recently Deleted, counted by the store (unsaved changes included).
+    static func counts(in context: ModelContext) -> (live: Int, trashed: Int) {
         let live = (try? context.fetchCount(FetchDescriptor<Note>(predicate: #Predicate { $0.deletedAt == nil && $0.trashedAt == nil }))) ?? 0
         let trashed = (try? context.fetchCount(FetchDescriptor<Note>(predicate: #Predicate { $0.deletedAt == nil && $0.trashedAt != nil }))) ?? 0
         return (live, trashed)
