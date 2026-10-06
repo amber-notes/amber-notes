@@ -1,6 +1,6 @@
 # Privacy Policy
 
-Last updated: 2 October 2026
+Last updated: 6 October 2026
 
 ## The short version
 
@@ -78,6 +78,7 @@ We count how features are used on our own server to improve the app. We never sh
 
 - how many notes an AI connection changed on each day;
 - which steps of the first-run setup you've completed;
+- if you answer it, how you heard about Amber Notes: the choice you tap, and any words you add under Something else. We only look at it added up across accounts;
 - a random identifier for each installation of the app and its platform (iPhone or Mac), to count how many devices an account uses. It isn't linked to your device's hardware or advertising identifiers.
 
 **Visits to the website**
