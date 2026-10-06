@@ -382,9 +382,11 @@ export type Render = {
 };
 
 /** One thing to do in the app, like a person would (try_app). */
-export type Step =
+/** Any step may be marked optional (the walkthroughs): a miss doesn't fail it. */
+export type Step = (
   | { tap: string } | { type: string; into: string } | { scroll: "down" | "up" | string } | { wait: number | string }
-  | { press: string } | { resize: "phone" | "desktop" } | { dark: boolean } | { expect: string };
+  | { press: string } | { resize: "phone" | "desktop" } | { dark: boolean } | { expect: string }
+) & { optional?: boolean };
 export type TrialStep = {
   step: Step; ok: boolean; error?: string; png?: string; errors: string[];
   /** Headings, buttons, links, fields and text the person can see now (short). */
@@ -432,13 +434,24 @@ async function trial(open: (w: number, s: "light" | "dark") => Promise<{ page: P
   const target = async (what: string, field = false) => {
     if (/^[#.\[]|^[a-z]+[#.\[]/.test(what)) return page.locator(what).first();
     const w = pattern(what);
+    // An open dialog or sheet is what a person is looking at: look there first.
+    const dialog = page.locator("[role=dialog]:visible, dialog[open]").last();
+    const scope = (await dialog.count().catch(() => 0)) ? dialog : page;
     const order = field
-      ? [page.getByLabel(w, { exact: false }), page.getByPlaceholder(w), page.getByRole("textbox", { name: w }), page.getByRole("spinbutton", { name: w }), page.getByRole("combobox", { name: w })]
-      : [page.getByRole("button", { name: w }), page.getByRole("link", { name: w }), page.getByRole("tab", { name: w }), page.getByRole("menuitem", { name: w }), page.getByRole("option", { name: w }), page.getByRole("checkbox", { name: w }), page.getByRole("switch", { name: w }), page.getByLabel(w, { exact: false }), page.getByText(w, { exact: false })];
+      ? [scope.getByLabel(w, { exact: false }), scope.getByPlaceholder(w), scope.getByRole("textbox", { name: w }), scope.getByRole("spinbutton", { name: w }), scope.getByRole("combobox", { name: w })]
+      : [scope.getByRole("button", { name: w }), scope.getByRole("link", { name: w }), scope.getByRole("tab", { name: w }), scope.getByRole("menuitem", { name: w }), scope.getByRole("option", { name: w }), scope.getByRole("checkbox", { name: w }), scope.getByRole("switch", { name: w }), scope.getByLabel(w, { exact: false }), scope.getByText(w, { exact: false })];
+    // Visible and not covered by something else (a sheet over the page): what a tap would reach. If
+    // nothing passes that (an animation still running), the first visible one.
+    let fallback: ReturnType<typeof page.locator> | null = null;
     for (const l of order) {
       const n = await l.count().catch(() => 0);
-      for (let i = 0; i < Math.min(n, 8); i++) if (await l.nth(i).isVisible().catch(() => false)) return l.nth(i);
+      for (let i = 0; i < Math.min(n, 8); i++) {
+        if (!(await l.nth(i).isVisible().catch(() => false))) continue;
+        if (field || await l.nth(i).click({ trial: true, timeout: 1200 }).then(() => true, () => false)) return l.nth(i);
+        fallback ??= l.nth(i);
+      }
     }
+    if (fallback) return fallback;
     throw new Error(`Nothing visible matches "${what}".`);
   };
   for (const step of (opts.steps ?? []).slice(0, 30)) {
@@ -447,7 +460,7 @@ async function trial(open: (w: number, s: "light" | "dark") => Promise<{ page: P
     let ok = true, error: string | undefined;
     try {
       if ("tap" in step) await (await target(step.tap)).click({ timeout: 3000 });
-      else if ("expect" in step) { const w = pattern(step.expect); const hits = page.getByText(w); const n = Math.min(await hits.count().catch(() => 0), 12); let seen = false; for (let i = 0; i < n && !seen; i++) seen = await hits.nth(i).isVisible().catch(() => false); if (!seen && !(await page.locator("input, textarea").evaluateAll((els, s) => els.some((e) => (e as HTMLInputElement).value.includes(s)), String(step.expect)).catch(() => false))) throw new Error(`"${step.expect}" isn't on screen.`); }
+      else if ("expect" in step) { const w = pattern(step.expect); const hits = page.getByText(w); const n = Math.min(await hits.count().catch(() => 0), 12); let seen = false; for (let i = 0; i < n && !seen; i++) seen = await hits.nth(i).isVisible().catch(() => false); if (!seen && !(await page.locator("input:visible, textarea:visible").evaluateAll((els, [src, flags]) => els.some((e) => new RegExp(src, flags).test((e as HTMLInputElement).value)), typeof w === "string" ? [w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"] : [w.source, w.flags]).catch(() => false))) throw new Error(`"${step.expect}" isn't on screen.`); }
       else if ("type" in step) { const el = step.into ? await target(step.into, true) : page.locator("input:visible, textarea:visible").first(); await el.click({ timeout: 3000 }); await el.fill(String(step.type), { timeout: 3000 }).catch(async () => { await page.keyboard.type(String(step.type)); }); }
       else if ("scroll" in step) await page.mouse.wheel(0, step.scroll === "up" ? -600 : 600);
       else if ("wait" in step) typeof step.wait === "number" ? await page.waitForTimeout(Math.min(step.wait, 5000)) : await page.getByText(step.wait).first().waitFor({ timeout: 5000 });
@@ -456,7 +469,10 @@ async function trial(open: (w: number, s: "light" | "dark") => Promise<{ page: P
       else if ("dark" in step) await page.emulateMedia({ colorScheme: step.dark ? "dark" : "light" });
       else throw new Error(`Unknown step ${JSON.stringify(step)}.`);
       await page.waitForTimeout(250);
-    } catch (e) { ok = false; error = String((e as Error).message ?? e).split("\n")[0].slice(0, 200); }
+    } catch (e) {
+      // An optional step (the evals': "open the list, if there is one") may find nothing.
+      if (!(step as { optional?: boolean }).optional) { ok = false; error = String((e as Error).message ?? e).split("\n")[0].slice(0, 200); }
+    }
     const png = await page.screenshot({ type: "png", scale: "css" }).then((b) => btoa(Array.from(b, (x) => String.fromCharCode(x)).join(""))).catch(() => undefined);
     out.push({ step, ok, ...(error ? { error } : {}), png, errors: errors.slice(errs), screen: await screen(), data: jsonDiff(before, store()) });
   }
