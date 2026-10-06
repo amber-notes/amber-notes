@@ -10,6 +10,10 @@
 #   scripts/staging.sh app-config      write Config/Backend.staging.local.xcconfig for the beta builds
 #   scripts/staging.sh web             deploy web/ to the Vercel project amber-notes-staging
 #   scripts/staging.sh seed            the test account and its sample notes
+#   scripts/staging.sh lifecycle       the onboarding emails, on production's hourly schedule
+#   scripts/staging.sh lifecycle-next <email> [days]
+#                                      fast-forward one account: its sign-up and earlier emails move
+#                                      back by days (default 3), then a round runs at once
 #   scripts/staging.sh all             db, functions, secrets, auth, app-config and web, in order
 #   scripts/staging.sh status          what's where
 #
@@ -196,6 +200,68 @@ cmd_seed() {
   echo "Test account in $acct"
 }
 
+# The onboarding emails (docs/Technical/lifecycle-emails.md) as production sends them, from the same
+# sender, with "[Staging] " on every subject and links to the staging site. They only ever reach
+# accounts on this project. Accounts that existed before the first run (the seeded test and bench
+# accounts, whose addresses nobody reads) are opted out, as if they'd pressed Stop these emails.
+# LIFECYCLE_SINCE stays early so lifecycle-next can move an account's sign-up back.
+cmd_lifecycle() {
+  need_ref
+  # A Resend API key that can send as ambernotes.app (the SMTP key in .secrets is tied to another domain).
+  local key; key=$(sed -n 's/^RESEND_API_KEY=//p' ~/.config/amber-resend.env 2>/dev/null | tr -d '"')
+  [[ -n $key ]] || { echo "No RESEND_API_KEY in ~/.config/amber-resend.env" >&2; exit 1; }
+  # The opt-out of existing accounts happens on the first run only: later, lifecycle-next moves sign-ups back.
+  local first=0
+  [[ -n ${STAGING_LIFECYCLE_SINCE:-} ]] || { first=1; STAGING_LIFECYCLE_SINCE=$(date -u +%Y-%m-%dT%H:%M:%SZ); save "STAGING_LIFECYCLE_SINCE=$STAGING_LIFECYCLE_SINCE"; }
+  [[ -n ${STAGING_LIFECYCLE_CRON:-} ]] || { STAGING_LIFECYCLE_CRON=$(openssl rand -hex 32); save "STAGING_LIFECYCLE_CRON=$STAGING_LIFECYCLE_CRON"; }
+  [[ -n ${STAGING_LIFECYCLE_UNSUB:-} ]] || { STAGING_LIFECYCLE_UNSUB=$(openssl rand -hex 32); save "STAGING_LIFECYCLE_UNSUB=$STAGING_LIFECYCLE_UNSUB"; }
+  supabase functions deploy lifecycle --project-ref "$REF"
+  local f; f=$(mktemp); trap "rm -f '$f'" EXIT
+  (umask 077; print -r -- "LIFECYCLE_ENABLED=true
+LIFECYCLE_SINCE=2026-01-01T00:00:00Z
+RESEND_LIFECYCLE_KEY=$key
+LIFECYCLE_CRON_SECRET=$STAGING_LIFECYCLE_CRON
+LIFECYCLE_UNSUBSCRIBE_SECRET=$STAGING_LIFECYCLE_UNSUB
+LIFECYCLE_SITE=$SITE
+LIFECYCLE_SUBJECT_PREFIX=\"[Staging] \"
+LIFECYCLE_MANUAL_ROUNDS=true" > "$f")
+  supabase secrets set --project-ref "$REF" --env-file "$f" >/dev/null
+  # The hourly tick (pg_cron, already scheduled by the migration) needs pg_net and the vault's two entries.
+  python3 -c '
+import json, sys
+out, fn, secret, since, first = sys.argv[1:]
+q = f"""create extension if not exists pg_net with schema extensions;
+delete from vault.secrets where name in ($$lifecycle_url$$, $$lifecycle_cron_secret$$);
+select vault.create_secret($${fn}$$, $$lifecycle_url$$);
+select vault.create_secret($${secret}$$, $$lifecycle_cron_secret$$);"""
+if first == "1":
+    q += f"""
+insert into public.email_unsubscribes (user_id, source)
+  select id, $$link$$ from auth.users where created_at < $${since}$$ on conflict (user_id) do nothing;"""
+json.dump({"query": q}, open(out, "w"))' "$f" "$(url)/functions/v1/lifecycle" "$STAGING_LIFECYCLE_CRON" "$STAGING_LIFECYCLE_SINCE" "$first"
+  api POST "/v1/projects/$REF/database/query" "$f" >/dev/null
+  echo "Onboarding emails on, hourly like production, for accounts made after $STAGING_LIFECYCLE_SINCE."
+}
+
+cmd_lifecycle_next() {
+  need_ref
+  local email=${1:?usage: scripts/staging.sh lifecycle-next <email> [days]} days=${2:-3}
+  [[ $days == <1-60> ]] || { echo "days: 1 to 60" >&2; exit 1; }
+  local f; f=$(mktemp); trap "rm -f '$f'" EXIT
+  python3 -c '
+import json, sys
+out, email, days = sys.argv[1], sys.argv[2].lower(), int(sys.argv[3])
+assert "$$" not in email
+q = f"""with u as (select id from auth.users where lower(email) = $${email}$$),
+s as (update public.email_sends e set created_at = e.created_at - make_interval(days => {days}),
+        sent_at = e.sent_at - make_interval(days => {days}) from u where e.user_id = u.id returning 1)
+update auth.users a set created_at = a.created_at - make_interval(days => {days}) from u where a.id = u.id returning a.id"""
+json.dump({"query": q}, open(out, "w"))' "$f" "$email" "$days"
+  [[ $(api POST "/v1/projects/$REF/database/query" "$f") == *'"id"'* ]] || { echo "No account $email on staging." >&2; exit 1; }
+  curl -sS -X POST "$(url)/functions/v1/lifecycle?any_hour=1" -H "x-lifecycle-secret: $STAGING_LIFECYCLE_CRON" -H "content-type: application/json" -d '{}'
+  echo
+}
+
 cmd_status() {
   echo "Supabase   ${REF:-not made} $( [[ -n $REF ]] && url)"
   echo "MCP        $( [[ -n $REF ]] && mcp_url)"
@@ -213,7 +279,9 @@ case ${1:-status} in
   app-config) cmd_app_config ;;
   web) cmd_web ;;
   seed) cmd_seed ;;
+  lifecycle) cmd_lifecycle ;;
+  lifecycle-next) shift; cmd_lifecycle_next "$@" ;;
   all) cmd_db; cmd_functions; cmd_secrets; cmd_auth; cmd_app_config; cmd_web ;;
   status) cmd_status ;;
-  *) sed -n 2,17p "$0" >&2; exit 2 ;;
+  *) sed -n 2,21p "$0" >&2; exit 2 ;;
 esac

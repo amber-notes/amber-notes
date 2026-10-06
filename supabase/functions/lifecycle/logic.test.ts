@@ -163,6 +163,16 @@ Deno.test("settings: off unless LIFECYCLE_ENABLED is exactly true; missing secre
   assert(c.ok && c.config.only?.has("0b6f6a5e-1d2c-4a8e-9f3b-2c1d0e9f8a7b") && c.config.only.size === 1);
 });
 
+Deno.test("settings: production by default; staging sets its site, a subject prefix and manual rounds", () => {
+  const env = (o: Record<string, string>) => ({ get: (k: string) => o[k] });
+  const full = { LIFECYCLE_SINCE: "2026-10-06", RESEND_LIFECYCLE_KEY: "re_x", LIFECYCLE_UNSUBSCRIBE_SECRET: "u".repeat(32), LIFECYCLE_CRON_SECRET: "c".repeat(32) };
+  const cfg = (o: Record<string, string>) => { const c = config(env({ ...full, ...o })); if (!c.ok) throw new Error(c.reason); return c.config; };
+  assertEquals([cfg({}).site, cfg({}).subjectPrefix, cfg({}).manualRounds], ["https://ambernotes.app", "", false]);
+  const s = cfg({ LIFECYCLE_SITE: "https://amber-notes-staging.vercel.app/", LIFECYCLE_SUBJECT_PREFIX: "[Staging] ", LIFECYCLE_MANUAL_ROUNDS: "true" });
+  assertEquals([s.site, s.subjectPrefix, s.manualRounds], ["https://amber-notes-staging.vercel.app", "[Staging] ", true]);
+  assertEquals(cfg({ LIFECYCLE_SITE: "javascript:alert(1)" }).site, "https://ambernotes.app");
+});
+
 Deno.test("secrets compare whole", () => {
   assert(sameSecret("abc", "abc"));
   assert(!sameSecret("abc", "abd"));

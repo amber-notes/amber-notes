@@ -59,11 +59,31 @@ Both build the current checkout. They need `Config/Backend.staging.local.xcconfi
 
 ## What staging leaves out
 
-- Lifecycle emails: the function isn't deployed and the vault has no address for the hourly tick.
 - Push for AI connection asks (no APNs key). Connect with the QR code or the number instead.
 - Live collaboration. In the app and on the site's `/s` and `/t` pages it's still a prototype that
   talks only to the local relay (`scripts/collab-relay.ts`), not to Supabase.
 - Website analytics and the `mcp.` alias.
 
-Emails from staging come from the production sender, hello@ambernotes.app, through the same Resend
-account. Their subjects start with "[Staging]".
+Emails from staging come from the production senders (hello@ for sign-in, emil@ for the onboarding
+emails) through the same Resend account. Their subjects start with "[Staging]".
+
+## Onboarding emails
+
+`scripts/staging.sh lifecycle` turns on the onboarding emails (docs/Technical/lifecycle-emails.md)
+exactly as production runs them: the same hourly pg_cron tick, ladder, gaps and 9 o'clock rule.
+The function reads its accounts from this project's own `auth.users`, so it can only email people
+who signed up on staging. The accounts that existed before the first run (the seeded test and bench
+accounts, whose addresses nobody reads) are opted out in `email_unsubscribes`. Three settings exist
+for staging and are unset in production: `LIFECYCLE_SITE` (links open the staging site, so the beta
+app), `LIFECYCLE_SUBJECT_PREFIX` ("[Staging] ") and `LIFECYCLE_MANUAL_ROUNDS`.
+
+To see the series in an hour instead of a month:
+
+```sh
+scripts/staging.sh lifecycle-next you@example.com      # 3 days pass for that account, then a round
+scripts/staging.sh lifecycle-next you@example.com 7    # a week
+```
+
+Each call moves that account's sign-up and its earlier emails back, then runs a round that ignores
+the 9 o'clock rule. The ladder still decides: an account that does nothing between emails gets two
+and then silence, as in production. Open the app or edit a note between calls to keep it going.
