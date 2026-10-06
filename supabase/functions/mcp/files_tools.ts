@@ -160,9 +160,11 @@ export const FILE_TOOLS: Tool[] = ([
  *  format rules live where they're needed (the tools' checks and descriptions, an app's README). */
 export const FILE_INSTRUCTIONS = `Amber Notes is the person's notes, as files: each note is a markdown file in folders ("Work/Acme.md"; its first line is its title). A note's sub-notes and files are in the folder with its name ("Work/Acme/Agenda.md", "Work/Acme/contract.pdf"). A folder ending in .app is the note's app, a small React project with its data in data.json; read its README.md first. Deleted notes are in "Recently Deleted/". Read before you edit; edit and write answer with checks: fix what they report.`;
 
+const SWITCHES = new Set(["title_only", "case_sensitive", "pinned", "sub_notes", "deleted", "replace_all"]);
 export async function runFileTool(name: string, args: Args, ctx: ToolContext): Promise<unknown> {
   // Paths, not ids: "path" is the argument everywhere ("id" from older clients still works).
-  const a = { ...args };
+  // Switches sent as text ("true") count as what they say.
+  const a = Object.fromEntries(Object.entries(args).map(([k, v]) => [k, SWITCHES.has(k) && v === "true" ? true : SWITCHES.has(k) && v === "false" ? false : v]));
   if (a.path === undefined && a.id !== undefined && name !== "fetch") a.path = a.id;
   if (name === "fetch" && a.id === undefined && a.path !== undefined) a.id = a.path;
   return await runIn(FILE_TOOLS, fileHandlers, name, a, ctx);
@@ -512,8 +514,8 @@ export const fileHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
     const scan = await Scan.start(tx, c);
     const ids = notes.filter((e) => !e.note.locked_body && a.title_only !== true).map((e) => e.note.id);
     const bodies = new Map<string, string>();
-    for (let i = 0; i < ids.length && !scan.over; i += 100) {
-      const chunk = ids.slice(i, i + 100);
+    for (let i = 0; i < ids.length && !scan.over; i += 500) {
+      const chunk = ids.slice(i, i + 500);
       const rows = await tx<{ id: string; body_ct: string | null }[]>`select id, body_ct from public.notes where id = any(${chunk}::uuid[])`;
       await scan.timed(async () => {
         await Promise.all(rows.map(async (r) => { if (r.body_ct) bodies.set(r.id, await c.v.openBody(r.id, r.body_ct).catch(() => "")); }));

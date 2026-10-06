@@ -13,7 +13,7 @@
 import Anthropic from "npm:@anthropic-ai/sdk@0.131.0";
 import { parseArgs } from "jsr:@std/cli@1/parse-args";
 import { closeBrowser, renderPage, type Render } from "../page-render/render.ts";
-import { TASKS, type Check, type Final, type NoteState, type Seed, type Task } from "./tasks.ts";
+import { bulkNotes, TASKS, type Check, type Final, type NoteState, type Seed, type Task } from "./tasks.ts";
 import { scoreTask } from "./score.ts";
 
 const args = parseArgs(Deno.args, { string: ["round", "model", "tasks", "server", "concurrency", "budget", "repeat", "label", "hide", "cli-model", "max-turns", "minutes", "tools", "arm"], boolean: ["skill", "no-render", "allow-paid"] });
@@ -110,14 +110,34 @@ async function setup(task: Task) {
     }
     return parent ?? undefined;
   };
+  const seeded: string[] = [];
   const seedNote = async (s: Seed) => {
-    const nid = await note(pg, a, s.earlier?.[0] ?? s.body, { folder: await folderOf(s.folder), pinned: s.pinned });
+    // A sub-note sits in its parent's folder and is linked from it, as the app makes them.
+    const parent = s.parent !== undefined ? seeded[s.parent] : undefined;
+    const folderId = parent ? (await pg.query(`select folder_id from public.notes where id = $1`, [parent])).rows[0] as { folder_id: string | null } : null;
+    const nid = await note(pg, a, s.earlier?.[0] ?? s.body, { folder: parent ? folderId?.folder_id ?? null : await folderOf(s.folder), pinned: s.pinned, parent: parent ?? null });
     for (const b of [...(s.earlier ?? []).slice(1), ...(s.earlier?.length ? [s.body] : [])]) await edit(pg, a, nid, b);
+    if (parent) {
+      const p = await opened(pg, a, parent);
+      await edit(pg, a, parent, `${(p.body ?? "").replace(/\n*$/, "")}\n\n[${s.body.split("\n")[0]}](pane-note:${nid})\n`);
+    }
+    if (s.trashed) await app(pg, a.id, `update public.notes set trashed_at = now() where id = $1`, [nid]);
+    seeded.push(nid);
     return nid;
   };
   const id = await seedNote(task.seed);
   const others: string[] = [];
   for (const o of task.others ?? []) others.push(await seedNote(o));
+  // The big, messy account around them: filler notes; a negative parent counts back from the end.
+  if (task.bulk) {
+    const filler = bulkNotes(task.bulk);
+    const made: string[] = [];
+    for (const s of filler) {
+      const parent = s.parent !== undefined && s.parent < 0 ? made[made.length + s.parent] : undefined;
+      const pf = parent ? ((await pg.query(`select folder_id from public.notes where id = $1`, [parent])).rows[0] as { folder_id: string | null }).folder_id : await folderOf(s.folder);
+      made.push(await note(pg, a, s.body, { folder: pf ?? null, parent: parent ?? null }));
+    }
+  }
   const token = "pane_" + [...crypto.getRandomValues(new Uint8Array(32))].map((b) => b.toString(16).padStart(2, "0")).join("");
   const hash = [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token)))].map((b) => b.toString(16).padStart(2, "0")).join("");
   await app(pg, a.id, `select public.create_mcp_token('Claude', true, $1, $2)`, [hash, await wrap(a.dk.slice(), await tokenKey(token, "pane"), "pane", a.id)]);

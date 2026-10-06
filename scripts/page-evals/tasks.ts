@@ -12,6 +12,10 @@ export type Seed = {
   folder?: string; pinned?: boolean;
   /** Earlier texts, oldest first: the note is created with the first and saved as each, then as body (history). */
   earlier?: string[];
+  /** A sub-note of the seed at this index (0: the task's seed, 1: its first other note, …). */
+  parent?: number;
+  /** In Recently Deleted. */
+  trashed?: boolean;
 };
 /** Every note in the account after the session, for checks across notes. */
 export type NoteState = { id: string; title: string; body: string; folder: string; pinned: boolean; trashed: boolean; parent: string | null };
@@ -27,6 +31,8 @@ export type Final = {
 export type Check = { name: string; pass: boolean; detail?: string };
 export type Task = {
   id: string; prompt: string; seed: Seed; others?: Seed[];
+  /** A big, messy account around the task's notes: this many more notes (bulkNotes). */
+  bulk?: number;
   /** The note must end with a page that renders. */
   page: boolean;
   /** Probe the page's first control. */
@@ -455,6 +461,27 @@ export default function Home() {
 ` });
 
 // The tool-set benchmark's notes.
+
+/** A big, messy account: notes in folders three deep, sub-notes, near-duplicate titles, the kind of
+ *  thing a person has after years. Deterministic. */
+export function bulkNotes(n: number): Seed[] {
+  const areas = ["Work", "Personal", "Projects", "Archive", "Reading", "Travel", "Home", "Health"];
+  const subs = ["2024", "2025", "2026", "Clients", "Ideas", "Meetings", "Old", "Drafts", "Misc"];
+  const topics = ["budget", "roadmap", "standup", "retro", "invoice", "contract", "trip", "recipe", "workout", "book", "podcast", "garden", "car", "taxes", "insurance", "school", "birthday", "apartment", "flight", "hotel"];
+  const places = ["Porto", "Madrid", "Berlin", "Oslo", "Lisbon", "Paris", "Rome", "Vienna"];
+  const out: Seed[] = [];
+  for (let i = 0; i < n; i++) {
+    const t = topics[(i * 7) % topics.length], p = places[(i * 3) % places.length];
+    const folder = `${areas[i % areas.length]}/${subs[(i * 5) % subs.length]}${i % 3 === 0 ? `/${subs[(i * 11) % subs.length]}` : ""}`;
+    const title = i % 9 === 0 ? `${p} ${t}` : i % 13 === 0 ? `Notes ${1 + (i % 4)}` : `${t[0].toUpperCase()}${t.slice(1)} ${p} ${2024 + (i % 3)}-${String(1 + (i % 12)).padStart(2, "0")}`;
+    const lines = Array.from({ length: 6 + (i % 25) }, (_, k) => {
+      const w = topics[(i + k * 5) % topics.length];
+      return k % 6 === 0 ? `## ${w}` : k % 4 === 0 ? `- [ ] ${w} with ${places[(i + k) % places.length]}` : `- ${w}: ${(i * 37 + k * 11) % 900} ${p.toLowerCase()} ${w}s`;
+    });
+    out.push({ body: `${title}\n\n${lines.join("\n")}\n`, folder, ...(i % 25 === 24 ? { parent: -1 } : {}) });
+  }
+  return out;
+}
 const N_GROCERIES = "Groceries\n\n## Dairy\n- [ ] Milk\n- [ ] Butter\n\n## Fruit\n- [x] Apples\n- [ ] Bananas\n";
 const N_MOOD = "Mood\n\n<!-- pane-table: Date=date; Mood=scale 1-5; Walk=choice Yes|No -->\n| Date | Mood | Walk |\n| --- | --- | --- |\n| 2026-10-01 | 3 | Yes |\n| 2026-10-02 | 2 | No |\n| 2026-10-03 | 4 | Yes |\n";
 const N_TRIP = "Lisbon trip\n\nSpent in Lisbon with Ana.\n\n| Date | Item | Category | Amount |\n| --- | --- | --- | --- |\n| 2026-10-01 | Hotel Avenida | Stay | 1 450 |\n| 2026-10-02 | Pastéis | Food | 12,50 |\n";
@@ -1133,6 +1160,54 @@ export const TASKS: Task[] = [
       check("walk_count", /\b5\b[^.\n]{0,40}walk|walk[^.\n]{0,40}\b5\b|five[^.\n]{0,40}walk|walk[^.\n]{0,40}five/i.test(f.answer), f.answer.slice(0, 200)),
       check("read_count", /\b3\b[^.\n]{0,40}read|read[^.\n]{0,40}\b3\b|three[^.\n]{0,40}read|read[^.\n]{0,40}three/i.test(f.answer), f.answer.slice(0, 200)),
       check("app_unchanged", f.page === f.pageBefore && JSON.stringify(f.data) === JSON.stringify(f.dataBefore), "something changed"),
+    ],
+  },
+  // MARK: A big, messy account (search at scale): 1,500 notes around the ones that matter.
+  {
+    id: "b-deposit",
+    prompt: "Find the note where I wrote about the Lisbon apartment deposit and add the amount: it's 2,400 euros.",
+    seed: { body: "Flat hunt\n\nThe place on Rua das Flores (Lisbon): two bedrooms, light, near the tram.\n- Landlord: Mr. Sousa\n- Deposit: ?\n- Move in: 1 December\n", folder: "Personal/Moving/2026" },
+    others: [
+      { body: "Lisbon trip\n\nAirbnb apartment in Alfama for four nights. Paid in full.\n", folder: "Travel/2025" },
+      { body: "Porto apartment\n\nDeposit: 1,800 euros, paid 3 March.\n", folder: "Archive/Old" },
+      { body: "Lisbon apartment (old)\n\nFirst listing, deposit three months. Gave up on it.\n", trashed: true },
+    ],
+    bulk: 1500, page: false,
+    checks: (f) => [
+      check("amount_added", /2[ ,.]?400/.test(f.after) && f.after.includes("Rua das Flores"), f.after.slice(0, 300)),
+      check("others_unchanged", f.others.every((o) => o.after === o.before), "another note changed"),
+    ],
+  },
+  {
+    id: "b-agenda",
+    prompt: "In my Acme client note there's an agenda sub-note. Tick off 'Send the contract' in it.",
+    seed: { body: "Acme\n\nClient since 2024. Main contact: Ana.\n", folder: "Work/Clients" },
+    others: [
+      { body: "Agenda\n\n- [ ] Send the contract\n- [ ] Review the quote\n", parent: 0 },
+      { body: "Book club\n\nMonthly, first Thursday.\n", folder: "Personal/Clubs" },
+      { body: "Agenda\n\n- [ ] Send the contract\n- [ ] Pick the next book\n", parent: 2 },
+      { body: "Acme (2023)\n\nOld notes from the first project.\n", folder: "Archive/Old" },
+    ],
+    bulk: 1500, page: false,
+    checks: (f) => [
+      check("ticked", /- \[x\] Send the contract/i.test(f.others[0].after), f.others[0].after),
+      check("right_one", f.others[2].after === f.others[2].before && f.after === f.before, "the book club agenda or the client note changed"),
+    ],
+  },
+  {
+    id: "b-invoices",
+    prompt: "How many invoices did I send to Northwind this year, and what do they add up to?",
+    seed: { body: "Northwind\n\nInvoices 2026:\n- INV-2026-014, 12 February: 3,200\n- INV-2026-031, 28 April: 1,450\n", folder: "Work/Clients/Northwind" },
+    others: [
+      { body: "Northwind Q3\n\n- INV-2026-077, 30 September: 2,350 (sent)\n", folder: "Work/Clients/Northwind" },
+      { body: "Northwind 2025\n\n- INV-2025-090, 15 December: 5,000\n", folder: "Archive/2025" },
+      { body: "Invoice template\n\nINV-YYYY-NNN, date: amount\n", folder: "Work/Templates" },
+    ],
+    bulk: 1500, page: false,
+    checks: (f) => [
+      check("count", /\b3\b|three/i.test(f.answer), f.answer.slice(0, 300)),
+      check("total", /7[ ,.]?000/.test(f.answer), f.answer.slice(0, 300)),
+      check("nothing_changed", f.after === f.before && f.others.every((o) => o.after === o.before), "a note changed"),
     ],
   },
   // MARK: Second sessions (FOLLOWUP_FROM=<round>): a new session changes an app the first one built.
