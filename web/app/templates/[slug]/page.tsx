@@ -5,8 +5,9 @@ import { CLAUDE_DIRECTORY_URL } from "@/lib/facts";
 import { APP_TEMPLATES, pageMetadata } from "@/lib/site";
 import { JsonLd, breadcrumbs, maker, organization, templateHowTo, templateWork } from "@/lib/structured-data";
 import { COVERS, coverPath } from "@/lib/template-covers";
-import { anchor, authorLink, changedCount, instructions, noteTitle, searchTitle, template, templates, usePath, type Template } from "@/lib/templates";
+import { anchor, appLink, authorLink, changedCount, instructions, noteTitle, searchTitle, template, templates, usePath, type Template } from "@/lib/templates";
 import Card from "../Card";
+import OpenInApp from "../../OpenInApp";
 import CopyButton from "../CopyButton";
 import Instructions from "../Instructions";
 import PromptCopy from "../PromptCopy";
@@ -81,7 +82,7 @@ export default async function Page({ params }: Props) {
               {t.author && <> A community template by <a className={s.forBy} href={authorLink(t.author)}>@{t.author}</a>.</>}
             </p>
             <div className={`${s.ctas} rise`} style={at(2)}>
-              {APP_TEMPLATES.live && <a className={s.primary} href={usePath(t.slug)}><PlusGlyph /> Use template</a>}
+              {APP_TEMPLATES.live && <OpenInApp className={s.primary} href={usePath(t.slug)} app={appLink(t.slug)} auto><PlusGlyph /> Use template</OpenInApp>}
               {APP_TEMPLATES.live ? (
                 <>
                   <PromptCopy variants={vs} className={s.secondary} />

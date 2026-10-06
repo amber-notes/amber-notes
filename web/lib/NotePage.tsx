@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { renderNote, withoutTitle } from "./render";
 import type { SharedFile } from "./render";
-import { avatarURL, copyLink, type SharedNote } from "./shared";
+import { avatarURL, copyAppLink, copyLink, type SharedNote } from "./shared";
 import { APP_TEMPLATES } from "./site";
+import OpenInApp from "../app/OpenInApp";
 import { sharerLabel, type Sharer } from "./sharer";
 import { Shell, TopBar, ui } from "./ui";
 import s from "./note-page.module.css";
@@ -60,8 +61,8 @@ export function NotePage({ slug, note, files }: { slug: string; note: SharedNote
       ))}
     </nav>
   );
-  // Copies the whole note into the visitor's own Amber Notes, once the app handles the link.
-  const use = APP_TEMPLATES.live && <a className={s.use} href={copyLink(slug)}>Use this note</a>;
+  // Copies the whole note into the visitor's own Amber Notes, opened from this page.
+  const use = APP_TEMPLATES.live && <OpenInApp className={s.use} href={copyLink(slug)} app={copyAppLink(slug)} auto>Use this note</OpenInApp>;
 
   return (
     <Shell className={s.plain}>

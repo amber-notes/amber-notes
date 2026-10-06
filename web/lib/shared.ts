@@ -66,3 +66,5 @@ export function copyableMarkdown(body: string): string {
 
 /** The universal link for "Use this note" (https://ambernotes.app/open/copy/<slug>). */
 export const copyLink = (slug: string) => `/open/copy/${slug}`;
+/** The app's own link for it, which "Use this note" tries from the note's page. */
+export const copyAppLink = (slug: string) => `ambernotes://copy/${slug}`;
