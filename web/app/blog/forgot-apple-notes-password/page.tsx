@@ -1,7 +1,7 @@
 import { Figure } from "@/lib/blog";
 import { PostCta } from "@/lib/PostCta";
 import { PostPage, postMetadata } from "@/lib/PostPage";
-import { Answer, Checklist, Paths, Steps } from "@/lib/PostParts";
+import { Answer, Steps } from "@/lib/PostParts";
 import { ResetChooser } from "@/lib/ResetChooser";
 import { SHOTS } from "@/lib/posts";
 
@@ -26,15 +26,6 @@ const FAQ = [
   ] },
 ];
 
-const CHECKLIST = [
-  "Face ID or Touch ID on the locked note",
-  "Two wrong tries, then read the hint",
-  "My iPhone passcode, or my Mac login password",
-  "Any older notes password I've used",
-  "My password manager: search for \"notes\"",
-  "Only then: reset (old locked notes keep the old password)",
-];
-
 export default function Page() {
   return (
     <PostPage
@@ -47,14 +38,11 @@ export default function Page() {
           { href: "#reset-on-a-mac", label: "Reset on a Mac" },
           { href: "#next-time", label: "Avoid it next time" },
         ]}>
-          <p>Nobody can open a locked note without its password, not Apple and not an unlock app. Before you reset, try:</p>
-          <ul>
-            <li>Face ID or Touch ID, if you turned it on for Notes.</li>
-            <li>The hint: enter a wrong password a couple of times and Notes shows it.</li>
-            <li>Your iPhone passcode, or your Mac login password.</li>
-            <li>Any older notes password, and your password manager.</li>
-          </ul>
-          <p>If none of them work, reset the password. That lets you lock new notes; the old ones still need the old password.</p>
+          <p>
+            Nobody can open a locked note without its password, not Apple and not an unlock app. Try Face ID or Touch ID, the hint and
+            your device passcode first. If none of them works, reset the password: that only changes it for the notes you lock from now
+            on, and the old ones keep the old password.
+          </p>
         </Answer>
       }
       art="/blog/art/forgot-apple-notes-password"
@@ -98,8 +86,6 @@ export default function Page() {
           If you use one, search it for &ldquo;notes&rdquo;; you may have saved the password there when you set it.
         </li>
       </Steps>
-      <Checklist title="Before I reset my notes password" items={CHECKLIST}
-        note="Paste it into a note, select the lines and tap the checklist button, then tick them off as you go. If one works, you never need to reset." />
       <p>
         Don&apos;t reset first. Resetting is safe, and it won&apos;t delete anything, but once you have two passwords it gets harder to tell
         which note needs which.
@@ -109,7 +95,7 @@ export default function Page() {
       <div className="tableWrap">
         <table>
           <thead>
-            <tr><th scope="col"></th><th scope="col">Opens a note you already locked?</th><th scope="col">Good to know</th></tr>
+            <tr><th scope="col"></th><th scope="col">Opens old locked notes?</th><th scope="col">Good to know</th></tr>
           </thead>
           <tbody>
             <tr><th scope="row">Face ID or Touch ID</th><td>Yes, if it was on for Notes</td><td>Can&apos;t change the password; that always needs the current one</td></tr>
@@ -127,10 +113,6 @@ export default function Page() {
         If none of that works, reset it so you can keep locking new notes. The old locked notes stay as they are, and still open with the
         old password if you ever remember it.
       </p>
-      <Paths rows={[
-        { on: "iPhone", steps: ["Settings", "Apps", "Notes", "Password"] },
-        { on: "Mac", steps: ["Notes", "Settings", "Reset Password"] },
-      ]} />
       <p className="label" id="reset-on-iphone"><strong>On iPhone</strong></p>
       <Steps>
         <li>Open Settings, tap Apps, then Notes, then Password.</li>

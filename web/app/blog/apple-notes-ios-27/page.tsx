@@ -23,26 +23,6 @@ const FAQ = [
   ] },
 ];
 
-const CHEAT_SHEET = `# Apple Notes in iOS 27
-
-## Divider line
-- iPhone: edit menu, Expand, Insert Divider Line
-- Mac: Edit, Insert Divider Line (Command-L)
-
-## Link to a section
-- Make headings first: Format, Heading
-- Add Link, then Link to Section, and pick a heading
-- iPhone shortcut: type >> and a note's title, then / for a section
-
-## Markdown
-- Paste Markdown and it turns into headings and lists
-- Copy as Markdown: select text, then Copy as Markdown
-- Mac export: File, Export To, Markdown
-
-## Siri AI
-- "What was the note with the cookie recipe?"
-- Ask it to add to a note, or to reformat one`;
-
 const TRY_TODAY = [
   "Add a divider line to your longest note",
   "Make its sections headings, then link to one from the top",
@@ -66,13 +46,11 @@ export default function Page() {
           { href: "#siri-ai", label: "Siri AI" },
           { href: "#chatgpt-and-claude", label: "ChatGPT and Claude" },
         ]}>
-          <ul>
-            <li><strong>Divider lines.</strong> On iPhone, Insert Divider Line in the edit menu; on a Mac, Command-L.</li>
-            <li><strong>Links to a section of a note.</strong> Add Link, then Link to Section, and pick a heading.</li>
-            <li><strong>Markdown both ways.</strong> Pasted Markdown turns into headings and lists, and Copy as Markdown takes it out.</li>
-            <li><strong>Siri AI.</strong> Finds notes, searches inside them, and adds to or reformats one. In beta, in English, on iPhone 15 Pro and later, not yet in the EU.</li>
-            <li><strong>ChatGPT and Claude</strong> still can&apos;t search or edit Apple Notes from iPhone or the web.</li>
-          </ul>
+          <p>
+            Five things: divider lines, links to a section of a note, Markdown that formats itself when you paste it, Copy as Markdown,
+            and Siri AI, which can find a note and add to it. ChatGPT and Claude still can&apos;t search or edit Apple Notes from iPhone
+            or the web.
+          </p>
         </Answer>
       }
       art="/blog/art/apple-notes-ios-27"
@@ -145,8 +123,6 @@ export default function Page() {
         On a Mac, the export menu moved: it&apos;s now File, Export To, then Markdown or PDF. <a href="/blog/export-apple-notes-to-markdown">How
         to export Apple Notes to Markdown</a> has the steps for both versions, what to check in the file, and what to use for every note at once.
       </p>
-      <Keep title="The cheat sheet, as Markdown" text={CHEAT_SHEET} code
-        note="Copy it and paste it into a new note on iOS 27 or macOS 27: it arrives as headings and lists, which makes it a good first test of the new Markdown paste." />
       <Keep title="A prompt for ChatGPT, Claude or Gemini" text={PROMPT}
         note="Add it to the end of a question, then paste the answer into a note. It arrives formatted instead of full of asterisks." />
       <Figure shot={SHOTS.notesExportMenu} caption="The menu before the move: File, Export as, Markdown, in Notes on macOS 26. On macOS 27 it reads File, Export To." />

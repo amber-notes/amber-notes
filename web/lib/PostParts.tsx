@@ -4,14 +4,17 @@ import s from "./post-parts.module.css";
 /// The parts a how-to post is built from. The short answer comes first, so someone from a search
 /// result has it on the first screen; the rest is for the people who read on.
 
-/// The short answer, with chips that jump to the sections that have the detail.
+/// The short answer, with links that jump to the sections that have the detail.
 export function Answer({ children, jump = [] }: { children: React.ReactNode; jump?: { href: string; label: string }[] }) {
   return (
     <aside className={s.answer} aria-label="The short answer">
       <p className={s.answerLabel}><Leaf />The short answer</p>
       {children}
       {jump.length ? (
-        <ul className={s.jump}>{jump.map((j) => <li key={j.href}><a href={j.href}>{j.label}</a></li>)}</ul>
+        <p className={s.jump}>
+          Jump to{" "}
+          {jump.map((j, i) => <span key={j.href} className={s.jumpItem}>{i ? <span className={s.jumpDot} aria-hidden="true">·</span> : null}<a href={j.href}>{j.label}</a></span>)}
+        </p>
       ) : null}
     </aside>
   );
@@ -37,7 +40,7 @@ export function Paths({ rows }: { rows: { on: string; steps: string[]; keys?: st
   );
 }
 
-/// Numbered steps, each in its own card.
+/// Numbered steps, each with its number in an amber circle.
 export function Steps({ children }: { children: React.ReactNode }) {
   return <ol className={s.steps}>{children}</ol>;
 }
@@ -62,7 +65,7 @@ export function Keep({ title, note, text, code = false, children }: { title: str
   return (
     <div className={s.keep}>
       <div className={s.keepHead}>
-        <p className={s.keepTitle}><span className={s.keepTag}>Keep this</span>{title}</p>
+        <p className={s.keepTitle}>{title}</p>
         <CopyButton text={text} label="Copy" className={s.copy} event="blog_copy_clicked" />
       </div>
       {children ?? (code ? <pre tabIndex={0}><code>{text}</code></pre> : <pre className={s.plain} tabIndex={0}>{text}</pre>)}

@@ -9,25 +9,27 @@ Emil's bar: posts should be charming and really good, not a wall of boring text,
 give more than they take.
 
 - **Answer first.** Someone from a search result should have the answer on the first screen at
-  390 px. Keep the intro to one or two sentences, then put the short answer in an `Answer` box with
-  chips that jump to the sections.
+  390 px. Keep the intro to one or two sentences, then put the short answer in an `Answer` block with
+  links that jump to the sections.
 - **Give something to keep.** Every post gives the reader something useful beyond the answer. For
   example:
   - a copyable checklist, cheat sheet, script or prompt that works in any AI (`Keep`);
   - a small helper that picks the right path for them (`ResetChooser` is the pattern);
   - a comparison table worth bookmarking;
   - a link to a free template at `/templates` where one fits.
-- **Make it scannable.** Write steps as numbered cards (`Steps`) and menu paths as chips (`Path`,
-  `Paths`). Give every section an `id`, so the answer box and other posts can link to it.
+- **Make it scannable.** Write steps as a numbered list (`Steps`) and menu paths as chips (`Path`,
+  `Paths`). Give every section an `id`, so the short answer and other posts can link to it.
 - **Charm without fluff.** Each post opens with a paper-cut banner (`art`, above the intro) in the
   style of the email heroes (`web/public/email/hero-*.jpg`), so the first screen isn't only text.
   Small warm details carry it further: the leaf on the short answer, checklists drawn with Notes'
-  round boxes. Write warmly and specifically: real menu names, real
+  round boxes.
+- **Say each thing once.** Don't repeat a list as an answer box, then steps, then a checklist, then
+  a table. Pick the one form that suits it and link to it. Write warmly and specifically: real menu names, real
   numbers, first person where Emil built something. Cut filler sentences.
 - **Real visuals only where they show a product.**
   - Screenshots and loops of Apple Notes or Amber Notes must be real captures.
   - Caption a capture with the OS version it came from. Never let a macOS 26 capture pass for iOS 27.
-  - For a feature you can't capture, use step cards plus Apple's own wording, linked to Apple's
+  - For a feature you can't capture, use numbered steps plus Apple's own wording, linked to Apple's
     support page.
   - Generated art is decoration only (`alt=""`), and never a picture of an app's screen.
 - **The Amber Notes section comes last, and stays honest and modest.**
@@ -48,13 +50,30 @@ give more than they take.
   - No layout shift.
   - Check at 390 px and on desktop before opening the PR.
 
+## Design tells to avoid (2026-10-06)
+
+Emil called these "the basic AI tell of design". Don't use them on the blog, or anywhere else on the
+site:
+
+- A card with rounded corners and a coloured stripe down its left side. Emphasise the short answer
+  with type instead: a small label, slightly larger text, and the blog's dashed rule under it.
+- Rows of pills, such as "jump to" chips. Use plain inline links, separated by a dot.
+- Stacks of identical cards. Numbered steps are a list with amber numbers, not a card per step.
+- Gradient cards, icon-plus-heading grids, decorative stripes and emoji.
+- A label like "Keep this" repeated on every block. Let the title say what the block is.
+
+Before opening a PR, look at every scroll frame at 390 px and 1440 px, one viewport at a time, as
+someone who just arrived from Google. Check that each frame makes sense on its own, and that nothing
+is cramped, cut off, repeated or generic. The blog pages are always cream (`lib/theme.ts`), so there
+is no dark version to check.
+
 ## The parts
 
 | Part | File | What it's for |
 |---|---|---|
-| `Answer` | `web/lib/PostParts.tsx` | The short answer under the intro, with jump chips (`answer` prop of `PostPage`) |
+| `Answer` | `web/lib/PostParts.tsx` | The short answer under the intro, with jump links (`answer` prop of `PostPage`) |
 | `Banner` | `web/lib/PostParts.tsx` | The paper-cut art above the intro (`art` prop of `PostPage`: `/blog/art/<slug>`, `.avif` and `.webp`, 1200×480) |
-| `Steps`, `Path`, `Paths` | `web/lib/PostParts.tsx` | Numbered step cards, and menu paths as chips, per device |
+| `Steps`, `Path`, `Paths` | `web/lib/PostParts.tsx` | Numbered steps, and menu paths as keycap-like chips, per device |
 | `Keep` | `web/lib/PostParts.tsx` | Something to copy: a cheat sheet, script or prompt |
 | `Checklist` | `web/lib/PostParts.tsx` | A checklist to copy, drawn like a Notes checklist, copied as lines that become one with a tap |
 | `ResetChooser` | `web/lib/ResetChooser.tsx` | A question-by-question helper; copy its shape for other choosers |
