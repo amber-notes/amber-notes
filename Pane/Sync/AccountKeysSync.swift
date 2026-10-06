@@ -44,12 +44,20 @@ struct SupabaseAccountKeys: AccountKeyServer {
         try await client.rpc("mark_recovery_key_saved").execute().value
     }
 
-    /// Refused with hint `reauth` unless the session's sign-in is from the last 10 minutes.
+    /// Refused with hint `reauth` unless the session's sign-in is from the last 10 minutes, and
+    /// with `paused_after_reset` (detail: when it opens again) for 72 hours after a password reset.
     func startFresh(keyID: String) async throws -> Bool {
         do {
             return try await client.rpc("start_fresh", params: ["p_key_id": keyID]).execute().value
         } catch let e as PostgrestError where e.hint == "reauth" {
             throw KeyError.reauth
+        } catch let e as PostgrestError where e.hint == "paused_after_reset" {
+            throw KeyError.pausedAfterReset(until: Self.pausedUntil(e.detail))
         }
+    }
+
+    /// The server's "until", in UTC (`2026-10-05T14:30:00Z`).
+    nonisolated static func pausedUntil(_ detail: String?) -> Date? {
+        detail.flatMap(Backend.pauseDate)
     }
 }

@@ -39,7 +39,8 @@ export default function Page() {
       </p>
       <p>
         If there&apos;s no iCloud heading, turn on iCloud for Notes. On iOS 26, open Settings, tap your name, tap iCloud and turn on
-        Notes. On iOS 27, tap See All next to Saved to iCloud first, then turn on Notes.
+        Notes. On iOS 27, tap See All next to Saved to iCloud first, then turn on Notes. If your notes are in iCloud and still don&apos;t
+        reach your other devices, see <a href="/blog/apple-notes-not-syncing">Apple Notes not syncing between iPhone and Mac</a>.
       </p>
 
       <h2>Before you move anything</h2>
@@ -85,7 +86,7 @@ export default function Page() {
       <h2>Gmail notes are different</h2>
       <p>
         Notes in a Gmail account are kept in your Google account and sync with Notes over IMAP, the protocol Mail uses. Apple says many
-        Notes features don&apos;t work there, and those notes can&apos;t be locked. On macOS 26, Notes also turns down tags and pinning in
+        Notes features don&apos;t work there, and those notes can&apos;t be locked. On macOS 26, Notes also turns down <a href="/blog/apple-notes-tags-smart-folders">tags</a> and pinning in
         an IMAP account, with a message saying they aren&apos;t supported. When you delete one, Gmail usually keeps it in that
         account&apos;s Trash in the Mail app rather than in Recently Deleted.
       </p>

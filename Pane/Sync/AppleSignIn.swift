@@ -75,6 +75,8 @@ enum AppleSignIn {
 struct AppleAuthButton: View {
     var label: SignInWithAppleButton.Label = .signIn
     var height: CGFloat = 44
+    /// Apple's guidelines let the corners follow the app's own buttons; nil keeps Apple's default.
+    var cornerRadius: CGFloat? = nil
     /// The Mac draws its own button; its title matches `label`.
     var title = "Sign in with Apple"
     /// The Mac download (DIRECT) can't carry the Sign in with Apple entitlement, so its button
@@ -89,7 +91,7 @@ struct AppleAuthButton: View {
         // AppKit's Apple button keeps a small fixed height whatever frame it gets, so the Mac
         // draws its own at full height, per Apple's button guidelines: the logo, the standard
         // title, black on light and white on dark, never another colour.
-        MacAppleButton(title: title, height: height, scheme: scheme) {
+        MacAppleButton(title: title, height: height, cornerRadius: cornerRadius ?? height * 0.22, scheme: scheme) {
             #if DIRECT
             if let web { web(); return }
             #endif
@@ -106,6 +108,8 @@ struct AppleAuthButton: View {
         }
         .signInWithAppleButtonStyle(scheme == .dark ? .white : .black)
         .frame(height: height)
+        // The button's own fill runs to its edges, so a rounder clip is its corner radius.
+        .mask { if let cornerRadius { RoundedRectangle(cornerRadius: cornerRadius, style: .continuous) } else { Rectangle() } }
         // Re-create on appearance change so the button restyles.
         .id(scheme)
         #endif
@@ -116,6 +120,7 @@ struct AppleAuthButton: View {
 private struct MacAppleButton: View {
     let title: String
     let height: CGFloat
+    let cornerRadius: CGFloat
     let scheme: ColorScheme
     let action: () -> Void
 
@@ -129,8 +134,8 @@ private struct MacAppleButton: View {
             }
             .foregroundStyle(dark ? Color.black : Color.white)
             .frame(maxWidth: .infinity, minHeight: height, maxHeight: height)
-            .background(dark ? Color.white : Color.black, in: .rect(cornerRadius: height * 0.22, style: .continuous))
-            .contentShape(.rect(cornerRadius: height * 0.22, style: .continuous))
+            .background(dark ? Color.white : Color.black, in: .rect(cornerRadius: cornerRadius, style: .continuous))
+            .contentShape(.rect(cornerRadius: cornerRadius, style: .continuous))
         }
         .buttonStyle(PressScale())
         .accessibilityLabel(title)

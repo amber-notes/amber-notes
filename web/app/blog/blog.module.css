@@ -3,8 +3,22 @@
    on phones) close under them, then the pages. */
 .index { display: grid; gap: 44px; }
 @media (max-width: 600px) { .index { gap: 28px; } }
-.hero { display: grid; gap: 16px; justify-items: start; padding-top: 48px; max-width: 820px; }
-@media (max-width: 600px) { .hero { padding-top: 28px; gap: 14px; } }
+/* The title block holds the real title and lede, and under them in the same cell an invisible
+   copy of the longest ones (from data-a and data-b, drawn by CSS so it's never page text). The cell
+   is as tall as the tallest list's, the real text sits at its foot, and the chips stay put. */
+.hero { display: grid; padding-top: 48px; max-width: 820px; }
+.heroText, .heroFit { grid-area: 1 / 1; display: grid; gap: 16px; justify-items: start; align-content: end; }
+@media (max-width: 600px) { .hero { padding-top: 28px; } .heroText, .heroFit { gap: 14px; } }
+.heroFit { visibility: hidden; pointer-events: none; user-select: none; }
+.heroFit > span { display: grid; }
+.heroFit > span::before, .heroFit > span::after { grid-area: 1 / 1; }
+.heroFit > span::before { content: attr(data-a); }
+.heroFit > span::after { content: attr(data-b); }
+/* The blog's lede has words in bold; the copy is a little heavier throughout, so it's never the
+   shorter one (500 is the lightest that holds at every width from 320 to 1440, Chrome and Safari). */
+.heroFit > .lede { font-weight: 500; }
+/* The real title's highlight is padded at both ends; the copy leaves that room too. */
+.heroFit > .h1 { padding-inline-end: 0.2em; }
 .h1 { margin: 0; font-size: clamp(42px, 5.6vw, 76px); line-height: 0.98; font-weight: 800; letter-spacing: -0.045em; text-wrap: balance; }
 .lede { margin: 0; max-width: 36em; font-size: clamp(18px, 2vw, 21px); line-height: 1.45; color: var(--muted); text-wrap: pretty; }
 .lede b { color: var(--ink); font-weight: 650; }
@@ -22,8 +36,11 @@
 @media (max-width: 600px) { .filters a { padding: 0 12px; gap: 6px; } }
 @media (hover: hover) { .filters a:not([aria-current]):hover { color: var(--ink); } }
 .filters a:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+/* Never a layer of the filter motion: the pick moves in the page at the click (lib/filter-transition.ts). */
+.filters, .filters a { view-transition-name: none; }
 @media (prefers-reduced-motion: no-preference) {
-  .filters a { transition: background-color 0.15s ease-out, color 0.15s ease-out, transform 0.12s ease-out; }
+  /* The pick moves in one step (lib/filter-transition.ts); only the press animates. */
+  .filters a { transition: transform 0.12s ease-out; }
   .filters a:active { transform: scale(0.97); }
 }
 /* Each category's chip carries its newest posts' grounds as dots, like the templates chips; a ring
@@ -43,6 +60,12 @@
 .grid > li { display: grid; }
 .pageNote { color: var(--muted); font-weight: inherit; }
 
+/* Switching between the blog's lists is the site's filter motion (lib/filter-transition.ts): the
+   title swaps in place, and arriving from another list nothing plays its entrance again
+   (lib/BlogList.tsx). */
+.index[data-still] :global(.rise) { animation: none; }
+
+
 /* Previous, the page numbers, Next: each at least 44 px tall and wide, centred under the grid. */
 .pages { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .pages ol { display: flex; gap: 4px; list-style: none; margin: 0; padding: 0; }
@@ -56,4 +79,4 @@
 .pages .step[data-off] { opacity: 0.4; }
 @media (hover: hover) { .pages a:hover { color: var(--ink); } }
 .pages a:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
-@media (prefers-reduced-motion: no-preference) { .pages a { transition: background-color 0.15s ease-out, color 0.15s ease-out; } }
+@media (prefers-reduced-motion: no-preference) { .pages a { transition: color 0.15s ease-out; } }

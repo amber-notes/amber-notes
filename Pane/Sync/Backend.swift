@@ -83,6 +83,8 @@ final class Backend {
     private(set) var state: State = .disabled
     /// The Apple ID linked to this account, if any: sign-in is Apple-only once it's there.
     private(set) var apple: AppleIdentity?
+    /// Whether a Google account signs in to this account (docs/Technical/google-sign-in.md).
+    private(set) var google = false
     let client: SupabaseClient?
 
     struct AppleIdentity: Equatable {
@@ -152,6 +154,7 @@ final class Backend {
         guard let client else { return }
         for await (_, session) in client.auth.authStateChanges {
             apple = session.flatMap { Self.appleIdentity(of: $0.user) }
+            google = session.map { Self.hasGoogle($0.user) } ?? false
             if let session, !session.isExpired {
                 signedIn(session)
             } else if let session, session.isExpired {
@@ -179,6 +182,10 @@ final class Backend {
         return AppleIdentity(email: identity.identityData?["email"]?.stringValue)
     }
 
+    static func hasGoogle(_ user: User) -> Bool {
+        user.identities?.contains { $0.provider == "google" } ?? false
+    }
+
     /// Signs in with an Apple ID. Only an Apple ID already linked to an account gets in:
     /// the server refuses to create new accounts for anyone not invited.
     func signInWithApple(_ credential: AppleSignIn.Credential) async throws {
@@ -193,10 +200,58 @@ final class Backend {
         apple = Self.appleIdentity(of: session.user) ?? AppleIdentity(email: nil)
     }
 
+    /// Where a web sign-in (Google, and Apple in the Mac download) returns to: the app's own URL
+    /// scheme, caught by the ASWebAuthenticationSession (it never reaches the app's URL handler).
+    nonisolated static let webCallback = URL(string: "ambernotes://auth-callback")!
+
+    /// Sign in with Google: Google's page in the system's secure browser sheet, through Supabase
+    /// (PKCE: the app keeps the verifier, Supabase checks Google's state and nonce), then the
+    /// one-time code is swapped for a session. A new Google account makes a new Amber Notes
+    /// account; one whose email already has an account joins it (docs/Technical/google-sign-in.md).
+    /// `hint` (an email) puts that Google account first in Google's chooser. Returns the account
+    /// that's now signed in.
+    @discardableResult
+    func signInWithGoogle(hint: String? = nil) async throws -> UUID? {
+        guard let client else { return nil }
+        let session = try await client.auth.signInWithOAuth(provider: .google, redirectTo: Self.webCallback, queryParams: Self.googleQuery(hint: hint)) { url in
+            try await WebAuthSession.run(url, callbackScheme: "ambernotes")
+        }
+        return session.user.id
+    }
+
+    /// Passed on to Google by Supabase: the account chooser every time, so someone with two
+    /// Google accounts picks one, and the hinted account first.
+    nonisolated static func googleQuery(hint: String?) -> [(name: String, value: String?)] {
+        var query: [(name: String, value: String?)] = [(name: "prompt", value: "select_account")]
+        if let hint = hint?.trimmingCharacters(in: .whitespacesAndNewlines), !hint.isEmpty {
+            query.append((name: "login_hint", value: hint))
+        }
+        return query
+    }
+
+    /// Closing the browser sheet isn't an error worth showing.
+    nonisolated static func isCanceled(_ error: Error) -> Bool {
+        (error as? ASWebAuthenticationSessionError)?.code == .canceledLogin
+    }
+
+    /// Words for a Google sign-in that didn't work.
+    nonisolated static func googleMessage(for error: Error) -> String {
+        if error is URLError { return "Can't reach the server. Check your connection." }
+        let raw = (error as? AuthError)?.message ?? error.localizedDescription
+        let lower = raw.lowercased()
+        if lower.contains("provider is not enabled") || lower.contains("unsupported provider") {
+            return "Sign in with Google isn't available yet."
+        }
+        if lower.contains("not allowed") || lower.contains("hook") {
+            return "Couldn't make an account with this Google account. Try Sign in with Apple or your email."
+        }
+        if lower.contains("email") && (lower.contains("verified") || lower.contains("confirm")) {
+            return "Google hasn't confirmed this account's email. Confirm it with Google, then try again."
+        }
+        return "Sign in with Google didn't finish. Try again."
+    }
+
     #if DIRECT
-    /// Where Apple's web sign-in returns to: the app's own URL scheme, caught by the
-    /// ASWebAuthenticationSession (it never reaches the app's URL handler).
-    static let webCallback = URL(string: "ambernotes://auth-callback")!
 
     /// Sign in with Apple through the web, for the Mac download: Apple's page in a secure
     /// browser sheet, then Supabase's PKCE exchange. The same Apple ID lands in the same
@@ -213,11 +268,6 @@ final class Backend {
         let result = try await WebAuthSession.run(link.url, callbackScheme: "ambernotes")
         let session = try await client.auth.session(from: result)
         apple = Self.appleIdentity(of: session.user) ?? AppleIdentity(email: nil)
-    }
-
-    /// Closing Apple's sheet isn't an error worth showing.
-    nonisolated static func isCanceled(_ error: Error) -> Bool {
-        (error as? ASWebAuthenticationSessionError)?.code == .canceledLogin
     }
     #endif
 
@@ -258,6 +308,27 @@ final class Backend {
     func signUp(email: String, password: String) async throws {
         guard let client else { return }
         try await client.auth.signUp(email: email.trimmingCharacters(in: .whitespaces), password: password)
+    }
+
+    /// "Forgot password?": Supabase emails a link to ambernotes.app/reset-password, where the new
+    /// password is chosen (docs/Technical/password-reset.md). A plain request rather than
+    /// `auth.resetPasswordForEmail`, which adds a PKCE challenge: that link could only be opened in
+    /// the browser that asked, and here nothing asks from a browser. Whatever the server answers
+    /// counts as sent, so the screen says the same for every email; it throws only when the server
+    /// can't be reached.
+    func requestPasswordReset(email: String) async throws {
+        guard let url = BackendConfig.url, let key = BackendConfig.key else { throw URLError(.notConnectedToInternet) }
+        _ = try await AppNetwork.session.data(for: Self.passwordResetRequest(base: url, key: key, email: email))
+    }
+
+    nonisolated static func passwordResetRequest(base: URL, key: String, email: String) -> URLRequest {
+        var request = URLRequest(url: base.appending(path: "auth/v1/recover"), timeoutInterval: 15)
+        request.httpMethod = "POST"
+        request.setValue(key, forHTTPHeaderField: "apikey")
+        request.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: ["email": email.trimmingCharacters(in: .whitespacesAndNewlines)])
+        return request
     }
 
     /// Words a person can act on, instead of raw server errors.

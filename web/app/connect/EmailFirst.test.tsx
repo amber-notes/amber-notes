@@ -84,6 +84,16 @@ describe("email first, as the app does it", () => {
     expect(signedIn).toEqual([{ email: "sara@example.com", password: "correct horse" }]);
   });
 
+  it("offers Forgot password? only at the password, in a new tab with the email in the fragment", async () => {
+    render("password");
+    const forgot = () => [...document.querySelectorAll("a")].find((a) => a.textContent === "Forgot password?");
+    expect(forgot()).toBeUndefined();
+    act(() => type("connect-email", "sara+notes@example.com"));
+    await submit();
+    expect(forgot()?.getAttribute("href")).toBe("/reset-password#email=sara%2Bnotes%40example.com");
+    expect(forgot()?.target).toBe("_blank");
+  });
+
   it("a password manager that fills both at once signs in with one Continue", async () => {
     const { signedIn } = render("password", { email: "sara@example.com", password: "correct horse" });
     await submit();
@@ -122,7 +132,7 @@ describe("email first, as the app does it", () => {
     render("apple");
     act(() => type("connect-email", "apple@example.com"));
     await submit();
-    expect(container.textContent).toContain("This email signs in with Apple. Use Sign in with Apple above.");
+    expect(container.textContent).toContain("This email signs in with Apple or Google. Use one of the buttons above.");
     expect(hidden("connect-password")).toBe(true);
     expect(container.querySelector('button[type="submit"]')).toBeNull();
   });

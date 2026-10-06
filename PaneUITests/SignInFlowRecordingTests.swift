@@ -18,7 +18,7 @@ final class SignInFlowRecordingTests: XCTestCase {
         func pause(_ s: TimeInterval = 1.5) { Thread.sleep(forTimeInterval: s) }
 
         let app = XCUIApplication()
-        app.launchArguments = ["-synctest", "-signout"]
+        app.launchArguments = ["-synctest", "-signout", "-skipWelcome"]
         mark("launch")
         app.launch()
         let field = app.textFields["signin.email"]

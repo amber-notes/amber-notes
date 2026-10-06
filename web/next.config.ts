@@ -41,7 +41,7 @@ const OLD_HOST = "amber-notes.vercel.app";
 const SITE = "https://ambernotes.app";
 const MOVED = ["/", "/help", "/download", "/changelog", "/connect"];
 
-// The connect pages (/connect, /open/connect) get their CSP, with a nonce, from middleware.ts.
+// The connect pages (/connect, /open/connect) and /reset-password get their CSP, with a nonce, from middleware.ts.
 const connectSecurity = security.filter((h) => h.key !== "Content-Security-Policy");
 
 const config: NextConfig = {
@@ -66,6 +66,10 @@ const config: NextConfig = {
       // Page 1 of the blog and of each category lives at the list's own address.
       { source: "/blog/page/1", destination: "/blog", permanent: true },
       { source: "/blog/category/:category/page/1", destination: "/blog/category/:category", permanent: true },
+      // A link with "&" where its "?" should be (ambernotes.app/&utm_source=…) lands on /&…, a 404.
+      { source: "/:junk(&.*)", destination: "/", permanent: true },
+      // A guessed address for the Obsidian MCP post (one visit on 5 October, no link of ours).
+      { source: "/blog/obsidian-mcp-servers-compared", destination: "/blog/obsidian-mcp", permanent: true },
     ];
   },
   async rewrites() {
@@ -85,10 +89,11 @@ const config: NextConfig = {
         // robots.txt, the sitemap and llms.txt are for crawlers. So are the templates' pages; their
         // .json data isn't. Blog posts carry their own robots meta
         // (drafts say noindex). A new page for search is added here too.
-        source: "/((?!privacy|terms|support|help|download|changelog|blog|templates(?!/[^/]+\\.json$)|connect$|open/connect$|\\.well-known/apple-app-site-association$|robots\\.txt$|sitemap\\.xml$|llms\\.txt$|llms-full\\.txt$).+)",
+        source: "/((?!privacy|terms|support|help|download|changelog|blog|templates(?!/[^/]+\\.json$)|connect$|open/connect$|reset-password$|\\.well-known/apple-app-site-association$|robots\\.txt$|sitemap\\.xml$|llms\\.txt$|llms-full\\.txt$).+)",
         headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }, ...security],
       },
       { source: "/connect", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }, { key: "Cache-Control", value: "no-store" }, ...connectSecurity] },
+      { source: "/reset-password", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }, { key: "Cache-Control", value: "no-store" }, ...connectSecurity] },
       { source: "/open/connect", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }, { key: "Cache-Control", value: "no-store" }, ...connectSecurity] },
       // Apple's servers fetch this for the app's universal links (https://ambernotes.app/open/…):
       // JSON, straight from ambernotes.app, no redirect. The file is public/.well-known/.

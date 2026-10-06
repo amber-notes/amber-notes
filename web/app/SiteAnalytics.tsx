@@ -3,6 +3,7 @@
 import { Analytics } from "@vercel/analytics/next";
 import { usePathname } from "next/navigation";
 import PostHogAnalytics from "./PostHogAnalytics";
+import ConsentBanner from "./ConsentBanner";
 import { analyticsAllowed, analyticsEvent } from "@/lib/analytics";
 import { posthogAllowed, posthogSettings } from "@/lib/posthog";
 
@@ -12,7 +13,7 @@ import { posthogAllowed, posthogSettings } from "@/lib/posthog";
 ///
 /// With a PostHog key in the build, public pages also send clicks and scroll depth to PostHog
 /// (lib/posthog.ts). Shared notes, the connect pages, universal links, report pages and the
-/// download redirect never load it.
+/// download redirect never load it, and don't show its cookie banner (app/ConsentBanner.tsx).
 export default function SiteAnalytics() {
   const path = usePathname();
   const posthog = posthogSettings({ key: process.env.NEXT_PUBLIC_POSTHOG_KEY, host: process.env.NEXT_PUBLIC_POSTHOG_HOST });
@@ -20,6 +21,7 @@ export default function SiteAnalytics() {
     <>
       {analyticsAllowed(path) && <Analytics beforeSend={analyticsEvent} />}
       {posthog && posthogAllowed(path) && <PostHogAnalytics apiKey={posthog.key} host={posthog.host} path={path} />}
+      {posthog && posthogAllowed(path) && <ConsentBanner apiKey={posthog.key} host={posthog.host} />}
     </>
   );
 }

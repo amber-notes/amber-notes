@@ -1,40 +1,45 @@
 import { destination, type ConnectLabel } from "@/lib/connect";
+import { Shell, TopBar } from "@/lib/ui";
 import styles from "./connect.module.css";
 
-/// The frame every connect page sits in: Amber Notes' mark, then whatever the page says. No other
-/// app's mark: nothing on these pages vouches for who is asking. With `request` (a page about one
+/// The frame every connect page sits in: the quiet top bar with the site's logo and nothing else to
+/// leave by, then Amber Notes' mark and whatever the page says. No other app's mark: nothing on
+/// these pages vouches for who is asking. With `request` (a page about one
 /// connection request), where access would go sits on a panel beside the form; stacked on a phone.
 export default function ConnectCard({ request = false, label = null, children }: {
   request?: boolean; label?: ConnectLabel | null; children: React.ReactNode;
 }) {
   const to = label?.redirect_host ? destination(label.redirect_host, label.loopback) : null;
   return (
-    <main className={styles.page} data-layout={request ? "panel" : "card"}>
-      <div className={styles.shell}>
-        {request && (
-          <aside className={styles.side}>
-            <img className={styles.mark} src="/mark-256.png" alt="" width={44} height={44} />
-            <RequestPicture to={to} />
-            <div className={styles.sideWords}>
-              <p className={styles.sideText}>
-                {to ? <><span className={styles.sideCaption}>Access goes to</span> <b className={styles.sideHost}>{to}</b></> : <b className={styles.sideHost}>An app wants to use your notes</b>}
-              </p>
-              <p className={styles.sideNote}>It can read your notes, and edit them if you say so. Nothing is shared until you allow it.</p>
-              {label?.claimed_name && <p className={styles.sideClaim}>It calls itself &ldquo;{label.claimed_name}&rdquo;.</p>}
+    <Shell>
+      <TopBar />
+      <main className={styles.page} data-layout={request ? "panel" : "card"}>
+        <div className={styles.shell}>
+          {request && (
+            <aside className={styles.side}>
+              <img className={styles.mark} src="/mark-256.png" alt="" width={44} height={44} />
+              <RequestPicture to={to} />
+              <div className={styles.sideWords}>
+                <p className={styles.sideText}>
+                  {to ? <><span className={styles.sideCaption}>Access goes to</span> <b className={styles.sideHost}>{to}</b></> : <b className={styles.sideHost}>An app wants to use your notes</b>}
+                </p>
+                <p className={styles.sideNote}>It can read your notes, and edit them if you say so. Nothing is shared until you allow it.</p>
+                {label?.claimed_name && <p className={styles.sideClaim}>It calls itself &ldquo;{label.claimed_name}&rdquo;.</p>}
+              </div>
+            </aside>
+          )}
+          <div className={styles.card}>
+            <div className={styles.marks} aria-hidden="true">
+              <img className={styles.mark} src="/mark-256.png" alt="" width={56} height={56} />
             </div>
-          </aside>
-        )}
-        <div className={styles.card}>
-          <div className={styles.marks} aria-hidden="true">
-            <img className={styles.mark} src="/mark-256.png" alt="" width={56} height={56} />
+            {children}
           </div>
-          {children}
         </div>
-      </div>
-      <p className={styles.foot}>
-        <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/support">Support</a>
-      </p>
-    </main>
+        <p className={styles.foot}>
+          <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/support">Support</a>
+        </p>
+      </main>
+    </Shell>
   );
 }
 

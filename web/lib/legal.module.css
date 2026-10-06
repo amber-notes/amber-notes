@@ -31,7 +31,7 @@
 
 /* Contents in the left margin: it stays in view and marks the section being read. */
 .rail { grid-column: 1; grid-row: 1; justify-self: end; width: min(200px, 100%); height: 100%; }
-.railInner { position: sticky; top: 24px; max-height: calc(100dvh - 48px); overflow-y: auto; overscroll-behavior: contain; padding: 6px 10px 6px 0; scrollbar-width: thin; }
+.railInner { position: sticky; top: 24px; max-height: calc(100dvh - 48px); overflow-y: auto; overscroll-behavior: contain; padding: 6px 10px 6px 10px; margin-left: -10px; scrollbar-width: thin; }
 @media (max-width: 1100px) { .rail { display: none; } }
 .toc { display: grid; gap: 10px; font-size: 14px; }
 .tocLabel { margin: 0; font-size: 12.5px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }

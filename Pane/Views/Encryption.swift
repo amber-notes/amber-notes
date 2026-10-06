@@ -334,8 +334,8 @@ struct KeyGateView: View {
         screen = .auto
     }
 
-    /// Deleting everything takes a fresh sign-in, the way this account signs in: Apple once an
-    /// Apple ID is linked, otherwise its email and password. Then it starts fresh.
+    /// Deleting everything takes a fresh sign-in, the way this account signs in: Apple or Google
+    /// once one is linked, otherwise its email and password. Then it starts fresh.
     @ViewBuilder private var signInAgain: some View {
         Text(Copy.signInAgain)
             .font(.subheadline)
@@ -343,21 +343,15 @@ struct KeyGateView: View {
             .multilineTextAlignment(.center)
             .fixedSize(horizontal: false, vertical: true)
             .accessibilityIdentifier("e2ee.signInAgain")
-        if backend.apple != nil {
-            AppleAuthButton(label: .signIn, height: Row.height, title: "Sign in with Apple", web: webSignIn) { result in
-                switch result {
-                case .success(let credential):
-                    run {
-                        try await backend.signInWithApple(credential)
-                        try await startFreshAfterSignIn()
-                    }
-                case .failure(.canceled): break
-                case .failure(let failure): error = AppleSignIn.message(for: failure)
+        if backend.apple != nil || backend.google {
+            if backend.apple != nil { appleAgain }
+            if backend.google {
+                GoogleAuthButton(height: Row.height, cornerRadius: Row.radius) {
+                    run { try await signInWithGoogleAndStartFresh() }
                 }
+                .disabled(working)
+                .accessibilityIdentifier("e2ee.signInGoogle")
             }
-            .disabled(working)
-            .opacity(working ? 0.6 : 1)
-            .accessibilityIdentifier("e2ee.signInApple")
         } else {
             field {
                 SecureField("Password for \(email)", text: $password)
@@ -369,6 +363,44 @@ struct KeyGateView: View {
                 try await signInAndStartFresh()
             }
         }
+    }
+
+    private var appleAgain: some View {
+        AppleAuthButton(label: .signIn, height: Row.height, cornerRadius: Row.radius, title: "Sign in with Apple", web: webSignIn) { result in
+            switch result {
+            case .success(let credential):
+                run {
+                    try await backend.signInWithApple(credential)
+                    try await startFreshAfterSignIn()
+                }
+            case .failure(.canceled): break
+            case .failure(let failure): error = AppleSignIn.message(for: failure)
+            }
+        }
+        .disabled(working)
+        .opacity(working ? 0.6 : 1)
+        .accessibilityIdentifier("e2ee.signInApple")
+    }
+
+    /// Google's chooser can sign in to any Google account, so a different one would sign in to a
+    /// different Amber Notes account: that one is signed out again and nothing is deleted.
+    private func signInWithGoogleAndStartFresh() async throws {
+        let before = backend.userID
+        let after: UUID?
+        do { after = try await backend.signInWithGoogle(hint: email) } catch where Backend.isCanceled(error) { return } catch {
+            throw KeyGateFailure(message: Backend.googleMessage(for: error))
+        }
+        guard Self.sameAccount(before: before, after: after) else {
+            await backend.signOut()
+            throw KeyGateFailure(message: "That Google account signs in to a different Amber Notes account. Nothing was deleted.")
+        }
+        try await startFreshAfterSignIn()
+    }
+
+    /// Start fresh only ever runs on the account that asked for it.
+    nonisolated static func sameAccount(before: UUID?, after: UUID?) -> Bool {
+        guard let before, let after else { return false }
+        return before == after
     }
 
     private var email: String {

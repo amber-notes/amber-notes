@@ -81,15 +81,25 @@ describe("privacy copy", () => {
       expect(text).not.toMatch(/(on|or) (the|this) website, and we never/);
       expect(text).not.toMatch(/(apps and this website|website) (have|has|uses) no (analytics|tracking)/);
     }
-    expect(policy).toMatch(/where on a page people click and how far pages are scrolled with PostHog, in the EU\. These are counted across all visitors; no visit is recorded\. Neither uses cookies, stores anything in your browser or keeps a profile of you, and neither runs on shared notes or the connect pages/);
-    expect(page).toMatch(/where on a page people click and how far pages are scrolled with PostHog, in the EU\. These are counted across all\s+visitors; no visit is recorded\. Neither uses cookies or keeps a profile of you/);
+    expect(policy).toMatch(/where on a page people click and how far pages are scrolled with PostHog, in the EU\. These are counted across all visitors; no visit is recorded\. Neither keeps a profile of you, and neither runs on shared notes or the connect pages\. Vercel never uses cookies\. PostHog uses none either, unless you choose Accept on the website's cookie banner/);
+    expect(page).toMatch(/where on a page people click and how far pages are scrolled with PostHog, in the EU\. These are counted across all\s+visitors; no visit is recorded\. Neither keeps a profile of you, and neither runs on shared notes or the connect pages\.\s+PostHog uses a cookie only if you choose Accept on the cookie banner/);
     // Heatmaps are named, and limited to the marketing pages, in the long form too.
     expect(policy).toMatch(/where on the page each click landed.*no visit is recorded or replayed/);
     expect(policy).toMatch(/\| PostHog, Inc\. \| Website usage only/);
     expect(policy).toContain("None of this touches your notes or your computer");
   });
 
-  it("is a cream page like the other legal pages", () => {
-    expect(themeFor(PRIVACY_PATH)).toBe("cream");
+  it("says the website asks before its one cookie, and names everything it stores", () => {
+    expect(policy).not.toMatch(/website sets no cookies/i);
+    expect(policy).toContain("The website asks before it sets a cookie.");
+    expect(policy).toContain("`amber_consent`");
+    expect(policy).toContain("`ph_<project key>_posthog`, only if you accept");
+    expect(policy).toMatch(/expires a year after your last visit/);
+    expect(policy).toMatch(/Do Not Track or Global Privacy Control, we treat it as Reject/);
+    expect(policy).toMatch(/\| Consent, which you can withdraw at any time with Cookie settings \|/);
+  });
+
+  it("is a dark leaf page like the other fine print (Terms, Privacy & Security, Help)", () => {
+    expect(themeFor(PRIVACY_PATH)).toBe("leaf");
   });
 });

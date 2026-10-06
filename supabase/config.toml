@@ -146,8 +146,9 @@ max_indexes = 5
 [auth]
 enabled = true
 # The base URL of your website. Used as an allow-list for redirects and for constructing URLs used
-# in emails.
-site_url = "http://127.0.0.1:3000"
+# in emails. Local: the website's dev server (web/, pnpm dev), where the reset email's link lands.
+# Production is https://ambernotes.app, set through the Management API (docs/Technical/password-reset.md).
+site_url = "http://127.0.0.1:5210"
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
 additional_redirect_urls = ["https://127.0.0.1:3000", "ambernotes://auth-callback"]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
@@ -209,7 +210,8 @@ enable_confirmations = false
 # If enabled, users will need to reauthenticate or have logged in recently to change their password.
 secure_password_change = false
 # Controls the minimum amount of time that must pass before sending another signup confirmation or password reset email.
-max_frequency = "1s"
+# One reset email a minute per address (docs/Technical/password-reset.md).
+max_frequency = "60s"
 # Number of characters used in the email OTP.
 otp_length = 6
 # Number of seconds before the email OTP expires (defaults to 1 hour).
@@ -225,16 +227,32 @@ otp_expiry = 3600
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
 
-# Uncomment to customize email template
-# [auth.email.template.invite]
-# subject = "You have been invited"
-# content_path = "./supabase/templates/invite.html"
+# The auth emails, written by scripts/auth-emails.ts (docs/Technical/auth-emails.md). Production's
+# copies are set through the Management API, not from here. The "password changed" notice is set
+# there only (docs/Technical/password-reset.md).
+[auth.email.template.recovery]
+subject = "Reset your Amber Notes password"
+content_path = "./supabase/templates/recovery.html"
 
-# Uncomment to customize notification email template
-# [auth.email.notification.password_changed]
-# enabled = true
-# subject = "Your password has been changed"
-# content_path = "./templates/password_changed_notification.html"
+[auth.email.template.magic_link]
+subject = "Your Amber Notes sign-in code"
+content_path = "./supabase/templates/magic_link.html"
+
+[auth.email.template.confirmation]
+subject = "Confirm your email for Amber Notes"
+content_path = "./supabase/templates/confirmation.html"
+
+[auth.email.template.email_change]
+subject = "Confirm your new email for Amber Notes"
+content_path = "./supabase/templates/email_change.html"
+
+[auth.email.template.invite]
+subject = "You're invited to Amber Notes"
+content_path = "./supabase/templates/invite.html"
+
+[auth.email.template.reauthentication]
+subject = "Your Amber Notes code"
+content_path = "./supabase/templates/reauthentication.html"
 
 [auth.sms]
 # Allow/disallow new user signups via SMS to your project.
@@ -319,6 +337,19 @@ skip_nonce_check = false
 # If enabled, it will allow the user to successfully authenticate when the provider does not return an email address.
 email_optional = false
 
+[auth.external.google]
+# Sign in with Google (docs/Technical/google-sign-in.md): the app and /connect go through
+# Supabase's OAuth flow with Google's Web client, so only that client's id and secret are needed.
+# Off on the local stack; to try it locally, put a Web client's values in the environment and
+# set enabled = true. The live project's values are set in the dashboard, not here: a
+# `supabase config push` from this file would turn Google off there.
+enabled = false
+client_id = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID)"
+secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET)"
+redirect_uri = ""
+url = ""
+skip_nonce_check = false
+
 # Allow Solana wallet holders to sign in to your project via the Sign in with Solana (SIWS, EIP-4361) standard.
 # You can configure "web3" rate limit in the [auth.rate_limit] section and set up [auth.captcha] if self-hosting.
 [auth.web3.solana]
@@ -394,4 +425,8 @@ verify_jwt = false
 
 # Share pages have no account: the slug is the secret.
 [functions.share-files]
+verify_jwt = false
+
+# The daily round checks its own secret (x-lifecycle-secret); an unsubscribe link carries its own HMAC.
+[functions.lifecycle]
 verify_jwt = false

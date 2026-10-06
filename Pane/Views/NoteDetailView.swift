@@ -81,6 +81,12 @@ struct NoteDetailView: View {
                 ShareAsk.noteUsed()
             }
             .onChange(of: showHistory) { _, open in if open { FeatureUse.mark(.versionHistory) } }
+            // "See your note's history" from an email opened this note to show its history.
+            .onChange(of: AppPlaceCenter.shared.historyFor, initial: true) { _, id in
+                guard id == note.id else { return }
+                AppPlaceCenter.shared.historyFor = nil
+                if !note.isLocked { showHistory = true }
+            }
     }
 
     #if os(iOS)

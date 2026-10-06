@@ -25,4 +25,8 @@ paths = [
   # Collaboration test vectors: fixed, published inputs used to verify cross-platform collab crypto.
   # note_key and link_secret are made-up values generated once for the test suite, not credentials.
   '''supabase/functions/_shared/collab-vectors\.json''',
+  # Page evals: a made-up key used to test that AIs don't keep keys pasted into a note, and the
+  # results that quote it.
+  '''scripts/page-evals/tasks\.ts''',
+  '''scripts/page-evals/results/''',
 ]

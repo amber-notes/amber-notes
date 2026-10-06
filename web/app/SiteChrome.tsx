@@ -7,15 +7,20 @@ import GitHubLink, { GitHubGlyph } from "./GitHubLink";
 import PlatformNote from "./PlatformNote";
 import MobileMenu from "./MobileMenu";
 import { themeFor } from "@/lib/theme";
+import { isBlogList } from "@/lib/blog-list";
+import { CONSENT_OPEN_EVENT } from "@/lib/consent";
+import { filterTransition } from "@/lib/filter-transition";
 
 const GITHUB = "https://github.com/amber-notes/amber-notes";
 const X_URL = "https://x.com/EmilWagman";
+const LINKEDIN_URL = "https://www.linkedin.com/in/emil-wagman-52a907287/";
 const MAKER_URL = "https://emilwagman.com";
 
 export default function SiteChrome({ version, stars, children }: { version: string | null; stars: number | null; children: React.ReactNode }) {
   const path = usePathname();
   const router = useRouter();
   const done = useRef<(() => void) | null>(null);
+  const toList = useRef<"chips" | "pages" | null>(null);
   const site = themeFor(path) !== null;
 
   // Keep the theme in step with the page (also for back/forward), and finish a pending transition.
@@ -23,6 +28,12 @@ export default function SiteChrome({ version, stars, children }: { version: stri
     const t = themeFor(path);
     if (t) document.documentElement.dataset.theme = t;
     else delete document.documentElement.dataset.theme;
+    // A page link at the foot of a blog list lands with the list's chips at the top, not at the old scroll.
+    if (toList.current === "pages") {
+      const chips = document.querySelector("[data-blog-chips]");
+      if (chips && chips.getBoundingClientRect().top < 0) window.scrollTo({ top: Math.max(0, chips.getBoundingClientRect().top + window.scrollY - 24) });
+    }
+    toList.current = null;
     done.current?.();
     done.current = null;
   }, [path]);
@@ -35,21 +46,34 @@ export default function SiteChrome({ version, stars, children }: { version: stri
       if (!a || a.target || a.hasAttribute("download")) return;
       const url = new URL(a.href, location.href);
       if (url.origin !== location.origin || url.pathname === location.pathname || !themeFor(url.pathname)) return;
+      const href = url.pathname + url.search + url.hash;
+      // Between the blog's lists (a category chip, a page number) it's the site's filter motion
+      // (lib/filter-transition.ts): the page stays where it is and only the posts change, also
+      // without view transitions; with reduced motion, instantly.
+      const list = isBlogList(location.pathname) && isBlogList(url.pathname);
       const doc = document as Document & { startViewTransition?: (cb: () => Promise<void>) => unknown };
-      if (!doc.startViewTransition || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      const animate = !!doc.startViewTransition && !matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (!animate && !list) return;
       e.preventDefault();
-      doc.startViewTransition(() => new Promise<void>((resolve) => {
+      const arrive = () => new Promise<void>((resolve) => {
         done.current = resolve;
-        router.push(url.pathname + url.search + url.hash);
+        router.push(href, list ? { scroll: false } : undefined);
         window.setTimeout(resolve, 1500); // never hang if the route is slow
-      }));
+      });
+      if (list) {
+        toList.current = a.closest("[data-blog-pages]") ? "pages" : "chips";
+        void filterTransition(arrive, a.closest("[data-blog-chips], [data-blog-pages]") ? a : null);
+        return;
+      }
+      doc.startViewTransition!(arrive);
     };
     document.addEventListener("click", onClick);
     return () => document.removeEventListener("click", onClick);
   }, [router]);
 
-  // The connect pages are one card: the site's colours without its header and footer.
-  if (!site || path === "/connect" || path === "/open/connect") return <>{children}</>;
+  // The connect pages and the reset page are one card under a quiet top bar (lib/ui.tsx TopBar): the
+  // site's colours without its header and footer. The Dev preview of /connect renders the same way.
+  if (!site || ["/connect", "/connect/preview", "/open/connect", "/reset-password"].includes(path)) return <>{children}</>;
 
   const current = (href: string) => (path === href ? "page" : undefined);
   // On the home page the logo takes you back to the top instead of reloading.
@@ -90,11 +114,16 @@ export default function SiteChrome({ version, stars, children }: { version: stri
             <a href="/privacy">Privacy Policy</a>
             <a href="/terms">Terms</a>
             <a href="/help">Help</a>
+            {/* Opens the cookie banner again (app/ConsentBanner.tsx); only in builds with PostHog. */}
+            {process.env.NEXT_PUBLIC_POSTHOG_KEY && (
+              <button type="button" className="site-footlink" onClick={() => window.dispatchEvent(new Event(CONSENT_OPEN_EVENT))}>Cookie settings</button>
+            )}
           </nav>
           <span className="site-footsep" aria-hidden="true" />
           <div className="site-social">
             <a href={GITHUB} target="_blank" rel="noopener noreferrer" aria-label="Amber Notes on GitHub"><GitHubGlyph /></a>
             <a href={X_URL} target="_blank" rel="me noopener noreferrer" aria-label="Emil Wagman on X"><XGlyph /></a>
+            <a href={LINKEDIN_URL} target="_blank" rel="me noopener noreferrer" aria-label="Emil Wagman on LinkedIn"><LinkedInGlyph /></a>
           </div>
         </div>
         <p className="site-credit">Made by <a className="site-maker" href={MAKER_URL} target="_blank" rel="me noopener">Emil Wagman</a> at <a className="site-maker" href="https://incredible.one" target="_blank" rel="noopener">Incredible</a>. Works with ChatGPT and Claude; not affiliated with Apple, OpenAI or Anthropic.</p>
@@ -110,6 +139,14 @@ export function AppleGlyph() {
   return (
     <svg width="14" height="17" viewBox="0 0 15 18" aria-hidden="true" fill="currentColor">
       <path d="M12.3 9.6c0-2.2 1.8-3.3 1.9-3.4-1-1.5-2.6-1.7-3.2-1.7-1.4-.1-2.7.8-3.4.8-.7 0-1.8-.8-2.9-.8C3.2 4.6 1.8 5.4 1 6.8c-1.6 2.8-.4 6.9 1.1 9.1.8 1.1 1.7 2.3 2.8 2.3 1.1 0 1.6-.7 2.9-.7 1.4 0 1.7.7 2.9.7 1.2 0 2-1.1 2.7-2.2.9-1.3 1.2-2.5 1.2-2.6 0 0-2.3-.9-2.3-3.8zM10.1 3c.6-.7 1-1.7.9-2.7-.9 0-1.9.6-2.5 1.3-.6.6-1.1 1.6-.9 2.6.9.1 1.9-.5 2.5-1.2z" />
+    </svg>
+  );
+}
+
+function LinkedInGlyph() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor">
+      <path d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28ZM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13ZM7.12 20.45H3.56V9h3.56v11.45ZM22.22 0H1.77C.79 0 0 .77 0 1.73v20.54C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.73V1.73C24 .77 23.2 0 22.22 0Z" />
     </svg>
   );
 }
