@@ -685,6 +685,14 @@ async function runTask(task: Task, rep = 1) {
     events: tr.events, answer: session.answer,
   };
   await Deno.writeTextFile(new URL(`${stem}.trace.json`, outDir), JSON.stringify(trace, null, 2));
+  // And for Emil's Trace Lab: <AMBER_TRACE_DIR, default ~/content-tools/projects/amber-proto/traces/runs>/<date>-<round>/
+  // (AMBER_TRACE_DIR=none: not copied).
+  const lab = Deno.env.get("AMBER_TRACE_DIR") ?? `${Deno.env.get("HOME")}/content-tools/projects/amber-proto/traces/runs`;
+  if (lab !== "none") {
+    const dir = `${lab}/${new Date().toISOString().slice(0, 10)}-${round}`;
+    await Deno.mkdir(dir, { recursive: true }).catch(() => {});
+    await Deno.writeTextFile(`${dir}/${stem}.trace.json`, JSON.stringify(trace, null, 2)).catch((e) => console.error(`trace lab copy failed: ${(e as Error).message}`));
+  }
   if (cli && tr.raw !== undefined) await Deno.writeTextFile(new URL(`${stem}.stream.jsonl`, outDir), tr.raw);
   await Deno.writeTextFile(new URL(`${stem}.page.html`, outDir), after.page ?? "");
   await Deno.writeTextFile(new URL(`${stem}.note.md`, outDir), after.body);
