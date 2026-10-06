@@ -18,6 +18,11 @@ const variants = [
   ...KINDS.map((kind) => ({ kind, name: kind, ctx: base })),
   // A big library mostly in one folder: the connect email shows sorting instead.
   { kind: "connect" as const, name: "connect-sorting", ctx: { ...base, sortable: true } },
+  // The welcome's other steps (signed up through ChatGPT or Claude: get the app; app and AI: try an
+  // ask), and the welcome without its picture, to compare.
+  { kind: "welcome" as const, name: "welcome-app", ctx: { ...base, step: "app" as const } },
+  { kind: "welcome" as const, name: "welcome-try", ctx: { ...base, step: "try" as const } },
+  { kind: "welcome" as const, name: "welcome-plain", ctx: { ...base, plain: true } },
 ];
 const index: unknown[] = [];
 for (const v of variants) {
@@ -31,7 +36,7 @@ for (const v of variants) {
   await Deno.writeTextFile(`${out}/${v.name}-dark.html`, dark);
   // Pictures blocked, as Outlook shows mail by default: no src, so only the alt text and the cells'
   // own colours remain.
-  if (v.name === "stuck" || v.name === "connect") {
+  if (v.name === "stuck" || v.name === "connect" || v.name === "welcome") {
     const blocked = (html: string) => html.replace(/ src="[^"]*"/g, "");
     await Deno.writeTextFile(`${out}/${v.name}-blocked-light.html`, blocked(light));
     await Deno.writeTextFile(`${out}/${v.name}-blocked-dark.html`, blocked(dark));
