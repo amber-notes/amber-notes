@@ -590,4 +590,5 @@ export class Vault {
     return { name: String(m?.name ?? "file"), type: String(m?.type ?? "public.data"), ...(typeof m?.size === "number" ? { size: m.size } : {}) };
   }
   openFile(id: string, bytes: Bytes) { return openFile(bytes, this.key, id); }
+  sealFileBytes(id: string, bytes: Bytes) { return sealFile(bytes, this.key, this.keyId, id); }
 }
