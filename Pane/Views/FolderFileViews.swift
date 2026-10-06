@@ -116,7 +116,7 @@ struct FileRow: View {
     }
 }
 
-/// The file's first page or picture when it's on this device, else its kind's icon.
+/// The first page of a PDF, a picture or a video frame when it's on this device, else the kind's icon.
 struct FileThumbnail: View {
     let file: Attachment
     let side: CGFloat
@@ -150,7 +150,9 @@ struct FileThumbnail: View {
     }
 
     private func load() async {
-        guard FileStore.exists(file) else { image = nil; return }
+        // A page or picture says more than an icon; a spreadsheet's or text's thumbnail is mostly blank.
+        let t = file.type
+        guard FileStore.exists(file), t.conforms(to: .pdf) || t.conforms(to: .image) || t.conforms(to: .movie) else { image = nil; return }
         let request = QLThumbnailGenerator.Request(fileAt: FileStore.url(for: file.id, filename: file.filename),
                                                    size: CGSize(width: side, height: side), scale: scale, representationTypes: .thumbnail)
         image = try? await QLThumbnailGenerator.shared.generateBestRepresentation(for: request).cgImage
@@ -252,6 +254,15 @@ struct FileDetailView: View {
 
     @ToolbarContentBuilder
     private var toolbar: some ToolbarContent {
+        #if os(macOS)
+        // Where a note's toolbar has it: compose first.
+        ToolbarItem {
+            Button(action: onNewNote) {
+                Label { Text("New Note") } icon: { ToolbarGlyph.image("square.and.pencil", shift: ToolbarGlyph.composeShift) }
+            }
+        }
+        ToolbarSpacer(.flexible)
+        #endif
         if case .ready(let url) = state {
             ToolbarItem {
                 ShareLink(item: url) { Label("Share", systemImage: "square.and.arrow.up") }
@@ -280,14 +291,6 @@ struct FileDetailView: View {
             .menuIndicator(.hidden)
             .accessibilityIdentifier("file.more")
         }
-        #if os(macOS)
-        ToolbarSpacer(.flexible)
-        ToolbarItem {
-            Button(action: onNewNote) {
-                Label { Text("New Note") } icon: { ToolbarGlyph.image("square.and.pencil", shift: ToolbarGlyph.composeShift) }
-            }
-        }
-        #endif
     }
 }
 
