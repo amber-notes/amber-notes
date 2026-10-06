@@ -1,0 +1,109 @@
+/* Footer effects D to H (app/footer-fx/*.tsx), picked with ?footer=d..h (lib/footer-fx.ts).
+   None of this applies without the parameter. Reduced motion gets each one's resting state. */
+
+/* The name as live text (E, F): the wordmark's face, weight and tracking; useFit sizes it to 98%
+   of the footer, and the negative bottom margin sinks the baseline just under the page edge,
+   where the SVG wordmark sits. */
+.fx-floor { width: 100%; margin-top: 24px; }
+.fx-name {
+  width: max-content; margin: 0 auto -0.215em; white-space: pre; user-select: none;
+  font: 800 100px/1 -apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, sans-serif; letter-spacing: -0.045em;
+  color: var(--wordmark);
+}
+html[data-theme="leaf"] { --fx-ink: rgba(255, 200, 130, 0.13); --fx-paper: #3d2312; --fx-rule: rgba(255, 220, 170, 0.16); --fx-sheen: rgba(255, 235, 200, 0.06); }
+html:not([data-theme="leaf"]) { --fx-ink: rgba(120, 70, 20, 0.15); --fx-paper: #fffaf3; --fx-rule: rgba(80, 45, 10, 0.13); --fx-sheen: rgba(255, 255, 255, 0.7); }
+
+/* D: notes settling at three depths. */
+html[data-footer="d"] .site-footer { position: relative; padding-top: 170px; margin-top: 40px; overflow: clip; view-timeline: --fx-foot block; }
+html[data-footer="d"] .site-footrow, html[data-footer="d"] .site-credit { position: relative; z-index: 1; }
+.fx-notes { position: absolute; inset: 0; pointer-events: none; }
+.fx-notes-depth, .fx-notes-lean { position: absolute; inset: 0; }
+.fx-notes-depth[data-d="0"] { --s: 0.6; --o: 0.5; --travel: 50px; --lean: 5px; --spin: 6deg; }
+.fx-notes-depth[data-d="1"] { --s: 0.8; --o: 0.82; --travel: 130px; --lean: 10px; --spin: 10deg; }
+.fx-notes-depth[data-d="2"] { --s: 1; --o: 1; --travel: 240px; --lean: 18px; --spin: 14deg; }
+.fx-note { position: absolute; left: var(--x); top: var(--y); opacity: var(--o); transform: scale(var(--s)); transform-origin: 0 0; rotate: var(--r); }
+@media (max-width: 640px) {
+  .fx-note-wide { display: none; }
+  .fx-note { left: var(--sx); top: var(--sy); transform: scale(calc(var(--s) * 0.66)); }
+  html[data-footer="d"] .site-footer { padding-top: 200px; }
+}
+.fx-note-paper {
+  box-sizing: border-box; width: 150px; padding: 12px 14px 14px; border-radius: 10px; display: grid; gap: 7px;
+  background: linear-gradient(180deg, var(--fx-sheen), transparent 45%), var(--fx-paper);
+  box-shadow: 0 0 0 0.5px var(--fx-rule), 0 1px 2px rgba(var(--shade), 0.08), 0 calc(6px + var(--s) * 10px) calc(10px + var(--s) * 18px) calc(-6px - var(--s) * 4px) rgba(var(--shade), 0.32);
+}
+.fx-note-paper b { font-size: 12.5px; font-weight: 700; letter-spacing: -0.01em; color: var(--ink); margin-bottom: 2px; }
+.fx-note-line, .fx-note-dot, .fx-note-tick { display: flex; align-items: center; gap: 7px; height: 9px; }
+.fx-note-line::after, .fx-note-dot::after, .fx-note-tick::after { content: ""; flex: 1; height: 5px; border-radius: 3px; background: var(--fx-rule); }
+.fx-note-line.short::after, .fx-note-dot.short::after { flex: 0 0 55%; }
+.fx-note-dot::before { content: ""; width: 4px; height: 4px; border-radius: 50%; background: var(--muted); opacity: 0.6; }
+.fx-note-tick::before { content: ""; box-sizing: border-box; width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid var(--fx-rule); }
+.fx-note-tick.done::before { border: none; background: var(--amber) radial-gradient(circle, transparent 0) no-repeat; box-shadow: inset 0 0 0 2.5px var(--amber), inset 0 0 0 5px var(--fx-paper); }
+.fx-note-tick.done::after { opacity: 0.5; }
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .fx-notes-depth { animation: fx-notes-rise linear both; animation-timeline: --fx-foot; animation-range: entry 0% entry 96%; }
+    .fx-note { animation: fx-note-settle cubic-bezier(0.3, 0.6, 0.4, 1) both; animation-timeline: --fx-foot; animation-range: entry 10% entry 96%; }
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .fx-notes-lean { translate: calc(var(--px, 0) * var(--lean)) calc(var(--py, 0) * var(--lean)); transition: translate 1.1s cubic-bezier(0.2, 0.8, 0.2, 1); }
+  .fx-note-paper { animation: fx-note-breathe 9s ease-in-out infinite alternate paused; animation-delay: calc(var(--i) * -2.3s); }
+  .fx-notes[data-awake] .fx-note-paper { animation-play-state: running; }
+}
+@keyframes fx-notes-rise { from { transform: translateY(var(--travel)); } to { transform: none; } }
+@keyframes fx-note-settle { from { rotate: calc(var(--r) + var(--spin)); } to { rotate: var(--r); } }
+@keyframes fx-note-breathe { from { translate: 0 0; rotate: 0deg; } to { translate: 0 -5px; rotate: 0.8deg; } }
+
+/* E: letters on springs. SpringName.tsx drives transform, opacity and --w (warmth, 0 to 1). */
+.fx-spring { color: var(--fx-ink); touch-action: pan-y; }
+.fx-spring span { display: inline-block; transform-origin: 50% 100%; will-change: transform; color: color-mix(in srgb, var(--amber) calc(var(--w, 0) * 100%), var(--fx-ink)); }
+
+/* F: light through amber. AmberLight.tsx moves --lx/--ly (light position) and --lr (strength). */
+.fx-light { position: relative; width: 100%; container-type: inline-size; touch-action: pan-y; }
+.fx-light .fx-name { color: var(--fx-ink); }
+.fx-light .fx-resin {
+  position: absolute; top: 0; left: 0; right: 0;
+  color: transparent; -webkit-text-fill-color: transparent;
+  background: var(--grain) 0 0 / 96px repeat, radial-gradient(120% 90% at 30% 20%, #ffe0a0 0%, #fbb446 28%, #ea8a17 58%, #b85d07 100%);
+  background-blend-mode: soft-light, normal;
+  -webkit-background-clip: text; background-clip: text;
+  --m: radial-gradient(circle calc(var(--lr, 0) * 26cqw) at var(--lx, -20%) var(--ly, 50%), #000 0%, rgba(0, 0, 0, 0.9) 30%, rgba(0, 0, 0, 0.35) 70%, transparent 100%);
+  -webkit-mask-image: var(--m); mask-image: var(--m);
+}
+.fx-light-glow {
+  position: absolute; left: 0; top: 0; width: 44cqw; aspect-ratio: 1; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(closest-side, rgba(245, 160, 50, 0.3), rgba(245, 160, 50, 0.1) 55%, rgba(245, 160, 50, 0));
+  translate: calc(var(--gx, -100px) - 50%) calc(var(--gy, 0px) - 50%); opacity: var(--lr, 0);
+}
+html[data-theme="leaf"] .fx-light-glow { background: radial-gradient(closest-side, rgba(255, 170, 60, 0.32), rgba(255, 170, 60, 0.1) 55%, rgba(255, 170, 60, 0)); }
+.fx-light[data-still] .fx-resin { -webkit-mask-image: none; mask-image: none; }
+.fx-light[data-still] .fx-light-glow { display: none; }
+
+/* G: honey with a live surface (Honey.tsx). */
+.fx-honey { touch-action: pan-y; }
+.fx-honey-shine { stroke: rgba(255, 236, 196, 0.85); stroke-width: 2.2; }
+.fx-honey-glow { stroke: rgba(255, 226, 160, 0.3); stroke-width: 14; }
+html[data-theme="leaf"] .fx-honey-shine { stroke: rgba(255, 220, 160, 0.7); }
+
+/* H: the wax seal (Seal.tsx). */
+.fx-sealed { position: relative; width: 100%; }
+.fx-seal { position: absolute; right: 1.2%; bottom: 34%; width: clamp(64px, 11.5%, 150px); aspect-ratio: 1; }
+.fx-seal svg { position: relative; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 1px 1px rgba(80, 30, 0, 0.35)) drop-shadow(0 8px 14px rgba(var(--shade), 0.3)); transform: perspective(600px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)); }
+.fx-seal-press { position: absolute; inset: 6%; border-radius: 50%; background: radial-gradient(closest-side, rgba(var(--shade), 0.35), rgba(var(--shade), 0)); transform: translateY(8%) scale(1.15); }
+@media (prefers-reduced-motion: no-preference) {
+  .fx-seal svg { transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1); }
+  .fx-sealed:not([data-sealed]) .fx-seal { opacity: 0; }
+  .fx-sealed[data-sealed] .fx-seal { animation: fx-seal-stamp 0.82s both; }
+  .fx-sealed[data-sealed] .fx-seal-press { animation: fx-seal-press 0.82s both; }
+  .fx-sealed[data-sealed] .fx-sealed-name { animation: fx-seal-give 0.5s 0.36s both; }
+}
+/* Comes down accelerating, squashes on contact, rebounds a little, settles. */
+@keyframes fx-seal-stamp {
+  0% { opacity: 0; transform: translateY(-70%) scale(1.45) rotate(-16deg); animation-timing-function: cubic-bezier(0.55, 0, 0.9, 0.4); }
+  44% { opacity: 1; transform: translateY(0) scale(1.06, 0.9) rotate(-2deg); animation-timing-function: cubic-bezier(0.2, 0.7, 0.3, 1); }
+  66% { transform: translateY(-3%) scale(0.98, 1.03) rotate(1deg); animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes fx-seal-press { 0% { opacity: 0; transform: translateY(8%) scale(0.6); } 44% { opacity: 1; transform: translateY(8%) scale(1.3); } 100% { opacity: 1; transform: translateY(8%) scale(1.15); } }
+@keyframes fx-seal-give { 0% { transform: none; } 30% { transform: translateY(1.2%); } 100% { transform: none; animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1); } }

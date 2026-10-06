@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import { usePathname, useRouter } from "next/navigation";
 import DownloadLink from "./DownloadLink";
 import GitHubLink, { GitHubGlyph } from "./GitHubLink";
@@ -9,6 +10,13 @@ import MobileMenu from "./MobileMenu";
 import { themeFor } from "@/lib/theme";
 import { CONSENT_OPEN_EVENT } from "@/lib/consent";
 import { footerFx, type FooterFx } from "@/lib/footer-fx";
+
+// Footer effects D to H load only when picked (?footer=d..h), so the default page carries none of them.
+const Notes = dynamic(() => import("./footer-fx/Notes"), { ssr: false });
+const SpringName = dynamic(() => import("./footer-fx/SpringName"), { ssr: false });
+const AmberLight = dynamic(() => import("./footer-fx/AmberLight"), { ssr: false });
+const Honey = dynamic(() => import("./footer-fx/Honey"), { ssr: false });
+const Seal = dynamic(() => import("./footer-fx/Seal"), { ssr: false });
 
 const GITHUB = "https://github.com/amber-notes/amber-notes";
 const X_URL = "https://x.com/EmilWagman";
@@ -139,8 +147,8 @@ export default function SiteChrome({ version, stars, children }: { version: stri
 }
 
 /// The big faded name at the bottom. Effect A stacks an amber copy over it that rises and inks in;
-/// effect C pours honey into the letters (a wave clipped to them) once they come into view.
-/// B and the default are the plain name.
+/// effect C pours honey into the letters (a wave clipped to them) once they come into view;
+/// D to H are in app/footer-fx/. B and the default are the plain name.
 function Wordmark({ fx }: { fx: FooterFx | null }) {
   const pour = useRef<SVGSVGElement>(null);
   // C pours once, when most of the name is in view.
@@ -169,6 +177,11 @@ function Wordmark({ fx }: { fx: FooterFx | null }) {
       </div>
     );
   }
+  if (fx === "d") return <><Notes />{plain("site-wordmark")}</>;
+  if (fx === "e") return <SpringName />;
+  if (fx === "f") return <AmberLight />;
+  if (fx === "g") return <Honey />;
+  if (fx === "h") return <Seal />;
   if (fx === "c") {
     return (
       <svg ref={pour} className="site-wordmark" viewBox="0 0 1000 170" preserveAspectRatio="xMidYMax meet" aria-hidden="true">

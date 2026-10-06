@@ -16,6 +16,7 @@ describe("footerFx", () => {
     const store = tab();
     expect(footerFx("?footer=b", store)).toBe("b");
     expect(footerFx("", store)).toBe("b");
+    expect(footerFx("?footer=h", store)).toBe("h");
   });
 
   it("clears the kept choice with any other value", () => {
