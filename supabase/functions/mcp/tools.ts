@@ -19,7 +19,7 @@ import { appendText, applyEdits, coerce, findTables, fitLines, isTextType, mimeO
 
 /** session: the client's MCP session (its Mcp-Session-Id, or a hash of its token), for what it has read.
  *  timing: where a call's time went, sent back in the Server-Timing header. */
-export type ToolContext = { sql: Sql; userId: string; client: string; canWrite: boolean; vault: Vault; session?: string; timing?: Record<string, number> };
+export type ToolContext = { sql: Sql; userId: string; client: string; canWrite: boolean; vault: Vault; session?: string; timing?: Record<string, number>; cold?: boolean };
 export class ToolError extends Error {}
 
 /** A result that is MCP content blocks (a file's text, an image, a PDF), sent as they are. */

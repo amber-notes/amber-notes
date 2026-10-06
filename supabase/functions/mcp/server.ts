@@ -152,7 +152,9 @@ export async function handleRequest(req: Request, sql: Sql): Promise<Response> {
   const issued = !given && starts ? crypto.randomUUID() : null;
   const session = given && /^[\x21-\x7e]{1,100}$/.test(given) ? given : issued ?? `t:${await tokenHash(presented!.token)}`;
   // One vault for the whole HTTP request; it goes out of scope with it.
-  const ctx: ToolContext = { sql, userId: who.user_id, client: who.name, canWrite: who.can_write, vault: who.vault, session, timing: {} };
+  const ctx: ToolContext = { sql, userId: who.user_id, client: who.name, canWrite: who.can_write, vault: who.vault, session, timing: {},
+    // Benchmarks on staging (AMBER_BENCH=1) may ask for a call without cached titles.
+    cold: Deno.env.get("AMBER_BENCH") === "1" && req.headers.get("x-amber-cold") === "1" };
   const batch = Array.isArray(payload);
   // Messages in a batch run one after another, so writes land in the order they were sent.
   const results: unknown[] = [];
@@ -229,6 +231,7 @@ async function respond(msg: Rpc, id: string | number | null, ctx: ToolContext): 
         const started = performance.now();
         try {
           const result = fileSet() ? await runFileTool(name, args, ctx) : await runTool(name, args, ctx);
+          if (ctx.timing) ctx.timing.total = performance.now() - started;
           if (result instanceof Content) {
             return ok(id, { content: result.content, ...(result.structured ? { structuredContent: result.structured } : {}) });
           }

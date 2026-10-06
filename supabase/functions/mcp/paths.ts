@@ -53,7 +53,7 @@ export class Paths {
     const key = `${c.v.userId}:${c.v.keyId}`;
     const now = Date.now();
     // AMBER_TITLE_CACHE=off: nothing kept between requests (every call opens every title).
-    const keep = Deno.env.get("AMBER_TITLE_CACHE") !== "off";
+    const keep = Deno.env.get("AMBER_TITLE_CACHE") !== "off" && !c.ctx.cold;
     let cache = keep ? TITLE_CACHE.get(key) : undefined;
     if (!cache || now - cache.at > TTL_MS) cache = { at: now, heads: new Map(), folders: new Map() };
     const hit = cache.heads.size > 0;
