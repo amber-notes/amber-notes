@@ -15,9 +15,9 @@ Nothing is published yet; these are the planned commands.
 curl -fsSL https://ambernotes.app/install.sh | sh
 ```
 
-The script downloads the binary for your machine (macOS or Linux, Apple silicon / arm64 or
-Intel / x64), checks it against `SHA256SUMS`, and puts it in `~/.local/bin`. No sudo. Set
-`AMBER_INSTALL_DIR` to put it elsewhere.
+The script downloads the archive for your machine (macOS or Linux, Apple silicon / arm64 or
+Intel / x64; 29 to 34 MB), checks it against `SHA256SUMS`, and puts `amber` in `~/.local/bin`. No
+sudo. Set `AMBER_INSTALL_DIR` to put it elsewhere.
 
 With Homebrew (a tap of our own; homebrew-core already has an unrelated `amber`):
 
@@ -25,7 +25,10 @@ With Homebrew (a tap of our own; homebrew-core already has an unrelated `amber`)
 brew install amber-notes/tap/amber-notes
 ```
 
-Or download `amber-<os>-<arch>` from the release, `chmod +x` it and put it on your PATH.
+Or download `amber-<os>-<arch>.tar.gz` from the release, unpack it and put `amber` on your PATH.
+
+The binary is a single file: 68 MB on Apple silicon, 80 MB on Intel Macs, 105 MB on Linux. Almost
+all of that is the Deno runtime it carries; amber's own code is about 100 KB.
 
 ## Sign in
 
@@ -98,7 +101,7 @@ keeps the previous version, so `amber history` and `amber restore` can undo it.
 ```sh
 cd cli
 deno task test                    # unit tests
-deno task compile                 # dist/amber-{macos,linux}-{arm64,x64} and dist/SHA256SUMS
+deno task compile                 # dist/amber-{macos,linux}-{arm64,x64}, .tar.gz of each, SHA256SUMS
 deno run -A e2e/run.ts            # end to end: the compiled binary against the real MCP server
                                   # and OAuth (e2e/local_server.ts: in-process Postgres, no Docker)
 deno run -A e2e/agent_demo.ts     # claude -p using amber against the same server

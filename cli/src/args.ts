@@ -1,6 +1,6 @@
 // Command-line arguments.
 const SWITCHES = ["json", "all", "off", "pin", "no-browser", "read-only", "token", "help", "version"];
-const OPTIONS = ["server", "lines", "limit", "inside", "expect-version"];
+const OPTIONS = ["server", "lines", "limit", "inside"];
 
 /** Flags are only the ones amber knows, so note text like "- [ ] Milk" or "-1" stays an argument.
  *  After "--", everything is an argument. */

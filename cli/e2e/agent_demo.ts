@@ -51,7 +51,7 @@ for (const raw of lines) {
     if (m.type === "assistant" && c.type === "tool_use") { console.log(`[agent runs] ${c.input.command}`); commands++; }
     if (m.type === "user" && c.type === "tool_result") {
       const t = Array.isArray(c.content) ? c.content.map((x: { text?: string }) => x.text ?? "").join("") : String(c.content);
-      console.log(t.trimEnd().split("\n").map((x) => `  ${x}`).join("\n") + "\n");
+      console.log(t.trimEnd().split("\n").map((x: string) => `  ${x}`).join("\n") + "\n");
     }
     if (m.type === "assistant" && c.type === "text" && c.text.trim()) console.log(`[agent says] ${c.text.trim()}\n`);
   }

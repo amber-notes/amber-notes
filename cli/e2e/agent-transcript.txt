@@ -1,4 +1,4 @@
-# An agent using amber (2026-10-06T07:11Z)
+# An agent using amber (2026-10-06T07:20Z)
 
 Signed in first with `amber login` (approved through the local consent page). Then:
 
@@ -51,14 +51,13 @@ $ claude -p --allowedTools 'Bash(amber:*)' "My notes app is Amber Notes, and the
   - Budget for Q1?
   - Lee owns the rollout (decided 2026-10-06)
 
-[agent says] I changed the rollout line in `Work/Clients/Acme.md` and read the note back to check it. It's now version 2 of the note. Under Open questions it reads:
+[agent says] I updated your Acme kickoff note (`Work/Clients/Acme.md`, now version 2) and read it back to confirm. The question "Who owns the rollout?" under Open questions is now:
 
-- Budget for Q1?
 - Lee owns the rollout (decided 2026-10-06)
 
-The rest of the note didn't change.
+Nothing else in the note changed, and "Budget for Q1?" is still listed as an open question.
 
-(5 turns, 15 s)
+(5 turns, 14 s)
 
 ## Checked from the other side
 
@@ -73,7 +72,7 @@ Kickoff Monday 10:00 with Dana and Lee.
 
 $ amber history Work/Clients/Acme.md
 "Acme", now version 2. Earlier versions, newest first:
-  1       2026-10-06 07:11  An app on this computer  Acme
+  1       2026-10-06 07:20  An app on this computer  Acme
 
 Bring one back with: amber restore <note> <version>
 

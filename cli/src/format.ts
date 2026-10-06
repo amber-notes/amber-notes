@@ -21,9 +21,6 @@ export const formatters: Record<string, (r: R) => string> = {
   },
 
   list(r) {
-    if (Array.isArray(r.notes) && r.notes.length && "version" in r.notes[0]) {
-      return [...(r.folders ?? []).map((f: string) => f), ...entries(r.notes).map((l) => l.trim())].join("\n");
-    }
     if (typeof r.notes === "number") {
       const out = [`${r.notes} notes${r.recently_deleted ? `, ${r.recently_deleted} in Recently Deleted` : ""}`];
       if (r.folders?.length) out.push("", "Folders", ...r.folders.map((f: R) => `  ${pad(f.path, 30)}${f.notes}`));

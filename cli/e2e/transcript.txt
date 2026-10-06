@@ -1,5 +1,5 @@
-# amber end-to-end run, 2026-10-06T07:09Z
-binary cli/dist/amber-macos-arm64 (darwin aarch64) against http://127.0.0.1:59165/mcp: the real MCP request handler and OAuth
+# amber end-to-end run, 2026-10-06T07:20Z
+binary cli/dist/amber-macos-arm64 (darwin aarch64) against http://127.0.0.1:60794/mcp: the real MCP request handler and OAuth
 (supabase/functions/mcp, unchanged), files tools, a fresh database with every migration and a seeded end-to-end encrypted test account.
 
 ## Help
@@ -39,22 +39,22 @@ Disconnect any time: amber logout, or Settings › Connect an AI in the app.
 Opened your browser to connect. Approve in Amber Notes on your iPhone or Mac.
 If it didn't open, go to:
 
-  http://127.0.0.1:59165/mcp/authorize?response_type=code&client_id=amb_client_99a6ccf552657c1845f3f38efeb2ca31&redirect_uri=http%3A%2F%2F127.0.0.1%3A59174%2Fcallback&code_challenge=Suw94TWIPFBn52DeBGEecr3DWFbbjHh7ttWhIbOQWCs&code_challenge_method=S256&state=S5KZWeHmHQs0gqqcpGPatA&scope=notes%3Aread+notes%3Awrite&resource=http%3A%2F%2F127.0.0.1%3A59165%2Fmcp
+  http://127.0.0.1:60794/mcp/authorize?response_type=code&client_id=amb_client_c09101252e8c9c5a4238a9265198eb04&redirect_uri=http%3A%2F%2F127.0.0.1%3A60807%2Fcallback&code_challenge=gGlKddVhl3X1fPNL6VhhUIvu2YQJ7BXB4pqjbgsSlEI&code_challenge_method=S256&state=4zKX7FEKDrbUt6shuJyrZA&scope=notes%3Aread+notes%3Awrite&resource=http%3A%2F%2F127.0.0.1%3A60794%2Fmcp
   PASS connected with read & edit
 [Amber Notes › Settings › Connect an AI]
   Access token  (Read and edit)
   An app on this computer  (Read and edit)
   PASS Settings lists it as "An app on this computer", like any app signing in from this computer
-$ security find-generic-password -s amber-cli-e2e -a http://127.0.0.1:59165/mcp   # attributes only
+$ security find-generic-password -s amber-cli-e2e -a http://127.0.0.1:60794/mcp   # attributes only
 class: "genp"
-    "acct"<blob>="http://127.0.0.1:59165/mcp"
+    "acct"<blob>="http://127.0.0.1:60794/mcp"
     "svce"<blob>="amber-cli-e2e"
   PASS the tokens are in the macOS Keychain
 $ ls config/amber
 config.json
   PASS and not in a file
 $ amber status
-server  http://127.0.0.1:59165/mcp
+server  http://127.0.0.1:60794/mcp
 access  read & edit (signed in; tokens in the macOS Keychain (amber-cli-e2e))
 tools   files
 
@@ -69,21 +69,21 @@ Folders
   Travel/                       2
 
 Pinned
-  Groceries.md  2026-10-06 07:09  pinned
+  Groceries.md  2026-10-06 07:20  pinned
 
 Recently edited
-  Work/Diary.md           2026-10-06 07:09  locked
-  Travel/Trip/Packing.md  2026-10-06 07:09
-  Travel/Trip.md          2026-10-06 07:09
-  Work/Weekly review.md   2026-10-06 07:09
-  Work/Clients/Acme.md    2026-10-06 07:09
-  Recipes.md              2026-10-06 07:09
-  Groceries.md            2026-10-06 07:09  pinned
+  Work/Diary.md           2026-10-06 07:20  locked
+  Travel/Trip/Packing.md  2026-10-06 07:20
+  Travel/Trip.md          2026-10-06 07:20
+  Work/Weekly review.md   2026-10-06 07:20
+  Work/Clients/Acme.md    2026-10-06 07:20
+  Recipes.md              2026-10-06 07:20
+  Groceries.md            2026-10-06 07:20  pinned
 $ amber list Work/
 Work/
   Work/Clients/
-  Work/Diary.md          2026-10-06 07:09  locked
-  Work/Weekly review.md  2026-10-06 07:09
+  Work/Diary.md          2026-10-06 07:20  locked
+  Work/Weekly review.md  2026-10-06 07:20
 $ amber search butter
 Groceries.md
   Groceries ## Dairy - [ ] Milk - [ ] «Butter» See [[Recipes]] for ideas
@@ -99,7 +99,7 @@ Kickoff Monday 10:00 with Dana and Lee.
   PASS read prints the markdown exactly
 $ amber read Groceries.md --json | jq '{id, title, version: .metadata.version, links: .metadata.links}'
 {
-  "id": "db43d787-3cd6-4ff2-ac67-d4a0f62ff598",
+  "id": "db9a4ca4-85ad-4b76-bbdc-b183fa2b6176",
   "title": "Groceries",
   "version": 1,
   "links": [
@@ -142,8 +142,8 @@ Moved to Archive/Standup 10-06.md
   PASS rename
 $ amber history 'Archive/Standup 10-06.md'
 "Standup 10-06", now version 4. Earlier versions, newest first:
-  5       2026-10-06 07:09  An app on this computer  Standup
-  4       2026-10-06 07:09  An app on this computer  Standup
+  5       2026-10-06 07:20  An app on this computer  Standup
+  4       2026-10-06 07:20  An app on this computer  Standup
 
 Bring one back with: amber restore <note> <version>
   PASS history lists earlier versions
@@ -157,12 +157,12 @@ Standup
 - Next: tests
   PASS the old text is back, with its old title (the first line), so its old name
 $ amber delete Ideas/Garden.md
-Moved "Garden" to Recently Deleted. Bring it back with: amber restore c11ff1c6-bee2-424d-be9a-bb49d36b5530
+Moved "Garden" to Recently Deleted. Bring it back with: amber restore ca670641-87a2-4d48-baef-4396bf0b8d77
   PASS delete moves it to Recently Deleted, and says how to bring it back
 $ amber list 'Recently Deleted/'
 Recently Deleted/
-  Ideas/Garden.md  2026-10-06 07:09  deleted 2026-10-06 07:09
-$ amber restore c11ff1c6-bee2-424d-be9a-bb49d36b5530
+  Ideas/Garden.md  2026-10-06 07:20  deleted 2026-10-06 07:20
+$ amber restore ca670641-87a2-4d48-baef-4396bf0b8d77
 Restored "Garden" to Ideas/.
   PASS restore from Recently Deleted
 $ amber pin Work/Clients/Acme.md
@@ -201,7 +201,7 @@ $ amber login        # this time: Don't Allow
 Opened your browser to connect. Approve in Amber Notes on your iPhone or Mac.
 If it didn't open, go to:
 
-  http://127.0.0.1:59165/mcp/authorize?response_type=code&client_id=amb_client_7ab7eafe95e8de829809b778b291415d&redirect_uri=http%3A%2F%2F127.0.0.1%3A59251%2Fcallback&code_challenge=Yma0np5AV0CKbPhGwBG-vsNgYUPS4pw3T-9KMvuDkvY&code_challenge_method=S256&state=yFSHRWH8Jxl8N69Ymvl8pg&scope=notes%3Aread+notes%3Awrite&resource=http%3A%2F%2F127.0.0.1%3A59165%2Fmcp
+  http://127.0.0.1:60794/mcp/authorize?response_type=code&client_id=amb_client_73c34481f19825c94171d4c08ae6882e&redirect_uri=http%3A%2F%2F127.0.0.1%3A60890%2Fcallback&code_challenge=edAiOGF_-iQGqMyA7P1B1sWRl_amBbqxSK5-5_Vbffc&code_challenge_method=S256&state=rSsTE8d0rWWcxYCKsFTlmQ&scope=notes%3Aread+notes%3Awrite&resource=http%3A%2F%2F127.0.0.1%3A60794%2Fmcp
 
 amber: Declined in Amber Notes. Nothing was connected.
 (exit 1)
@@ -212,11 +212,11 @@ amber: Declined in Amber Notes. Nothing was connected.
 $ amber login --no-browser
 Open this in a browser:
 
-  http://127.0.0.1:59165/mcp/authorize?response_type=code&client_id=amb_client_182fdd3e10886025381142b439a76a47&redirect_uri=http%3A%2F%2F127.0.0.1%3A59256%2Fcallback&code_challenge=ttG--jKgpJUuia46cPL-8W97J7V9-75wjoGRepw6kyw&code_challenge_method=S256&state=Zt7OrL1i4U5ZquFhAOpCBA&scope=notes%3Aread+notes%3Awrite&resource=http%3A%2F%2F127.0.0.1%3A59165%2Fmcp
+  http://127.0.0.1:60794/mcp/authorize?response_type=code&client_id=amb_client_b1808f4a84fa6c211397bbbe2152f24f&redirect_uri=http%3A%2F%2F127.0.0.1%3A60896%2Fcallback&code_challenge=av6zACRnYqnvrmuPu_l4EMOfJsPpMot6Hz0Mn38WUoQ&code_challenge_method=S256&state=_apjzObCFx5ReYa0kqiUVg&scope=notes%3Aread+notes%3Awrite&resource=http%3A%2F%2F127.0.0.1%3A60794%2Fmcp
 
 Approve in Amber Notes. If the browser is on another machine, it ends on a page that won't load:
 copy that page's address (it starts with http://127.0.0.1) and paste it here.
-Address: http://127.0.0.1:59256/callback?state=Zt7OrL1i4U5ZquFhAOpCBA&iss=http%3A%2F%2F127.0.0.1%3A59165%2Fmcp&code=…
+Address: http://127.0.0.1:60896/callback?state=_apjzObCFx5ReYa0kqiUVg&iss=http%3A%2F%2F127.0.0.1%3A60794%2Fmcp&code=…
 Connected to Amber Notes (read & edit). Tokens are kept in the macOS Keychain (amber-cli-e2e).
 Disconnect any time: amber logout, or Settings › Connect an AI in the app.
   PASS pasting the address the browser landed on connects
@@ -228,7 +228,7 @@ Travel/Trip.md
 ## CI: AMBER_TOKEN, or amber login --token
 
 $ AMBER_TOKEN=<access token from Settings› Connect an AI> amber status
-server  http://127.0.0.1:59165/mcp
+server  http://127.0.0.1:60794/mcp
 access  read & edit (AMBER_TOKEN)
 tools   files
   PASS AMBER_TOKEN works without signing in

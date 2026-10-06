@@ -32,11 +32,11 @@ amber help <command> for more.`;
 
 const MORE: Record<string, string> = {
   search: `amber search <words> [--limit 10]\n\nFinds notes by their words. "exact phrase", a OR b, -word. Locked notes are left out.\nPrints each note's path and a snippet.`,
-  list: `amber list               the overview: folders, pinned and recently edited notes\namber list Work/          a folder's notes and sub-folders\namber list "Recently Deleted/"\namber list --all         every note and folder with its version (for scripts)`,
+  list: `amber list               the overview: folders, pinned and recently edited notes\namber list Work/          a folder's notes and sub-folders\namber list "Recently Deleted/"`,
   read: `amber read <note> [--lines 40-120]\n\nPrints the note's markdown exactly, nothing else, so it pipes.\nLong notes come in parts; amber read says on stderr how to get the next one.`,
   create: `amber create Work "Standup\\n\\n- shipped the CLI"\namber create Work < note.md\namber create Work/Standup.md < body.md     (adds "Standup" as the first line if missing)\namber create Work/Clients/                 (a folder)\n\n  --inside <note>   make it a sub-note of that note\n  --pin             pin it`,
-  edit: `amber edit <note> <old text> <new text> [--all] [--expect-version N]\n\nExact search and replace. old text must occur exactly once (unless --all), or nothing changes.\nnew text "" deletes. --expect-version fails if the note changed since that version.\nPrints what the change broke, if anything (a damaged table, a checklist line that won't tick).`,
-  write: `amber write <note> [--expect-version N] < new.md\n\nReplaces the whole note with stdin. The old text stays in history. Prefer edit for small changes.`,
+  edit: `amber edit <note> <old text> <new text> [--all]\n\nExact search and replace. old text must occur exactly once (unless --all), or nothing changes.\nnew text "" deletes.\nPrints what the change broke, if anything (a damaged table, a checklist line that won't tick).`,
+  write: `amber write <note> < new.md\n\nReplaces the whole note with stdin. The old text stays in history. Prefer edit for small changes.`,
   move: `amber move <note> Archive/           to a folder (made if needed)\namber move <note> "Work/New name.md"  rename (rewrites the first line)\namber move Work/ Archive/Work/        a folder`,
   delete: `amber delete <note>     to Recently Deleted, with its sub-notes; amber restore brings it back for 30 days\namber delete Work/      a folder: its notes go to Recently Deleted`,
   history: `amber history <note> [--limit 10]\n\nEarlier versions, newest first, with who made each (a device, or an AI).`,
@@ -155,11 +155,10 @@ async function main() {
       fail(`This server offers the classic tools (${mcp.tools.slice(0, 4).join(", ")}, …), not the file tools amber uses.`);
     }
     const need = (n: number, usage: string) => { if (rest.length < n) fail(`Usage: ${usage}\nMore: amber help ${cmd}`); };
-    const ver = args["expect-version"] !== undefined ? { expected_version: Number(args["expect-version"]) } : {};
     let tool: string, call: Record<string, unknown>;
     switch (cmd) {
       case "search": need(1, "amber search <words>"); tool = "search"; call = { query: rest.join(" "), ...(args.limit ? { limit: Number(args.limit) } : {}) }; break;
-      case "list": case "ls": tool = "list"; call = args.all ? { all: true } : rest[0] ? { path: rest[0] } : {}; break;
+      case "list": case "ls": tool = "list"; call = rest[0] ? { path: rest[0] } : {}; break;
       case "read": case "cat": need(1, "amber read <note>"); tool = "fetch"; call = { id: rest[0], ...(args.lines ? { lines: args.lines } : {}) }; break;
       case "create": {
         need(1, "amber create <folder> [<text>]");
@@ -176,11 +175,11 @@ async function main() {
         if (args.pin) call.pinned = true;
         break;
       }
-      case "edit": need(3, "amber edit <note> <old text> <new text>"); tool = "edit"; call = { id: rest[0], edits: [{ old_text: rest[1], new_text: rest[2], ...(args.all ? { replace_all: true } : {}) }], ...ver }; break;
+      case "edit": need(3, "amber edit <note> <old text> <new text>"); tool = "edit"; call = { id: rest[0], edits: [{ old_text: rest[1], new_text: rest[2], ...(args.all ? { replace_all: true } : {}) }] }; break;
       case "write": {
         need(1, "amber write <note> < new.md");
         if (Deno.stdin.isTerminal()) fail("amber write reads the new text from stdin: amber write <note> < new.md");
-        tool = "write"; call = { id: rest[0], content: await stdinText(), ...ver }; break;
+        tool = "write"; call = { id: rest[0], content: await stdinText() }; break;
       }
       case "move": case "mv": need(2, "amber move <note> <to>"); tool = "move"; call = { id: rest[0], to: rest[1] }; break;
       case "delete": case "rm": need(1, "amber delete <note>"); tool = "delete"; call = { id: rest[0] }; break;

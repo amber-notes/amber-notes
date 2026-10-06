@@ -23,20 +23,21 @@ case "$(uname -m)" in
   x86_64 | amd64) arch=x64 ;;
   *) fail "no build for $(uname -m)." ;;
 esac
-name="amber-$os-$arch"
+name="amber-$os-$arch.tar.gz"
 
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 printf 'Downloading %s\n' "$name"
-curl -fsSL "$BASE/$name" -o "$tmp/amber" || fail "couldn't download $BASE/$name"
+curl -fsSL "$BASE/$name" -o "$tmp/$name" || fail "couldn't download $BASE/$name"
 curl -fsSL "$BASE/SHA256SUMS" -o "$tmp/SHA256SUMS" || fail "couldn't download $BASE/SHA256SUMS"
 
 want=$(awk -v n="$name" '$2 == n { print $1 }' "$tmp/SHA256SUMS")
-if command -v sha256sum >/dev/null 2>&1; then got=$(sha256sum "$tmp/amber" | awk '{ print $1 }')
-else got=$(shasum -a 256 "$tmp/amber" | awk '{ print $1 }'); fi
+if command -v sha256sum >/dev/null 2>&1; then got=$(sha256sum "$tmp/$name" | awk '{ print $1 }')
+else got=$(shasum -a 256 "$tmp/$name" | awk '{ print $1 }'); fi
 [ -n "$want" ] || fail "SHA256SUMS has no line for $name."
 [ "$want" = "$got" ] || fail "the download doesn't match its checksum. Nothing was installed."
 
+tar -xzf "$tmp/$name" -C "$tmp" amber || fail "couldn't unpack $name."
 mkdir -p "$DIR"
 chmod 755 "$tmp/amber"
 mv "$tmp/amber" "$DIR/amber"
