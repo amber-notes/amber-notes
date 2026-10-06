@@ -1,0 +1,114 @@
+{
+  "task": "n-sort-folders",
+  "rep": 2,
+  "model": "claude-code:sonnet",
+  "round": "bench-notes",
+  "skill": false,
+  "seconds": 7,
+  "score": 1,
+  "passed": 4,
+  "total": 4,
+  "checks": [
+    {
+      "name": "work",
+      "pass": true
+    },
+    {
+      "name": "home",
+      "pass": true
+    },
+    {
+      "name": "travel",
+      "pass": true
+    },
+    {
+      "name": "nothing_lost",
+      "pass": true
+    }
+  ],
+  "tool_calls": 7,
+  "tool_errors": 0,
+  "usage": {
+    "input": 6,
+    "output": 700,
+    "cacheRead": 13822,
+    "cacheWrite": 2362,
+    "turns": 9,
+    "equivalentUsd": 0.019224400000000003,
+    "usd": 0
+  },
+  "usd": 0,
+  "page_bytes": 0,
+  "data": null,
+  "answer": "I sorted your six loose notes into three folders. I went by the titles and didn't open the notes.\n\n- **Work:** Meeting, Hiring\n- **Home:** Groceries, Plumber\n- **Travel:** Lisbon trip, Packing list\n\nI assumed \"Packing list\" is for a trip, so it went in Travel. If it's really something else, such as a house move, it belongs in Home.",
+  "calls": [
+    {
+      "name": "list",
+      "args": {},
+      "error": false,
+      "result": "{\"notes\":6,\"folders\":[],\"pinned\":[],\"recently_edited\":[{\"path\":\"Packing list.md\",\"id\":\"59f7624c-0923-44ec-84d6-013cbf3f9e69\",\"updated\":\"2026-10-05T22:54:20.183Z\"},{\"path\":\"Hiring.md\",\"id\":\"98277072-2027-4152-b696-9da24e7a8b9f\",\"updated\":\"2026-10-05T22:54:20.182Z\"},{\"path\":\"Plumber.md\",\"id\":\"ee0afc22-598f-4b8a-aca3-c894c0f2f7e4\",\"updated\":\"2026-10-05T22:54:20.181Z\"},{\"path\":\"Lisbon trip.md\",\"id\":\"9b81825c-4a0e-4115-be13-a4b13aac173a\",\"updated\":\"2026-10-05T22:54:20.179Z\"},{\"path\":\"Groceries.md\",\"id\":\"449206f1-5e54-4078-a9b3-4fa81375bf46\",\"updated\":\"2026-10-05T22:54:20.178Z\"},{\"path\":\"Meeting.md\"… (705 chars)"
+    },
+    {
+      "name": "move",
+      "args": {
+        "id": "Meeting.md",
+        "to": "Work/"
+      },
+      "error": false,
+      "result": "{\"moved\":\"Work/Meeting.md\"}"
+    },
+    {
+      "name": "move",
+      "args": {
+        "id": "Hiring.md",
+        "to": "Work/"
+      },
+      "error": false,
+      "result": "{\"moved\":\"Work/Hiring.md\"}"
+    },
+    {
+      "name": "move",
+      "args": {
+        "id": "Groceries.md",
+        "to": "Home/"
+      },
+      "error": false,
+      "result": "{\"moved\":\"Home/Groceries.md\"}"
+    },
+    {
+      "name": "move",
+      "args": {
+        "id": "Plumber.md",
+        "to": "Home/"
+      },
+      "error": false,
+      "result": "{\"moved\":\"Home/Plumber.md\"}"
+    },
+    {
+      "name": "move",
+      "args": {
+        "id": "Lisbon trip.md",
+        "to": "Travel/"
+      },
+      "error": false,
+      "result": "{\"moved\":\"Travel/Lisbon trip.md\"}"
+    },
+    {
+      "name": "move",
+      "args": {
+        "id": "Packing list.md",
+        "to": "Travel/"
+      },
+      "error": false,
+      "result": "{\"moved\":\"Travel/Packing list.md\"}"
+    }
+  ],
+  "render": null,
+  "breakage": [],
+  "walk": [],
+  "used": {
+    "try_app": 0,
+    "run_app_tests": 0,
+    "test_files": 0
+  }
+}

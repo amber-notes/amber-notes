@@ -1,0 +1,75 @@
+{
+  "task": "n-add-under",
+  "rep": 1,
+  "model": "codex:default",
+  "round": "bench-notes",
+  "skill": false,
+  "seconds": 24,
+  "score": 1,
+  "passed": 3,
+  "total": 3,
+  "checks": [
+    {
+      "name": "added_under_dairy",
+      "pass": true
+    },
+    {
+      "name": "not_elsewhere",
+      "pass": true
+    },
+    {
+      "name": "kept",
+      "pass": true
+    }
+  ],
+  "tool_calls": 3,
+  "tool_errors": 0,
+  "usage": {
+    "input": 19197,
+    "output": 303,
+    "cacheRead": 130560,
+    "cacheWrite": 0,
+    "turns": 1,
+    "usd": 0
+  },
+  "usd": 0,
+  "page_bytes": 0,
+  "data": null,
+  "answer": "Added oat milk and yogurt to the Dairy checklist in your Groceries note.",
+  "calls": [
+    {
+      "name": "search_notes",
+      "args": {
+        "query": "Groceries"
+      },
+      "error": false,
+      "result": "{\n  \"query\": \"Groceries\",\n  \"results\": [\n    {\n      \"id\": \"68b417fd-8d0d-45eb-93e2-e7c16f0e0aac\",\n      \"title\": \"Groceries\",\n      \"folder\": \"Home\",\n      \"pinned\": false,\n      \"updated\": \"2026-10-05T22:55:40.454Z\",\n      \"snippet\": \"«Groceries» ## Dairy - [ ] Milk - [ ] Butter ## Fruit - [x] Apples - [ ] Bananas\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "68b417fd-8d0d-45eb-93e2-e7c16f0e0aac"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"68b417fd-8d0d-45eb-93e2-e7c16f0e0aac\",\n  \"title\": \"Groceries\",\n  \"folder\": \"Home\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T22:55:40.454Z\",\n  \"updated\": \"2026-10-05T22:55:40.454Z\",\n  \"version\": 1,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"outline\": {\n    \"headings\": [\n      {\n        \"line\": 3,\n        \"level\": 2,\n        \"text\": \"Dairy\"\n      },\n      {\n        \"line\": 7,\n        \"level\": 2,\n        \"text\": \"Fruit\"\n      }\n    ],\n    \"checklist\": {\n      \"open\": 3,\n      \"done\": 1\n    },\n    \"lines\": 10,\n    \"words\": 20\n  },\n  \"markdown\": \"Groceries… (684 chars)"
+    },
+    {
+      "name": "add_checklist_items",
+      "args": {
+        "id": "68b417fd-8d0d-45eb-93e2-e7c16f0e0aac",
+        "under_heading": "Dairy",
+        "items": "[\"Oat milk\",\"Yogurt\"]"
+      },
+      "error": false,
+      "result": "{\n  \"note\": {\n    \"id\": \"68b417fd-8d0d-45eb-93e2-e7c16f0e0aac\",\n    \"title\": \"Groceries\"\n  },\n  \"added\": [\n    \"Oat milk\",\n    \"Yogurt\"\n  ]\n}"
+    }
+  ],
+  "render": null,
+  "breakage": [],
+  "walk": [],
+  "used": {
+    "try_app": 0,
+    "run_app_tests": 0,
+    "test_files": 0
+  }
+}

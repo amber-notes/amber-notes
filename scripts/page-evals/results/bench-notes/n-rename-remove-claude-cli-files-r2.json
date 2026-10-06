@@ -1,0 +1,67 @@
+{
+  "task": "n-rename-remove",
+  "rep": 2,
+  "model": "claude-code:sonnet",
+  "round": "bench-notes",
+  "skill": false,
+  "seconds": 25,
+  "score": 1,
+  "passed": 3,
+  "total": 3,
+  "checks": [
+    {
+      "name": "renamed",
+      "pass": true
+    },
+    {
+      "name": "removed",
+      "pass": true
+    },
+    {
+      "name": "kept",
+      "pass": true
+    }
+  ],
+  "tool_calls": 2,
+  "tool_errors": 0,
+  "usage": {
+    "input": 6,
+    "output": 255,
+    "cacheRead": 13570,
+    "cacheWrite": 1478,
+    "turns": 3,
+    "equivalentUsd": 0.011188,
+    "usd": 0
+  },
+  "usd": 0,
+  "page_bytes": 0,
+  "data": null,
+  "answer": "In your Groceries note, I renamed Butter to Salted butter and removed Bananas. The edit went through with no problems.",
+  "calls": [
+    {
+      "name": "search",
+      "args": {
+        "query": "Groceries"
+      },
+      "error": false,
+      "result": "{\"results\":[{\"id\":\"66710c49-350a-4e1a-9f84-4ab658ee8b22\",\"title\":\"Groceries\",\"url\":\"ambernotes://note/66710c49-350a-4e1a-9f84-4ab658ee8b22\",\"path\":\"Home/Groceries.md\",\"snippet\":\"«Groceries» ## Dairy - [ ] Milk - [ ] Butter ## Fruit - [x] Apples - [ ] Bananas\"}]}"
+    },
+    {
+      "name": "edit",
+      "args": {
+        "id": "66710c49-350a-4e1a-9f84-4ab658ee8b22",
+        "edits": "[{\"old_text\":\"- [ ] Butter\",\"new_text\":\"- [ ] Salted butter\"},{\"old_text\":\"\\n- [ ] Bananas\",\"new_text\":\"\"}]"
+      },
+      "error": false,
+      "result": "{\"edited\":\"Home/Groceries.md\",\"version\":2,\"checks\":\"ok\"}"
+    }
+  ],
+  "render": null,
+  "breakage": [],
+  "walk": [],
+  "used": {
+    "try_app": 0,
+    "run_app_tests": 0,
+    "test_files": 0
+  }
+}

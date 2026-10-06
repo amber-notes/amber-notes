@@ -1,0 +1,89 @@
+{
+  "task": "n-table-row",
+  "rep": 2,
+  "model": "claude-code:sonnet",
+  "round": "bench-notes",
+  "skill": false,
+  "seconds": 9,
+  "score": 1,
+  "passed": 4,
+  "total": 4,
+  "checks": [
+    {
+      "name": "row_added",
+      "pass": true
+    },
+    {
+      "name": "hotel_fixed",
+      "pass": true
+    },
+    {
+      "name": "columns_kept",
+      "pass": true
+    },
+    {
+      "name": "prose_kept",
+      "pass": true
+    }
+  ],
+  "tool_calls": 4,
+  "tool_errors": 0,
+  "usage": {
+    "input": 8,
+    "output": 513,
+    "cacheRead": 73403,
+    "cacheWrite": 2569,
+    "turns": 6,
+    "equivalentUsd": 0.030102600000000004,
+    "usd": 0
+  },
+  "usd": 0,
+  "page_bytes": 0,
+  "data": null,
+  "answer": "I made both changes in your Lisbon trip note. The Hotel Avenida amount is now 1 500 instead of 1 450. I also added a new row: 2026-10-04, Museum, Fun, 18.",
+  "calls": [
+    {
+      "name": "search_notes",
+      "args": {
+        "query": "Lisbon"
+      },
+      "error": false,
+      "result": "{\"query\":\"Lisbon\",\"results\":[{\"id\":\"c60196e1-958b-4b56-8b6d-e181d71e1406\",\"title\":\"Lisbon trip\",\"folder\":\"Travel\",\"pinned\":false,\"updated\":\"2026-10-05T22:52:10.570Z\",\"snippet\":\"«Lisbon» trip Spent in «Lisbon» with Ana. | Date | Item | Category | Amount | | --- | --- | --- | --- | | 2026-10-01 | Hotel Avenida | Stay | 1 450 | | 2026-10-02 | Pastéis | Food\"}]}"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "c60196e1-958b-4b56-8b6d-e181d71e1406"
+      },
+      "error": false,
+      "result": "{\"id\":\"c60196e1-958b-4b56-8b6d-e181d71e1406\",\"title\":\"Lisbon trip\",\"folder\":\"Travel\",\"pinned\":false,\"created\":\"2026-10-05T22:52:10.570Z\",\"updated\":\"2026-10-05T22:52:10.570Z\",\"version\":1,\"in_recently_deleted\":false,\"parent\":null,\"sub_notes\":[],\"outline\":{\"headings\":[],\"checklist\":{\"open\":0,\"done\":0},\"lines\":9,\"words\":45},\"markdown\":\"Lisbon trip\\n\\nSpent in Lisbon with Ana.\\n\\n| Date | Item | Category | Amount |\\n| --- | --- | --- | --- |\\n| 2026-10-01 | Hotel Avenida | Stay | 1 450 |\\n| 2026-10-02 | Pastéis | Food | 12,50 |\\n\"}"
+    },
+    {
+      "name": "update_table_rows",
+      "args": {
+        "id": "c60196e1-958b-4b56-8b6d-e181d71e1406",
+        "where": "{\"Item\":\"Hotel Avenida\"}",
+        "set": "{\"Amount\":\"1 500\"}"
+      },
+      "error": false,
+      "result": "{\"note\":{\"id\":\"c60196e1-958b-4b56-8b6d-e181d71e1406\",\"title\":\"Lisbon trip\"},\"table\":0,\"updated_rows\":1,\"rows\":[{\"Date\":\"2026-10-01\",\"Item\":\"Hotel Avenida\",\"Category\":\"Stay\",\"Amount\":\"1 500\"}]}"
+    },
+    {
+      "name": "add_table_rows",
+      "args": {
+        "id": "c60196e1-958b-4b56-8b6d-e181d71e1406",
+        "rows": "[{\"Date\":\"2026-10-04\",\"Item\":\"Museum\",\"Category\":\"Fun\",\"Amount\":\"18\"}]"
+      },
+      "error": false,
+      "result": "{\"note\":{\"id\":\"c60196e1-958b-4b56-8b6d-e181d71e1406\",\"title\":\"Lisbon trip\",\"version\":3},\"added_rows\":1,\"table\":{\"index\":0,\"columns\":[{\"name\":\"Date\",\"type\":\"text\"},{\"name\":\"Item\",\"type\":\"text\"},{\"name\":\"Category\",\"type\":\"text\"},{\"name\":\"Amount\",\"type\":\"text\"}],\"total_rows\":3}}"
+    }
+  ],
+  "render": null,
+  "breakage": [],
+  "walk": [],
+  "used": {
+    "try_app": 0,
+    "run_app_tests": 0,
+    "test_files": 0
+  }
+}

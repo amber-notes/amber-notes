@@ -1,0 +1,58 @@
+{
+  "task": "n-what-about",
+  "rep": 2,
+  "model": "claude-code:sonnet",
+  "round": "bench-notes",
+  "skill": false,
+  "seconds": 5,
+  "score": 1,
+  "passed": 3,
+  "total": 3,
+  "checks": [
+    {
+      "name": "found_appointment",
+      "pass": true
+    },
+    {
+      "name": "found_the_call",
+      "pass": true
+    },
+    {
+      "name": "nothing_changed",
+      "pass": true
+    }
+  ],
+  "tool_calls": 1,
+  "tool_errors": 0,
+  "usage": {
+    "input": 4,
+    "output": 165,
+    "cacheRead": 8530,
+    "cacheWrite": 1341,
+    "turns": 2,
+    "equivalentUsd": 0.008728,
+    "usd": 0
+  },
+  "usd": 0,
+  "page_bytes": 0,
+  "data": null,
+  "answer": "You wrote two things about the dentist:\n\n- **Health note:** The appointment is on Tuesday 14 October at 14:00 with Dr. Lind. Bring the X-ray referral.\n- **Calls note:** \"Call the dentist to move the cleaning to November.\"\n\nYou might want to check whether the November call affects the 14 October appointment.",
+  "calls": [
+    {
+      "name": "search",
+      "args": {
+        "query": "dentist"
+      },
+      "error": false,
+      "result": "{\"results\":[{\"id\":\"0098cac6-dea9-41d2-be51-a3c5e3cac83e\",\"title\":\"Calls\",\"url\":\"ambernotes://note/0098cac6-dea9-41d2-be51-a3c5e3cac83e\",\"path\":\"Calls.md\",\"snippet\":\"Calls Call the «dentist» to move the cleaning to November\"},{\"id\":\"52a4eb72-dcc7-4af0-9984-31fab30c4132\",\"title\":\"Health\",\"url\":\"ambernotes://note/52a4eb72-dcc7-4af0-9984-31fab30c4132\",\"path\":\"Health/Health.md\",\"snippet\":\"Health «Dentist»: Tuesday 14 October at 14:00, Dr. Lind. Bring the X-ray referral\"}]}"
+    }
+  ],
+  "render": null,
+  "breakage": [],
+  "walk": [],
+  "used": {
+    "try_app": 0,
+    "run_app_tests": 0,
+    "test_files": 0
+  }
+}

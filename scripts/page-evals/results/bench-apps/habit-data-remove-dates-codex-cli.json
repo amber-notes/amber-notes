@@ -1,0 +1,136 @@
+{
+  "task": "habit-data-remove-dates",
+  "rep": 1,
+  "model": "codex:default",
+  "round": "bench-apps",
+  "skill": false,
+  "seconds": 40,
+  "score": 1,
+  "passed": 5,
+  "total": 5,
+  "checks": [
+    {
+      "name": "app_unchanged",
+      "pass": true
+    },
+    {
+      "name": "still_a_string",
+      "pass": true
+    },
+    {
+      "name": "dates_removed",
+      "pass": true
+    },
+    {
+      "name": "others_kept",
+      "pass": true
+    },
+    {
+      "name": "settings_kept",
+      "pass": true
+    }
+  ],
+  "tool_calls": 9,
+  "tool_errors": 0,
+  "usage": {
+    "input": 52404,
+    "output": 737,
+    "cacheRead": 198656,
+    "cacheWrite": 0,
+    "turns": 1,
+    "usd": 0
+  },
+  "usd": 0,
+  "page_bytes": 211394,
+  "data": {
+    "values": {
+      "localStorage": {
+        "habits": "[{\"date\":\"2026-09-27\",\"walk\":false,\"read\":true},{\"date\":\"2026-09-28\",\"walk\":true,\"read\":false},{\"date\":\"2026-09-29\",\"walk\":true,\"read\":true},{\"date\":\"2026-09-30\",\"walk\":false,\"read\":false},{\"date\":\"2026-10-01\",\"walk\":true,\"read\":true},{\"date\":\"2026-10-02\",\"walk\":true,\"read\":false},{\"date\":\"2026-10-06\",\"walk\":false,\"read\":false}]",
+        "theme": "dark"
+      }
+    },
+    "collections": {}
+  },
+  "answer": "Removed the Habits entries for 3, 4 and 5 October. Verified that all other entries stayed unchanged.",
+  "calls": [
+    {
+      "name": "get_page_guide",
+      "args": {},
+      "error": false,
+      "result": "{\n  \"guide\": \"# Apps in Amber Notes\\n\\nA note can be an app: a habit tracker, a budget, a workout log, a game. The person opens the note and the app is all they see. This says where an app lives and what it can use. How it looks and works is your call; build it as well as you would anywhere.\\n\\n## Where it runs\\n\\n- Inside a note in Amber Notes, on iPhone (320-440 pt wide, safe areas at the edges, the keyboard shrinks the view) and on the Mac (a window from about 500 to 1,800 px, resized live). Both matter: a phone layout and a real wide layout.\\n- Light and dark mode follow the device (prefer… (9510 chars)"
+    },
+    {
+      "name": "search_notes",
+      "args": {
+        "query": "Habits"
+      },
+      "error": false,
+      "result": "{\n  \"query\": \"Habits\",\n  \"results\": [\n    {\n      \"id\": \"7db42891-ee1f-4100-b79b-bb67f2b3ad21\",\n      \"title\": \"Habits\",\n      \"folder\": \"\",\n      \"pinned\": false,\n      \"updated\": \"2026-10-05T23:20:06.678Z\",\n      \"snippet\": \"«Habits»\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "get_page_data",
+      "args": {
+        "id": "7db42891-ee1f-4100-b79b-bb67f2b3ad21"
+      },
+      "error": false,
+      "result": "{\n  \"note\": {\n    \"id\": \"7db42891-ee1f-4100-b79b-bb67f2b3ad21\",\n    \"title\": \"Habits\"\n  },\n  \"shape\": {\n    \"collections\": {\n      \"object\": {}\n    },\n    \"values\": {\n      \"object\": {\n        \"localStorage\": {\n          \"object\": {\n            \"habits\": {\n              \"list\": 10,\n              \"fields\": {\n                \"date\": {\n                  \"type\": \"date\",\n                  \"examples\": [\n                    \"2026-09-27\",\n                    \"2026-09-28\"\n                  ]\n                },\n                \"walk\": {\n                  \"type\": \"boolean\",\n                  \"examples\": … (2372 chars)"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "7db42891-ee1f-4100-b79b-bb67f2b3ad21"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"7db42891-ee1f-4100-b79b-bb67f2b3ad21\",\n  \"title\": \"Habits\",\n  \"folder\": \"\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T23:20:06.678Z\",\n  \"updated\": \"2026-10-05T23:20:06.678Z\",\n  \"version\": 1,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"has_page\": true,\n  \"outline\": {\n    \"headings\": [],\n    \"checklist\": {\n      \"open\": 0,\n      \"done\": 0\n    },\n    \"lines\": 2,\n    \"words\": 1\n  },\n  \"markdown\": \"Habits\\n\"\n}"
+    },
+    {
+      "name": "get_page_data",
+      "args": {
+        "id": "7db42891-ee1f-4100-b79b-bb67f2b3ad21"
+      },
+      "error": false,
+      "result": "{\n  \"note\": {\n    \"id\": \"7db42891-ee1f-4100-b79b-bb67f2b3ad21\",\n    \"title\": \"Habits\"\n  },\n  \"shape\": {\n    \"collections\": {\n      \"object\": {}\n    },\n    \"values\": {\n      \"object\": {\n        \"localStorage\": {\n          \"object\": {\n            \"habits\": {\n              \"list\": 10,\n              \"fields\": {\n                \"date\": {\n                  \"type\": \"date\",\n                  \"examples\": [\n                    \"2026-09-27\",\n                    \"2026-09-28\"\n                  ]\n                },\n                \"walk\": {\n                  \"type\": \"boolean\",\n                  \"examples\": … (2372 chars)"
+    },
+    {
+      "name": "update_page_data",
+      "args": {
+        "id": "7db42891-ee1f-4100-b79b-bb67f2b3ad21",
+        "values": "{\"localStorage\":{\"habits\":[{\"date\":\"2026-09-27\",\"walk\":false,\"read\":true},{\"date\":\"2026-09-28\",\"walk\":true,\"read\":false},{\"date\":\"2026-09-29\",\"walk\":true,\"read\":true},{\"date\":\"2026-09-30\",\"walk\":false,\"read\":false},{\"date\":\"2026-10-01\",\"walk\":true,\"read\":true},{\"date\":\"2026-10-02\",\"walk\":true,\"read\"… (358 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"note\": {\n    \"id\": \"7db42891-ee1f-4100-b79b-bb67f2b3ad21\",\n    \"title\": \"Habits\"\n  },\n  \"changes\": 1,\n  \"data\": {\n    \"values\": {\n      \"localStorage\": {\n        \"habits\": [\n          {\n            \"date\": \"2026-09-27\",\n            \"walk\": false,\n            \"read\": true\n          },\n          {\n            \"date\": \"2026-09-28\",\n            \"walk\": true,\n            \"read\": false\n          },\n          {\n            \"date\": \"2026-09-29\",\n            \"walk\": true,\n            \"read\": true\n          },\n          {\n            \"date\": \"2026-09-30\",\n            \"walk\": false,\n            \"rea… (1048 chars)"
+    },
+    {
+      "name": "preview_app",
+      "args": {
+        "id": "7db42891-ee1f-4100-b79b-bb67f2b3ad21"
+      },
+      "error": false,
+      "result": "{\n  \"app\": \"Habits\",\n  \"data\": \"a sample with the note's shape (not the person's data)\",\n  \"views\": [\n    {\n      \"view\": \"390-light\",\n      \"headings\": [\n        \"Habits\"\n      ],\n      \"text\": \"Habits 0 days logged Home Settings\"\n    },\n    {\n      \"view\": \"390-dark\",\n      \"headings\": [\n        \"Habits\"\n      ],\n      \"text\": \"Habits 0 days logged Home Settings\"\n    },\n    {\n      \"view\": \"1280-light\",\n      \"headings\": [\n        \"Habits\"\n      ],\n      \"text\": \"Habits Home Settings Habits 0 days logged\"\n    },\n    {\n      \"view\": \"1280-dark\",\n      \"headings\": [\n        \"Habits\"\n      ],\n … (983 chars)"
+    },
+    {
+      "name": "get_page_data",
+      "args": {
+        "id": "7db42891-ee1f-4100-b79b-bb67f2b3ad21"
+      },
+      "error": false,
+      "result": "{\n  \"note\": {\n    \"id\": \"7db42891-ee1f-4100-b79b-bb67f2b3ad21\",\n    \"title\": \"Habits\"\n  },\n  \"shape\": {\n    \"collections\": {\n      \"object\": {}\n    },\n    \"values\": {\n      \"object\": {\n        \"localStorage\": {\n          \"object\": {\n            \"habits\": {\n              \"list\": 7,\n              \"fields\": {\n                \"date\": {\n                  \"type\": \"date\",\n                  \"examples\": [\n                    \"2026-09-27\",\n                    \"2026-09-28\"\n                  ]\n                },\n                \"walk\": {\n                  \"type\": \"boolean\",\n                  \"examples\": [… (2039 chars)"
+    },
+    {
+      "name": "check_app",
+      "args": {
+        "id": "7db42891-ee1f-4100-b79b-bb67f2b3ad21"
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"7db42891-ee1f-4100-b79b-bb67f2b3ad21\",\n    \"title\": \"Habits\"\n  },\n  \"ok\": true,\n  \"errors\": [],\n  \"notes\": [\n    \"The app's first heading should be the note's title (\\\"Sample note\\\"), read from amber.note.title: nothing around the app shows the title. Its first heading is \\\"Habits\\\".\",\n    \"390-light: 1 text element(s) with contrast under 4.5:1 (\\\"Home\\\").\",\n    \"390-light: 2 text element(s) under 12 px (\\\"Home\\\", \\\"Settings\\\").\",\n    \"390-dark: 2 text element(s) under 12 px (\\\"Home\\\", \\\"Settings\\\").\",\n    \"320-light: 1 text element(s) with contrast under 4.5:1 (\\\"Home\\… (875 chars)"
+    }
+  ],
+  "render": null,
+  "breakage": [],
+  "walk": [],
+  "used": {
+    "try_app": 0,
+    "run_app_tests": 0,
+    "test_files": 0
+  }
+}

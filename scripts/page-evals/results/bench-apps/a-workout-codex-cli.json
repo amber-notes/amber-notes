@@ -1,0 +1,589 @@
+{
+  "task": "a-workout",
+  "rep": 1,
+  "model": "codex:default",
+  "round": "bench-apps",
+  "skill": false,
+  "seconds": 233,
+  "score": 1,
+  "passed": 21,
+  "total": 21,
+  "checks": [
+    {
+      "name": "has_page",
+      "pass": true
+    },
+    {
+      "name": "server_checks",
+      "pass": true
+    },
+    {
+      "name": "no_console_errors",
+      "pass": true
+    },
+    {
+      "name": "no_network",
+      "pass": true
+    },
+    {
+      "name": "fits_phone",
+      "pass": true
+    },
+    {
+      "name": "fits_desktop",
+      "pass": true
+    },
+    {
+      "name": "uses_wide_window",
+      "pass": true
+    },
+    {
+      "name": "phone_targets",
+      "pass": true
+    },
+    {
+      "name": "focused_screen",
+      "pass": true
+    },
+    {
+      "name": "visible_fields",
+      "pass": true
+    },
+    {
+      "name": "no_junk_text",
+      "pass": true
+    },
+    {
+      "name": "no_clipped_text",
+      "pass": true
+    },
+    {
+      "name": "shows_data",
+      "pass": true
+    },
+    {
+      "name": "dark_mode",
+      "pass": true
+    },
+    {
+      "name": "light_contrast",
+      "pass": true
+    },
+    {
+      "name": "themed",
+      "pass": true
+    },
+    {
+      "name": "labelled_controls",
+      "pass": true
+    },
+    {
+      "name": "edits_from_page",
+      "pass": true
+    },
+    {
+      "name": "title_once",
+      "pass": true
+    },
+    {
+      "name": "says_app",
+      "pass": true
+    },
+    {
+      "name": "page_changed",
+      "pass": true
+    }
+  ],
+  "tool_calls": 23,
+  "tool_errors": 1,
+  "usage": {
+    "input": 63671,
+    "output": 8060,
+    "cacheRead": 477568,
+    "cacheWrite": 0,
+    "turns": 1,
+    "usd": 0
+  },
+  "usd": 0,
+  "page_bytes": 237488,
+  "data": null,
+  "answer": "Your Workouts note is now a tracker app with strength and cardio logging, editable history, weekly goals, progress charts, and personal bests.\n\nTested saving, editing, and deleting workouts, plus phone and Mac layouts in light and dark mode.",
+  "calls": [
+    {
+      "name": "search_notes",
+      "args": {
+        "query": "Workouts"
+      },
+      "error": false,
+      "result": "{\n  \"query\": \"Workouts\",\n  \"results\": [\n    {\n      \"id\": \"ba5794f3-8c90-4cd2-98e8-87e40e42cbd2\",\n      \"title\": \"Workouts\",\n      \"folder\": \"\",\n      \"pinned\": false,\n      \"updated\": \"2026-10-05T23:10:04.202Z\",\n      \"snippet\": \"«Workouts»\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "get_page_guide",
+      "args": {},
+      "error": false,
+      "result": "{\n  \"guide\": \"# Apps in Amber Notes\\n\\nA note can be an app: a habit tracker, a budget, a workout log, a game. The person opens the note and the app is all they see. This says where an app lives and what it can use. How it looks and works is your call; build it as well as you would anywhere.\\n\\n## Where it runs\\n\\n- Inside a note in Amber Notes, on iPhone (320-440 pt wide, safe areas at the edges, the keyboard shrinks the view) and on the Mac (a window from about 500 to 1,800 px, resized live). Both matter: a phone layout and a real wide layout.\\n- Light and dark mode follow the device (prefer… (9510 chars)"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "title": "Workouts"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"ba5794f3-8c90-4cd2-98e8-87e40e42cbd2\",\n  \"title\": \"Workouts\",\n  \"folder\": \"\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T23:10:04.202Z\",\n  \"updated\": \"2026-10-05T23:10:04.202Z\",\n  \"version\": 1,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"outline\": {\n    \"headings\": [],\n    \"checklist\": {\n      \"open\": 0,\n      \"done\": 0\n    },\n    \"lines\": 2,\n    \"words\": 1\n  },\n  \"markdown\": \"Workouts\\n\"\n}"
+    },
+    {
+      "name": "create_app",
+      "args": {
+        "title": "Workouts"
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"ba5794f3-8c90-4cd2-98e8-87e40e42cbd2\",\n    \"title\": \"Workouts\"\n  },\n  \"saved\": \"a new project\",\n  \"files\": [\n    {\n      \"path\": \"/README.md\",\n      \"bytes\": 1924,\n      \"lines\": 21\n    },\n    {\n      \"path\": \"/index.html\",\n      \"bytes\": 218,\n      \"lines\": 12\n    },\n    {\n      \"path\": \"/package.json\",\n      \"bytes\": 689,\n      \"lines\": 29\n    },\n    {\n      \"path\": \"/src/App.tsx\",\n      \"bytes\": 908,\n      \"lines\": 27\n    },\n    {\n      \"path\": \"/src/components/app-shell.tsx\",\n      \"bytes\": 2651,\n      \"lines\": 60\n    },\n    {\n      \"path\": \"/src/components/stat-car… (3819 chars)"
+    },
+    {
+      "name": "read_app_file",
+      "args": {
+        "title": "Workouts",
+        "path": "/src/lib/amber.ts"
+      },
+      "error": false,
+      "result": "{\n  \"path\": \"/src/lib/amber.ts\",\n  \"lines\": 3,\n  \"shown\": \"1-3\",\n  \"content\": \"     1\\t// The app's data (JSON in its own store: encrypted, synced, with Undo), and the note's summary line.\\n     2\\texport { useStore, useAppData, useCollection, useSettings, useImported, batch, setSummary } from \\\"amber\\\"\\n     3\\t\"\n}"
+    },
+    {
+      "name": "read_app_file",
+      "args": {
+        "title": "Workouts",
+        "path": "/README.md"
+      },
+      "error": false,
+      "result": "{\n  \"path\": \"/README.md\",\n  \"lines\": 21,\n  \"shown\": \"1-21\",\n  \"content\": \"     1\\t# Workouts\\n     2\\t\\n     3\\tWhat this app is for, in one sentence.\\n     4\\t\\n     5\\t## Screens\\n     6\\t- Home (src/screens/home.tsx)\\n     7\\t- Settings (src/screens/settings.tsx)\\n     8\\t\\n     9\\t## Data\\n    10\\tThe app's data, as the person's AI reaches it in data.json. Keep this current.\\n    11\\t- settings: { name } (useSettings)\\n    12\\t\\n    13\\t## How this app runs in Amber Notes\\n    14\\t\\n    15\\t- It is the note: opening the note opens the app, on iPhone (320-440 pt wide, safe areas, the keyboa… (2205 chars)"
+    },
+    {
+      "name": "write_app_file",
+      "args": {
+        "title": "Workouts",
+        "path": "/src/App.tsx",
+        "content": "import { useEffect, useState } from \"react\";\nimport { useCollection, useStore, setSummary } from \"@/lib/amber\";\nimport { Dumbbell, Plus, Activity, ArrowUpRight, CalendarDays } from \"lucide-react\";\ntype SetRow = {reps:string; weight:string};\ntype Exercise = {name:string; sets:SetRow[]};\ntype Draft = … (12581 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"ba5794f3-8c90-4cd2-98e8-87e40e42cbd2\",\n    \"title\": \"Workouts\"\n  },\n  \"saved\": \"/src/App.tsx (replaced)\",\n  \"files\": 33,\n  \"opens\": \"Opens cleanly at 390 and 1280 px (over a sample of its data).\",\n  \"notes\": [\n    \"390-light: 1 field(s) without a visible border or fill: .\",\n    \"390-light: 7 control(s) smaller than 44 pt to tap (\\\"Overview\\\", \\\"History\\\", \\\"Progress\\\").\",\n    \"1280-light: 1 field(s) without a visible border or fill: .\"\n  ],\n  \"next\": \"Keep going; run check_app (and preview_app) when the app is done.\"\n}"
+    },
+    {
+      "name": "write_app_file",
+      "args": {
+        "title": "Workouts",
+        "path": "/src/index.css",
+        "content": "@import \"tailwindcss\";\n*{box-sizing:border-box}body{margin:0;background:var(--amber-bg);color:var(--amber-text);font-family:var(--amber-font);font-size:16px;line-height:1.5}\nmain{max-width:1440px;margin:auto;padding:32px max(20px,var(--amber-safe-right)) calc(28px + var(--amber-safe-bottom));}\nbutto… (7963 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"ba5794f3-8c90-4cd2-98e8-87e40e42cbd2\",\n    \"title\": \"Workouts\"\n  },\n  \"saved\": \"/src/index.css (replaced)\",\n  \"files\": 33,\n  \"opens\": \"Opens cleanly at 390 and 1280 px (over a sample of its data).\",\n  \"notes\": [\n    \"!important appears 1 time: it isn't needed. amber-base.css and amber-ui sit in cascade layers, so any rule the app writes already wins.\",\n    \"390-light: 2 text element(s) with contrast under 4.5:1 (\\\"Log workout\\\", \\\"Log your next workout\\\").\",\n    \"390-light: 1 control(s) smaller than 44 pt to tap (\\\"1 workouts2 workouts3 workouts\\\").\",\n    \"1280-light: 2… (774 chars)"
+    },
+    {
+      "name": "write_app_file",
+      "args": {
+        "title": "Workouts",
+        "path": "/README.md",
+        "content": "# Workouts\nA workout tracker for strength, cardio and other sessions, with editable history, weekly goals, consistency charts and personal bests.\n\n## Screens\n/src/App.tsx owns Overview, History and Progress, plus the inline workout editor. /src/index.css contains responsive styling using Amber theme… (1374 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"ba5794f3-8c90-4cd2-98e8-87e40e42cbd2\",\n    \"title\": \"Workouts\"\n  },\n  \"saved\": \"/README.md (replaced)\",\n  \"files\": 33,\n  \"opens\": \"Opens cleanly at 390 and 1280 px (over a sample of its data).\",\n  \"notes\": [\n    \"!important appears 1 time: it isn't needed. amber-base.css and amber-ui sit in cascade layers, so any rule the app writes already wins.\",\n    \"390-light: 2 text element(s) with contrast under 4.5:1 (\\\"Log workout\\\", \\\"Log your next workout\\\").\",\n    \"390-light: 1 control(s) smaller than 44 pt to tap (\\\"1 workouts2 workouts3 workouts\\\").\",\n    \"1280-light: 2 tex… (770 chars)"
+    },
+    {
+      "name": "preview_app",
+      "args": {
+        "title": "Workouts",
+        "widths": "[390,1280]",
+        "themes": "[\"light\",\"dark\"]"
+      },
+      "error": false,
+      "result": "{\n  \"app\": \"Workouts\",\n  \"data\": \"a sample with the note's shape (not the person's data)\",\n  \"views\": [\n    {\n      \"view\": \"390-light\",\n      \"headings\": [\n        \"Workouts\",\n        \"Make time for movement.\",\n        \"Recent workouts\",\n        \"Your training story starts here\"\n      ],\n      \"text\": \"Workouts Log workout Overview History Progress WEEK OF OCT 5 Make time for movement. Your next workout starts here. Every session counts. Log your next workout 0 / 3 workouts this week Weekly goal This week 0 min Total workouts 0 Last workout No sessions yet Recent workouts View all Your traini… (3188 chars)"
+    },
+    {
+      "name": "edit_app_file",
+      "args": {
+        "title": "Workouts",
+        "path": "/src/index.css",
+        "old_string": "background:var(--amber-accent);color:var(--amber-on-accent)",
+        "new_string": "background:var(--amber-accent-text);color:var(--amber-bg)"
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"ba5794f3-8c90-4cd2-98e8-87e40e42cbd2\",\n    \"title\": \"Workouts\"\n  },\n  \"saved\": \"/src/index.css (1 change)\",\n  \"files\": 33,\n  \"opens\": \"Opens cleanly at 390 and 1280 px (over a sample of its data).\",\n  \"notes\": [\n    \"!important appears 1 time: it isn't needed. amber-base.css and amber-ui sit in cascade layers, so any rule the app writes already wins.\",\n    \"390-light: 1 control(s) smaller than 44 pt to tap (\\\"1 workouts2 workouts3 workouts\\\").\"\n  ],\n  \"next\": \"Keep going; run check_app (and preview_app) when the app is done.\"\n}"
+    },
+    {
+      "name": "edit_app_file",
+      "args": {
+        "title": "Workouts",
+        "path": "/src/index.css",
+        "old_string": "margin-bottom:20px!important",
+        "new_string": "margin-bottom:20px"
+      },
+      "error": true,
+      "result": "old_string wasn't found. Read the file again (read_app_file) and copy the exact text, spaces and line breaks included."
+    },
+    {
+      "name": "edit_app_file",
+      "args": {
+        "title": "Workouts",
+        "path": "/src/index.css",
+        "old_string": "textarea{min-height:88px;resize:vertical}",
+        "new_string": "select{height:46px;appearance:none;display:block}textarea{min-height:88px;resize:vertical}"
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"ba5794f3-8c90-4cd2-98e8-87e40e42cbd2\",\n    \"title\": \"Workouts\"\n  },\n  \"saved\": \"/src/index.css (1 change)\",\n  \"files\": 33,\n  \"opens\": \"Opens cleanly at 390 and 1280 px (over a sample of its data).\",\n  \"notes\": [\n    \"!important appears 1 time: it isn't needed. amber-base.css and amber-ui sit in cascade layers, so any rule the app writes already wins.\"\n  ],\n  \"next\": \"Keep going; run check_app (and preview_app) when the app is done.\"\n}"
+    },
+    {
+      "name": "try_app",
+      "args": {
+        "title": "Workouts",
+        "screenshots": "none",
+        "steps": "[{\"tap\":\"Log workout\"},{\"type\":\"Upper body\",\"into\":\"Workout name\"},{\"type\":\"30\",\"into\":\"Duration in minutes\"},{\"type\":\"Bench press\",\"into\":\"Exercise 1\"},{\"type\":\"8\",\"into\":\"Exercise 1 set 1 reps\"},{\"type\":\"40\",\"into\":\"Exercise 1 set 1 weight\"},{\"tap\":\"Add set\"},{\"tap\":\"Save workout\"},{\"tap\":\"Edit\"},… (481 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"app\": \"Workouts\",\n  \"data\": \"a sample with the app's data shape\",\n  \"steps\": [\n    {\n      \"step\": 1,\n      \"did\": {\n        \"tap\": \"Log workout\"\n      },\n      \"data_changed\": [\n        \"+ values.draft: {\\\"date\\\":\\\"2026-10-06\\\",\\\"name\\\":\\\"\\\",\\\"type\\\":\\\"Strength\\\",\\\"minutes\\\":\\\"\\\",\\\"distance\\\":\\\"\\\",\\\"…\"\n      ],\n      \"screen\": [\n        \"heading: Workouts\",\n        \"button: Continue draft\",\n        \"button: Overview (on)\",\n        \"button: History\",\n        \"button: Progress\",\n        \"heading: Log a workout\",\n        \"input text: e.g. Upper body = \\\"\\\"\",\n        \"input date:  = \\\"2026-1… (18471 chars)"
+    },
+    {
+      "name": "check_app",
+      "args": {
+        "title": "Workouts"
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"ba5794f3-8c90-4cd2-98e8-87e40e42cbd2\",\n    \"title\": \"Workouts\"\n  },\n  \"ok\": true,\n  \"errors\": [],\n  \"notes\": [\n    \"!important appears 1 time: it isn't needed. amber-base.css and amber-ui sit in cascade layers, so any rule the app writes already wins.\",\n    \"The app's first heading should be the note's title (\\\"Sample note\\\"), read from amber.note.title: nothing around the app shows the title. Its first heading is \\\"Workouts\\\".\"\n  ],\n  \"browser_checked\": \"390 px and 1280 px in light and dark, and 320 px, over a sample of its data\",\n  \"next\": \"Nothing is broken. The note… (653 chars)"
+    },
+    {
+      "name": "read_app_file",
+      "args": {
+        "title": "Workouts",
+        "path": "/src/index.css",
+        "limit": "12"
+      },
+      "error": false,
+      "result": "{\n  \"path\": \"/src/index.css\",\n  \"lines\": 16,\n  \"shown\": \"1-12\",\n  \"content\": \"     1\\t@import \\\"tailwindcss\\\";\\n     2\\t*{box-sizing:border-box}body{margin:0;background:var(--amber-bg);color:var(--amber-text);font-family:var(--amber-font);font-size:16px;line-height:1.5}\\n     3\\tmain{max-width:1440px;margin:auto;padding:32px max(20px,var(--amber-safe-right)) calc(28px + var(--amber-safe-bottom));}\\n     4\\tbutton,input,select,textarea{font:inherit}button{min-height:44px;padding:9px 16px;border:1px solid var(--amber-separator);border-radius:12px;background:var(--amber-surface);color:var(--amber… (5913 chars)"
+    },
+    {
+      "name": "try_app",
+      "args": {
+        "title": "Workouts",
+        "screenshots": "none",
+        "steps": "[{\"tap\":\"Log cardio\"},{\"type\":\"Morning run\",\"into\":\"Workout name\"},{\"type\":\"25\",\"into\":\"Duration in minutes\"},{\"type\":\"4.5\",\"into\":\"Distance in km, optional\"},{\"tap\":\"Save workout\"},{\"type\":\"run\",\"into\":\"Search workouts\"},{\"tap\":\"Overview\"},{\"tap\":\"Progress\"},{\"resize\":\"desktop\"},{\"dark\":true}]"
+      },
+      "error": false,
+      "result": "{\n  \"app\": \"Workouts\",\n  \"data\": \"a sample with the app's data shape\",\n  \"steps\": [\n    {\n      \"step\": 1,\n      \"did\": {\n        \"tap\": \"Log cardio\"\n      },\n      \"data_changed\": [\n        \"+ values.draft: {\\\"date\\\":\\\"2026-10-06\\\",\\\"name\\\":\\\"\\\",\\\"type\\\":\\\"Cardio\\\",\\\"minutes\\\":\\\"\\\",\\\"distance\\\":\\\"\\\",\\\"un…\"\n      ],\n      \"screen\": [\n        \"button: Continue draft\",\n        \"select: 1 workouts 2 workouts 3 workouts 4 workouts 5 workouts 6 wor = \\\"3\\\"\",\n        \"heading: Recent workouts\",\n        \"button: View all\",\n        \"heading: Your training story starts here\",\n        \"button: Log stren… (9246 chars)"
+    },
+    {
+      "name": "edit_app_file",
+      "args": {
+        "title": "Workouts",
+        "path": "/src/index.css",
+        "old_string": "margin:5px 0 12px!important",
+        "new_string": "margin:5px 0 12px"
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"ba5794f3-8c90-4cd2-98e8-87e40e42cbd2\",\n    \"title\": \"Workouts\"\n  },\n  \"saved\": \"/src/index.css (1 change)\",\n  \"files\": 33,\n  \"opens\": \"Opens cleanly at 390 and 1280 px (over a sample of its data).\",\n  \"next\": \"Keep going; run check_app (and preview_app) when the app is done.\"\n}"
+    },
+    {
+      "name": "edit_app_file",
+      "args": {
+        "title": "Workouts",
+        "path": "/src/App.tsx",
+        "old_string": "function start(type=\"Strength\"){setDraft",
+        "new_string": "function start(type=\"Strength\"){if(draft){window.scrollTo(0,0);return}setDraft"
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"ba5794f3-8c90-4cd2-98e8-87e40e42cbd2\",\n    \"title\": \"Workouts\"\n  },\n  \"saved\": \"/src/App.tsx (1 change)\",\n  \"files\": 33,\n  \"opens\": \"Opens cleanly at 390 and 1280 px (over a sample of its data).\",\n  \"next\": \"Keep going; run check_app (and preview_app) when the app is done.\"\n}"
+    },
+    {
+      "name": "edit_app_file",
+      "args": {
+        "title": "Workouts",
+        "path": "/src/App.tsx",
+        "old_string": "<button onClick={()=>{setDraft({...blank(),...w",
+        "new_string": "<button disabled={!!draft} onClick={()=>{setDraft({...blank(),...w"
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"ba5794f3-8c90-4cd2-98e8-87e40e42cbd2\",\n    \"title\": \"Workouts\"\n  },\n  \"saved\": \"/src/App.tsx (1 change)\",\n  \"files\": 33,\n  \"opens\": \"Opens cleanly at 390 and 1280 px (over a sample of its data).\",\n  \"next\": \"Keep going; run check_app (and preview_app) when the app is done.\"\n}"
+    },
+    {
+      "name": "edit_app_file",
+      "args": {
+        "title": "Workouts",
+        "path": "/src/App.tsx",
+        "old_string": "week.length+\" workouts logged this week. Keep your progress going.\"",
+        "new_string": "week.length+(week.length===1?\" workout\":\" workouts\")+\" logged this week. Keep your progress going.\""
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"ba5794f3-8c90-4cd2-98e8-87e40e42cbd2\",\n    \"title\": \"Workouts\"\n  },\n  \"saved\": \"/src/App.tsx (1 change)\",\n  \"files\": 33,\n  \"opens\": \"Opens cleanly at 390 and 1280 px (over a sample of its data).\",\n  \"next\": \"Keep going; run check_app (and preview_app) when the app is done.\"\n}"
+    },
+    {
+      "name": "check_app",
+      "args": {
+        "title": "Workouts"
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"ba5794f3-8c90-4cd2-98e8-87e40e42cbd2\",\n    \"title\": \"Workouts\"\n  },\n  \"ok\": true,\n  \"errors\": [],\n  \"notes\": [\n    \"The app's first heading should be the note's title (\\\"Sample note\\\"), read from amber.note.title: nothing around the app shows the title. Its first heading is \\\"Workouts\\\".\"\n  ],\n  \"browser_checked\": \"390 px and 1280 px in light and dark, and 320 px, over a sample of its data\",\n  \"next\": \"Nothing is broken. The notes are information; act on the ones you agree with.\"\n}"
+    },
+    {
+      "name": "preview_app",
+      "args": {
+        "title": "Workouts",
+        "widths": "[320,1280]",
+        "themes": "[\"light\",\"dark\"]"
+      },
+      "error": false,
+      "result": "{\n  \"app\": \"Workouts\",\n  \"data\": \"a sample with the note's shape (not the person's data)\",\n  \"views\": [\n    {\n      \"view\": \"320-light\",\n      \"headings\": [\n        \"Workouts\",\n        \"Make time for movement.\",\n        \"Recent workouts\",\n        \"Your training story starts here\"\n      ],\n      \"text\": \"Workouts Log workout Overview History Progress WEEK OF OCT 5 Make time for movement. Your next workout starts here. Every session counts. Log your next workout 0 / 3 workouts this week Weekly goal This week 0 min Total workouts 0 Last workout No sessions yet Recent workouts View all Your traini… (2780 chars)"
+    }
+  ],
+  "render": {
+    "views": [
+      {
+        "name": "390-light",
+        "width": 390,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 434,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/bench-apps/shots/a-workout-codex-cli-390-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Workouts",
+          "Make time for movement.",
+          "Recent workouts",
+          "Your training story starts here"
+        ],
+        "excerpt": "Workouts Log workout Overview History Progress WEEK OF OCT 5 Make time for movement. Your next workout starts here. Every session counts. Log your next workout 0 / 3 workouts this week Weekly goal This week 0 min Total workouts 0 Last workout No sessions yet Recent workouts View all Your training story starts here Log exercises, sets and reps, or record a cardio session. Log strength Log cardio Built for your next session.",
+        "titleCount": 1,
+        "ghostFields": [],
+        "sections": 5,
+        "nav": true,
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.9179487179487179,
+        "canvases": 0,
+        "svgShapes": 10,
+        "gridCols": 3,
+        "frames": 1,
+        "look": {
+          "accentHue": 31,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
+      },
+      {
+        "name": "390-dark",
+        "width": 390,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 434,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/bench-apps/shots/a-workout-codex-cli-390-dark.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Workouts",
+          "Make time for movement.",
+          "Recent workouts",
+          "Your training story starts here"
+        ],
+        "excerpt": "Workouts Log workout Overview History Progress WEEK OF OCT 5 Make time for movement. Your next workout starts here. Every session counts. Log your next workout 0 / 3 workouts this week Weekly goal This week 0 min Total workouts 0 Last workout No sessions yet Recent workouts View all Your training story starts here Log exercises, sets and reps, or record a cardio session. Log strength Log cardio Built for your next session.",
+        "titleCount": 1,
+        "ghostFields": [],
+        "sections": 5,
+        "nav": true,
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.9179487179487179,
+        "canvases": 0,
+        "svgShapes": 10,
+        "gridCols": 3,
+        "frames": 1,
+        "look": {
+          "accentHue": 37,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
+      },
+      {
+        "name": "320-light",
+        "width": 320,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 434,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/bench-apps/shots/a-workout-codex-cli-320-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Workouts",
+          "Make time for movement.",
+          "Recent workouts",
+          "Your training story starts here"
+        ],
+        "excerpt": "Workouts Log workout Overview History Progress WEEK OF OCT 5 Make time for movement. Your next workout starts here. Every session counts. Log your next workout 0 / 3 workouts this week Weekly goal This week 0 min Total workouts 0 Last workout No sessions yet Recent workouts View all Your training story starts here Log exercises, sets and reps, or record a cardio session. Log strength Log cardio Built for your next session.",
+        "titleCount": 1,
+        "ghostFields": [],
+        "sections": 5,
+        "nav": true,
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.922412109375,
+        "canvases": 0,
+        "svgShapes": 10,
+        "gridCols": 3,
+        "frames": 1,
+        "look": {
+          "accentHue": 31,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
+      },
+      {
+        "name": "1280-light",
+        "width": 1280,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 453,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/bench-apps/shots/a-workout-codex-cli-1280-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Workouts",
+          "Make time for movement.",
+          "Recent workouts",
+          "Your training story starts here"
+        ],
+        "excerpt": "YOUR TRAINING LOG Workouts Log workout Overview History Progress WEEK OF OCT 5 Make time for movement. Your next workout starts here. Every session counts. Log your next workout 0 / 3 workouts this week Weekly goal This week 0 min Total workouts 0 Last workout No sessions yet Recent workouts View all Your training story starts here Log exercises, sets and reps, or record a cardio session. Log strength Log cardio Built for your next session.",
+        "titleCount": 1,
+        "ghostFields": [],
+        "sections": 5,
+        "nav": true,
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.925,
+        "canvases": 0,
+        "svgShapes": 10,
+        "gridCols": 3,
+        "frames": 1,
+        "look": {
+          "accentHue": 31,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
+      },
+      {
+        "name": "1280-dark",
+        "width": 1280,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 453,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Workouts",
+          "Make time for movement.",
+          "Recent workouts",
+          "Your training story starts here"
+        ],
+        "excerpt": "YOUR TRAINING LOG Workouts Log workout Overview History Progress WEEK OF OCT 5 Make time for movement. Your next workout starts here. Every session counts. Log your next workout 0 / 3 workouts this week Weekly goal This week 0 min Total workouts 0 Last workout No sessions yet Recent workouts View all Your training story starts here Log exercises, sets and reps, or record a cardio session. Log strength Log cardio Built for your next session.",
+        "titleCount": 1,
+        "ghostFields": [],
+        "sections": 5,
+        "nav": true,
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.925,
+        "canvases": 0,
+        "svgShapes": 10,
+        "gridCols": 3,
+        "frames": 1,
+        "look": {
+          "accentHue": 37,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
+      }
+    ],
+    "blocked": [],
+    "updates": [],
+    "setData": 7,
+    "interaction": {
+      "tried": "control",
+      "ok": true,
+      "framesPerSecond": 0
+    },
+    "probes": {},
+    "dataAfter": {}
+  },
+  "breakage": [],
+  "walk": [],
+  "used": {
+    "try_app": 2,
+    "run_app_tests": 0,
+    "test_files": 0
+  }
+}

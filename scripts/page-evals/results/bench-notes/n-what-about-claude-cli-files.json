@@ -1,0 +1,58 @@
+{
+  "task": "n-what-about",
+  "rep": 1,
+  "model": "claude-code:sonnet",
+  "round": "bench-notes",
+  "skill": false,
+  "seconds": 5,
+  "score": 1,
+  "passed": 3,
+  "total": 3,
+  "checks": [
+    {
+      "name": "found_appointment",
+      "pass": true
+    },
+    {
+      "name": "found_the_call",
+      "pass": true
+    },
+    {
+      "name": "nothing_changed",
+      "pass": true
+    }
+  ],
+  "tool_calls": 1,
+  "tool_errors": 0,
+  "usage": {
+    "input": 4,
+    "output": 203,
+    "cacheRead": 8528,
+    "cacheWrite": 1335,
+    "turns": 2,
+    "equivalentUsd": 0.0090836,
+    "usd": 0
+  },
+  "usd": 0,
+  "page_bytes": 0,
+  "data": null,
+  "answer": "You wrote about the dentist in two notes:\n\n- **Health:** \"Dentist: Tuesday 14 October at 14:00, Dr. Lind. Bring the X-ray referral.\"\n- **Calls:** \"Call the dentist to move the cleaning to November.\"\n\nThese two may not match. Health has an appointment on 14 October, and Calls says to move the cleaning to November. The appointment in Health may be the cleaning you want to move, but I didn't check.",
+  "calls": [
+    {
+      "name": "search",
+      "args": {
+        "query": "dentist"
+      },
+      "error": false,
+      "result": "{\"results\":[{\"id\":\"ff288211-2ea1-475b-ae34-fbca2d476c5a\",\"title\":\"Calls\",\"url\":\"ambernotes://note/ff288211-2ea1-475b-ae34-fbca2d476c5a\",\"path\":\"Calls.md\",\"snippet\":\"Calls Call the «dentist» to move the cleaning to November\"},{\"id\":\"790d3d1a-22c8-4079-816d-590d36eccbd8\",\"title\":\"Health\",\"url\":\"ambernotes://note/790d3d1a-22c8-4079-816d-590d36eccbd8\",\"path\":\"Health/Health.md\",\"snippet\":\"Health «Dentist»: Tuesday 14 October at 14:00, Dr. Lind. Bring the X-ray referral\"}]}"
+    }
+  ],
+  "render": null,
+  "breakage": [],
+  "walk": [],
+  "used": {
+    "try_app": 0,
+    "run_app_tests": 0,
+    "test_files": 0
+  }
+}

@@ -1,0 +1,74 @@
+{
+  "task": "n-rename-remove",
+  "rep": 1,
+  "model": "codex:default",
+  "round": "bench-notes",
+  "skill": false,
+  "seconds": 21,
+  "score": 1,
+  "passed": 3,
+  "total": 3,
+  "checks": [
+    {
+      "name": "renamed",
+      "pass": true
+    },
+    {
+      "name": "removed",
+      "pass": true
+    },
+    {
+      "name": "kept",
+      "pass": true
+    }
+  ],
+  "tool_calls": 3,
+  "tool_errors": 0,
+  "usage": {
+    "input": 15773,
+    "output": 292,
+    "cacheRead": 132224,
+    "cacheWrite": 0,
+    "turns": 1,
+    "usd": 0
+  },
+  "usd": 0,
+  "page_bytes": 0,
+  "data": null,
+  "answer": "Updated your Groceries note: renamed Butter to Salted butter and removed Bananas.",
+  "calls": [
+    {
+      "name": "search",
+      "args": {
+        "query": "Groceries"
+      },
+      "error": false,
+      "result": "{\n  \"results\": [\n    {\n      \"id\": \"eb8985b0-8119-4cee-b7d5-d1ec970cb287\",\n      \"title\": \"Groceries\",\n      \"url\": \"ambernotes://note/eb8985b0-8119-4cee-b7d5-d1ec970cb287\",\n      \"path\": \"Home/Groceries.md\",\n      \"snippet\": \"«Groceries» ## Dairy - [ ] Milk - [ ] Butter ## Fruit - [x] Apples - [ ] Bananas\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "fetch",
+      "args": {
+        "id": "eb8985b0-8119-4cee-b7d5-d1ec970cb287"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"eb8985b0-8119-4cee-b7d5-d1ec970cb287\",\n  \"title\": \"Groceries\",\n  \"text\": \"Groceries\\n\\n## Dairy\\n- [ ] Milk\\n- [ ] Butter\\n\\n## Fruit\\n- [x] Apples\\n- [ ] Bananas\\n\",\n  \"url\": \"ambernotes://note/eb8985b0-8119-4cee-b7d5-d1ec970cb287\",\n  \"metadata\": {\n    \"path\": \"Home/Groceries.md\",\n    \"folder\": \"Home/\",\n    \"pinned\": false,\n    \"version\": 1,\n    \"updated\": \"2026-10-05T22:56:20.423Z\",\n    \"lines\": 10\n  }\n}"
+    },
+    {
+      "name": "edit",
+      "args": {
+        "id": "eb8985b0-8119-4cee-b7d5-d1ec970cb287",
+        "edits": "[{\"old_text\":\"- [ ] Butter\",\"new_text\":\"- [ ] Salted butter\"},{\"old_text\":\"- [ ] Bananas\\n\",\"new_text\":\"\"}]"
+      },
+      "error": false,
+      "result": "{\n  \"edited\": \"Home/Groceries.md\",\n  \"version\": 2,\n  \"checks\": \"ok\"\n}"
+    }
+  ],
+  "render": null,
+  "breakage": [],
+  "walk": [],
+  "used": {
+    "try_app": 0,
+    "run_app_tests": 0,
+    "test_files": 0
+  }
+}

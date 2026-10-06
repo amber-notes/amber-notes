@@ -1,0 +1,67 @@
+{
+  "task": "n-tick",
+  "rep": 2,
+  "model": "claude-code:sonnet",
+  "round": "bench-notes",
+  "skill": false,
+  "seconds": 7,
+  "score": 1,
+  "passed": 3,
+  "total": 3,
+  "checks": [
+    {
+      "name": "ticked",
+      "pass": true
+    },
+    {
+      "name": "unticked",
+      "pass": true
+    },
+    {
+      "name": "rest_kept",
+      "pass": true
+    }
+  ],
+  "tool_calls": 2,
+  "tool_errors": 0,
+  "usage": {
+    "input": 6,
+    "output": 277,
+    "cacheRead": 13562,
+    "cacheWrite": 1505,
+    "turns": 3,
+    "equivalentUsd": 0.011514400000000001,
+    "usd": 0
+  },
+  "usd": 0,
+  "page_bytes": 0,
+  "data": null,
+  "answer": "In your Groceries note, Milk and Butter are now ticked, and Apples is unticked.",
+  "calls": [
+    {
+      "name": "search",
+      "args": {
+        "query": "Groceries"
+      },
+      "error": false,
+      "result": "{\"results\":[{\"id\":\"1588f4dc-567b-4558-adaa-711f02b7ab56\",\"title\":\"Groceries\",\"url\":\"ambernotes://note/1588f4dc-567b-4558-adaa-711f02b7ab56\",\"path\":\"Home/Groceries.md\",\"snippet\":\"«Groceries» ## Dairy - [ ] Milk - [ ] Butter ## Fruit - [x] Apples - [ ] Bananas\"}]}"
+    },
+    {
+      "name": "edit",
+      "args": {
+        "id": "1588f4dc-567b-4558-adaa-711f02b7ab56",
+        "edits": "[{\"old_text\":\"- [ ] Milk\",\"new_text\":\"- [x] Milk\"},{\"old_text\":\"- [ ] Butter\",\"new_text\":\"- [x] Butter\"},{\"old_text\":\"- [x] Apples\",\"new_text\":\"- [ ] Apples\"}]"
+      },
+      "error": false,
+      "result": "{\"edited\":\"Home/Groceries.md\",\"version\":2,\"checks\":\"ok\"}"
+    }
+  ],
+  "render": null,
+  "breakage": [],
+  "walk": [],
+  "used": {
+    "try_app": 0,
+    "run_app_tests": 0,
+    "test_files": 0
+  }
+}

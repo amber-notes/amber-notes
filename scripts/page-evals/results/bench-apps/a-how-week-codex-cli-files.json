@@ -1,0 +1,73 @@
+{
+  "task": "a-how-week",
+  "rep": 1,
+  "model": "codex:default",
+  "round": "bench-apps",
+  "skill": false,
+  "seconds": 19,
+  "score": 1,
+  "passed": 3,
+  "total": 3,
+  "checks": [
+    {
+      "name": "walk_count",
+      "pass": true
+    },
+    {
+      "name": "read_count",
+      "pass": true
+    },
+    {
+      "name": "app_unchanged",
+      "pass": true
+    }
+  ],
+  "tool_calls": 2,
+  "tool_errors": 0,
+  "usage": {
+    "input": 16173,
+    "output": 259,
+    "cacheRead": 105344,
+    "cacheWrite": 0,
+    "turns": 1,
+    "usd": 0
+  },
+  "usd": 0,
+  "page_bytes": 211394,
+  "data": {
+    "values": {
+      "localStorage": {
+        "habits": "[{\"date\":\"2026-09-29\",\"walk\":true,\"read\":false},{\"date\":\"2026-09-30\",\"walk\":true,\"read\":true},{\"date\":\"2026-10-01\",\"walk\":true,\"read\":false},{\"date\":\"2026-10-02\",\"walk\":false,\"read\":true},{\"date\":\"2026-10-03\",\"walk\":true,\"read\":false},{\"date\":\"2026-10-04\",\"walk\":false,\"read\":true},{\"date\":\"2026-10-05\",\"walk\":true,\"read\":false}]",
+        "theme": "dark"
+      }
+    },
+    "collections": {}
+  },
+  "answer": "For 29 September to 5 October, your Habits app recorded:\n\n- You walked on **5 of 7 days**.\n- You read on **3 of 7 days**.\n\nYou did at least one of the two every day, and both on 30 September.",
+  "calls": [
+    {
+      "name": "search",
+      "args": {
+        "query": "Habits"
+      },
+      "error": false,
+      "result": "{\n  \"results\": [\n    {\n      \"id\": \"faa2cae6-1909-4b9e-a825-90775d42833d\",\n      \"title\": \"Habits\",\n      \"url\": \"ambernotes://note/faa2cae6-1909-4b9e-a825-90775d42833d\",\n      \"path\": \"Habits.md\",\n      \"snippet\": \"«Habits»\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "fetch",
+      "args": {
+        "id": "Habits.app/data.json"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"faa2cae6-1909-4b9e-a825-90775d42833d.app/data.json\",\n  \"title\": \"Habits: data.json\",\n  \"text\": \"{\\n  \\\"values\\\": {\\n    \\\"localStorage\\\": {\\n      \\\"habits\\\": [\\n        {\\n          \\\"date\\\": \\\"2026-09-29\\\",\\n          \\\"walk\\\": true,\\n          \\\"read\\\": false\\n        },\\n        {\\n          \\\"date\\\": \\\"2026-09-30\\\",\\n          \\\"walk\\\": true,\\n          \\\"read\\\": true\\n        },\\n        {\\n          \\\"date\\\": \\\"2026-10-01\\\",\\n          \\\"walk\\\": true,\\n          \\\"read\\\": false\\n        },\\n        {\\n          \\\"date\\\": \\\"2026-10-02\\\",\\n          \\\"walk\\\": false,\\n          … (2396 chars)"
+    }
+  ],
+  "render": null,
+  "breakage": [],
+  "walk": [],
+  "used": {
+    "try_app": 0,
+    "run_app_tests": 0,
+    "test_files": 0
+  }
+}

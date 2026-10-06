@@ -1,0 +1,75 @@
+{
+  "task": "n-create-sub",
+  "rep": 1,
+  "model": "codex:default",
+  "round": "bench-notes",
+  "skill": false,
+  "seconds": 19,
+  "score": 1,
+  "passed": 3,
+  "total": 3,
+  "checks": [
+    {
+      "name": "porto_in_travel",
+      "pass": true
+    },
+    {
+      "name": "packing_is_sub_note",
+      "pass": true
+    },
+    {
+      "name": "checklist",
+      "pass": true
+    }
+  ],
+  "tool_calls": 3,
+  "tool_errors": 0,
+  "usage": {
+    "input": 14735,
+    "output": 300,
+    "cacheRead": 104320,
+    "cacheWrite": 0,
+    "turns": 1,
+    "usd": 0
+  },
+  "usd": 0,
+  "page_bytes": 0,
+  "data": null,
+  "answer": "Created Porto in Travel with “Trip to Porto in November.” Added a Packing sub-note with unchecked items for passport, charger, and adapter.",
+  "calls": [
+    {
+      "name": "list",
+      "args": {
+        "path": "Travel/"
+      },
+      "error": false,
+      "result": "{\n  \"path\": \"Travel/\",\n  \"folders\": [],\n  \"notes\": [\n    {\n      \"path\": \"Travel/Lisbon trip.md\",\n      \"id\": \"044ec4ff-61ee-449c-bb6b-c41f75f32437\",\n      \"updated\": \"2026-10-05T22:59:15.220Z\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "create",
+      "args": {
+        "path": "Travel/",
+        "content": "# Porto\n\nTrip to Porto in November."
+      },
+      "error": false,
+      "result": "{\n  \"created\": \"Travel/Porto.md\",\n  \"id\": \"a1f65ccd-1254-469b-a522-d970b2c9e0b1\"\n}"
+    },
+    {
+      "name": "create",
+      "args": {
+        "inside": "a1f65ccd-1254-469b-a522-d970b2c9e0b1",
+        "content": "# Packing\n\n- [ ] passport\n- [ ] charger\n- [ ] adapter"
+      },
+      "error": false,
+      "result": "{\n  \"created\": \"Travel/Porto/Packing.md\",\n  \"id\": \"b76edfd8-9c29-4515-be75-1f381bf5e701\",\n  \"linked_from\": \"Porto\"\n}"
+    }
+  ],
+  "render": null,
+  "breakage": [],
+  "walk": [],
+  "used": {
+    "try_app": 0,
+    "run_app_tests": 0,
+    "test_files": 0
+  }
+}

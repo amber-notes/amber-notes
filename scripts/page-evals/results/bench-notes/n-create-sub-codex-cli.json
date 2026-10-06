@@ -1,0 +1,81 @@
+{
+  "task": "n-create-sub",
+  "rep": 1,
+  "model": "codex:default",
+  "round": "bench-notes",
+  "skill": false,
+  "seconds": 26,
+  "score": 1,
+  "passed": 3,
+  "total": 3,
+  "checks": [
+    {
+      "name": "porto_in_travel",
+      "pass": true
+    },
+    {
+      "name": "packing_is_sub_note",
+      "pass": true
+    },
+    {
+      "name": "checklist",
+      "pass": true
+    }
+  ],
+  "tool_calls": 4,
+  "tool_errors": 0,
+  "usage": {
+    "input": 18262,
+    "output": 360,
+    "cacheRead": 165504,
+    "cacheWrite": 0,
+    "turns": 1,
+    "usd": 0
+  },
+  "usd": 0,
+  "page_bytes": 0,
+  "data": null,
+  "answer": "Created Porto in Travel with “Trip to Porto in November.” Added a Packing sub-note with unchecked items: passport, charger, adapter.",
+  "calls": [
+    {
+      "name": "get_overview",
+      "args": {},
+      "error": false,
+      "result": "{\n  \"total_notes\": 1,\n  \"folders\": [\n    {\n      \"path\": \"Travel\",\n      \"id\": \"d242f9e4-4719-4e06-ba27-ff06ea3410ae\",\n      \"notes\": 1\n    }\n  ],\n  \"pinned\": [],\n  \"recently_edited\": [\n    {\n      \"id\": \"94b3999c-897f-4b45-8c5a-872e422b947f\",\n      \"title\": \"Lisbon trip\",\n      \"folder\": \"Travel\",\n      \"pinned\": false,\n      \"updated\": \"2026-10-05T22:59:53.977Z\",\n      \"preview\": \"Spent in Lisbon with Ana. · Date  Item  Category  Amount · 2026-10-01  Hotel Avenida  Stay  1 450 · 2026-10-02  Pastéis  Food  12,50\"\n    }\n  ],\n  \"recently_deleted\": 0\n}"
+    },
+    {
+      "name": "create_note",
+      "args": {
+        "folder": "Travel",
+        "body": "Porto\n\nTrip to Porto in November."
+      },
+      "error": false,
+      "result": "{\n  \"created\": {\n    \"id\": \"677ccbce-6702-4094-a838-cda9cd8e11ca\",\n    \"title\": \"Porto\",\n    \"folder\": \"Travel\",\n    \"pinned\": false,\n    \"updated\": \"2026-10-05T23:00:09.748Z\",\n    \"preview\": \"Trip to Porto in November.\"\n  },\n  \"version\": 1\n}"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "677ccbce-6702-4094-a838-cda9cd8e11ca"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"677ccbce-6702-4094-a838-cda9cd8e11ca\",\n  \"title\": \"Porto\",\n  \"folder\": \"Travel\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T23:00:09.748Z\",\n  \"updated\": \"2026-10-05T23:00:09.748Z\",\n  \"version\": 1,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"outline\": {\n    \"headings\": [],\n    \"checklist\": {\n      \"open\": 0,\n      \"done\": 0\n    },\n    \"lines\": 3,\n    \"words\": 6\n  },\n  \"markdown\": \"Porto\\n\\nTrip to Porto in November.\"\n}"
+    },
+    {
+      "name": "create_sub_note",
+      "args": {
+        "id": "677ccbce-6702-4094-a838-cda9cd8e11ca",
+        "body": "Packing\n\n- [ ] passport\n- [ ] charger\n- [ ] adapter"
+      },
+      "error": false,
+      "result": "{\n  \"created\": {\n    \"id\": \"3b1cfde3-c1da-4956-aed4-bfecf09f4cd4\",\n    \"title\": \"Packing\",\n    \"parent\": {\n      \"id\": \"677ccbce-6702-4094-a838-cda9cd8e11ca\",\n      \"title\": \"Porto\"\n    }\n  }\n}"
+    }
+  ],
+  "render": null,
+  "breakage": [],
+  "walk": [],
+  "used": {
+    "try_app": 0,
+    "run_app_tests": 0,
+    "test_files": 0
+  }
+}

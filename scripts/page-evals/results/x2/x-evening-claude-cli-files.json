@@ -1,0 +1,2197 @@
+{
+  "task": "x-evening",
+  "rep": 1,
+  "model": "claude-code:sonnet",
+  "round": "x2",
+  "skill": false,
+  "tools": "files",
+  "seconds": 200,
+  "score": 0.9459459459459459,
+  "passed": 35,
+  "total": 37,
+  "checks": [
+    {
+      "name": "has_page",
+      "pass": true
+    },
+    {
+      "name": "server_checks",
+      "pass": true
+    },
+    {
+      "name": "no_console_errors",
+      "pass": true
+    },
+    {
+      "name": "no_network",
+      "pass": true
+    },
+    {
+      "name": "fits_phone",
+      "pass": true
+    },
+    {
+      "name": "fits_desktop",
+      "pass": true
+    },
+    {
+      "name": "uses_wide_window",
+      "pass": true
+    },
+    {
+      "name": "phone_targets",
+      "pass": true
+    },
+    {
+      "name": "focused_screen",
+      "pass": true
+    },
+    {
+      "name": "visible_fields",
+      "pass": true
+    },
+    {
+      "name": "no_junk_text",
+      "pass": true
+    },
+    {
+      "name": "no_clipped_text",
+      "pass": true
+    },
+    {
+      "name": "shows_data",
+      "pass": true
+    },
+    {
+      "name": "dark_mode",
+      "pass": true
+    },
+    {
+      "name": "light_contrast",
+      "pass": true
+    },
+    {
+      "name": "themed",
+      "pass": true
+    },
+    {
+      "name": "labelled_controls",
+      "pass": true
+    },
+    {
+      "name": "edits_from_page",
+      "pass": false,
+      "detail": "control: no control sent an edit"
+    },
+    {
+      "name": "title_once",
+      "pass": false,
+      "detail": "The app's first heading should be the note's title (\"Evening\"), read from amber.note.title: nothing around the app shows the title. Its first heading is \"Tonight\"."
+    },
+    {
+      "name": "says_app",
+      "pass": true
+    },
+    {
+      "name": "probe_escapes",
+      "pass": true
+    },
+    {
+      "name": "probe_empty",
+      "pass": true
+    },
+    {
+      "name": "probe_large",
+      "pass": true
+    },
+    {
+      "name": "page_changed",
+      "pass": true
+    },
+    {
+      "name": "walk_log_tonight",
+      "pass": true
+    },
+    {
+      "name": "walk_ratings",
+      "pass": true
+    },
+    {
+      "name": "walk_trends",
+      "pass": true
+    },
+    {
+      "name": "walk_plan",
+      "pass": true
+    },
+    {
+      "name": "walk_week",
+      "pass": true
+    },
+    {
+      "name": "walk_desktop",
+      "pass": true
+    },
+    {
+      "name": "has_ratings_1_10",
+      "pass": true
+    },
+    {
+      "name": "has_habits_by_weekday",
+      "pass": true
+    },
+    {
+      "name": "has_hours_budget",
+      "pass": true
+    },
+    {
+      "name": "has_csv_import",
+      "pass": true
+    },
+    {
+      "name": "has_json_export",
+      "pass": true
+    },
+    {
+      "name": "has_charts",
+      "pass": true
+    },
+    {
+      "name": "has_tomorrow",
+      "pass": true
+    }
+  ],
+  "tool_calls": 26,
+  "tool_errors": 2,
+  "usage": {
+    "input": 30,
+    "output": 27236,
+    "cacheRead": 352214,
+    "cacheWrite": 47210,
+    "turns": 36,
+    "equivalentUsd": 0.5317027999999999,
+    "usd": 0
+  },
+  "usd": 0,
+  "page_bytes": 288479,
+  "data": {
+    "values": {
+      "plan": {
+        "budget": 40,
+        "habits": [
+          {
+            "id": "walk",
+            "name": "Walk 30 min",
+            "days": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5,
+              6
+            ]
+          },
+          {
+            "id": "read",
+            "name": "Read 20 min",
+            "days": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5,
+              6
+            ]
+          },
+          {
+            "id": "gym",
+            "name": "Gym",
+            "days": [
+              0,
+              2,
+              4
+            ]
+          },
+          {
+            "id": "screens",
+            "name": "No screens after 10pm",
+            "days": [
+              0,
+              1,
+              2,
+              3,
+              6
+            ]
+          },
+          {
+            "id": "plan",
+            "name": "Plan tomorrow",
+            "days": [
+              0,
+              1,
+              2,
+              3,
+              4
+            ]
+          },
+          {
+            "id": "call",
+            "name": "Call family",
+            "days": [
+              6
+            ]
+          }
+        ]
+      },
+      "reviews": {
+        "2026-08-24": "Solid start. Gym days gave the best energy. Next week: stop working past 7pm.",
+        "2026-08-31": "Too many late evenings midweek and sleep dropped. Keep the walk, protect Thursday.",
+        "2026-09-07": "Best week so far: 38 hours and every gym session done. Planning the next day helped focus.",
+        "2026-09-14": "Deadline week, 46 hours. Mood held up thanks to walks. Need a lighter week next.",
+        "2026-09-21": "Recovered well. Sleep back above 7. Keep screens off after 10."
+      },
+      "entries": [
+        {
+          "date": "2026-08-24",
+          "hours": 8,
+          "energy": 7,
+          "mood": 7,
+          "focus": 7,
+          "sleep": 7,
+          "habits": [
+            "walk",
+            "read",
+            "gym",
+            "screens",
+            "plan"
+          ],
+          "note": "Gym at lunch cleared my head",
+          "win": "Send the project outline"
+        },
+        {
+          "date": "2026-08-25",
+          "hours": 8.5,
+          "energy": 6,
+          "mood": 6,
+          "focus": 7,
+          "sleep": 6,
+          "habits": [
+            "walk",
+            "screens",
+            "plan"
+          ],
+          "note": "Too many meetings",
+          "win": "Block two focus hours"
+        },
+        {
+          "date": "2026-08-26",
+          "hours": 9,
+          "energy": 6,
+          "mood": 6,
+          "focus": 8,
+          "sleep": 6,
+          "habits": [
+            "walk",
+            "read",
+            "gym",
+            "plan"
+          ],
+          "note": "Deep work before email helped",
+          "win": "Review the budget draft"
+        },
+        {
+          "date": "2026-08-27",
+          "hours": 8,
+          "energy": 5,
+          "mood": 6,
+          "focus": 6,
+          "sleep": 5,
+          "habits": [
+            "walk",
+            "read"
+          ],
+          "note": "Late coffee, slept badly",
+          "win": "No coffee after 2pm"
+        },
+        {
+          "date": "2026-08-28",
+          "hours": 7,
+          "energy": 6,
+          "mood": 7,
+          "focus": 6,
+          "sleep": 6,
+          "habits": [
+            "walk",
+            "read",
+            "gym",
+            "plan"
+          ],
+          "note": "Friday wrap-up felt good",
+          "win": "Clear the inbox"
+        },
+        {
+          "date": "2026-08-29",
+          "hours": 1,
+          "energy": 7,
+          "mood": 8,
+          "focus": 5,
+          "sleep": 7,
+          "habits": [
+            "walk",
+            "read"
+          ],
+          "note": "Long morning outside",
+          "win": "Cook a proper dinner"
+        },
+        {
+          "date": "2026-08-30",
+          "hours": 0,
+          "energy": 7,
+          "mood": 7,
+          "focus": 5,
+          "sleep": 7,
+          "habits": [
+            "walk",
+            "read",
+            "screens",
+            "call"
+          ],
+          "note": "Rest day, called mum",
+          "win": "Pack lunch for Monday"
+        },
+        {
+          "date": "2026-08-31",
+          "hours": 8,
+          "energy": 6,
+          "mood": 6,
+          "focus": 7,
+          "sleep": 7,
+          "habits": [
+            "walk",
+            "read",
+            "gym",
+            "screens",
+            "plan"
+          ],
+          "note": "Planned the day the night before",
+          "win": "Finish client proposal"
+        },
+        {
+          "date": "2026-09-01",
+          "hours": 9.5,
+          "energy": 5,
+          "mood": 5,
+          "focus": 6,
+          "sleep": 5,
+          "habits": [
+            "walk",
+            "read",
+            "plan"
+          ],
+          "note": "Worked past 8pm, felt flat",
+          "win": "Stop at 6pm"
+        },
+        {
+          "date": "2026-09-02",
+          "hours": 8.5,
+          "energy": 6,
+          "mood": 6,
+          "focus": 7,
+          "sleep": 6,
+          "habits": [
+            "walk",
+            "gym",
+            "screens",
+            "plan"
+          ],
+          "note": "Gym helped",
+          "win": "Reply to all quotes"
+        },
+        {
+          "date": "2026-09-03",
+          "hours": 9,
+          "energy": 5,
+          "mood": 5,
+          "focus": 5,
+          "sleep": 5,
+          "habits": [
+            "read"
+          ],
+          "note": "Skipped the walk, scattered all day",
+          "win": "Walk before lunch"
+        },
+        {
+          "date": "2026-09-04",
+          "hours": 7.5,
+          "energy": 6,
+          "mood": 7,
+          "focus": 7,
+          "sleep": 6,
+          "habits": [
+            "walk",
+            "read",
+            "gym"
+          ],
+          "note": "Short day, good call with a client",
+          "win": "Book the dentist"
+        },
+        {
+          "date": "2026-09-05",
+          "hours": 2,
+          "energy": 7,
+          "mood": 7,
+          "focus": 6,
+          "sleep": 7,
+          "habits": [
+            "walk",
+            "read"
+          ],
+          "note": "Farmers market",
+          "win": "Tidy the desk"
+        },
+        {
+          "date": "2026-09-06",
+          "hours": 0.5,
+          "energy": 7,
+          "mood": 8,
+          "focus": 6,
+          "sleep": 8,
+          "habits": [
+            "walk",
+            "read",
+            "screens",
+            "call"
+          ],
+          "note": "Slow Sunday",
+          "win": "Review the week"
+        },
+        {
+          "date": "2026-09-07",
+          "hours": 8,
+          "energy": 7,
+          "mood": 7,
+          "focus": 8,
+          "sleep": 8,
+          "habits": [
+            "walk",
+            "read",
+            "gym",
+            "screens",
+            "plan"
+          ],
+          "note": "Everything done, felt in control",
+          "win": "Draft the report intro"
+        },
+        {
+          "date": "2026-09-08",
+          "hours": 8,
+          "energy": 7,
+          "mood": 8,
+          "focus": 8,
+          "sleep": 7,
+          "habits": [
+            "walk",
+            "read",
+            "screens",
+            "plan"
+          ],
+          "note": "Phone in another room",
+          "win": "Ship the report intro"
+        },
+        {
+          "date": "2026-09-09",
+          "hours": 8,
+          "energy": 8,
+          "mood": 8,
+          "focus": 8,
+          "sleep": 8,
+          "habits": [
+            "walk",
+            "read",
+            "gym",
+            "screens",
+            "plan"
+          ],
+          "note": "Best day in weeks",
+          "win": "Pitch the new idea"
+        },
+        {
+          "date": "2026-09-10",
+          "hours": 7.5,
+          "energy": 7,
+          "mood": 7,
+          "focus": 7,
+          "sleep": 7,
+          "habits": [
+            "walk",
+            "read",
+            "screens",
+            "plan"
+          ],
+          "note": "Steady",
+          "win": "Prepare Friday demo"
+        },
+        {
+          "date": "2026-09-11",
+          "hours": 7,
+          "energy": 7,
+          "mood": 8,
+          "focus": 7,
+          "sleep": 7,
+          "habits": [
+            "walk",
+            "read",
+            "gym",
+            "plan"
+          ],
+          "note": "Demo went well",
+          "win": "Take the afternoon slow"
+        },
+        {
+          "date": "2026-09-12",
+          "hours": 0,
+          "energy": 8,
+          "mood": 8,
+          "focus": 6,
+          "sleep": 8,
+          "habits": [
+            "walk",
+            "read"
+          ],
+          "note": "Hike with friends",
+          "win": "Do laundry"
+        },
+        {
+          "date": "2026-09-13",
+          "hours": 0,
+          "energy": 7,
+          "mood": 7,
+          "focus": 6,
+          "sleep": 7,
+          "habits": [
+            "walk",
+            "read",
+            "screens",
+            "call"
+          ],
+          "note": "Called grandma",
+          "win": "Set up the week"
+        },
+        {
+          "date": "2026-09-14",
+          "hours": 9,
+          "energy": 6,
+          "mood": 6,
+          "focus": 7,
+          "sleep": 6,
+          "habits": [
+            "walk",
+            "read",
+            "gym",
+            "plan"
+          ],
+          "note": "Deadline looming",
+          "win": "Finish section three"
+        },
+        {
+          "date": "2026-09-15",
+          "hours": 10,
+          "energy": 5,
+          "mood": 5,
+          "focus": 7,
+          "sleep": 5,
+          "habits": [
+            "walk",
+            "read",
+            "plan"
+          ],
+          "note": "Long day, ate at the desk",
+          "win": "Finish section four"
+        },
+        {
+          "date": "2026-09-16",
+          "hours": 10,
+          "energy": 5,
+          "mood": 5,
+          "focus": 6,
+          "sleep": 4,
+          "habits": [
+            "read"
+          ],
+          "note": "Screens too late, barely slept",
+          "win": "Lights out by 11"
+        },
+        {
+          "date": "2026-09-17",
+          "hours": 9.5,
+          "energy": 4,
+          "mood": 5,
+          "focus": 6,
+          "sleep": 5,
+          "habits": [
+            "walk",
+            "plan"
+          ],
+          "note": "Tired but the walk helped",
+          "win": "Submit the draft"
+        },
+        {
+          "date": "2026-09-18",
+          "hours": 8,
+          "energy": 6,
+          "mood": 7,
+          "focus": 7,
+          "sleep": 6,
+          "habits": [
+            "walk",
+            "read",
+            "gym",
+            "plan"
+          ],
+          "note": "Submitted. Relief",
+          "win": "Sleep in a little"
+        },
+        {
+          "date": "2026-09-19",
+          "hours": 2,
+          "energy": 6,
+          "mood": 7,
+          "focus": 5,
+          "sleep": 7,
+          "habits": [
+            "walk"
+          ],
+          "note": "Needed the rest",
+          "win": "Meet Sam for coffee"
+        },
+        {
+          "date": "2026-09-20",
+          "hours": 0,
+          "energy": 7,
+          "mood": 8,
+          "focus": 6,
+          "sleep": 7,
+          "habits": [
+            "walk",
+            "read",
+            "screens",
+            "call"
+          ],
+          "note": "Coffee with Sam was great",
+          "win": "Light week, start gently"
+        },
+        {
+          "date": "2026-09-21",
+          "hours": 6,
+          "energy": 7,
+          "mood": 7,
+          "focus": 7,
+          "sleep": 7,
+          "habits": [
+            "walk",
+            "read",
+            "gym",
+            "screens",
+            "plan"
+          ],
+          "note": "Gentle restart",
+          "win": "Clean up the backlog"
+        },
+        {
+          "date": "2026-09-22",
+          "hours": 7,
+          "energy": 7,
+          "mood": 7,
+          "focus": 7,
+          "sleep": 8,
+          "habits": [
+            "walk",
+            "read",
+            "screens",
+            "plan"
+          ],
+          "note": "Screens off at 10 worked",
+          "win": "Write the retro notes"
+        },
+        {
+          "date": "2026-09-23",
+          "hours": 7.5,
+          "energy": 8,
+          "mood": 7,
+          "focus": 8,
+          "sleep": 8,
+          "habits": [
+            "walk",
+            "read",
+            "gym",
+            "screens",
+            "plan"
+          ],
+          "note": "Morning gym, great focus",
+          "win": "Start the new project"
+        },
+        {
+          "date": "2026-09-24",
+          "hours": 8,
+          "energy": 7,
+          "mood": 7,
+          "focus": 8,
+          "sleep": 7,
+          "habits": [
+            "walk",
+            "read",
+            "screens"
+          ],
+          "note": "Forgot to plan, felt it by noon",
+          "win": "Plan before bed"
+        },
+        {
+          "date": "2026-09-25",
+          "hours": 7,
+          "energy": 7,
+          "mood": 8,
+          "focus": 7,
+          "sleep": 7,
+          "habits": [
+            "walk",
+            "read",
+            "gym",
+            "plan"
+          ],
+          "note": "Short Friday",
+          "win": "Go for a long ride"
+        },
+        {
+          "date": "2026-09-26",
+          "hours": 0,
+          "energy": 8,
+          "mood": 9,
+          "focus": 6,
+          "sleep": 8,
+          "habits": [
+            "walk",
+            "read"
+          ],
+          "note": "Long bike ride",
+          "win": "Meal prep"
+        },
+        {
+          "date": "2026-09-27",
+          "hours": 1,
+          "energy": 7,
+          "mood": 8,
+          "focus": 6,
+          "sleep": 7,
+          "habits": [
+            "walk",
+            "read",
+            "screens",
+            "call"
+          ],
+          "note": "Meal prep done",
+          "win": "Kick off the project"
+        },
+        {
+          "date": "2026-09-28",
+          "hours": 8.5,
+          "energy": 7,
+          "mood": 7,
+          "focus": 8,
+          "sleep": 7,
+          "habits": [
+            "walk",
+            "read",
+            "gym",
+            "screens",
+            "plan"
+          ],
+          "note": "Strong kickoff",
+          "win": "Draft the plan"
+        },
+        {
+          "date": "2026-09-29",
+          "hours": 8,
+          "energy": 7,
+          "mood": 7,
+          "focus": 7,
+          "sleep": 7,
+          "habits": [
+            "walk",
+            "read",
+            "screens",
+            "plan"
+          ],
+          "note": "Good rhythm",
+          "win": "Share the plan"
+        },
+        {
+          "date": "2026-09-30",
+          "hours": 9,
+          "energy": 6,
+          "mood": 6,
+          "focus": 7,
+          "sleep": 6,
+          "habits": [
+            "walk",
+            "read",
+            "gym",
+            "plan"
+          ],
+          "note": "Meetings ate the afternoon",
+          "win": "Decline one meeting"
+        },
+        {
+          "date": "2026-10-01",
+          "hours": 8,
+          "energy": 7,
+          "mood": 7,
+          "focus": 8,
+          "sleep": 7,
+          "habits": [
+            "walk",
+            "read",
+            "screens",
+            "plan"
+          ],
+          "note": "Declined a meeting, got deep work",
+          "win": "Finish the prototype"
+        },
+        {
+          "date": "2026-10-02",
+          "hours": 7.5,
+          "energy": 7,
+          "mood": 8,
+          "focus": 7,
+          "sleep": 7,
+          "habits": [
+            "walk",
+            "read",
+            "gym",
+            "plan"
+          ],
+          "note": "Prototype done",
+          "win": "Plan the weekend"
+        },
+        {
+          "date": "2026-10-03",
+          "hours": 0,
+          "energy": 8,
+          "mood": 8,
+          "focus": 6,
+          "sleep": 8,
+          "habits": [
+            "walk",
+            "read"
+          ],
+          "note": "Market and a long lunch",
+          "win": "Read for an hour"
+        },
+        {
+          "date": "2026-10-04",
+          "hours": 0.5,
+          "energy": 7,
+          "mood": 8,
+          "focus": 6,
+          "sleep": 8,
+          "habits": [
+            "walk",
+            "read",
+            "screens",
+            "call"
+          ],
+          "note": "Finished my book",
+          "win": "Start the week early"
+        },
+        {
+          "date": "2026-10-05",
+          "hours": 8,
+          "energy": 7,
+          "mood": 7,
+          "focus": 8,
+          "sleep": 8,
+          "habits": [
+            "walk",
+            "read",
+            "gym",
+            "screens",
+            "plan"
+          ],
+          "note": "Early start paid off",
+          "win": "Review the prototype feedback"
+        }
+      ]
+    },
+    "collections": {}
+  },
+  "answer": "Your Evening note is now the check-in app. I only previewed it with Amber's sample data, which isn't your seeded data, and I never tapped through saving a check-in, the Week screen or the CSV import. Two accessibility warnings are still open. The orange \"Log tonight\" button and the active \"Tonight\" tab label are flagged for contrast. The orange comes from Amber's theme accent, so I left it.\n\n**Screens**\n- **Tonight (opens here):** shows whether tonight is logged, with a \"Log tonight\" button if not. Below that are today's win, which is the win you set last night, and the week's hours against the budget. The rest is the week's days coloured by how they felt and habits done of planned, with a bar per habit. On Sundays it also prompts you to open the week review.\n- **Log:** work hours, four 1–10 ratings, the habits planned for that weekday only, what helped or hurt, and tomorrow's win. You can pick a past date to fill in or edit. Saving needs hours and all four ratings.\n- **Week:** a Monday-to-Sunday review with one note per week, saved automatically. It also shows the week's totals, the best and hardest day, and day by day entries.\n- **Trends:** charts of the four ratings and of work hours, switchable between weekly and daily. The weekly hours chart has a budget line.\n- **Plan:** the weekly hours budget and your habits, each with its weekdays, which you can add, rename or delete.\n- **Import and export (on Plan):** paste CSV rows, or rows copied straight from a sheet. The columns are date, hours, energy, mood, focus, sleep, habits, note, win. A header row is optional. Dates can be `2026-09-30` or `9/30/2026`. Importing replaces any day that already exists, and habit names must match your plan or they are ignored. Export gives CSV and JSON, as downloads or copied text.\n\n**Demo data**\n- It covers six weeks, 24 Aug to 5 Oct 2026, with 43 days logged.\n- It has six habits, a 40-hour weekly budget and five week-review notes.\n- Last night (Monday 5 Oct) is logged and tonight (Tuesday 6 Oct) is not, so you can see both states.\n- To clear it, edit the app's `data.json` or delete the entries one at a time in Log.",
+  "calls": [
+    {
+      "name": "search",
+      "args": {
+        "query": "Evening"
+      },
+      "error": true,
+      "result": "<tool_use_error>Error: No such tool available: search</tool_use_error>"
+    },
+    {
+      "name": "search",
+      "args": {
+        "query": "Evening"
+      },
+      "error": false,
+      "result": "{\"results\":[{\"id\":\"1c303ab7-e50e-4dae-88a9-02a5c0cba2c4\",\"title\":\"Evening\",\"url\":\"ambernotes://note/1c303ab7-e50e-4dae-88a9-02a5c0cba2c4\",\"path\":\"Evening.md\",\"snippet\":\"«Evening»\"}]}"
+    },
+    {
+      "name": "fetch",
+      "args": {
+        "id": "Evening.md"
+      },
+      "error": false,
+      "result": "{\"id\":\"1c303ab7-e50e-4dae-88a9-02a5c0cba2c4\",\"title\":\"Evening\",\"text\":\"Evening\\n\",\"url\":\"ambernotes://note/1c303ab7-e50e-4dae-88a9-02a5c0cba2c4\",\"metadata\":{\"path\":\"Evening.md\",\"folder\":\"/\",\"pinned\":false,\"version\":1,\"updated\":\"2026-10-06T00:24:52.618Z\",\"lines\":2}}"
+    },
+    {
+      "name": "create",
+      "args": {
+        "type": "app",
+        "path": "Evening.md"
+      },
+      "error": false,
+      "result": "{\"app\":\"Evening.app/\",\"saved\":\"a new React project\",\"files\":33,\"opens\":\"Opens cleanly at 390 and 1280 px (over a sample of its data).\",\"notes\":[\"390-light: 2 text element(s) with contrast under 4.5:1 (\\\"Get started\\\", \\\"Home\\\").\",\"390-light: 2 text element(s) under 12 px (\\\"Home\\\", \\\"Settings\\\").\",\"390-light: 1 control(s) smaller than 44 pt to tap (\\\"Get started\\\").\",\"1280-light: 1 text element(s) with contrast under 4.5:1 (\\\"Get started\\\").\"],\"next\":\"Read Evening.app/README.md, then build the app with write and edit (files under Evening.app/src/). Its data is Evening.app/data.json.\"}"
+    },
+    {
+      "name": "fetch",
+      "args": {
+        "id": "Evening.app/README.md"
+      },
+      "error": false,
+      "result": "{\"id\":\"1c303ab7-e50e-4dae-88a9-02a5c0cba2c4.app/README.md\",\"title\":\"/README.md\",\"text\":\"# Evening\\n\\nWhat this app is for, in one sentence.\\n\\n## Screens\\n- Home (src/screens/home.tsx)\\n- Settings (src/screens/settings.tsx)\\n\\n## Data\\nThe app's data, as the person's AI reaches it in data.json. Keep this current.\\n- settings: { name } (useSettings)\\n\\n## How this app runs in Amber Notes\\n\\n- It is the note: opening the note opens the app, on iPhone (320-440 pt wide, safe areas, the keyboard shrinks the view) and on the Mac (a window from about 500 to 1,800 px, resized live). Light and dark fol… (2328 chars)"
+    },
+    {
+      "name": "list",
+      "args": {
+        "path": "Evening.app"
+      },
+      "error": false,
+      "result": "{\"path\":\"Evening.app/\",\"files\":[{\"path\":\"Evening.app/README.md\",\"bytes\":2083,\"lines\":22},{\"path\":\"Evening.app/index.html\",\"bytes\":217,\"lines\":12},{\"path\":\"Evening.app/package.json\",\"bytes\":688,\"lines\":29},{\"path\":\"Evening.app/src/App.tsx\",\"bytes\":907,\"lines\":27},{\"path\":\"Evening.app/src/components/app-shell.tsx\",\"bytes\":2651,\"lines\":60},{\"path\":\"Evening.app/src/components/stat-card.tsx\",\"bytes\":576,\"lines\":15},{\"path\":\"Evening.app/src/components/ui/badge.tsx\",\"bytes\":1775,\"lines\":48},{\"path\":\"Evening.app/src/components/ui/button.tsx\",\"bytes\":2391,\"lines\":64},{\"path\":\"Evening.app/src/components… (2446 chars)"
+    },
+    {
+      "name": "fetch",
+      "args": {
+        "id": "Evening.app/src/App.tsx"
+      },
+      "error": false,
+      "result": "{\"id\":\"1c303ab7-e50e-4dae-88a9-02a5c0cba2c4.app/src/App.tsx\",\"title\":\"/src/App.tsx\",\"text\":\"import { Router, Route } from \\\"amber-router\\\"\\nimport { House, Settings as SettingsIcon } from \\\"lucide-react\\\"\\nimport { Toaster } from \\\"@/components/ui/sonner\\\"\\nimport { AppShell } from \\\"@/components/app-shell\\\"\\nimport Home from \\\"@/screens/home\\\"\\nimport Settings from \\\"@/screens/settings\\\"\\n\\n// The app's places: a tab bar on iPhone, a sidebar from 900 px (components/app-shell.tsx).\\nconst screens = [\\n  { path: \\\"/\\\", label: \\\"Home\\\", icon: House },\\n  { path: \\\"/settings\\\", label: \\\"Settings\\… (1177 chars)"
+    },
+    {
+      "name": "fetch",
+      "args": {
+        "id": "Evening.app/src/components/app-shell.tsx"
+      },
+      "error": false,
+      "result": "{\"id\":\"1c303ab7-e50e-4dae-88a9-02a5c0cba2c4.app/src/components/app-shell.tsx\",\"title\":\"/src/components/app-shell.tsx\",\"text\":\"import type { ReactNode } from \\\"react\\\"\\nimport type { LucideIcon } from \\\"lucide-react\\\"\\nimport { route, useRoute } from \\\"amber-router\\\"\\nimport { cn } from \\\"@/lib/utils\\\"\\n\\nexport type Screen = { path: string; label: string; icon: LucideIcon }\\n\\n// The app's frame: a tab bar at the bottom on iPhone; from 900 px a sidebar with the content\\n// beside it, so the Mac never shows a stretched phone list.\\nexport function AppShell({ title, screens, children }: { title:… (3023 chars)"
+    },
+    {
+      "name": "fetch",
+      "args": {
+        "id": "Evening.app/src/lib/amber.ts"
+      },
+      "error": false,
+      "result": "{\"id\":\"1c303ab7-e50e-4dae-88a9-02a5c0cba2c4.app/src/lib/amber.ts\",\"title\":\"/src/lib/amber.ts\",\"text\":\"// The app's data (JSON in its own store: encrypted, synced, with Undo), and the note's summary line.\\nexport { useStore, useAppData, useCollection, useSettings, useImported, batch, setSummary } from \\\"amber\\\"\\n\",\"url\":\"ambernotes://note/1c303ab7-e50e-4dae-88a9-02a5c0cba2c4\",\"metadata\":{\"path\":\"Evening.app/src/lib/amber.ts\",\"lines\":3}}"
+    },
+    {
+      "name": "fetch",
+      "args": {
+        "id": "Evening.app/src/screens/settings.tsx"
+      },
+      "error": false,
+      "result": "{\"id\":\"1c303ab7-e50e-4dae-88a9-02a5c0cba2c4.app/src/screens/settings.tsx\",\"title\":\"/src/screens/settings.tsx\",\"text\":\"import { useSettings } from \\\"@/lib/amber\\\"\\nimport { PageHeader } from \\\"@/components/app-shell\\\"\\nimport { Card } from \\\"@/components/ui/card\\\"\\nimport { Input } from \\\"@/components/ui/input\\\"\\nimport { Label } from \\\"@/components/ui/label\\\"\\n\\nconst DEFAULTS = { name: \\\"\\\" }\\n\\n// What the person can change without asking an AI, kept in the app's data.\\nexport default function Settings() {\\n  const [settings, update] = useSettings(DEFAULTS)\\n  return (\\n    <>\\n      <PageHe… (1116 chars)"
+    },
+    {
+      "name": "fetch",
+      "args": {
+        "id": "Evening.app/data.json"
+      },
+      "error": false,
+      "result": "{\"id\":\"1c303ab7-e50e-4dae-88a9-02a5c0cba2c4.app/data.json\",\"title\":\"Evening: data.json\",\"text\":\"{\\n  \\\"values\\\": {},\\n  \\\"collections\\\": {}\\n}\",\"url\":\"ambernotes://note/1c303ab7-e50e-4dae-88a9-02a5c0cba2c4\",\"metadata\":{\"path\":\"Evening.app/data.json\",\"shape\":{\"values\":{\"object\":{}},\"collections\":{\"object\":{}}},\"readme_data\":\"The app's data, as the person's AI reaches it in data.json. Keep this current.\\n- settings: { name } (useSettings)\",\"about\":\"values.localStorage holds what the app keeps in localStorage, parsed; it's saved back as the app expects.\"}}"
+    },
+    {
+      "name": "write",
+      "args": {
+        "id": "Evening.app/src/lib/evening.ts",
+        "content": "import { addDays, format, parseISO, startOfWeek } from \"date-fns\"\nimport { useStore } from \"@/lib/amber\"\n\nexport type Habit = { id: string; name: string; days: number[] } // days: 0 = Monday … 6 = Sunday\nexport type Plan = { budget: number; habits: Habit[] }\nexport type Entry = {\n  date: string // y… (7042 chars)"
+      },
+      "error": false,
+      "result": "{\"app\":{\"id\":\"1c303ab7-e50e-4dae-88a9-02a5c0cba2c4\",\"title\":\"Evening\"},\"saved\":\"/src/lib/evening.ts (created)\",\"files\":34,\"opens\":\"Opens cleanly at 390 and 1280 px (over a sample of its data).\",\"notes\":[\"390-light: 2 text element(s) with contrast under 4.5:1 (\\\"Get started\\\", \\\"Home\\\").\",\"390-light: 2 text element(s) under 12 px (\\\"Home\\\", \\\"Settings\\\").\",\"390-light: 1 control(s) smaller than 44 pt to tap (\\\"Get started\\\").\",\"1280-light: 1 text element(s) with contrast under 4.5:1 (\\\"Get started\\\").\"],\"next\":\"Keep going; run check_app (and preview_app) when the app is done.\"}"
+    },
+    {
+      "name": "write",
+      "args": {
+        "id": "Evening.app/src/screens/home.tsx",
+        "content": "import { useEffect } from \"react\"\nimport { route } from \"amber-router\"\nimport { Check, Moon, Sparkles } from \"lucide-react\"\nimport { PageHeader } from \"@/components/app-shell\"\nimport { Button } from \"@/components/ui/button\"\nimport { Card } from \"@/components/ui/card\"\nimport { setSummary } from \"@/li… (6894 chars)"
+      },
+      "error": false,
+      "result": "{\"app\":{\"id\":\"1c303ab7-e50e-4dae-88a9-02a5c0cba2c4\",\"title\":\"Evening\"},\"saved\":\"/src/screens/home.tsx (replaced)\",\"files\":34,\"opens\":\"Opens cleanly at 390 and 1280 px (over a sample of its data).\",\"notes\":[\"390-light: 2 text element(s) with contrast under 4.5:1 (\\\"Log tonight\\\", \\\"Home\\\").\",\"390-light: 2 text element(s) under 12 px (\\\"Home\\\", \\\"Settings\\\").\",\"1280-light: 1 text element(s) with contrast under 4.5:1 (\\\"Log tonight\\\").\"],\"next\":\"Keep going; run check_app (and preview_app) when the app is done.\"}"
+    },
+    {
+      "name": "write",
+      "args": {
+        "id": "Evening.app/src/screens/log.tsx",
+        "content": "import { useEffect, useState } from \"react\"\nimport { route } from \"amber-router\"\nimport { toast } from \"sonner\"\nimport { PageHeader } from \"@/components/app-shell\"\nimport { Button } from \"@/components/ui/button\"\nimport { Card } from \"@/components/ui/card\"\nimport { Input } from \"@/components/ui/input… (5698 chars)"
+      },
+      "error": false,
+      "result": "{\"app\":{\"id\":\"1c303ab7-e50e-4dae-88a9-02a5c0cba2c4\",\"title\":\"Evening\"},\"saved\":\"/src/screens/log.tsx (created)\",\"files\":35,\"opens\":\"Opens cleanly at 390 and 1280 px (over a sample of its data).\",\"notes\":[\"390-light: 2 text element(s) with contrast under 4.5:1 (\\\"Log tonight\\\", \\\"Home\\\").\",\"390-light: 2 text element(s) under 12 px (\\\"Home\\\", \\\"Settings\\\").\",\"1280-light: 1 text element(s) with contrast under 4.5:1 (\\\"Log tonight\\\").\"],\"next\":\"Keep going; run check_app (and preview_app) when the app is done.\"}"
+    },
+    {
+      "name": "write",
+      "args": {
+        "id": "Evening.app/src/screens/week.tsx",
+        "content": "import { useState } from \"react\"\nimport { ChevronLeft, ChevronRight } from \"lucide-react\"\nimport { PageHeader } from \"@/components/app-shell\"\nimport { Button } from \"@/components/ui/button\"\nimport { Card } from \"@/components/ui/card\"\nimport { RATINGS, RATING_LABEL, DAY_NAMES, feel, mean, plannedFor,… (4551 chars)"
+      },
+      "error": false,
+      "result": "{\"app\":{\"id\":\"1c303ab7-e50e-4dae-88a9-02a5c0cba2c4\",\"title\":\"Evening\"},\"saved\":\"/src/screens/week.tsx (created)\",\"files\":36,\"opens\":\"Opens cleanly at 390 and 1280 px (over a sample of its data).\",\"notes\":[\"390-light: 2 text element(s) with contrast under 4.5:1 (\\\"Log tonight\\\", \\\"Home\\\").\",\"390-light: 2 text element(s) under 12 px (\\\"Home\\\", \\\"Settings\\\").\",\"1280-light: 1 text element(s) with contrast under 4.5:1 (\\\"Log tonight\\\").\"],\"next\":\"Keep going; run check_app (and preview_app) when the app is done.\"}"
+    },
+    {
+      "name": "write",
+      "args": {
+        "id": "Evening.app/src/screens/trends.tsx",
+        "content": "import { useState } from \"react\"\nimport { Bar, BarChart, CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from \"recharts\"\nimport { PageHeader } from \"@/components/app-shell\"\nimport { Button } from \"@/components/ui/button\"\nimport { Card } from \"@/components/… (3824 chars)"
+      },
+      "error": false,
+      "result": "{\"app\":{\"id\":\"1c303ab7-e50e-4dae-88a9-02a5c0cba2c4\",\"title\":\"Evening\"},\"saved\":\"/src/screens/trends.tsx (created)\",\"files\":37,\"opens\":\"Opens cleanly at 390 and 1280 px (over a sample of its data).\",\"notes\":[\"390-light: 2 text element(s) with contrast under 4.5:1 (\\\"Log tonight\\\", \\\"Home\\\").\",\"390-light: 2 text element(s) under 12 px (\\\"Home\\\", \\\"Settings\\\").\",\"1280-light: 1 text element(s) with contrast under 4.5:1 (\\\"Log tonight\\\").\"],\"next\":\"Keep going; run check_app (and preview_app) when the app is done.\"}"
+    },
+    {
+      "name": "write",
+      "args": {
+        "id": "Evening.app/src/screens/plan.tsx",
+        "content": "import { useState } from \"react\"\nimport { Trash2 } from \"lucide-react\"\nimport { toast } from \"sonner\"\nimport { PageHeader } from \"@/components/app-shell\"\nimport { Button } from \"@/components/ui/button\"\nimport { Card } from \"@/components/ui/card\"\nimport { Input } from \"@/components/ui/input\"\nimport {… (5705 chars)"
+      },
+      "error": false,
+      "result": "{\"app\":{\"id\":\"1c303ab7-e50e-4dae-88a9-02a5c0cba2c4\",\"title\":\"Evening\"},\"saved\":\"/src/screens/plan.tsx (created)\",\"files\":38,\"opens\":\"Opens cleanly at 390 and 1280 px (over a sample of its data).\",\"notes\":[\"390-light: 2 text element(s) with contrast under 4.5:1 (\\\"Log tonight\\\", \\\"Home\\\").\",\"390-light: 2 text element(s) under 12 px (\\\"Home\\\", \\\"Settings\\\").\",\"1280-light: 1 text element(s) with contrast under 4.5:1 (\\\"Log tonight\\\").\"],\"next\":\"Keep going; run check_app (and preview_app) when the app is done.\"}"
+    },
+    {
+      "name": "write",
+      "args": {
+        "id": "Evening.app/src/App.tsx",
+        "content": "import { Router, Route } from \"amber-router\"\nimport { CalendarCheck, ChartLine, ClipboardList, Moon, SlidersHorizontal } from \"lucide-react\"\nimport { Toaster } from \"@/components/ui/sonner\"\nimport { AppShell } from \"@/components/app-shell\"\nimport Home from \"@/screens/home\"\nimport Log from \"@/screens… (1256 chars)"
+      },
+      "error": false,
+      "result": "{\"app\":{\"id\":\"1c303ab7-e50e-4dae-88a9-02a5c0cba2c4\",\"title\":\"Evening\"},\"saved\":\"/src/App.tsx (replaced)\",\"files\":38,\"opens\":\"Opens cleanly at 390 and 1280 px (over a sample of its data).\",\"notes\":[\"390-light: 2 text element(s) with contrast under 4.5:1 (\\\"Log tonight\\\", \\\"Tonight\\\").\",\"390-light: 5 text element(s) under 12 px (\\\"Tonight\\\", \\\"Log\\\", \\\"Week\\\").\",\"1280-light: 1 text element(s) with contrast under 4.5:1 (\\\"Log tonight\\\").\"],\"next\":\"Keep going; run check_app (and preview_app) when the app is done.\"}"
+    },
+    {
+      "name": "delete",
+      "args": {
+        "id": "Evening.app/src/screens/settings.tsx"
+      },
+      "error": false,
+      "result": "{\"app\":{\"id\":\"1c303ab7-e50e-4dae-88a9-02a5c0cba2c4\",\"title\":\"Evening\"},\"deleted\":\"/src/screens/settings.tsx\",\"files\":37,\"opens\":\"Opens cleanly at 390 and 1280 px (over a sample of its data).\",\"notes\":[\"390-light: 2 text element(s) with contrast under 4.5:1 (\\\"Log tonight\\\", \\\"Tonight\\\").\",\"390-light: 5 text element(s) under 12 px (\\\"Tonight\\\", \\\"Log\\\", \\\"Week\\\").\",\"1280-light: 1 text element(s) with contrast under 4.5:1 (\\\"Log tonight\\\").\"],\"next\":\"Keep going; run check_app (and preview_app) when the app is done.\"}"
+    },
+    {
+      "name": "edit",
+      "args": {
+        "id": "Evening.app/src/components/app-shell.tsx",
+        "edits": "[{\"old_text\":\"py-1.5 text-[11px] font-medium\",\"new_text\":\"py-1.5 text-xs font-medium\"}]"
+      },
+      "error": false,
+      "result": "{\"app\":{\"id\":\"1c303ab7-e50e-4dae-88a9-02a5c0cba2c4\",\"title\":\"Evening\"},\"saved\":\"/src/components/app-shell.tsx (1 edit)\",\"files\":37,\"opens\":\"Opens cleanly at 390 and 1280 px (over a sample of its data).\",\"notes\":[\"390-light: 2 text element(s) with contrast under 4.5:1 (\\\"Log tonight\\\", \\\"Tonight\\\").\",\"1280-light: 1 text element(s) with contrast under 4.5:1 (\\\"Log tonight\\\").\"],\"next\":\"Keep going; run check_app (and preview_app) when the app is done.\"}"
+    },
+    {
+      "name": "write",
+      "args": {
+        "id": "Evening.app/data.json",
+        "content": "{\n  \"values\": {\n    \"plan\": {\n      \"budget\": 40,\n      \"habits\": [\n        {\"id\":\"walk\",\"name\":\"Walk 30 min\",\"days\":[0,1,2,3,4,5,6]},\n        {\"id\":\"read\",\"name\":\"Read 20 min\",\"days\":[0,1,2,3,4,5,6]},\n        {\"id\":\"gym\",\"name\":\"Gym\",\"days\":[0,2,4]},\n        {\"id\":\"screens\",\"name\":\"No screens after… (8543 chars)"
+      },
+      "error": false,
+      "result": "{\"app\":\"Evening\",\"saved\":\"data.json\",\"bytes\":8079,\"note\":\"Saved as one change: the open app shows it at once, and the person can undo it.\"}"
+    },
+    {
+      "name": "see_app",
+      "args": {
+        "id": "Evening.md",
+        "data": "real",
+        "widths": "[390,1280]",
+        "themes": "[\"light\"]"
+      },
+      "error": true,
+      "result": "Previews with real data are off. They show a sample with the same shape by default (data: \"sample\"). The person can allow real data in Amber Notes › Settings › Apps in Notes, \"Let AIs preview apps with my notes\"."
+    },
+    {
+      "name": "see_app",
+      "args": {
+        "id": "Evening.md",
+        "steps": "[{\"tap\":\"Log\"},{\"tap\":\"7\"},{\"scroll\":\"down\"},{\"tap\":\"Plan\"},{\"tap\":\"Trends\"}]"
+      },
+      "error": false,
+      "result": "[image]\n{\"app\":{\"id\":\"1c303ab7-e50e-4dae-88a9-02a5c0cba2c4\",\"title\":\"Evening\"},\"steps\":[{\"step\":1,\"did\":{\"tap\":\"Log\"},\"screen\":[\"heading: Evening check-in\",\"button: Previous day\",\"input date:  = \\\"2026-10-06\\\"\",\"button: Next day\",\"input text: 7.5 = \\\"\\\"\",\"button: 1\",\"button: 2\",\"button: 3\",\"button: 4\",\"button: 5\",\"button: 6\",\"button: 7\",\"button: 8\",\"button: 9\",\"button: 10\",\"button: 1\",\"button: 2\",\"button: 3\",\"button: 4\",\"button: 5\",\"button: 6\",\"button: 7\",\"button: 8\",\"button: 9\",\"button: 10\",\"button: 1\",\"button: 2\",\"button: 3\",\"button: 4\",\"button: 5\",\"button: 6\",\"button: 7\",\"button: 8\",\"button… (4569 chars)"
+    },
+    {
+      "name": "see_app",
+      "args": {
+        "id": "Evening.md",
+        "themes": "[\"light\",\"dark\"]"
+      },
+      "error": false,
+      "result": "[image]\n[image]\n[image]\n[image]\n{\"app\":{\"id\":\"1c303ab7-e50e-4dae-88a9-02a5c0cba2c4\",\"title\":\"Evening\"},\"views\":[\"390-light\",\"390-dark\",\"1280-light\",\"1280-dark\"],\"issues\":[\"390-light: 2 text element(s) with contrast under 4.5:1 (\\\"Log tonight\\\", \\\"Tonight\\\").\",\"1280-light: 1 text element(s) with contrast under 4.5:1 (\\\"Log tonight\\\").\"]}"
+    },
+    {
+      "name": "fetch",
+      "args": {
+        "id": "Evening.app/src/index.css",
+        "lines": "1-40"
+      },
+      "error": false,
+      "result": "{\"id\":\"1c303ab7-e50e-4dae-88a9-02a5c0cba2c4.app/src/index.css\",\"title\":\"/src/index.css\",\"text\":\"@import \\\"tailwindcss\\\";\\n@import \\\"tw-animate-css\\\";\\n\\n@custom-variant dark (@media (prefers-color-scheme: dark));\\n\\n/* shadcn/ui's colours, from Amber Notes' tokens (they switch for dark mode by themselves). */\\n:root {\\n  --radius: 0.75rem;\\n  --background: var(--amber-bg);\\n  --foreground: var(--amber-text);\\n  --card: var(--amber-surface);\\n  --card-foreground: var(--amber-text);\\n  --popover: var(--amber-bg);\\n  --popover-foreground: var(--amber-text);\\n  --primary: var(--amber-accent);\\n  -… (1540 chars)"
+    },
+    {
+      "name": "write",
+      "args": {
+        "id": "Evening.app/README.md",
+        "content": "# Evening\n\nA two-minute evening check-in: work hours, four 1–10 ratings, planned habits, what helped or hurt, and tomorrow's win.\n\n## Screens\n- Tonight (src/screens/home.tsx): logged or not, today's win, week hours vs budget, how the days felt, habits done of planned\n- Log (src/screens/log.tsx): the… (1054 chars)"
+      },
+      "error": false,
+      "result": "{\"app\":{\"id\":\"1c303ab7-e50e-4dae-88a9-02a5c0cba2c4\",\"title\":\"Evening\"},\"saved\":\"/README.md (replaced)\",\"files\":37,\"opens\":\"Opens cleanly at 390 and 1280 px (over a sample of its data).\",\"notes\":[\"390-light: 2 text element(s) with contrast under 4.5:1 (\\\"Log tonight\\\", \\\"Tonight\\\").\",\"1280-light: 1 text element(s) with contrast under 4.5:1 (\\\"Log tonight\\\").\"],\"next\":\"Keep going; run check_app (and preview_app) when the app is done.\"}"
+    }
+  ],
+  "render": {
+    "views": [
+      {
+        "name": "390-light",
+        "width": 390,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 544,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/x2/shots/x-evening-claude-cli-files-390-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [
+          "Log tonight",
+          "Tonight"
+        ],
+        "faintCount": 2,
+        "headings": [
+          "Tonight"
+        ],
+        "excerpt": "Tonight Tuesday 6 October Not logged yet Two minutes: hours, four ratings, habits, one win for tomorrow. Log tonight Today's win Review the prototype feedback Work hours this week 8 / 40 h 32 h left How the days felt M 7.5 T – W – T – F – S – S – Average of energy, mood, focus and sleep. Habits done of planned 5 / 5 Walk 30 min 1/1 Read 20 min 1/1 Gym 1/1 No screens after 10pm 1/1 Plan tomorrow 1/1 Counts logged days this week. Last 7 logged days average: Energy 7 · Mood 7.3 · Focus 7 · Sleep qu",
+        "titleCount": 0,
+        "ghostFields": [],
+        "sections": 0,
+        "nav": true,
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.9563301282051282,
+        "canvases": 0,
+        "svgShapes": 10,
+        "gridCols": 7,
+        "frames": 1,
+        "look": {
+          "accentHue": 28,
+          "nonAmberVivid": 0.016047049206055253,
+          "tintedBg": false
+        }
+      },
+      {
+        "name": "390-dark",
+        "width": 390,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 544,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/x2/shots/x-evening-claude-cli-files-390-dark.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Tonight"
+        ],
+        "excerpt": "Tonight Tuesday 6 October Not logged yet Two minutes: hours, four ratings, habits, one win for tomorrow. Log tonight Today's win Review the prototype feedback Work hours this week 8 / 40 h 32 h left How the days felt M 7.5 T – W – T – F – S – S – Average of energy, mood, focus and sleep. Habits done of planned 5 / 5 Walk 30 min 1/1 Read 20 min 1/1 Gym 1/1 No screens after 10pm 1/1 Plan tomorrow 1/1 Counts logged days this week. Last 7 logged days average: Energy 7 · Mood 7.3 · Focus 7 · Sleep qu",
+        "titleCount": 0,
+        "ghostFields": [],
+        "sections": 0,
+        "nav": true,
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.9563301282051282,
+        "canvases": 0,
+        "svgShapes": 10,
+        "gridCols": 7,
+        "frames": 1,
+        "look": {
+          "accentHue": 38,
+          "nonAmberVivid": 0.016047049206055253,
+          "tintedBg": false
+        }
+      },
+      {
+        "name": "320-light",
+        "width": 320,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 544,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/x2/shots/x-evening-claude-cli-files-320-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [
+          "Log tonight",
+          "Tonight"
+        ],
+        "faintCount": 2,
+        "headings": [
+          "Tonight"
+        ],
+        "excerpt": "Tonight Tuesday 6 October Not logged yet Two minutes: hours, four ratings, habits, one win for tomorrow. Log tonight Today's win Review the prototype feedback Work hours this week 8 / 40 h 32 h left How the days felt M 7.5 T – W – T – F – S – S – Average of energy, mood, focus and sleep. Habits done of planned 5 / 5 Walk 30 min 1/1 Read 20 min 1/1 Gym 1/1 No screens after 10pm 1/1 Plan tomorrow 1/1 Counts logged days this week. Last 7 logged days average: Energy 7 · Mood 7.3 · Focus 7 · Sleep qu",
+        "titleCount": 0,
+        "ghostFields": [],
+        "sections": 0,
+        "nav": true,
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.94677734375,
+        "canvases": 0,
+        "svgShapes": 10,
+        "gridCols": 7,
+        "frames": 1,
+        "look": {
+          "accentHue": 28,
+          "nonAmberVivid": 0.009514968579370085,
+          "tintedBg": false
+        }
+      },
+      {
+        "name": "1280-light",
+        "width": 1280,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 552,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/x2/shots/x-evening-claude-cli-files-1280-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [
+          "Log tonight"
+        ],
+        "faintCount": 1,
+        "headings": [
+          "Tonight"
+        ],
+        "excerpt": "Evening Tonight Log Week Trends Plan Tonight Tuesday 6 October Not logged yet Two minutes: hours, four ratings, habits, one win for tomorrow. Log tonight Today's win Review the prototype feedback Work hours this week 8 / 40 h 32 h left How the days felt M 7.5 T – W – T – F – S – S – Average of energy, mood, focus and sleep. Habits done of planned 5 / 5 Walk 30 min 1/1 Read 20 min 1/1 Gym 1/1 No screens after 10pm 1/1 Plan tomorrow 1/1 Counts logged days this week. Last 7 logged days average: Ene",
+        "titleCount": 1,
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.9568359375,
+        "canvases": 0,
+        "svgShapes": 10,
+        "gridCols": 7,
+        "frames": 1,
+        "look": {
+          "accentHue": 240,
+          "nonAmberVivid": 0.013644800774276539,
+          "tintedBg": false
+        }
+      },
+      {
+        "name": "1280-dark",
+        "width": 1280,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 552,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Tonight"
+        ],
+        "excerpt": "Evening Tonight Log Week Trends Plan Tonight Tuesday 6 October Not logged yet Two minutes: hours, four ratings, habits, one win for tomorrow. Log tonight Today's win Review the prototype feedback Work hours this week 8 / 40 h 32 h left How the days felt M 7.5 T – W – T – F – S – S – Average of energy, mood, focus and sleep. Habits done of planned 5 / 5 Walk 30 min 1/1 Read 20 min 1/1 Gym 1/1 No screens after 10pm 1/1 Plan tomorrow 1/1 Counts logged days this week. Last 7 logged days average: Ene",
+        "titleCount": 1,
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.9568359375,
+        "canvases": 0,
+        "svgShapes": 10,
+        "gridCols": 7,
+        "frames": 1,
+        "look": {
+          "accentHue": 240,
+          "nonAmberVivid": 0.013644800774276539,
+          "tintedBg": false
+        }
+      }
+    ],
+    "blocked": [],
+    "updates": [],
+    "setData": 9,
+    "interaction": {
+      "tried": "control",
+      "ok": false,
+      "framesPerSecond": 0,
+      "error": "no control sent an edit"
+    },
+    "probes": {
+      "follows": {
+        "pass": false,
+        "detail": "a new record in the app's data doesn't show"
+      },
+      "escapes": {
+        "pass": true
+      },
+      "empty": {
+        "pass": true,
+        "detail": "blank app"
+      },
+      "large": {
+        "pass": true,
+        "detail": "666 ms to load 400 records"
+      }
+    },
+    "dataAfter": {
+      "values": {
+        "plan": {
+          "budget": 40,
+          "habits": [
+            {
+              "id": "walk",
+              "name": "Walk 30 min",
+              "days": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6
+              ]
+            },
+            {
+              "id": "read",
+              "name": "Read 20 min",
+              "days": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6
+              ]
+            },
+            {
+              "id": "gym",
+              "name": "Gym",
+              "days": [
+                0,
+                2,
+                4
+              ]
+            },
+            {
+              "id": "screens",
+              "name": "No screens after 10pm",
+              "days": [
+                0,
+                1,
+                2,
+                3,
+                6
+              ]
+            },
+            {
+              "id": "plan",
+              "name": "Plan tomorrow",
+              "days": [
+                0,
+                1,
+                2,
+                3,
+                4
+              ]
+            },
+            {
+              "id": "call",
+              "name": "Call family",
+              "days": [
+                6
+              ]
+            }
+          ]
+        },
+        "reviews": {
+          "2026-08-24": "Solid start. Gym days gave the best energy. Next week: stop working past 7pm.",
+          "2026-08-31": "Too many late evenings midweek and sleep dropped. Keep the walk, protect Thursday.",
+          "2026-09-07": "Best week so far: 38 hours and every gym session done. Planning the next day helped focus.",
+          "2026-09-14": "Deadline week, 46 hours. Mood held up thanks to walks. Need a lighter week next.",
+          "2026-09-21": "Recovered well. Sleep back above 7. Keep screens off after 10."
+        },
+        "entries": [
+          {
+            "date": "2026-08-24",
+            "hours": 8,
+            "energy": 7,
+            "mood": 7,
+            "focus": 7,
+            "sleep": 7,
+            "habits": [
+              "walk",
+              "read",
+              "gym",
+              "screens",
+              "plan"
+            ],
+            "note": "Gym at lunch cleared my head",
+            "win": "Send the project outline"
+          },
+          {
+            "date": "2026-08-25",
+            "hours": 8.5,
+            "energy": 6,
+            "mood": 6,
+            "focus": 7,
+            "sleep": 6,
+            "habits": [
+              "walk",
+              "screens",
+              "plan"
+            ],
+            "note": "Too many meetings",
+            "win": "Block two focus hours"
+          },
+          {
+            "date": "2026-08-26",
+            "hours": 9,
+            "energy": 6,
+            "mood": 6,
+            "focus": 8,
+            "sleep": 6,
+            "habits": [
+              "walk",
+              "read",
+              "gym",
+              "plan"
+            ],
+            "note": "Deep work before email helped",
+            "win": "Review the budget draft"
+          },
+          {
+            "date": "2026-08-27",
+            "hours": 8,
+            "energy": 5,
+            "mood": 6,
+            "focus": 6,
+            "sleep": 5,
+            "habits": [
+              "walk",
+              "read"
+            ],
+            "note": "Late coffee, slept badly",
+            "win": "No coffee after 2pm"
+          },
+          {
+            "date": "2026-08-28",
+            "hours": 7,
+            "energy": 6,
+            "mood": 7,
+            "focus": 6,
+            "sleep": 6,
+            "habits": [
+              "walk",
+              "read",
+              "gym",
+              "plan"
+            ],
+            "note": "Friday wrap-up felt good",
+            "win": "Clear the inbox"
+          },
+          {
+            "date": "2026-08-29",
+            "hours": 1,
+            "energy": 7,
+            "mood": 8,
+            "focus": 5,
+            "sleep": 7,
+            "habits": [
+              "walk",
+              "read"
+            ],
+            "note": "Long morning outside",
+            "win": "Cook a proper dinner"
+          },
+          {
+            "date": "2026-08-30",
+            "hours": 0,
+            "energy": 7,
+            "mood": 7,
+            "focus": 5,
+            "sleep": 7,
+            "habits": [
+              "walk",
+              "read",
+              "screens",
+              "call"
+            ],
+            "note": "Rest day, called mum",
+            "win": "Pack lunch for Monday"
+          },
+          {
+            "date": "2026-08-31",
+            "hours": 8,
+            "energy": 6,
+            "mood": 6,
+            "focus": 7,
+            "sleep": 7,
+            "habits": [
+              "walk",
+              "read",
+              "gym",
+              "screens",
+              "plan"
+            ],
+            "note": "Planned the day the night before",
+            "win": "Finish client proposal"
+          },
+          {
+            "date": "2026-09-01",
+            "hours": 9.5,
+            "energy": 5,
+            "mood": 5,
+            "focus": 6,
+            "sleep": 5,
+            "habits": [
+              "walk",
+              "read",
+              "plan"
+            ],
+            "note": "Worked past 8pm, felt flat",
+            "win": "Stop at 6pm"
+          },
+          {
+            "date": "2026-09-02",
+            "hours": 8.5,
+            "energy": 6,
+            "mood": 6,
+            "focus": 7,
+            "sleep": 6,
+            "habits": [
+              "walk",
+              "gym",
+              "screens",
+              "plan"
+            ],
+            "note": "Gym helped",
+            "win": "Reply to all quotes"
+          },
+          {
+            "date": "2026-09-03",
+            "hours": 9,
+            "energy": 5,
+            "mood": 5,
+            "focus": 5,
+            "sleep": 5,
+            "habits": [
+              "read"
+            ],
+            "note": "Skipped the walk, scattered all day",
+            "win": "Walk before lunch"
+          },
+          {
+            "date": "2026-09-04",
+            "hours": 7.5,
+            "energy": 6,
+            "mood": 7,
+            "focus": 7,
+            "sleep": 6,
+            "habits": [
+              "walk",
+              "read",
+              "gym"
+            ],
+            "note": "Short day, good call with a client",
+            "win": "Book the dentist"
+          },
+          {
+            "date": "2026-09-05",
+            "hours": 2,
+            "energy": 7,
+            "mood": 7,
+            "focus": 6,
+            "sleep": 7,
+            "habits": [
+              "walk",
+              "read"
+            ],
+            "note": "Farmers market",
+            "win": "Tidy the desk"
+          },
+          {
+            "date": "2026-09-06",
+            "hours": 0.5,
+            "energy": 7,
+            "mood": 8,
+            "focus": 6,
+            "sleep": 8,
+            "habits": [
+              "walk",
+              "read",
+              "screens",
+              "call"
+            ],
+            "note": "Slow Sunday",
+            "win": "Review the week"
+          },
+          {
+            "date": "2026-09-07",
+            "hours": 8,
+            "energy": 7,
+            "mood": 7,
+            "focus": 8,
+            "sleep": 8,
+            "habits": [
+              "walk",
+              "read",
+              "gym",
+              "screens",
+              "plan"
+            ],
+            "note": "Everything done, felt in control",
+            "win": "Draft the report intro"
+          },
+          {
+            "date": "2026-09-08",
+            "hours": 8,
+            "energy": 7,
+            "mood": 8,
+            "focus": 8,
+            "sleep": 7,
+            "habits": [
+              "walk",
+              "read",
+              "screens",
+              "plan"
+            ],
+            "note": "Phone in another room",
+            "win": "Ship the report intro"
+          },
+          {
+            "date": "2026-09-09",
+            "hours": 8,
+            "energy": 8,
+            "mood": 8,
+            "focus": 8,
+            "sleep": 8,
+            "habits": [
+              "walk",
+              "read",
+              "gym",
+              "screens",
+              "plan"
+            ],
+            "note": "Best day in weeks",
+            "win": "Pitch the new idea"
+          },
+          {
+            "date": "2026-09-10",
+            "hours": 7.5,
+            "energy": 7,
+            "mood": 7,
+            "focus": 7,
+            "sleep": 7,
+            "habits": [
+              "walk",
+              "read",
+              "screens",
+              "plan"
+            ],
+            "note": "Steady",
+            "win": "Prepare Friday demo"
+          },
+          {
+            "date": "2026-09-11",
+            "hours": 7,
+            "energy": 7,
+            "mood": 8,
+            "focus": 7,
+            "sleep": 7,
+            "habits": [
+              "walk",
+              "read",
+              "gym",
+              "plan"
+            ],
+            "note": "Demo went well",
+            "win": "Take the afternoon slow"
+          },
+          {
+            "date": "2026-09-12",
+            "hours": 0,
+            "energy": 8,
+            "mood": 8,
+            "focus": 6,
+            "sleep": 8,
+            "habits": [
+              "walk",
+              "read"
+            ],
+            "note": "Hike with friends",
+            "win": "Do laundry"
+          },
+          {
+            "date": "2026-09-13",
+            "hours": 0,
+            "energy": 7,
+            "mood": 7,
+            "focus": 6,
+            "sleep": 7,
+            "habits": [
+              "walk",
+              "read",
+              "screens",
+              "call"
+            ],
+            "note": "Called grandma",
+            "win": "Set up the week"
+          },
+          {
+            "date": "2026-09-14",
+            "hours": 9,
+            "energy": 6,
+            "mood": 6,
+            "focus": 7,
+            "sleep": 6,
+            "habits": [
+              "walk",
+              "read",
+              "gym",
+              "plan"
+            ],
+            "note": "Deadline looming",
+            "win": "Finish section three"
+          },
+          {
+            "date": "2026-09-15",
+            "hours": 10,
+            "energy": 5,
+            "mood": 5,
+            "focus": 7,
+            "sleep": 5,
+            "habits": [
+              "walk",
+              "read",
+              "plan"
+            ],
+            "note": "Long day, ate at the desk",
+            "win": "Finish section four"
+          },
+          {
+            "date": "2026-09-16",
+            "hours": 10,
+            "energy": 5,
+            "mood": 5,
+            "focus": 6,
+            "sleep": 4,
+            "habits": [
+              "read"
+            ],
+            "note": "Screens too late, barely slept",
+            "win": "Lights out by 11"
+          },
+          {
+            "date": "2026-09-17",
+            "hours": 9.5,
+            "energy": 4,
+            "mood": 5,
+            "focus": 6,
+            "sleep": 5,
+            "habits": [
+              "walk",
+              "plan"
+            ],
+            "note": "Tired but the walk helped",
+            "win": "Submit the draft"
+          },
+          {
+            "date": "2026-09-18",
+            "hours": 8,
+            "energy": 6,
+            "mood": 7,
+            "focus": 7,
+            "sleep": 6,
+            "habits": [
+              "walk",
+              "read",
+              "gym",
+              "plan"
+            ],
+            "note": "Submitted. Relief",
+            "win": "Sleep in a little"
+          },
+          {
+            "date": "2026-09-19",
+            "hours": 2,
+            "energy": 6,
+            "mood": 7,
+            "focus": 5,
+            "sleep": 7,
+            "habits": [
+              "walk"
+            ],
+            "note": "Needed the rest",
+            "win": "Meet Sam for coffee"
+          },
+          {
+            "date": "2026-09-20",
+            "hours": 0,
+            "energy": 7,
+            "mood": 8,
+            "focus": 6,
+            "sleep": 7,
+            "habits": [
+              "walk",
+              "read",
+              "screens",
+              "call"
+            ],
+            "note": "Coffee with Sam was great",
+            "win": "Light week, start gently"
+          },
+          {
+            "date": "2026-09-21",
+            "hours": 6,
+            "energy": 7,
+            "mood": 7,
+            "focus": 7,
+            "sleep": 7,
+            "habits": [
+              "walk",
+              "read",
+              "gym",
+              "screens",
+              "plan"
+            ],
+            "note": "Gentle restart",
+            "win": "Clean up the backlog"
+          },
+          {
+            "date": "2026-09-22",
+            "hours": 7,
+            "energy": 7,
+            "mood": 7,
+            "focus": 7,
+            "sleep": 8,
+            "habits": [
+              "walk",
+              "read",
+              "screens",
+              "plan"
+            ],
+            "note": "Screens off at 10 worked",
+            "win": "Write the retro notes"
+          },
+          {
+            "date": "2026-09-23",
+            "hours": 7.5,
+            "energy": 8,
+            "mood": 7,
+            "focus": 8,
+            "sleep": 8,
+            "habits": [
+              "walk",
+              "read",
+              "gym",
+              "screens",
+              "plan"
+            ],
+            "note": "Morning gym, great focus",
+            "win": "Start the new project"
+          },
+          {
+            "date": "2026-09-24",
+            "hours": 8,
+            "energy": 7,
+            "mood": 7,
+            "focus": 8,
+            "sleep": 7,
+            "habits": [
+              "walk",
+              "read",
+              "screens"
+            ],
+            "note": "Forgot to plan, felt it by noon",
+            "win": "Plan before bed"
+          },
+          {
+            "date": "2026-09-25",
+            "hours": 7,
+            "energy": 7,
+            "mood": 8,
+            "focus": 7,
+            "sleep": 7,
+            "habits": [
+              "walk",
+              "read",
+              "gym",
+              "plan"
+            ],
+            "note": "Short Friday",
+            "win": "Go for a long ride"
+          },
+          {
+            "date": "2026-09-26",
+            "hours": 0,
+            "energy": 8,
+            "mood": 9,
+            "focus": 6,
+            "sleep": 8,
+            "habits": [
+              "walk",
+              "read"
+            ],
+            "note": "Long bike ride",
+            "win": "Meal prep"
+          },
+          {
+            "date": "2026-09-27",
+            "hours": 1,
+            "energy": 7,
+            "mood": 8,
+            "focus": 6,
+            "sleep": 7,
+            "habits": [
+              "walk",
+              "read",
+              "screens",
+              "call"
+            ],
+            "note": "Meal prep done",
+            "win": "Kick off the project"
+          },
+          {
+            "date": "2026-09-28",
+            "hours": 8.5,
+            "energy": 7,
+            "mood": 7,
+            "focus": 8,
+            "sleep": 7,
+            "habits": [
+              "walk",
+              "read",
+              "gym",
+              "screens",
+              "plan"
+            ],
+            "note": "Strong kickoff",
+            "win": "Draft the plan"
+          },
+          {
+            "date": "2026-09-29",
+            "hours": 8,
+            "energy": 7,
+            "mood": 7,
+            "focus": 7,
+            "sleep": 7,
+            "habits": [
+              "walk",
+              "read",
+              "screens",
+              "plan"
+            ],
+            "note": "Good rhythm",
+            "win": "Share the plan"
+          },
+          {
+            "date": "2026-09-30",
+            "hours": 9,
+            "energy": 6,
+            "mood": 6,
+            "focus": 7,
+            "sleep": 6,
+            "habits": [
+              "walk",
+              "read",
+              "gym",
+              "plan"
+            ],
+            "note": "Meetings ate the afternoon",
+            "win": "Decline one meeting"
+          },
+          {
+            "date": "2026-10-01",
+            "hours": 8,
+            "energy": 7,
+            "mood": 7,
+            "focus": 8,
+            "sleep": 7,
+            "habits": [
+              "walk",
+              "read",
+              "screens",
+              "plan"
+            ],
+            "note": "Declined a meeting, got deep work",
+            "win": "Finish the prototype"
+          },
+          {
+            "date": "2026-10-02",
+            "hours": 7.5,
+            "energy": 7,
+            "mood": 8,
+            "focus": 7,
+            "sleep": 7,
+            "habits": [
+              "walk",
+              "read",
+              "gym",
+              "plan"
+            ],
+            "note": "Prototype done",
+            "win": "Plan the weekend"
+          },
+          {
+            "date": "2026-10-03",
+            "hours": 0,
+            "energy": 8,
+            "mood": 8,
+            "focus": 6,
+            "sleep": 8,
+            "habits": [
+              "walk",
+              "read"
+            ],
+            "note": "Market and a long lunch",
+            "win": "Read for an hour"
+          },
+          {
+            "date": "2026-10-04",
+            "hours": 0.5,
+            "energy": 7,
+            "mood": 8,
+            "focus": 6,
+            "sleep": 8,
+            "habits": [
+              "walk",
+              "read",
+              "screens",
+              "call"
+            ],
+            "note": "Finished my book",
+            "win": "Start the week early"
+          },
+          {
+            "date": "2026-10-05",
+            "hours": 8,
+            "energy": 7,
+            "mood": 7,
+            "focus": 8,
+            "sleep": 8,
+            "habits": [
+              "walk",
+              "read",
+              "gym",
+              "screens",
+              "plan"
+            ],
+            "note": "Early start paid off",
+            "win": "Review the prototype feedback"
+          }
+        ]
+      },
+      "collections": {}
+    }
+  },
+  "breakage": [],
+  "walk": [
+    {
+      "name": "log_tonight",
+      "pass": true
+    },
+    {
+      "name": "ratings",
+      "pass": true
+    },
+    {
+      "name": "trends",
+      "pass": true
+    },
+    {
+      "name": "plan",
+      "pass": true
+    },
+    {
+      "name": "week",
+      "pass": true
+    },
+    {
+      "name": "desktop",
+      "pass": true
+    }
+  ],
+  "used": {
+    "try_app": 1,
+    "see_app": 3,
+    "run_app_tests": 0,
+    "test_files": 0
+  }
+}

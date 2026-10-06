@@ -1,0 +1,105 @@
+{
+  "task": "n-organize",
+  "rep": 1,
+  "model": "codex:default",
+  "round": "bench-notes",
+  "skill": false,
+  "seconds": 19,
+  "score": 1,
+  "passed": 5,
+  "total": 5,
+  "checks": [
+    {
+      "name": "moved",
+      "pass": true
+    },
+    {
+      "name": "renamed",
+      "pass": true
+    },
+    {
+      "name": "pinned",
+      "pass": true
+    },
+    {
+      "name": "folder_renamed",
+      "pass": true
+    },
+    {
+      "name": "bodies_kept",
+      "pass": true
+    }
+  ],
+  "tool_calls": 6,
+  "tool_errors": 0,
+  "usage": {
+    "input": 15506,
+    "output": 337,
+    "cacheRead": 79104,
+    "cacheWrite": 0,
+    "turns": 1,
+    "usd": 0
+  },
+  "usd": 0,
+  "page_bytes": 0,
+  "data": null,
+  "answer": "Done. Moved Groceries to Kitchen, renamed Meeting to \"Q4 planning meeting\" and pinned it, and renamed Work to Office.",
+  "calls": [
+    {
+      "name": "list",
+      "args": {},
+      "error": false,
+      "result": "{\n  \"notes\": 2,\n  \"folders\": [\n    {\n      \"path\": \"Home/\",\n      \"notes\": 1\n    },\n    {\n      \"path\": \"Work/\",\n      \"notes\": 1\n    }\n  ],\n  \"pinned\": [],\n  \"recently_edited\": [\n    {\n      \"path\": \"Work/Meeting.md\",\n      \"id\": \"27caf20e-5cab-4b37-a361-e5bec157b8c7\",\n      \"updated\": \"2026-10-05T23:00:35.859Z\"\n    },\n    {\n      \"path\": \"Home/Groceries.md\",\n      \"id\": \"a96aea31-d2bd-4a40-a000-9ec58f63921d\",\n      \"updated\": \"2026-10-05T23:00:35.855Z\"\n    }\n  ],\n  \"recently_deleted\": 0\n}"
+    },
+    {
+      "name": "move",
+      "args": {
+        "id": "a96aea31-d2bd-4a40-a000-9ec58f63921d",
+        "to": "Kitchen/"
+      },
+      "error": false,
+      "result": "{\n  \"moved\": \"Kitchen/Groceries.md\"\n}"
+    },
+    {
+      "name": "move",
+      "args": {
+        "id": "27caf20e-5cab-4b37-a361-e5bec157b8c7",
+        "to": "Work/Q4 planning meeting.md"
+      },
+      "error": false,
+      "result": "{\n  \"moved\": \"Work/Q4 planning meeting.md\"\n}"
+    },
+    {
+      "name": "pin",
+      "args": {
+        "id": "27caf20e-5cab-4b37-a361-e5bec157b8c7",
+        "pinned": "true"
+      },
+      "error": false,
+      "result": "{\n  \"path\": \"Work/Q4 planning meeting.md\",\n  \"pinned\": true\n}"
+    },
+    {
+      "name": "move",
+      "args": {
+        "id": "Work/",
+        "to": "Office/"
+      },
+      "error": false,
+      "result": "{\n  \"moved\": \"Office/\"\n}"
+    },
+    {
+      "name": "list",
+      "args": {},
+      "error": false,
+      "result": "{\n  \"notes\": 2,\n  \"folders\": [\n    {\n      \"path\": \"Home/\",\n      \"notes\": 0\n    },\n    {\n      \"path\": \"Office/\",\n      \"notes\": 1\n    },\n    {\n      \"path\": \"Kitchen/\",\n      \"notes\": 1\n    }\n  ],\n  \"pinned\": [\n    {\n      \"path\": \"Office/Q4 planning meeting.md\",\n      \"id\": \"27caf20e-5cab-4b37-a361-e5bec157b8c7\",\n      \"pinned\": true,\n      \"updated\": \"2026-10-05T23:00:51.790Z\"\n    }\n  ],\n  \"recently_edited\": [\n    {\n      \"path\": \"Office/Q4 planning meeting.md\",\n      \"id\": \"27caf20e-5cab-4b37-a361-e5bec157b8c7\",\n      \"pinned\": true,\n      \"updated\": \"2026-10-05T23:00:51.790Z\"\n    },\n    … (772 chars)"
+    }
+  ],
+  "render": null,
+  "breakage": [],
+  "walk": [],
+  "used": {
+    "try_app": 0,
+    "run_app_tests": 0,
+    "test_files": 0
+  }
+}

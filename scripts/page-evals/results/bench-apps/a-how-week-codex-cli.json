@@ -1,0 +1,73 @@
+{
+  "task": "a-how-week",
+  "rep": 1,
+  "model": "codex:default",
+  "round": "bench-apps",
+  "skill": false,
+  "seconds": 19,
+  "score": 1,
+  "passed": 3,
+  "total": 3,
+  "checks": [
+    {
+      "name": "walk_count",
+      "pass": true
+    },
+    {
+      "name": "read_count",
+      "pass": true
+    },
+    {
+      "name": "app_unchanged",
+      "pass": true
+    }
+  ],
+  "tool_calls": 2,
+  "tool_errors": 0,
+  "usage": {
+    "input": 20933,
+    "output": 285,
+    "cacheRead": 106624,
+    "cacheWrite": 0,
+    "turns": 1,
+    "usd": 0
+  },
+  "usd": 0,
+  "page_bytes": 211394,
+  "data": {
+    "values": {
+      "localStorage": {
+        "habits": "[{\"date\":\"2026-09-29\",\"walk\":true,\"read\":false},{\"date\":\"2026-09-30\",\"walk\":true,\"read\":true},{\"date\":\"2026-10-01\",\"walk\":true,\"read\":false},{\"date\":\"2026-10-02\",\"walk\":false,\"read\":true},{\"date\":\"2026-10-03\",\"walk\":true,\"read\":false},{\"date\":\"2026-10-04\",\"walk\":false,\"read\":true},{\"date\":\"2026-10-05\",\"walk\":true,\"read\":false}]",
+        "theme": "dark"
+      }
+    },
+    "collections": {}
+  },
+  "answer": "For 29 September–5 October, your Habits app logged:\n\n- Walking on **5 of 7 days**.\n- Reading on **3 of 7 days**.\n\nYou did at least one of the two every day, and both on 30 September.",
+  "calls": [
+    {
+      "name": "search_notes",
+      "args": {
+        "query": "Habits"
+      },
+      "error": false,
+      "result": "{\n  \"query\": \"Habits\",\n  \"results\": [\n    {\n      \"id\": \"b72aedff-5de8-4099-b7c7-866e1b353a6c\",\n      \"title\": \"Habits\",\n      \"folder\": \"\",\n      \"pinned\": false,\n      \"updated\": \"2026-10-05T23:21:16.169Z\",\n      \"snippet\": \"«Habits»\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "get_page_data",
+      "args": {
+        "id": "b72aedff-5de8-4099-b7c7-866e1b353a6c"
+      },
+      "error": false,
+      "result": "{\n  \"note\": {\n    \"id\": \"b72aedff-5de8-4099-b7c7-866e1b353a6c\",\n    \"title\": \"Habits\"\n  },\n  \"shape\": {\n    \"collections\": {\n      \"object\": {}\n    },\n    \"values\": {\n      \"object\": {\n        \"localStorage\": {\n          \"object\": {\n            \"habits\": {\n              \"list\": 7,\n              \"fields\": {\n                \"date\": {\n                  \"type\": \"date\",\n                  \"examples\": [\n                    \"2026-09-29\",\n                    \"2026-09-30\"\n                  ]\n                },\n                \"walk\": {\n                  \"type\": \"boolean\",\n                  \"examples\": [… (2038 chars)"
+    }
+  ],
+  "render": null,
+  "breakage": [],
+  "walk": [],
+  "used": {
+    "try_app": 0,
+    "run_app_tests": 0,
+    "test_files": 0
+  }
+}

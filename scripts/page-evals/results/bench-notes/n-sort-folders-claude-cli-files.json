@@ -1,0 +1,130 @@
+{
+  "task": "n-sort-folders",
+  "rep": 1,
+  "model": "claude-code:sonnet",
+  "round": "bench-notes",
+  "skill": false,
+  "seconds": 9,
+  "score": 1,
+  "passed": 4,
+  "total": 4,
+  "checks": [
+    {
+      "name": "work",
+      "pass": true
+    },
+    {
+      "name": "home",
+      "pass": true
+    },
+    {
+      "name": "travel",
+      "pass": true
+    },
+    {
+      "name": "nothing_lost",
+      "pass": true
+    }
+  ],
+  "tool_calls": 9,
+  "tool_errors": 0,
+  "usage": {
+    "input": 8,
+    "output": 850,
+    "cacheRead": 19743,
+    "cacheWrite": 2944,
+    "turns": 11,
+    "equivalentUsd": 0.0242406,
+    "usd": 0
+  },
+  "usd": 0,
+  "page_bytes": 0,
+  "data": null,
+  "answer": "I sorted your six loose notes into three folders. I created the folders because none existed.\n\n- **Work:** Meeting, Hiring\n- **Home:** Plumber, Groceries\n- **Travel:** Lisbon trip, Packing list\n\nI read only Meeting and Packing list before moving them. Meeting is a budget review, so it went to Work. Packing list has a passport and sunscreen on it, so it went to Travel. I sorted the other four by title alone.",
+  "calls": [
+    {
+      "name": "list",
+      "args": {},
+      "error": false,
+      "result": "{\"notes\":6,\"folders\":[],\"pinned\":[],\"recently_edited\":[{\"path\":\"Packing list.md\",\"id\":\"3712b383-fec1-4d6a-8540-e8966c4c7df0\",\"updated\":\"2026-10-05T22:54:10.843Z\"},{\"path\":\"Hiring.md\",\"id\":\"75e68620-911f-4c1a-8172-1adc582aaba1\",\"updated\":\"2026-10-05T22:54:10.842Z\"},{\"path\":\"Plumber.md\",\"id\":\"d0c47ad6-0d5f-4023-8c2e-14d55d2b338d\",\"updated\":\"2026-10-05T22:54:10.841Z\"},{\"path\":\"Lisbon trip.md\",\"id\":\"e9710b7a-8ff7-429a-a723-0dacf77d5921\",\"updated\":\"2026-10-05T22:54:10.840Z\"},{\"path\":\"Groceries.md\",\"id\":\"58a35397-88ef-4c22-8724-3854371be916\",\"updated\":\"2026-10-05T22:54:10.839Z\"},{\"path\":\"Meeting.md\"… (705 chars)"
+    },
+    {
+      "name": "fetch",
+      "args": {
+        "id": "Packing list.md"
+      },
+      "error": false,
+      "result": "{\"id\":\"3712b383-fec1-4d6a-8540-e8966c4c7df0\",\"title\":\"Packing list\",\"text\":\"Packing list\\n\\n- [ ] Passport\\n- [ ] Sunscreen\\n\",\"url\":\"ambernotes://note/3712b383-fec1-4d6a-8540-e8966c4c7df0\",\"metadata\":{\"path\":\"Packing list.md\",\"folder\":\"/\",\"pinned\":false,\"version\":1,\"updated\":\"2026-10-05T22:54:10.843Z\",\"lines\":5}}"
+    },
+    {
+      "name": "fetch",
+      "args": {
+        "id": "Meeting.md"
+      },
+      "error": false,
+      "result": "{\"id\":\"70bb43a9-c925-4ad1-98f8-41b38e3fde2b\",\"title\":\"Meeting\",\"text\":\"Meeting\\n\\nBudget review with Sara on Monday.\\n- Headcount\\n- Q4 targets\\n\",\"url\":\"ambernotes://note/70bb43a9-c925-4ad1-98f8-41b38e3fde2b\",\"metadata\":{\"path\":\"Meeting.md\",\"folder\":\"/\",\"pinned\":false,\"version\":1,\"updated\":\"2026-10-05T22:54:10.836Z\",\"lines\":6}}"
+    },
+    {
+      "name": "move",
+      "args": {
+        "id": "Meeting.md",
+        "to": "Work/"
+      },
+      "error": false,
+      "result": "{\"moved\":\"Work/Meeting.md\"}"
+    },
+    {
+      "name": "move",
+      "args": {
+        "id": "Hiring.md",
+        "to": "Work/"
+      },
+      "error": false,
+      "result": "{\"moved\":\"Work/Hiring.md\"}"
+    },
+    {
+      "name": "move",
+      "args": {
+        "id": "Plumber.md",
+        "to": "Home/"
+      },
+      "error": false,
+      "result": "{\"moved\":\"Home/Plumber.md\"}"
+    },
+    {
+      "name": "move",
+      "args": {
+        "id": "Groceries.md",
+        "to": "Home/"
+      },
+      "error": false,
+      "result": "{\"moved\":\"Home/Groceries.md\"}"
+    },
+    {
+      "name": "move",
+      "args": {
+        "id": "Lisbon trip.md",
+        "to": "Travel/"
+      },
+      "error": false,
+      "result": "{\"moved\":\"Travel/Lisbon trip.md\"}"
+    },
+    {
+      "name": "move",
+      "args": {
+        "id": "Packing list.md",
+        "to": "Travel/"
+      },
+      "error": false,
+      "result": "{\"moved\":\"Travel/Packing list.md\"}"
+    }
+  ],
+  "render": null,
+  "breakage": [],
+  "walk": [],
+  "used": {
+    "try_app": 0,
+    "run_app_tests": 0,
+    "test_files": 0
+  }
+}

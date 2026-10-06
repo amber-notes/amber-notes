@@ -1,0 +1,74 @@
+{
+  "task": "n-tracker-update",
+  "rep": 1,
+  "model": "codex:default",
+  "round": "bench-notes",
+  "skill": false,
+  "seconds": 19,
+  "score": 1,
+  "passed": 3,
+  "total": 3,
+  "checks": [
+    {
+      "name": "updated",
+      "pass": true
+    },
+    {
+      "name": "no_new_row",
+      "pass": true
+    },
+    {
+      "name": "tracker_kept",
+      "pass": true
+    }
+  ],
+  "tool_calls": 3,
+  "tool_errors": 0,
+  "usage": {
+    "input": 18511,
+    "output": 264,
+    "cacheRead": 129536,
+    "cacheWrite": 0,
+    "turns": 1,
+    "usd": 0
+  },
+  "usd": 0,
+  "page_bytes": 0,
+  "data": null,
+  "answer": "Updated your Mood note: 2 October’s mood is now 5.",
+  "calls": [
+    {
+      "name": "search",
+      "args": {
+        "query": "Mood"
+      },
+      "error": false,
+      "result": "{\n  \"results\": [\n    {\n      \"id\": \"c307cb06-d323-42db-87fc-4ff56abc3317\",\n      \"title\": \"Mood\",\n      \"url\": \"ambernotes://note/c307cb06-d323-42db-87fc-4ff56abc3317\",\n      \"path\": \"Health/Mood.md\",\n      \"snippet\": \"«Mood» <!-- pane-table: Date=date; «Mood»=scale 1-5; Walk=choice Yes|No --> | Date | «Mood» | Walk | | --- | --- | --- | | 2026-10-01 | 3 | Yes | | 2026-10-02\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "fetch",
+      "args": {
+        "id": "Health/Mood.md"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"c307cb06-d323-42db-87fc-4ff56abc3317\",\n  \"title\": \"Mood\",\n  \"text\": \"Mood\\n\\n<!-- pane-table: Date=date; Mood=scale 1-5; Walk=choice Yes|No -->\\n| Date | Mood | Walk |\\n| --- | --- | --- |\\n| 2026-10-01 | 3 | Yes |\\n| 2026-10-02 | 2 | No |\\n| 2026-10-03 | 4 | Yes |\\n\",\n  \"url\": \"ambernotes://note/c307cb06-d323-42db-87fc-4ff56abc3317\",\n  \"metadata\": {\n    \"path\": \"Health/Mood.md\",\n    \"folder\": \"Health/\",\n    \"pinned\": false,\n    \"version\": 1,\n    \"updated\": \"2026-10-05T22:57:46.603Z\",\n    \"lines\": 9\n  }\n}"
+    },
+    {
+      "name": "edit",
+      "args": {
+        "id": "Health/Mood.md",
+        "edits": "[{\"old_text\":\"| 2026-10-02 | 2 | No |\",\"new_text\":\"| 2026-10-02 | 5 | No |\"}]"
+      },
+      "error": false,
+      "result": "{\n  \"edited\": \"Health/Mood.md\",\n  \"version\": 2,\n  \"checks\": \"ok\"\n}"
+    }
+  ],
+  "render": null,
+  "breakage": [],
+  "walk": [],
+  "used": {
+    "try_app": 0,
+    "run_app_tests": 0,
+    "test_files": 0
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "task": "n-what-about",
+  "rep": 1,
+  "model": "codex:default",
+  "round": "bench-notes",
+  "skill": false,
+  "seconds": 24,
+  "score": 1,
+  "passed": 3,
+  "total": 3,
+  "checks": [
+    {
+      "name": "found_appointment",
+      "pass": true
+    },
+    {
+      "name": "found_the_call",
+      "pass": true
+    },
+    {
+      "name": "nothing_changed",
+      "pass": true
+    }
+  ],
+  "tool_calls": 3,
+  "tool_errors": 0,
+  "usage": {
+    "input": 15917,
+    "output": 360,
+    "cacheRead": 105216,
+    "cacheWrite": 0,
+    "turns": 1,
+    "usd": 0
+  },
+  "usd": 0,
+  "page_bytes": 0,
+  "data": null,
+  "answer": "You wrote two notes about the dentist:\n\n- [Health](ambernotes://note/adb1713a-f972-4723-9a5d-b734788dc54c): \"Dentist: Tuesday 14 October at 14:00, Dr. Lind. Bring the X-ray referral.\"\n- [Calls](ambernotes://note/df52d3f8-469f-4c0e-aee9-beefb68287e3): \"Call the dentist to move the cleaning to November.\"",
+  "calls": [
+    {
+      "name": "search",
+      "args": {
+        "query": "dentist OR dental"
+      },
+      "error": false,
+      "result": "{\n  \"results\": [\n    {\n      \"id\": \"df52d3f8-469f-4c0e-aee9-beefb68287e3\",\n      \"title\": \"Calls\",\n      \"url\": \"ambernotes://note/df52d3f8-469f-4c0e-aee9-beefb68287e3\",\n      \"path\": \"Calls.md\",\n      \"snippet\": \"Calls Call the «dentist» to move the cleaning to November\"\n    },\n    {\n      \"id\": \"adb1713a-f972-4723-9a5d-b734788dc54c\",\n      \"title\": \"Health\",\n      \"url\": \"ambernotes://note/adb1713a-f972-4723-9a5d-b734788dc54c\",\n      \"path\": \"Health/Health.md\",\n      \"snippet\": \"Health «Dentist»: Tuesday 14 October at 14:00, Dr. Lind. Bring the X-ray referral\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "fetch",
+      "args": {
+        "id": "adb1713a-f972-4723-9a5d-b734788dc54c"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"adb1713a-f972-4723-9a5d-b734788dc54c\",\n  \"title\": \"Health\",\n  \"text\": \"Health\\n\\nDentist: Tuesday 14 October at 14:00, Dr. Lind. Bring the X-ray referral.\\n\",\n  \"url\": \"ambernotes://note/adb1713a-f972-4723-9a5d-b734788dc54c\",\n  \"metadata\": {\n    \"path\": \"Health/Health.md\",\n    \"folder\": \"Health/\",\n    \"pinned\": false,\n    \"version\": 1,\n    \"updated\": \"2026-10-05T23:02:08.985Z\",\n    \"lines\": 4\n  }\n}"
+    },
+    {
+      "name": "fetch",
+      "args": {
+        "id": "df52d3f8-469f-4c0e-aee9-beefb68287e3"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"df52d3f8-469f-4c0e-aee9-beefb68287e3\",\n  \"title\": \"Calls\",\n  \"text\": \"Calls\\n\\nCall the dentist to move the cleaning to November.\\n\",\n  \"url\": \"ambernotes://note/df52d3f8-469f-4c0e-aee9-beefb68287e3\",\n  \"metadata\": {\n    \"path\": \"Calls.md\",\n    \"folder\": \"/\",\n    \"pinned\": false,\n    \"version\": 1,\n    \"updated\": \"2026-10-05T23:02:08.992Z\",\n    \"lines\": 4\n  }\n}"
+    }
+  ],
+  "render": null,
+  "breakage": [],
+  "walk": [],
+  "used": {
+    "try_app": 0,
+    "run_app_tests": 0,
+    "test_files": 0
+  }
+}

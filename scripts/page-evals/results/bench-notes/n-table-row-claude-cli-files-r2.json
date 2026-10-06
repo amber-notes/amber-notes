@@ -1,0 +1,79 @@
+{
+  "task": "n-table-row",
+  "rep": 2,
+  "model": "claude-code:sonnet",
+  "round": "bench-notes",
+  "skill": false,
+  "seconds": 7,
+  "score": 1,
+  "passed": 4,
+  "total": 4,
+  "checks": [
+    {
+      "name": "row_added",
+      "pass": true
+    },
+    {
+      "name": "hotel_fixed",
+      "pass": true
+    },
+    {
+      "name": "columns_kept",
+      "pass": true
+    },
+    {
+      "name": "prose_kept",
+      "pass": true
+    }
+  ],
+  "tool_calls": 3,
+  "tool_errors": 0,
+  "usage": {
+    "input": 8,
+    "output": 379,
+    "cacheRead": 19174,
+    "cacheWrite": 1973,
+    "turns": 4,
+    "equivalentUsd": 0.015532800000000001,
+    "usd": 0
+  },
+  "usd": 0,
+  "page_bytes": 0,
+  "data": null,
+  "answer": "I made both changes in your Lisbon trip note. The hotel is now 1 500 instead of 1 450. I also added a row for 2026-10-04, Museum, Fun, 18 at the bottom of the costs table.",
+  "calls": [
+    {
+      "name": "search",
+      "args": {
+        "query": "Lisbon"
+      },
+      "error": false,
+      "result": "{\"results\":[{\"id\":\"235f347d-33f8-4f6a-8b2d-e3bb9ca55a6b\",\"title\":\"Lisbon trip\",\"url\":\"ambernotes://note/235f347d-33f8-4f6a-8b2d-e3bb9ca55a6b\",\"path\":\"Travel/Lisbon trip.md\",\"snippet\":\"«Lisbon» trip Spent in «Lisbon» with Ana. | Date | Item | Category | Amount | | --- | --- | --- | --- | | 2026-10-01 | Hotel Avenida | Stay | 1 450 | | 2026-10-02 | Pastéis | Food\"}]}"
+    },
+    {
+      "name": "fetch",
+      "args": {
+        "id": "Travel/Lisbon trip.md"
+      },
+      "error": false,
+      "result": "{\"id\":\"235f347d-33f8-4f6a-8b2d-e3bb9ca55a6b\",\"title\":\"Lisbon trip\",\"text\":\"Lisbon trip\\n\\nSpent in Lisbon with Ana.\\n\\n| Date | Item | Category | Amount |\\n| --- | --- | --- | --- |\\n| 2026-10-01 | Hotel Avenida | Stay | 1 450 |\\n| 2026-10-02 | Pastéis | Food | 12,50 |\\n\",\"url\":\"ambernotes://note/235f347d-33f8-4f6a-8b2d-e3bb9ca55a6b\",\"metadata\":{\"path\":\"Travel/Lisbon trip.md\",\"folder\":\"Travel/\",\"pinned\":false,\"version\":1,\"updated\":\"2026-10-05T22:52:37.375Z\",\"lines\":9}}"
+    },
+    {
+      "name": "edit",
+      "args": {
+        "id": "Travel/Lisbon trip.md",
+        "edits": "[{\"old_text\":\"Stay | 1 450 |\",\"new_text\":\"Stay | 1 500 |\"},{\"old_text\":\"Food | 12,50 |\\n\",\"new_text\":\"Food | 12,50 |\\n| 2026-10-04 | Museum | Fun | 18 |\\n\"}]"
+      },
+      "error": false,
+      "result": "{\"edited\":\"Travel/Lisbon trip.md\",\"version\":2,\"checks\":\"ok\"}"
+    }
+  ],
+  "render": null,
+  "breakage": [],
+  "walk": [],
+  "used": {
+    "try_app": 0,
+    "run_app_tests": 0,
+    "test_files": 0
+  }
+}

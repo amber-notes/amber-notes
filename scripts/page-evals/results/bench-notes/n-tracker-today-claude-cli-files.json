@@ -1,0 +1,75 @@
+{
+  "task": "n-tracker-today",
+  "rep": 1,
+  "model": "claude-code:sonnet",
+  "round": "bench-notes",
+  "skill": false,
+  "seconds": 9,
+  "score": 1,
+  "passed": 3,
+  "total": 3,
+  "checks": [
+    {
+      "name": "tracker_kept",
+      "pass": true
+    },
+    {
+      "name": "row_for_today",
+      "pass": true
+    },
+    {
+      "name": "one_row_added",
+      "pass": true
+    }
+  ],
+  "tool_calls": 3,
+  "tool_errors": 0,
+  "usage": {
+    "input": 8,
+    "output": 605,
+    "cacheRead": 19074,
+    "cacheWrite": 2142,
+    "turns": 5,
+    "equivalentUsd": 0.0184488,
+    "usd": 0
+  },
+  "usd": 0,
+  "page_bytes": 0,
+  "data": null,
+  "answer": "I added a row to your Mood note: mood 4, walk Yes, dated 2026-10-05.\n\nI had two different dates for today (Oct 5 and Oct 6) and went with Oct 5. If it should be Oct 6, change the date in that row.",
+  "calls": [
+    {
+      "name": "search",
+      "args": {
+        "query": "Mood"
+      },
+      "error": false,
+      "result": "{\"results\":[{\"id\":\"dd439ea3-fbe9-4c4a-8e76-c7f4fea760bf\",\"title\":\"Mood\",\"url\":\"ambernotes://note/dd439ea3-fbe9-4c4a-8e76-c7f4fea760bf\",\"path\":\"Health/Mood.md\",\"snippet\":\"«Mood» <!-- pane-table: Date=date; «Mood»=scale 1-5; Walk=choice Yes|No --> | Date | «Mood» | Walk | | --- | --- | --- | | 2026-10-01 | 3 | Yes | | 2026-10-02\"}]}"
+    },
+    {
+      "name": "fetch",
+      "args": {
+        "id": "dd439ea3-fbe9-4c4a-8e76-c7f4fea760bf"
+      },
+      "error": false,
+      "result": "{\"id\":\"dd439ea3-fbe9-4c4a-8e76-c7f4fea760bf\",\"title\":\"Mood\",\"text\":\"Mood\\n\\n<!-- pane-table: Date=date; Mood=scale 1-5; Walk=choice Yes|No -->\\n| Date | Mood | Walk |\\n| --- | --- | --- |\\n| 2026-10-01 | 3 | Yes |\\n| 2026-10-02 | 2 | No |\\n| 2026-10-03 | 4 | Yes |\\n\",\"url\":\"ambernotes://note/dd439ea3-fbe9-4c4a-8e76-c7f4fea760bf\",\"metadata\":{\"path\":\"Health/Mood.md\",\"folder\":\"Health/\",\"pinned\":false,\"version\":1,\"updated\":\"2026-10-05T22:51:50.835Z\",\"lines\":9}}"
+    },
+    {
+      "name": "edit",
+      "args": {
+        "id": "dd439ea3-fbe9-4c4a-8e76-c7f4fea760bf",
+        "edits": "[{\"old_text\":\"| 2026-10-03 | 4 | Yes |\",\"new_text\":\"| 2026-10-03 | 4 | Yes |\\n| 2026-10-05 | 4 | Yes |\"}]"
+      },
+      "error": false,
+      "result": "{\"edited\":\"Health/Mood.md\",\"version\":2,\"checks\":\"ok\"}"
+    }
+  ],
+  "render": null,
+  "breakage": [],
+  "walk": [],
+  "used": {
+    "try_app": 0,
+    "run_app_tests": 0,
+    "test_files": 0
+  }
+}

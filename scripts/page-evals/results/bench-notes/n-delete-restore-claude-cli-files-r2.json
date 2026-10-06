@@ -1,0 +1,95 @@
+{
+  "task": "n-delete-restore",
+  "rep": 2,
+  "model": "claude-code:sonnet",
+  "round": "bench-notes",
+  "skill": false,
+  "seconds": 12,
+  "score": 1,
+  "passed": 2,
+  "total": 2,
+  "checks": [
+    {
+      "name": "restored",
+      "pass": true
+    },
+    {
+      "name": "weekly_restored",
+      "pass": true
+    }
+  ],
+  "tool_calls": 6,
+  "tool_errors": 0,
+  "usage": {
+    "input": 8,
+    "output": 640,
+    "cacheRead": 19708,
+    "cacheWrite": 2552,
+    "turns": 9,
+    "equivalentUsd": 0.0205656,
+    "usd": 0
+  },
+  "usd": 0,
+  "page_bytes": 0,
+  "data": null,
+  "answer": "I deleted \"Old ideas\" and then restored it, so it's back in Notes.\n\nI also put \"Weekly\" back to its earlier version. That version's goals don't include \"Learn Rust\" or \"Learn Go\", which the changed version had. Its history showed only one earlier version, so I used that one. The changed text is still in the note's history if you want it back.",
+  "calls": [
+    {
+      "name": "search",
+      "args": {
+        "query": "Old ideas"
+      },
+      "error": false,
+      "result": "{\"results\":[{\"id\":\"b1b107ca-d960-487d-ae7d-a71c106e987e\",\"title\":\"Old ideas\",\"url\":\"ambernotes://note/b1b107ca-d960-487d-ae7d-a71c106e987e\",\"path\":\"Old ideas.md\",\"snippet\":\"«Old ideas» - A bike rack app - Sourdough schedule\"}]}"
+    },
+    {
+      "name": "search",
+      "args": {
+        "query": "Weekly"
+      },
+      "error": false,
+      "result": "{\"results\":[{\"id\":\"9896de6c-c106-4dc0-b575-52d99042ccde\",\"title\":\"Weekly\",\"url\":\"ambernotes://note/9896de6c-c106-4dc0-b575-52d99042ccde\",\"path\":\"Work/Weekly.md\",\"snippet\":\"«Weekly» ## Goals - Ship v2 - Learn Rust - Learn Go - Run 3x - Read 2 books - Fix the bike - Call grandma ## Notes Quiet week. Rain on Thursday\"}]}"
+    },
+    {
+      "name": "delete",
+      "args": {
+        "id": "b1b107ca-d960-487d-ae7d-a71c106e987e"
+      },
+      "error": false,
+      "result": "{\"deleted\":{\"id\":\"b1b107ca-d960-487d-ae7d-a71c106e987e\",\"title\":\"Old ideas\",\"moved_to\":\"Recently Deleted\",\"sub_notes_moved\":0,\"restore_with\":\"restore_note\"},\"restore_with\":\"restore\"}"
+    },
+    {
+      "name": "history",
+      "args": {
+        "id": "9896de6c-c106-4dc0-b575-52d99042ccde"
+      },
+      "error": false,
+      "result": "{\"id\":\"9896de6c-c106-4dc0-b575-52d99042ccde\",\"title\":\"Weekly\",\"current_version\":2,\"revisions\":[{\"replaced_at\":\"2026-10-05T22:53:48.216Z\",\"replaced_by\":\"Mac\",\"title\":\"Weekly\",\"preview\":\"Goals · Ship v2 · Run 3x · Read 2 books · Fix the bike · Call grandma · Notes · Quiet week. Rain on…\",\"characters\":121,\"version\":1}]}"
+    },
+    {
+      "name": "restore",
+      "args": {
+        "id": "b1b107ca-d960-487d-ae7d-a71c106e987e"
+      },
+      "error": false,
+      "result": "{\"restored\":{\"id\":\"b1b107ca-d960-487d-ae7d-a71c106e987e\",\"title\":\"Old ideas\",\"restored_to\":\"Notes\",\"sub_notes_restored\":0}}"
+    },
+    {
+      "name": "restore",
+      "args": {
+        "id": "9896de6c-c106-4dc0-b575-52d99042ccde",
+        "version": "1"
+      },
+      "error": false,
+      "result": "{\"restored\":{\"id\":\"9896de6c-c106-4dc0-b575-52d99042ccde\",\"title\":\"Weekly\",\"version\":3,\"updated\":\"2026-10-05T22:53:57.374Z\"},\"note\":\"The text before this restore is kept in history too.\"}"
+    }
+  ],
+  "render": null,
+  "breakage": [],
+  "walk": [],
+  "used": {
+    "try_app": 0,
+    "run_app_tests": 0,
+    "test_files": 0
+  }
+}

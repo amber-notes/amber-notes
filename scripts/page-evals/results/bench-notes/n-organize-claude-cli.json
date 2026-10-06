@@ -1,0 +1,116 @@
+{
+  "task": "n-organize",
+  "rep": 1,
+  "model": "claude-code:sonnet",
+  "round": "bench-notes",
+  "skill": false,
+  "seconds": 10,
+  "score": 1,
+  "passed": 5,
+  "total": 5,
+  "checks": [
+    {
+      "name": "moved",
+      "pass": true
+    },
+    {
+      "name": "renamed",
+      "pass": true
+    },
+    {
+      "name": "pinned",
+      "pass": true
+    },
+    {
+      "name": "folder_renamed",
+      "pass": true
+    },
+    {
+      "name": "bodies_kept",
+      "pass": true
+    }
+  ],
+  "tool_calls": 7,
+  "tool_errors": 0,
+  "usage": {
+    "input": 6,
+    "output": 653,
+    "cacheRead": 54656,
+    "cacheWrite": 2689,
+    "turns": 9,
+    "equivalentUsd": 0.028229200000000003,
+    "usd": 0
+  },
+  "usd": 0,
+  "page_bytes": 0,
+  "data": null,
+  "answer": "I made all four changes:\n- **Groceries:** moved to a new Kitchen folder.\n- **Meeting:** renamed to \"Q4 planning meeting\" and pinned.\n- **Work:** the folder is now called Office.",
+  "calls": [
+    {
+      "name": "search_notes",
+      "args": {
+        "query": "Groceries"
+      },
+      "error": false,
+      "result": "{\"query\":\"Groceries\",\"results\":[{\"id\":\"141316d7-f6d8-4a7b-a2b9-ee88a17902c7\",\"title\":\"Groceries\",\"folder\":\"Home\",\"pinned\":false,\"updated\":\"2026-10-05T22:52:50.250Z\",\"snippet\":\"«Groceries» ## Dairy - [ ] Milk - [ ] Butter ## Fruit - [x] Apples - [ ] Bananas\"}]}"
+    },
+    {
+      "name": "search_notes",
+      "args": {
+        "query": "Meeting"
+      },
+      "error": false,
+      "result": "{\"query\":\"Meeting\",\"results\":[{\"id\":\"6a71acea-f3f4-4786-a77f-af213dde9f1c\",\"title\":\"Meeting\",\"folder\":\"Work\",\"pinned\":false,\"updated\":\"2026-10-05T22:52:50.260Z\",\"snippet\":\"«Meeting» Budget review with Sara on Monday. - Headcount - Q4 targets\"}]}"
+    },
+    {
+      "name": "list_folders",
+      "args": {},
+      "error": false,
+      "result": "{\"folders\":[{\"path\":\"Home\",\"id\":\"086b07f4-638d-41a1-986a-384b3a628ffa\",\"notes\":1},{\"path\":\"Work\",\"id\":\"e77ef872-c7f5-4e17-a326-1590ba05b6c7\",\"notes\":1}]}"
+    },
+    {
+      "name": "move_note",
+      "args": {
+        "id": "141316d7-f6d8-4a7b-a2b9-ee88a17902c7",
+        "folder": "Kitchen"
+      },
+      "error": false,
+      "result": "{\"id\":\"141316d7-f6d8-4a7b-a2b9-ee88a17902c7\",\"title\":\"Groceries\",\"folder\":\"Kitchen\"}"
+    },
+    {
+      "name": "edit_note",
+      "args": {
+        "id": "6a71acea-f3f4-4786-a77f-af213dde9f1c",
+        "edits": "[{\"old_text\":\"Meeting\",\"new_text\":\"Q4 planning meeting\"}]"
+      },
+      "error": false,
+      "result": "{\"edited\":{\"id\":\"6a71acea-f3f4-4786-a77f-af213dde9f1c\",\"title\":\"Q4 planning meeting\",\"version\":2,\"updated\":\"2026-10-05T22:52:55.994Z\"},\"edits_applied\":1}"
+    },
+    {
+      "name": "pin_note",
+      "args": {
+        "id": "6a71acea-f3f4-4786-a77f-af213dde9f1c",
+        "pinned": "true"
+      },
+      "error": false,
+      "result": "{\"id\":\"6a71acea-f3f4-4786-a77f-af213dde9f1c\",\"title\":\"Q4 planning meeting\",\"pinned\":true}"
+    },
+    {
+      "name": "rename_folder",
+      "args": {
+        "folder": "Work",
+        "new_name": "Office"
+      },
+      "error": false,
+      "result": "{\"id\":\"e77ef872-c7f5-4e17-a326-1590ba05b6c7\",\"path\":\"Office\"}"
+    }
+  ],
+  "render": null,
+  "breakage": [],
+  "walk": [],
+  "used": {
+    "try_app": 0,
+    "run_app_tests": 0,
+    "test_files": 0
+  }
+}

@@ -1,0 +1,1716 @@
+{
+  "task": "x-budget",
+  "rep": 2,
+  "model": "claude-code:sonnet",
+  "round": "x2",
+  "skill": false,
+  "tools": "files",
+  "seconds": 211,
+  "score": 0.972972972972973,
+  "passed": 36,
+  "total": 37,
+  "checks": [
+    {
+      "name": "has_page",
+      "pass": true
+    },
+    {
+      "name": "server_checks",
+      "pass": true
+    },
+    {
+      "name": "no_console_errors",
+      "pass": true
+    },
+    {
+      "name": "no_network",
+      "pass": true
+    },
+    {
+      "name": "fits_phone",
+      "pass": true
+    },
+    {
+      "name": "fits_desktop",
+      "pass": true
+    },
+    {
+      "name": "uses_wide_window",
+      "pass": true
+    },
+    {
+      "name": "phone_targets",
+      "pass": true
+    },
+    {
+      "name": "focused_screen",
+      "pass": true
+    },
+    {
+      "name": "visible_fields",
+      "pass": true
+    },
+    {
+      "name": "no_junk_text",
+      "pass": true
+    },
+    {
+      "name": "no_clipped_text",
+      "pass": true
+    },
+    {
+      "name": "shows_data",
+      "pass": true
+    },
+    {
+      "name": "dark_mode",
+      "pass": true
+    },
+    {
+      "name": "light_contrast",
+      "pass": true
+    },
+    {
+      "name": "themed",
+      "pass": true
+    },
+    {
+      "name": "labelled_controls",
+      "pass": true
+    },
+    {
+      "name": "edits_from_page",
+      "pass": true
+    },
+    {
+      "name": "title_once",
+      "pass": true
+    },
+    {
+      "name": "says_app",
+      "pass": true
+    },
+    {
+      "name": "probe_escapes",
+      "pass": true
+    },
+    {
+      "name": "probe_empty",
+      "pass": true
+    },
+    {
+      "name": "probe_large",
+      "pass": true
+    },
+    {
+      "name": "page_changed",
+      "pass": true
+    },
+    {
+      "name": "walk_add_expense",
+      "pass": false,
+      "detail": "{\"expect\":\"Coffee beans\"}: \"Coffee beans\" isn't on screen."
+    },
+    {
+      "name": "walk_month_view",
+      "pass": true
+    },
+    {
+      "name": "walk_previous_month",
+      "pass": true
+    },
+    {
+      "name": "walk_search",
+      "pass": true
+    },
+    {
+      "name": "walk_settings",
+      "pass": true
+    },
+    {
+      "name": "walk_desktop",
+      "pass": true
+    },
+    {
+      "name": "has_recurring",
+      "pass": true
+    },
+    {
+      "name": "has_per_day",
+      "pass": true
+    },
+    {
+      "name": "has_chart",
+      "pass": true
+    },
+    {
+      "name": "has_csv_export",
+      "pass": true
+    },
+    {
+      "name": "has_currency",
+      "pass": true
+    },
+    {
+      "name": "has_month_start",
+      "pass": true
+    },
+    {
+      "name": "has_edit_delete",
+      "pass": true
+    }
+  ],
+  "tool_calls": 31,
+  "tool_errors": 2,
+  "usage": {
+    "input": 32,
+    "output": 28891,
+    "cacheRead": 412099,
+    "cacheWrite": 51338,
+    "turns": 44,
+    "equivalentUsd": 0.5767458000000001,
+    "usd": 0
+  },
+  "usd": 0,
+  "page_bytes": 290610,
+  "data": {
+    "values": {
+      "settings": {
+        "currency": "USD",
+        "startDay": 1
+      },
+      "categories": [
+        {
+          "id": "housing",
+          "name": "Housing",
+          "color": "#6366f1",
+          "budget": 1400
+        },
+        {
+          "id": "groceries",
+          "name": "Groceries",
+          "color": "#22c55e",
+          "budget": 500
+        },
+        {
+          "id": "dining",
+          "name": "Dining out",
+          "color": "#f97316",
+          "budget": 200
+        },
+        {
+          "id": "transport",
+          "name": "Transport",
+          "color": "#0ea5e9",
+          "budget": 180
+        },
+        {
+          "id": "subs",
+          "name": "Subscriptions",
+          "color": "#a855f7",
+          "budget": 60
+        },
+        {
+          "id": "health",
+          "name": "Health",
+          "color": "#ef4444",
+          "budget": 100
+        },
+        {
+          "id": "fun",
+          "name": "Fun",
+          "color": "#eab308",
+          "budget": 150
+        },
+        {
+          "id": "shopping",
+          "name": "Shopping",
+          "color": "#ec4899",
+          "budget": 150
+        },
+        {
+          "id": "utilities",
+          "name": "Utilities",
+          "color": "#14b8a6",
+          "budget": 160
+        }
+      ],
+      "recurring": [
+        {
+          "id": "r-rent",
+          "note": "Rent",
+          "amount": 1350,
+          "category": "housing",
+          "day": 1,
+          "start": "2026-08-01",
+          "active": true,
+          "skip": []
+        },
+        {
+          "id": "r-gym",
+          "note": "Gym membership",
+          "amount": 39,
+          "category": "health",
+          "day": 3,
+          "start": "2026-08-01",
+          "active": true,
+          "skip": []
+        },
+        {
+          "id": "r-netflix",
+          "note": "Netflix",
+          "amount": 15.49,
+          "category": "subs",
+          "day": 8,
+          "start": "2026-08-01",
+          "active": true,
+          "skip": []
+        },
+        {
+          "id": "r-spotify",
+          "note": "Spotify",
+          "amount": 10.99,
+          "category": "subs",
+          "day": 12,
+          "start": "2026-08-01",
+          "active": true,
+          "skip": []
+        },
+        {
+          "id": "r-internet",
+          "note": "Internet",
+          "amount": 59.9,
+          "category": "utilities",
+          "day": 15,
+          "start": "2026-08-01",
+          "active": true,
+          "skip": []
+        },
+        {
+          "id": "r-phone",
+          "note": "Phone plan",
+          "amount": 35,
+          "category": "utilities",
+          "day": 20,
+          "start": "2026-08-01",
+          "active": true,
+          "skip": []
+        }
+      ],
+      "expenses": [
+        {
+          "id": "a01",
+          "amount": 1350,
+          "category": "housing",
+          "date": "2026-08-01",
+          "note": "Rent",
+          "rid": "r-rent"
+        },
+        {
+          "id": "a02",
+          "amount": 39,
+          "category": "health",
+          "date": "2026-08-03",
+          "note": "Gym membership",
+          "rid": "r-gym"
+        },
+        {
+          "id": "a03",
+          "amount": 15.49,
+          "category": "subs",
+          "date": "2026-08-08",
+          "note": "Netflix",
+          "rid": "r-netflix"
+        },
+        {
+          "id": "a04",
+          "amount": 10.99,
+          "category": "subs",
+          "date": "2026-08-12",
+          "note": "Spotify",
+          "rid": "r-spotify"
+        },
+        {
+          "id": "a05",
+          "amount": 59.9,
+          "category": "utilities",
+          "date": "2026-08-15",
+          "note": "Internet",
+          "rid": "r-internet"
+        },
+        {
+          "id": "a06",
+          "amount": 35,
+          "category": "utilities",
+          "date": "2026-08-20",
+          "note": "Phone plan",
+          "rid": "r-phone"
+        },
+        {
+          "id": "a07",
+          "amount": 84.32,
+          "category": "groceries",
+          "date": "2026-08-02",
+          "note": "Weekly shop"
+        },
+        {
+          "id": "a08",
+          "amount": 67.15,
+          "category": "groceries",
+          "date": "2026-08-09",
+          "note": "Weekly shop"
+        },
+        {
+          "id": "a09",
+          "amount": 91.8,
+          "category": "groceries",
+          "date": "2026-08-16",
+          "note": "Costco run"
+        },
+        {
+          "id": "a10",
+          "amount": 73.4,
+          "category": "groceries",
+          "date": "2026-08-23",
+          "note": "Weekly shop"
+        },
+        {
+          "id": "a11",
+          "amount": 58.9,
+          "category": "groceries",
+          "date": "2026-08-30",
+          "note": "Farmers market + shop"
+        },
+        {
+          "id": "a12",
+          "amount": 42.5,
+          "category": "dining",
+          "date": "2026-08-07",
+          "note": "Dinner with Sam"
+        },
+        {
+          "id": "a13",
+          "amount": 18.75,
+          "category": "dining",
+          "date": "2026-08-14",
+          "note": "Lunch, ramen"
+        },
+        {
+          "id": "a14",
+          "amount": 64,
+          "category": "dining",
+          "date": "2026-08-22",
+          "note": "Birthday dinner"
+        },
+        {
+          "id": "a15",
+          "amount": 55,
+          "category": "transport",
+          "date": "2026-08-04",
+          "note": "Transit pass top-up"
+        },
+        {
+          "id": "a16",
+          "amount": 46.2,
+          "category": "transport",
+          "date": "2026-08-18",
+          "note": "Gas"
+        },
+        {
+          "id": "a17",
+          "amount": 24,
+          "category": "transport",
+          "date": "2026-08-26",
+          "note": "Rideshare"
+        },
+        {
+          "id": "a18",
+          "amount": 35,
+          "category": "fun",
+          "date": "2026-08-10",
+          "note": "Concert tickets"
+        },
+        {
+          "id": "a19",
+          "amount": 28,
+          "category": "fun",
+          "date": "2026-08-29",
+          "note": "Bowling"
+        },
+        {
+          "id": "a20",
+          "amount": 89.99,
+          "category": "shopping",
+          "date": "2026-08-13",
+          "note": "Running shoes"
+        },
+        {
+          "id": "a21",
+          "amount": 22.5,
+          "category": "health",
+          "date": "2026-08-19",
+          "note": "Pharmacy"
+        },
+        {
+          "id": "b01",
+          "amount": 1350,
+          "category": "housing",
+          "date": "2026-09-01",
+          "note": "Rent",
+          "rid": "r-rent"
+        },
+        {
+          "id": "b02",
+          "amount": 39,
+          "category": "health",
+          "date": "2026-09-03",
+          "note": "Gym membership",
+          "rid": "r-gym"
+        },
+        {
+          "id": "b03",
+          "amount": 15.49,
+          "category": "subs",
+          "date": "2026-09-08",
+          "note": "Netflix",
+          "rid": "r-netflix"
+        },
+        {
+          "id": "b04",
+          "amount": 10.99,
+          "category": "subs",
+          "date": "2026-09-12",
+          "note": "Spotify",
+          "rid": "r-spotify"
+        },
+        {
+          "id": "b05",
+          "amount": 59.9,
+          "category": "utilities",
+          "date": "2026-09-15",
+          "note": "Internet",
+          "rid": "r-internet"
+        },
+        {
+          "id": "b06",
+          "amount": 35,
+          "category": "utilities",
+          "date": "2026-09-20",
+          "note": "Phone plan",
+          "rid": "r-phone"
+        },
+        {
+          "id": "b07",
+          "amount": 78.6,
+          "category": "groceries",
+          "date": "2026-09-05",
+          "note": "Weekly shop"
+        },
+        {
+          "id": "b08",
+          "amount": 96.25,
+          "category": "groceries",
+          "date": "2026-09-12",
+          "note": "Costco run"
+        },
+        {
+          "id": "b09",
+          "amount": 69.1,
+          "category": "groceries",
+          "date": "2026-09-19",
+          "note": "Weekly shop"
+        },
+        {
+          "id": "b10",
+          "amount": 81.45,
+          "category": "groceries",
+          "date": "2026-09-26",
+          "note": "Weekly shop"
+        },
+        {
+          "id": "b11",
+          "amount": 38.2,
+          "category": "dining",
+          "date": "2026-09-06",
+          "note": "Pizza night"
+        },
+        {
+          "id": "b12",
+          "amount": 71.5,
+          "category": "dining",
+          "date": "2026-09-13",
+          "note": "Anniversary dinner"
+        },
+        {
+          "id": "b13",
+          "amount": 16.4,
+          "category": "dining",
+          "date": "2026-09-24",
+          "note": "Lunch with team"
+        },
+        {
+          "id": "b14",
+          "amount": 55,
+          "category": "transport",
+          "date": "2026-09-04",
+          "note": "Transit pass top-up"
+        },
+        {
+          "id": "b15",
+          "amount": 52.8,
+          "category": "transport",
+          "date": "2026-09-16",
+          "note": "Gas"
+        },
+        {
+          "id": "b16",
+          "amount": 62,
+          "category": "fun",
+          "date": "2026-09-11",
+          "note": "Escape room"
+        },
+        {
+          "id": "b17",
+          "amount": 18.99,
+          "category": "fun",
+          "date": "2026-09-27",
+          "note": "Movie + popcorn"
+        },
+        {
+          "id": "b18",
+          "amount": 129,
+          "category": "shopping",
+          "date": "2026-09-09",
+          "note": "Winter jacket"
+        },
+        {
+          "id": "b19",
+          "amount": 45,
+          "category": "shopping",
+          "date": "2026-09-21",
+          "note": "Books"
+        },
+        {
+          "id": "b20",
+          "amount": 60,
+          "category": "health",
+          "date": "2026-09-17",
+          "note": "Dentist copay"
+        },
+        {
+          "id": "c01",
+          "amount": 1350,
+          "category": "housing",
+          "date": "2026-10-01",
+          "note": "Rent",
+          "rid": "r-rent"
+        },
+        {
+          "id": "c02",
+          "amount": 39,
+          "category": "health",
+          "date": "2026-10-03",
+          "note": "Gym membership",
+          "rid": "r-gym"
+        },
+        {
+          "id": "c03",
+          "amount": 88.7,
+          "category": "groceries",
+          "date": "2026-10-03",
+          "note": "Weekly shop"
+        },
+        {
+          "id": "c04",
+          "amount": 55,
+          "category": "transport",
+          "date": "2026-10-02",
+          "note": "Transit pass top-up"
+        },
+        {
+          "id": "c05",
+          "amount": 27.8,
+          "category": "dining",
+          "date": "2026-10-04",
+          "note": "Brunch"
+        },
+        {
+          "id": "c06",
+          "amount": 14.5,
+          "category": "fun",
+          "date": "2026-10-04",
+          "note": "Board game cafe"
+        },
+        {
+          "id": "c07",
+          "amount": 8.75,
+          "category": "dining",
+          "date": "2026-10-05",
+          "note": "Coffee and pastry"
+        }
+      ]
+    },
+    "collections": {}
+  },
+  "answer": "Your Budget note is now a budget app. I didn't use it end to end. I only checked it over sample data, where the add form and the Expenses screen worked, and I never saw the Recurring or Settings screens render. I couldn't try your seeded data, because the preview only allows sample data until you allow real data in Amber Notes › Settings › Apps.\n\n- **Month:** it shows spent against budget overall, what's left, and what's left per day. A donut chart breaks spending down by category, and each category has its own bar that turns red when it's over. Arrows move between months.\n- **Expenses:** each has an amount, category, date and note. The round **+** button opens a bottom sheet with a large amount field and category chips. Tap any expense to edit it or delete it. You can search, filter by category, and switch between this month and all time. **Export CSV** downloads the filtered list and also copies it to the clipboard.\n- **Recurring:** rent, subscriptions and the like are added as expenses each month once their day arrives. You can turn each one on or off. If you delete one month's copy, it doesn't come back for that month.\n- **Settings:** you can set the currency and the day the month starts, for example the 25th for pay-day months. Categories can be added, renamed, recoloured and given a monthly budget. A category that already has expenses can't be deleted, so rename it instead.\n- **Demo data:** August, September and October 2026 are filled in. There are 9 categories with a combined budget of $2,900 a month and 6 recurring items. The expenses are realistic, with October running up to today.\n\nBudgets are set per category and repeat every month. You can't set a different budget for a single month.\n\nThe data lives in the note's `data.json`, and the README describes its shape.",
+  "calls": [
+    {
+      "name": "search",
+      "args": {
+        "query": "Budget"
+      },
+      "error": true,
+      "result": "<tool_use_error>Error: No such tool available: search</tool_use_error>"
+    },
+    {
+      "name": "search",
+      "args": {
+        "query": "Budget"
+      },
+      "error": false,
+      "result": "{\"results\":[{\"id\":\"ca84c765-ff81-45da-be63-6f0cbb03d67a\",\"title\":\"Budget\",\"url\":\"ambernotes://note/ca84c765-ff81-45da-be63-6f0cbb03d67a\",\"path\":\"Budget.md\",\"snippet\":\"«Budget»\"}]}"
+    },
+    {
+      "name": "fetch",
+      "args": {
+        "id": "Budget.md"
+      },
+      "error": false,
+      "result": "{\"id\":\"ca84c765-ff81-45da-be63-6f0cbb03d67a\",\"title\":\"Budget\",\"text\":\"Budget\\n\",\"url\":\"ambernotes://note/ca84c765-ff81-45da-be63-6f0cbb03d67a\",\"metadata\":{\"path\":\"Budget.md\",\"folder\":\"/\",\"pinned\":false,\"version\":1,\"updated\":\"2026-10-06T00:35:22.504Z\",\"lines\":2}}"
+    },
+    {
+      "name": "create",
+      "args": {
+        "type": "app",
+        "path": "Budget.md"
+      },
+      "error": false,
+      "result": "{\"app\":\"Budget.app/\",\"saved\":\"a new React project\",\"files\":33,\"opens\":\"Opens cleanly at 390 and 1280 px (over a sample of its data).\",\"notes\":[\"390-light: 2 text element(s) with contrast under 4.5:1 (\\\"Get started\\\", \\\"Home\\\").\",\"390-light: 2 text element(s) under 12 px (\\\"Home\\\", \\\"Settings\\\").\",\"390-light: 1 control(s) smaller than 44 pt to tap (\\\"Get started\\\").\",\"1280-light: 1 text element(s) with contrast under 4.5:1 (\\\"Get started\\\").\"],\"next\":\"Read Budget.app/README.md, then build the app with write and edit (files under Budget.app/src/). Its data is Budget.app/data.json.\"}"
+    },
+    {
+      "name": "fetch",
+      "args": {
+        "id": "Budget.app/README.md"
+      },
+      "error": false,
+      "result": "{\"id\":\"ca84c765-ff81-45da-be63-6f0cbb03d67a.app/README.md\",\"title\":\"/README.md\",\"text\":\"# Budget\\n\\nWhat this app is for, in one sentence.\\n\\n## Screens\\n- Home (src/screens/home.tsx)\\n- Settings (src/screens/settings.tsx)\\n\\n## Data\\nThe app's data, as the person's AI reaches it in data.json. Keep this current.\\n- settings: { name } (useSettings)\\n\\n## How this app runs in Amber Notes\\n\\n- It is the note: opening the note opens the app, on iPhone (320-440 pt wide, safe areas, the keyboard shrinks the view) and on the Mac (a window from about 500 to 1,800 px, resized live). Light and dark foll… (2326 chars)"
+    },
+    {
+      "name": "list",
+      "args": {
+        "path": "Budget.app"
+      },
+      "error": false,
+      "result": "{\"path\":\"Budget.app/\",\"files\":[{\"path\":\"Budget.app/README.md\",\"bytes\":2082,\"lines\":22},{\"path\":\"Budget.app/index.html\",\"bytes\":216,\"lines\":12},{\"path\":\"Budget.app/package.json\",\"bytes\":687,\"lines\":29},{\"path\":\"Budget.app/src/App.tsx\",\"bytes\":906,\"lines\":27},{\"path\":\"Budget.app/src/components/app-shell.tsx\",\"bytes\":2651,\"lines\":60},{\"path\":\"Budget.app/src/components/stat-card.tsx\",\"bytes\":576,\"lines\":15},{\"path\":\"Budget.app/src/components/ui/badge.tsx\",\"bytes\":1775,\"lines\":48},{\"path\":\"Budget.app/src/components/ui/button.tsx\",\"bytes\":2391,\"lines\":64},{\"path\":\"Budget.app/src/components/ui/calend… (2411 chars)"
+    },
+    {
+      "name": "fetch",
+      "args": {
+        "id": "Budget.app/src/App.tsx"
+      },
+      "error": false,
+      "result": "{\"id\":\"ca84c765-ff81-45da-be63-6f0cbb03d67a.app/src/App.tsx\",\"title\":\"/src/App.tsx\",\"text\":\"import { Router, Route } from \\\"amber-router\\\"\\nimport { House, Settings as SettingsIcon } from \\\"lucide-react\\\"\\nimport { Toaster } from \\\"@/components/ui/sonner\\\"\\nimport { AppShell } from \\\"@/components/app-shell\\\"\\nimport Home from \\\"@/screens/home\\\"\\nimport Settings from \\\"@/screens/settings\\\"\\n\\n// The app's places: a tab bar on iPhone, a sidebar from 900 px (components/app-shell.tsx).\\nconst screens = [\\n  { path: \\\"/\\\", label: \\\"Home\\\", icon: House },\\n  { path: \\\"/settings\\\", label: \\\"Settings\\… (1175 chars)"
+    },
+    {
+      "name": "fetch",
+      "args": {
+        "id": "Budget.app/src/components/app-shell.tsx"
+      },
+      "error": false,
+      "result": "{\"id\":\"ca84c765-ff81-45da-be63-6f0cbb03d67a.app/src/components/app-shell.tsx\",\"title\":\"/src/components/app-shell.tsx\",\"text\":\"import type { ReactNode } from \\\"react\\\"\\nimport type { LucideIcon } from \\\"lucide-react\\\"\\nimport { route, useRoute } from \\\"amber-router\\\"\\nimport { cn } from \\\"@/lib/utils\\\"\\n\\nexport type Screen = { path: string; label: string; icon: LucideIcon }\\n\\n// The app's frame: a tab bar at the bottom on iPhone; from 900 px a sidebar with the content\\n// beside it, so the Mac never shows a stretched phone list.\\nexport function AppShell({ title, screens, children }: { title:… (3022 chars)"
+    },
+    {
+      "name": "fetch",
+      "args": {
+        "id": "Budget.app/src/lib/amber.ts"
+      },
+      "error": false,
+      "result": "{\"id\":\"ca84c765-ff81-45da-be63-6f0cbb03d67a.app/src/lib/amber.ts\",\"title\":\"/src/lib/amber.ts\",\"text\":\"// The app's data (JSON in its own store: encrypted, synced, with Undo), and the note's summary line.\\nexport { useStore, useAppData, useCollection, useSettings, useImported, batch, setSummary } from \\\"amber\\\"\\n\",\"url\":\"ambernotes://note/ca84c765-ff81-45da-be63-6f0cbb03d67a\",\"metadata\":{\"path\":\"Budget.app/src/lib/amber.ts\",\"lines\":3}}"
+    },
+    {
+      "name": "fetch",
+      "args": {
+        "id": "Budget.app/data.json"
+      },
+      "error": false,
+      "result": "{\"id\":\"ca84c765-ff81-45da-be63-6f0cbb03d67a.app/data.json\",\"title\":\"Budget: data.json\",\"text\":\"{\\n  \\\"values\\\": {},\\n  \\\"collections\\\": {}\\n}\",\"url\":\"ambernotes://note/ca84c765-ff81-45da-be63-6f0cbb03d67a\",\"metadata\":{\"path\":\"Budget.app/data.json\",\"shape\":{\"values\":{\"object\":{}},\"collections\":{\"object\":{}}},\"readme_data\":\"The app's data, as the person's AI reaches it in data.json. Keep this current.\\n- settings: { name } (useSettings)\",\"about\":\"values.localStorage holds what the app keeps in localStorage, parsed; it's saved back as the app expects.\"}}"
+    },
+    {
+      "name": "fetch",
+      "args": {
+        "id": "Budget.app/src/screens/settings.tsx"
+      },
+      "error": false,
+      "result": "{\"id\":\"ca84c765-ff81-45da-be63-6f0cbb03d67a.app/src/screens/settings.tsx\",\"title\":\"/src/screens/settings.tsx\",\"text\":\"import { useSettings } from \\\"@/lib/amber\\\"\\nimport { PageHeader } from \\\"@/components/app-shell\\\"\\nimport { Card } from \\\"@/components/ui/card\\\"\\nimport { Input } from \\\"@/components/ui/input\\\"\\nimport { Label } from \\\"@/components/ui/label\\\"\\n\\nconst DEFAULTS = { name: \\\"\\\" }\\n\\n// What the person can change without asking an AI, kept in the app's data.\\nexport default function Settings() {\\n  const [settings, update] = useSettings(DEFAULTS)\\n  return (\\n    <>\\n      <PageHe… (1115 chars)"
+    },
+    {
+      "name": "write",
+      "args": {
+        "id": "Budget.app/src/lib/budget.ts",
+        "content": "import { useEffect, useMemo, useSyncExternalStore } from \"react\"\nimport { useStore } from \"@/lib/amber\"\n\nexport type Category = { id: string; name: string; color: string; budget: number }\nexport type Expense = { id: string; amount: number; category: string; date: string; note: string; rid?: string }… (5995 chars)"
+      },
+      "error": false,
+      "result": "{\"app\":{\"id\":\"ca84c765-ff81-45da-be63-6f0cbb03d67a\",\"title\":\"Budget\"},\"saved\":\"/src/lib/budget.ts (created)\",\"files\":34,\"opens\":\"Opens cleanly at 390 and 1280 px (over a sample of its data).\",\"notes\":[\"390-light: 2 text element(s) with contrast under 4.5:1 (\\\"Get started\\\", \\\"Home\\\").\",\"390-light: 2 text element(s) under 12 px (\\\"Home\\\", \\\"Settings\\\").\",\"390-light: 1 control(s) smaller than 44 pt to tap (\\\"Get started\\\").\",\"1280-light: 1 text element(s) with contrast under 4.5:1 (\\\"Get started\\\").\"],\"next\":\"Keep going; run check_app (and preview_app) when the app is done.\"}"
+    },
+    {
+      "name": "write",
+      "args": {
+        "id": "Budget.app/src/components/num-input.tsx",
+        "content": "import { useEffect, useState } from \"react\"\nimport { Input } from \"@/components/ui/input\"\n\n// A number field that lets you type \"12.\" or clear it without snapping to 0.\nexport function NumInput({ value, onValue, ...rest }: { value: number; onValue: (n: number) => void } & Omit<React.ComponentProps<\"… (905 chars)"
+      },
+      "error": false,
+      "result": "{\"app\":{\"id\":\"ca84c765-ff81-45da-be63-6f0cbb03d67a\",\"title\":\"Budget\"},\"saved\":\"/src/components/num-input.tsx (created)\",\"files\":35,\"opens\":\"Opens cleanly at 390 and 1280 px (over a sample of its data).\",\"notes\":[\"390-light: 2 text element(s) with contrast under 4.5:1 (\\\"Get started\\\", \\\"Home\\\").\",\"390-light: 2 text element(s) under 12 px (\\\"Home\\\", \\\"Settings\\\").\",\"390-light: 1 control(s) smaller than 44 pt to tap (\\\"Get started\\\").\",\"1280-light: 1 text element(s) with contrast under 4.5:1 (\\\"Get started\\\").\"],\"next\":\"Keep going; run check_app (and preview_app) when the app is done.\"}"
+    },
+    {
+      "name": "write",
+      "args": {
+        "id": "Budget.app/src/components/expense-sheet.tsx",
+        "content": "import { useState } from \"react\"\nimport { Trash2 } from \"lucide-react\"\nimport { toast } from \"sonner\"\nimport { Sheet, SheetContent, SheetHeader, SheetTitle } from \"@/components/ui/sheet\"\nimport { Button } from \"@/components/ui/button\"\nimport { Input } from \"@/components/ui/input\"\nimport { Label } fr… (4415 chars)"
+      },
+      "error": false,
+      "result": "{\"app\":{\"id\":\"ca84c765-ff81-45da-be63-6f0cbb03d67a\",\"title\":\"Budget\"},\"saved\":\"/src/components/expense-sheet.tsx (created)\",\"files\":36,\"opens\":\"Opens cleanly at 390 and 1280 px (over a sample of its data).\",\"notes\":[\"390-light: 2 text element(s) with contrast under 4.5:1 (\\\"Get started\\\", \\\"Home\\\").\",\"390-light: 2 text element(s) under 12 px (\\\"Home\\\", \\\"Settings\\\").\",\"390-light: 1 control(s) smaller than 44 pt to tap (\\\"Get started\\\").\",\"1280-light: 1 text element(s) with contrast under 4.5:1 (\\\"Get started\\\").\"],\"next\":\"Keep going; run check_app (and preview_app) when the app is done.\"}"
+    },
+    {
+      "name": "write",
+      "args": {
+        "id": "Budget.app/src/components/month-nav.tsx",
+        "content": "import { ChevronLeft, ChevronRight } from \"lucide-react\"\nimport { Button } from \"@/components/ui/button\"\nimport { addMonths, monthLabel } from \"@/lib/budget\"\n\nexport function MonthNav({ month, onChange }: { month: string; onChange: (m: string) => void }) {\n  return (\n    <div className=\"flex items-c… (817 chars)"
+      },
+      "error": false,
+      "result": "{\"app\":{\"id\":\"ca84c765-ff81-45da-be63-6f0cbb03d67a\",\"title\":\"Budget\"},\"saved\":\"/src/components/month-nav.tsx (created)\",\"files\":37,\"opens\":\"Opens cleanly at 390 and 1280 px (over a sample of its data).\",\"notes\":[\"390-light: 2 text element(s) with contrast under 4.5:1 (\\\"Get started\\\", \\\"Home\\\").\",\"390-light: 2 text element(s) under 12 px (\\\"Home\\\", \\\"Settings\\\").\",\"390-light: 1 control(s) smaller than 44 pt to tap (\\\"Get started\\\").\",\"1280-light: 1 text element(s) with contrast under 4.5:1 (\\\"Get started\\\").\"],\"next\":\"Keep going; run check_app (and preview_app) when the app is done.\"}"
+    },
+    {
+      "name": "write",
+      "args": {
+        "id": "Budget.app/src/screens/home.tsx",
+        "content": "import { useEffect } from \"react\"\nimport { Cell, Pie, PieChart, ResponsiveContainer } from \"recharts\"\nimport { setSummary } from \"@/lib/amber\"\nimport { PageHeader } from \"@/components/app-shell\"\nimport { MonthNav } from \"@/components/month-nav\"\nimport { Card } from \"@/components/ui/card\"\nimport { di… (6459 chars)"
+      },
+      "error": false,
+      "result": "{\"app\":{\"id\":\"ca84c765-ff81-45da-be63-6f0cbb03d67a\",\"title\":\"Budget\"},\"saved\":\"/src/screens/home.tsx (replaced)\",\"files\":37,\"opens\":\"Opens cleanly at 390 and 1280 px (over a sample of its data).\",\"notes\":[\"390-light: 1 text element(s) with contrast under 4.5:1 (\\\"Home\\\").\",\"390-light: 2 text element(s) under 12 px (\\\"Home\\\", \\\"Settings\\\").\"],\"next\":\"Keep going; run check_app (and preview_app) when the app is done.\"}"
+    },
+    {
+      "name": "write",
+      "args": {
+        "id": "Budget.app/src/screens/expenses.tsx",
+        "content": "import { useState } from \"react\"\nimport { Download, Repeat, Search } from \"lucide-react\"\nimport { toast } from \"sonner\"\nimport { PageHeader } from \"@/components/app-shell\"\nimport { MonthNav } from \"@/components/month-nav\"\nimport { Button } from \"@/components/ui/button\"\nimport { Input } from \"@/compo… (5225 chars)"
+      },
+      "error": false,
+      "result": "{\"app\":{\"id\":\"ca84c765-ff81-45da-be63-6f0cbb03d67a\",\"title\":\"Budget\"},\"saved\":\"/src/screens/expenses.tsx (created)\",\"files\":38,\"opens\":\"Opens cleanly at 390 and 1280 px (over a sample of its data).\",\"notes\":[\"390-light: 1 text element(s) with contrast under 4.5:1 (\\\"Home\\\").\",\"390-light: 2 text element(s) under 12 px (\\\"Home\\\", \\\"Settings\\\").\"],\"next\":\"Keep going; run check_app (and preview_app) when the app is done.\"}"
+    },
+    {
+      "name": "write",
+      "args": {
+        "id": "Budget.app/src/screens/recurring.tsx",
+        "content": "import { useState } from \"react\"\nimport { Plus, Trash2 } from \"lucide-react\"\nimport { toast } from \"sonner\"\nimport { PageHeader } from \"@/components/app-shell\"\nimport { NumInput } from \"@/components/num-input\"\nimport { Button } from \"@/components/ui/button\"\nimport { Input } from \"@/components/ui/inp… (5370 chars)"
+      },
+      "error": false,
+      "result": "{\"app\":{\"id\":\"ca84c765-ff81-45da-be63-6f0cbb03d67a\",\"title\":\"Budget\"},\"saved\":\"/src/screens/recurring.tsx (created)\",\"files\":39,\"opens\":\"Opens cleanly at 390 and 1280 px (over a sample of its data).\",\"notes\":[\"390-light: 1 text element(s) with contrast under 4.5:1 (\\\"Home\\\").\",\"390-light: 2 text element(s) under 12 px (\\\"Home\\\", \\\"Settings\\\").\"],\"next\":\"Keep going; run check_app (and preview_app) when the app is done.\"}"
+    },
+    {
+      "name": "write",
+      "args": {
+        "id": "Budget.app/src/screens/settings.tsx",
+        "content": "import { Plus, Trash2 } from \"lucide-react\"\nimport { toast } from \"sonner\"\nimport { PageHeader } from \"@/components/app-shell\"\nimport { NumInput } from \"@/components/num-input\"\nimport { Button } from \"@/components/ui/button\"\nimport { Card } from \"@/components/ui/card\"\nimport { Input } from \"@/compon… (3601 chars)"
+      },
+      "error": false,
+      "result": "{\"app\":{\"id\":\"ca84c765-ff81-45da-be63-6f0cbb03d67a\",\"title\":\"Budget\"},\"saved\":\"/src/screens/settings.tsx (replaced)\",\"files\":39,\"opens\":\"Opens cleanly at 390 and 1280 px (over a sample of its data).\",\"notes\":[\"390-light: 1 text element(s) with contrast under 4.5:1 (\\\"Home\\\").\",\"390-light: 2 text element(s) under 12 px (\\\"Home\\\", \\\"Settings\\\").\"],\"next\":\"Keep going; run check_app (and preview_app) when the app is done.\"}"
+    },
+    {
+      "name": "write",
+      "args": {
+        "id": "Budget.app/src/App.tsx",
+        "content": "import { Router, Route } from \"amber-router\"\nimport { CalendarDays, List, Plus, Repeat, Settings as SettingsIcon } from \"lucide-react\"\nimport { Toaster } from \"@/components/ui/sonner\"\nimport { AppShell } from \"@/components/app-shell\"\nimport { ExpenseSheet } from \"@/components/expense-sheet\"\nimport {… (1793 chars)"
+      },
+      "error": false,
+      "result": "{\"app\":{\"id\":\"ca84c765-ff81-45da-be63-6f0cbb03d67a\",\"title\":\"Budget\"},\"saved\":\"/src/App.tsx (replaced)\",\"files\":39,\"opens\":\"Opens cleanly at 390 and 1280 px (over a sample of its data).\",\"notes\":[\"390-light: 1 text element(s) with contrast under 4.5:1 (\\\"Month\\\").\",\"390-light: 4 text element(s) under 12 px (\\\"Month\\\", \\\"Expenses\\\", \\\"Recurring\\\").\"],\"next\":\"Keep going; run check_app (and preview_app) when the app is done.\"}"
+    },
+    {
+      "name": "write",
+      "args": {
+        "id": "Budget.app/data.json",
+        "content": "{\n  \"values\": {\n    \"settings\": { \"currency\": \"USD\", \"startDay\": 1 },\n    \"categories\": [\n      { \"id\": \"housing\", \"name\": \"Housing\", \"color\": \"#6366f1\", \"budget\": 1400 },\n      { \"id\": \"groceries\", \"name\": \"Groceries\", \"color\": \"#22c55e\", \"budget\": 500 },\n      { \"id\": \"dining\", \"name\": \"Dining out… (7170 chars)"
+      },
+      "error": false,
+      "result": "{\"app\":\"Budget\",\"saved\":\"data.json\",\"bytes\":5933,\"note\":\"Saved as one change: the open app shows it at once, and the person can undo it.\"}"
+    },
+    {
+      "name": "edit",
+      "args": {
+        "id": "Budget.app/src/components/app-shell.tsx",
+        "edits": "[{\"old_text\":\"py-1.5 text-[11px]\",\"new_text\":\"py-1.5 text-xs\"}]"
+      },
+      "error": false,
+      "result": "{\"app\":{\"id\":\"ca84c765-ff81-45da-be63-6f0cbb03d67a\",\"title\":\"Budget\"},\"saved\":\"/src/components/app-shell.tsx (1 edit)\",\"files\":39,\"errors\":[\"390-light: script error: pageerror: Invalid Date\",\"390-light: shows almost no text (a blank screen?).\",\"1280-light: script error: pageerror: Invalid Date\",\"1280-light: shows almost no text (a blank screen?).\"],\"next\":\"Fix the errors, then keep going.\"}"
+    },
+    {
+      "name": "see_app",
+      "args": {
+        "id": "Budget.md",
+        "widths": "[390]",
+        "themes": "[\"light\"]"
+      },
+      "error": false,
+      "result": "[image]\n{\"app\":{\"id\":\"ca84c765-ff81-45da-be63-6f0cbb03d67a\",\"title\":\"Budget\"},\"views\":[\"390-light\"],\"issues\":[\"390-light: script error: pageerror: Invalid Date\",\"390-light: shows almost no text (a blank screen?).\"]}"
+    },
+    {
+      "name": "edit",
+      "args": {
+        "id": "Budget.app/src/lib/budget.ts",
+        "edits": "[{\"old_text\":\"  const settings = { ...DEFAULT_SETTINGS, ...settingsRaw }\\n\",\"new_text\":\"  const sdRaw = Number(settingsRaw?.startDay)\\n  const settings: Settings = {\\n    currency: typeof settingsRaw?.currency === \\\"string\\\" && /^[A-Z]{3}$/.test(settingsRaw.currency) ? settingsRaw.currency : \\\"USD\\\"… (2056 chars)"
+      },
+      "error": false,
+      "result": "{\"app\":{\"id\":\"ca84c765-ff81-45da-be63-6f0cbb03d67a\",\"title\":\"Budget\"},\"saved\":\"/src/lib/budget.ts (3 edits)\",\"files\":39,\"opens\":\"Opens cleanly at 390 and 1280 px (over a sample of its data).\",\"notes\":[\"390-light: 1 text element(s) with contrast under 4.5:1 (\\\"Month\\\").\"],\"next\":\"Keep going; run check_app (and preview_app) when the app is done.\"}"
+    },
+    {
+      "name": "edit",
+      "args": {
+        "id": "Budget.app/src/screens/home.tsx",
+        "edits": "[{\"old_text\":\"new Date(Date.parse(end) - 864e5).toISOString().slice(0, 10)\",\"new_text\":\"addDays(end, -1)\"},{\"old_text\":\"import { diffDays,\",\"new_text\":\"import { addDays, diffDays,\"}]"
+      },
+      "error": false,
+      "result": "{\"app\":{\"id\":\"ca84c765-ff81-45da-be63-6f0cbb03d67a\",\"title\":\"Budget\"},\"saved\":\"/src/screens/home.tsx (2 edits)\",\"files\":39,\"opens\":\"Opens cleanly at 390 and 1280 px (over a sample of its data).\",\"notes\":[\"390-light: 1 text element(s) with contrast under 4.5:1 (\\\"Month\\\").\"],\"next\":\"Keep going; run check_app (and preview_app) when the app is done.\"}"
+    },
+    {
+      "name": "see_app",
+      "args": {
+        "id": "Budget.md",
+        "data": "real",
+        "widths": "[390]",
+        "themes": "[\"light\"]",
+        "steps": "[{\"wait\":300},{\"tap\":\"Expenses\"},{\"tap\":\"Add expense\"},{\"type\":\"12.5\",\"into\":\"Amount\"}]"
+      },
+      "error": true,
+      "result": "Trying the app with real data is off. It uses a sample with the same shape by default (data: \"sample\"). The person can allow real data in Amber Notes › Settings › Apps in Notes."
+    },
+    {
+      "name": "see_app",
+      "args": {
+        "id": "Budget.md",
+        "widths": "[390]",
+        "themes": "[\"light\"]",
+        "steps": "[{\"wait\":300},{\"tap\":\"Add expense\"},{\"type\":\"12.5\",\"into\":\"Amount\"}]"
+      },
+      "error": false,
+      "result": "[image]\n[image]\n{\"app\":{\"id\":\"ca84c765-ff81-45da-be63-6f0cbb03d67a\",\"title\":\"Budget\"},\"steps\":[{\"step\":1,\"did\":{\"wait\":300},\"data_changed\":[\"~ values.expenses[48].id: \\\"nwq2c8ic9jv7\\\" → \\\"4f1jdggf9kbe\\\"\",\"~ values.expenses[49].id: \\\"bm42edaw9jv7\\\" → \\\"9nkpnf9v9kbe\\\"\",\"~ values.expenses[50].id: \\\"nh6sojrk9jv7\\\" → \\\"5y7v4ki89kbe\\\"\",\"~ values.expenses[51].id: \\\"j7t0nbz59jv7\\\" → \\\"le9dtnfk9kbe\\\"\",\"~ values.expenses[52].id: \\\"556i9iqq9jv7\\\" → \\\"fs2dk28s9kbe\\\"\",\"~ values.expenses[53].id: \\\"htvq3y009jv7\\\" → \\\"w9plbrdf9kbe\\\"\",\"~ values.expenses[54].id: \\\"fvy0fx0r9jv7\\\" → \\\"gg8fab9t9kbe\\\"\",\"~ values.ex… (4482 chars)"
+    },
+    {
+      "name": "edit",
+      "args": {
+        "id": "Budget.app/src/App.tsx",
+        "edits": "[{\"old_text\":\"className=\\\"fixed right-4 z-20 \",\"new_text\":\"className=\\\"fixed bottom-24 right-4 z-20 \"},{\"old_text\":\"min-[900px]:bottom-8 min-[900px]:right-8\\\"\\n        style={{ bottom: \\\"calc(max(6px, var(--amber-safe-bottom), var(--amber-inset-bottom)) + 68px)\\\" }}\\n      >\",\"new_text\":\"min-[900px]… (343 chars)"
+      },
+      "error": false,
+      "result": "{\"app\":{\"id\":\"ca84c765-ff81-45da-be63-6f0cbb03d67a\",\"title\":\"Budget\"},\"saved\":\"/src/App.tsx (2 edits)\",\"files\":39,\"opens\":\"Opens cleanly at 390 and 1280 px (over a sample of its data).\",\"notes\":[\"390-light: 1 text element(s) with contrast under 4.5:1 (\\\"Month\\\").\"],\"next\":\"Keep going; run check_app (and preview_app) when the app is done.\"}"
+    },
+    {
+      "name": "see_app",
+      "args": {
+        "id": "Budget.md",
+        "widths": "[390]",
+        "themes": "[\"light\"]",
+        "steps": "[{\"tap\":\"Add expense\"},{\"type\":\"12.5\",\"into\":\"#amt\"}]"
+      },
+      "error": false,
+      "result": "[image]\n{\"app\":{\"id\":\"ca84c765-ff81-45da-be63-6f0cbb03d67a\",\"title\":\"Budget\"},\"steps\":[{\"step\":1,\"did\":{\"tap\":\"Add expense\"},\"data_changed\":[\"~ values.expenses[48].id: \\\"7xu8jy079wmu\\\" → \\\"93b2rnlu9wx4\\\"\",\"~ values.expenses[49].id: \\\"n3v3xx1f9wmu\\\" → \\\"u2bvdyqv9wx4\\\"\",\"~ values.expenses[50].id: \\\"35e3jcuu9wmu\\\" → \\\"l9jc9amh9wx4\\\"\",\"~ values.expenses[51].id: \\\"lpeqqvzw9wmu\\\" → \\\"6ay1yi0d9wx4\\\"\",\"~ values.expenses[52].id: \\\"p7qxgan79wmu\\\" → \\\"tygl25sf9wx4\\\"\",\"~ values.expenses[53].id: \\\"s6080bct9wmu\\\" → \\\"scd440cj9wx4\\\"\",\"~ values.expenses[54].id: \\\"q2yzrvmn9wmu\\\" → \\\"b5s2p7j59wx4\\\"\",\"~ values.e… (3782 chars)"
+    },
+    {
+      "name": "see_app",
+      "args": {
+        "id": "Budget.md",
+        "widths": "[1280]",
+        "themes": "[\"dark\"]",
+        "steps": "[{\"tap\":\"Expenses\"},{\"tap\":\"Recurring\"},{\"tap\":\"Settings\"}]"
+      },
+      "error": false,
+      "result": "[image]\n{\"app\":{\"id\":\"ca84c765-ff81-45da-be63-6f0cbb03d67a\",\"title\":\"Budget\"},\"steps\":[{\"step\":1,\"did\":{\"tap\":\"Expenses\"},\"data_changed\":[\"~ values.expenses[48].id: \\\"fz1ic9l69zvg\\\" → \\\"crary3vpa06a\\\"\",\"~ values.expenses[49].id: \\\"9zton3h59zvg\\\" → \\\"mbqftdq5a06a\\\"\",\"~ values.expenses[50].id: \\\"q23mebul9zvg\\\" → \\\"5alqwfb8a06a\\\"\",\"~ values.expenses[51].id: \\\"2bbpjps79zvg\\\" → \\\"dr70b1dsa06a\\\"\",\"~ values.expenses[52].id: \\\"leixirtj9zvg\\\" → \\\"jhsa6x2ha06a\\\"\",\"~ values.expenses[53].id: \\\"s3kfzkwt9zvg\\\" → \\\"hi832n7qa06a\\\"\",\"~ values.expenses[54].id: \\\"kof1w9ma9zvg\\\" → \\\"2xj4bba4a06a\\\"\",\"~ values.expe… (6407 chars)"
+    },
+    {
+      "name": "write",
+      "args": {
+        "id": "Budget.app/README.md",
+        "content": "# Budget\n\nA personal budget: monthly category budgets, quick expense entry, a month view with chart, recurring expenses, search and CSV export.\n\n## Screens\n- Month (src/screens/home.tsx): spent vs budget, left per day, donut by category, per-category bars; month arrows.\n- Expenses (src/screens/expen… (1442 chars)"
+      },
+      "error": false,
+      "result": "{\"app\":{\"id\":\"ca84c765-ff81-45da-be63-6f0cbb03d67a\",\"title\":\"Budget\"},\"saved\":\"/README.md (replaced)\",\"files\":39,\"opens\":\"Opens cleanly at 390 and 1280 px (over a sample of its data).\",\"notes\":[\"390-light: 1 text element(s) with contrast under 4.5:1 (\\\"Month\\\").\"],\"next\":\"Keep going; run check_app (and preview_app) when the app is done.\"}"
+    }
+  ],
+  "render": {
+    "views": [
+      {
+        "name": "390-light",
+        "width": 390,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 592,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/x2/shots/x-budget-claude-cli-files-r2-390-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [
+          "Month"
+        ],
+        "faintCount": 1,
+        "headings": [
+          "Budget",
+          "Spending by category",
+          "Categories"
+        ],
+        "excerpt": "Budget October 2026 Spent $1,583.75 of $2,900.00 $1,316.25 left $50.63 / day 26 days left Spending by category Total $1,583.75 Housing 85% Groceries 6% Transport 3% Health 2% Dining out 2% Fun 1% Categories Housing $1,350.00 / $1,400.00 $50.00 left Groceries $88.70 / $500.00 $411.30 left Dining out $36.55 / $200.00 $163.45 left Transport $55.00 / $180.00 $125.00 left Subscriptions $0.00 / $60.00 $60.00 left Health $39.00 / $100.00 $61.00 left Fun $14.50 / $150.00 $135.50 left Shopping $0.00 / $1",
+        "titleCount": 1,
+        "ghostFields": [],
+        "sections": 2,
+        "nav": true,
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.9564102564102565,
+        "canvases": 1,
+        "svgShapes": 15,
+        "gridCols": 2,
+        "frames": 3,
+        "look": {
+          "accentHue": 239,
+          "nonAmberVivid": 0.036066067372907726,
+          "tintedBg": false
+        }
+      },
+      {
+        "name": "390-dark",
+        "width": 390,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 592,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/x2/shots/x-budget-claude-cli-files-r2-390-dark.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [
+          "$1,316.25 left"
+        ],
+        "faintCount": 1,
+        "headings": [
+          "Budget",
+          "Spending by category",
+          "Categories"
+        ],
+        "excerpt": "Budget October 2026 Spent $1,583.75 of $2,900.00 $1,316.25 left $50.63 / day 26 days left Spending by category Total $1,583.75 Housing 85% Groceries 6% Transport 3% Health 2% Dining out 2% Fun 1% Categories Housing $1,350.00 / $1,400.00 $50.00 left Groceries $88.70 / $500.00 $411.30 left Dining out $36.55 / $200.00 $163.45 left Transport $55.00 / $180.00 $125.00 left Subscriptions $0.00 / $60.00 $60.00 left Health $39.00 / $100.00 $61.00 left Fun $14.50 / $150.00 $135.50 left Shopping $0.00 / $1",
+        "titleCount": 1,
+        "ghostFields": [],
+        "sections": 2,
+        "nav": true,
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.9564102564102565,
+        "canvases": 1,
+        "svgShapes": 15,
+        "gridCols": 2,
+        "frames": 3,
+        "look": {
+          "accentHue": 239,
+          "nonAmberVivid": 0.036066067372907726,
+          "tintedBg": false
+        }
+      },
+      {
+        "name": "320-light",
+        "width": 320,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 592,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/x2/shots/x-budget-claude-cli-files-r2-320-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [
+          "Month"
+        ],
+        "faintCount": 1,
+        "headings": [
+          "Budget",
+          "Spending by category",
+          "Categories"
+        ],
+        "excerpt": "Budget October 2026 Spent $1,583.75 of $2,900.00 $1,316.25 left $50.63 / day 26 days left Spending by category Total $1,583.75 Housing 85% Groceries 6% Transport 3% Health 2% Dining out 2% Fun 1% Categories Housing $1,350.00 / $1,400.00 $50.00 left Groceries $88.70 / $500.00 $411.30 left Dining out $36.55 / $200.00 $163.45 left Transport $55.00 / $180.00 $125.00 left Subscriptions $0.00 / $60.00 $60.00 left Health $39.00 / $100.00 $61.00 left Fun $14.50 / $150.00 $135.50 left Shopping $0.00 / $1",
+        "titleCount": 1,
+        "ghostFields": [],
+        "sections": 2,
+        "nav": true,
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.946875,
+        "canvases": 1,
+        "svgShapes": 15,
+        "gridCols": 2,
+        "frames": 3,
+        "look": {
+          "accentHue": 239,
+          "nonAmberVivid": 0.04098805953608664,
+          "tintedBg": false
+        }
+      },
+      {
+        "name": "1280-light",
+        "width": 1280,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 599,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/x2/shots/x-budget-claude-cli-files-r2-1280-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Budget",
+          "Spending by category",
+          "Categories"
+        ],
+        "excerpt": "Budget Month Expenses Recurring Settings Budget October 2026 Spent $1,583.75 of $2,900.00 $1,316.25 left $50.63 / day 26 days left Spending by category Total $1,583.75 Housing 85% Groceries 6% Transport 3% Health 2% Dining out 2% Fun 1% Categories Housing $1,350.00 / $1,400.00 $50.00 left Groceries $88.70 / $500.00 $411.30 left Dining out $36.55 / $200.00 $163.45 left Transport $55.00 / $180.00 $125.00 left Subscriptions $0.00 / $60.00 $60.00 left Health $39.00 / $100.00 $61.00 left Fun $14.50 /",
+        "titleCount": 2,
+        "ghostFields": [],
+        "sections": 2,
+        "nav": false,
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.9634765625,
+        "canvases": 1,
+        "svgShapes": 15,
+        "gridCols": 2,
+        "frames": 3,
+        "look": {
+          "accentHue": 239,
+          "nonAmberVivid": 0.018733104921116225,
+          "tintedBg": false
+        }
+      },
+      {
+        "name": "1280-dark",
+        "width": 1280,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 599,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [
+          "$1,316.25 left"
+        ],
+        "faintCount": 1,
+        "headings": [
+          "Budget",
+          "Spending by category",
+          "Categories"
+        ],
+        "excerpt": "Budget Month Expenses Recurring Settings Budget October 2026 Spent $1,583.75 of $2,900.00 $1,316.25 left $50.63 / day 26 days left Spending by category Total $1,583.75 Housing 85% Groceries 6% Transport 3% Health 2% Dining out 2% Fun 1% Categories Housing $1,350.00 / $1,400.00 $50.00 left Groceries $88.70 / $500.00 $411.30 left Dining out $36.55 / $200.00 $163.45 left Transport $55.00 / $180.00 $125.00 left Subscriptions $0.00 / $60.00 $60.00 left Health $39.00 / $100.00 $61.00 left Fun $14.50 /",
+        "titleCount": 2,
+        "ghostFields": [],
+        "sections": 2,
+        "nav": false,
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.9634765625,
+        "canvases": 1,
+        "svgShapes": 15,
+        "gridCols": 2,
+        "frames": 3,
+        "look": {
+          "accentHue": 239,
+          "nonAmberVivid": 0.018733104921116225,
+          "tintedBg": false
+        }
+      }
+    ],
+    "blocked": [],
+    "updates": [],
+    "setData": 10,
+    "interaction": {
+      "tried": "control",
+      "ok": true,
+      "framesPerSecond": 0
+    },
+    "probes": {
+      "follows": {
+        "pass": false,
+        "detail": "a new record in the app's data doesn't show"
+      },
+      "escapes": {
+        "pass": true
+      },
+      "empty": {
+        "pass": true,
+        "detail": "blank app"
+      },
+      "large": {
+        "pass": true,
+        "detail": "657 ms to load 400 records"
+      }
+    },
+    "dataAfter": {
+      "values": {
+        "settings": {
+          "currency": "USD",
+          "startDay": 1
+        },
+        "categories": [
+          {
+            "id": "housing",
+            "name": "Housing",
+            "color": "#6366f1",
+            "budget": 1400
+          },
+          {
+            "id": "groceries",
+            "name": "Groceries",
+            "color": "#22c55e",
+            "budget": 500
+          },
+          {
+            "id": "dining",
+            "name": "Dining out",
+            "color": "#f97316",
+            "budget": 200
+          },
+          {
+            "id": "transport",
+            "name": "Transport",
+            "color": "#0ea5e9",
+            "budget": 180
+          },
+          {
+            "id": "subs",
+            "name": "Subscriptions",
+            "color": "#a855f7",
+            "budget": 60
+          },
+          {
+            "id": "health",
+            "name": "Health",
+            "color": "#ef4444",
+            "budget": 100
+          },
+          {
+            "id": "fun",
+            "name": "Fun",
+            "color": "#eab308",
+            "budget": 150
+          },
+          {
+            "id": "shopping",
+            "name": "Shopping",
+            "color": "#ec4899",
+            "budget": 150
+          },
+          {
+            "id": "utilities",
+            "name": "Utilities",
+            "color": "#14b8a6",
+            "budget": 160
+          }
+        ],
+        "recurring": [
+          {
+            "id": "r-rent",
+            "note": "Rent",
+            "amount": 1350,
+            "category": "housing",
+            "day": 1,
+            "start": "2026-08-01",
+            "active": true,
+            "skip": []
+          },
+          {
+            "id": "r-gym",
+            "note": "Gym membership",
+            "amount": 39,
+            "category": "health",
+            "day": 3,
+            "start": "2026-08-01",
+            "active": true,
+            "skip": []
+          },
+          {
+            "id": "r-netflix",
+            "note": "Netflix",
+            "amount": 15.49,
+            "category": "subs",
+            "day": 8,
+            "start": "2026-08-01",
+            "active": true,
+            "skip": []
+          },
+          {
+            "id": "r-spotify",
+            "note": "Spotify",
+            "amount": 10.99,
+            "category": "subs",
+            "day": 12,
+            "start": "2026-08-01",
+            "active": true,
+            "skip": []
+          },
+          {
+            "id": "r-internet",
+            "note": "Internet",
+            "amount": 59.9,
+            "category": "utilities",
+            "day": 15,
+            "start": "2026-08-01",
+            "active": true,
+            "skip": []
+          },
+          {
+            "id": "r-phone",
+            "note": "Phone plan",
+            "amount": 35,
+            "category": "utilities",
+            "day": 20,
+            "start": "2026-08-01",
+            "active": true,
+            "skip": []
+          }
+        ],
+        "expenses": [
+          {
+            "id": "a01",
+            "amount": 1350,
+            "category": "housing",
+            "date": "2026-08-01",
+            "note": "Rent",
+            "rid": "r-rent"
+          },
+          {
+            "id": "a02",
+            "amount": 39,
+            "category": "health",
+            "date": "2026-08-03",
+            "note": "Gym membership",
+            "rid": "r-gym"
+          },
+          {
+            "id": "a03",
+            "amount": 15.49,
+            "category": "subs",
+            "date": "2026-08-08",
+            "note": "Netflix",
+            "rid": "r-netflix"
+          },
+          {
+            "id": "a04",
+            "amount": 10.99,
+            "category": "subs",
+            "date": "2026-08-12",
+            "note": "Spotify",
+            "rid": "r-spotify"
+          },
+          {
+            "id": "a05",
+            "amount": 59.9,
+            "category": "utilities",
+            "date": "2026-08-15",
+            "note": "Internet",
+            "rid": "r-internet"
+          },
+          {
+            "id": "a06",
+            "amount": 35,
+            "category": "utilities",
+            "date": "2026-08-20",
+            "note": "Phone plan",
+            "rid": "r-phone"
+          },
+          {
+            "id": "a07",
+            "amount": 84.32,
+            "category": "groceries",
+            "date": "2026-08-02",
+            "note": "Weekly shop"
+          },
+          {
+            "id": "a08",
+            "amount": 67.15,
+            "category": "groceries",
+            "date": "2026-08-09",
+            "note": "Weekly shop"
+          },
+          {
+            "id": "a09",
+            "amount": 91.8,
+            "category": "groceries",
+            "date": "2026-08-16",
+            "note": "Costco run"
+          },
+          {
+            "id": "a10",
+            "amount": 73.4,
+            "category": "groceries",
+            "date": "2026-08-23",
+            "note": "Weekly shop"
+          },
+          {
+            "id": "a11",
+            "amount": 58.9,
+            "category": "groceries",
+            "date": "2026-08-30",
+            "note": "Farmers market + shop"
+          },
+          {
+            "id": "a12",
+            "amount": 42.5,
+            "category": "dining",
+            "date": "2026-08-07",
+            "note": "Dinner with Sam"
+          },
+          {
+            "id": "a13",
+            "amount": 18.75,
+            "category": "dining",
+            "date": "2026-08-14",
+            "note": "Lunch, ramen"
+          },
+          {
+            "id": "a14",
+            "amount": 64,
+            "category": "dining",
+            "date": "2026-08-22",
+            "note": "Birthday dinner"
+          },
+          {
+            "id": "a15",
+            "amount": 55,
+            "category": "transport",
+            "date": "2026-08-04",
+            "note": "Transit pass top-up"
+          },
+          {
+            "id": "a16",
+            "amount": 46.2,
+            "category": "transport",
+            "date": "2026-08-18",
+            "note": "Gas"
+          },
+          {
+            "id": "a17",
+            "amount": 24,
+            "category": "transport",
+            "date": "2026-08-26",
+            "note": "Rideshare"
+          },
+          {
+            "id": "a18",
+            "amount": 35,
+            "category": "fun",
+            "date": "2026-08-10",
+            "note": "Concert tickets"
+          },
+          {
+            "id": "a19",
+            "amount": 28,
+            "category": "fun",
+            "date": "2026-08-29",
+            "note": "Bowling"
+          },
+          {
+            "id": "a20",
+            "amount": 89.99,
+            "category": "shopping",
+            "date": "2026-08-13",
+            "note": "Running shoes"
+          },
+          {
+            "id": "a21",
+            "amount": 22.5,
+            "category": "health",
+            "date": "2026-08-19",
+            "note": "Pharmacy"
+          },
+          {
+            "id": "b01",
+            "amount": 1350,
+            "category": "housing",
+            "date": "2026-09-01",
+            "note": "Rent",
+            "rid": "r-rent"
+          },
+          {
+            "id": "b02",
+            "amount": 39,
+            "category": "health",
+            "date": "2026-09-03",
+            "note": "Gym membership",
+            "rid": "r-gym"
+          },
+          {
+            "id": "b03",
+            "amount": 15.49,
+            "category": "subs",
+            "date": "2026-09-08",
+            "note": "Netflix",
+            "rid": "r-netflix"
+          },
+          {
+            "id": "b04",
+            "amount": 10.99,
+            "category": "subs",
+            "date": "2026-09-12",
+            "note": "Spotify",
+            "rid": "r-spotify"
+          },
+          {
+            "id": "b05",
+            "amount": 59.9,
+            "category": "utilities",
+            "date": "2026-09-15",
+            "note": "Internet",
+            "rid": "r-internet"
+          },
+          {
+            "id": "b06",
+            "amount": 35,
+            "category": "utilities",
+            "date": "2026-09-20",
+            "note": "Phone plan",
+            "rid": "r-phone"
+          },
+          {
+            "id": "b07",
+            "amount": 78.6,
+            "category": "groceries",
+            "date": "2026-09-05",
+            "note": "Weekly shop"
+          },
+          {
+            "id": "b08",
+            "amount": 96.25,
+            "category": "groceries",
+            "date": "2026-09-12",
+            "note": "Costco run"
+          },
+          {
+            "id": "b09",
+            "amount": 69.1,
+            "category": "groceries",
+            "date": "2026-09-19",
+            "note": "Weekly shop"
+          },
+          {
+            "id": "b10",
+            "amount": 81.45,
+            "category": "groceries",
+            "date": "2026-09-26",
+            "note": "Weekly shop"
+          },
+          {
+            "id": "b11",
+            "amount": 38.2,
+            "category": "dining",
+            "date": "2026-09-06",
+            "note": "Pizza night"
+          },
+          {
+            "id": "b12",
+            "amount": 71.5,
+            "category": "dining",
+            "date": "2026-09-13",
+            "note": "Anniversary dinner"
+          },
+          {
+            "id": "b13",
+            "amount": 16.4,
+            "category": "dining",
+            "date": "2026-09-24",
+            "note": "Lunch with team"
+          },
+          {
+            "id": "b14",
+            "amount": 55,
+            "category": "transport",
+            "date": "2026-09-04",
+            "note": "Transit pass top-up"
+          },
+          {
+            "id": "b15",
+            "amount": 52.8,
+            "category": "transport",
+            "date": "2026-09-16",
+            "note": "Gas"
+          },
+          {
+            "id": "b16",
+            "amount": 62,
+            "category": "fun",
+            "date": "2026-09-11",
+            "note": "Escape room"
+          },
+          {
+            "id": "b17",
+            "amount": 18.99,
+            "category": "fun",
+            "date": "2026-09-27",
+            "note": "Movie + popcorn"
+          },
+          {
+            "id": "b18",
+            "amount": 129,
+            "category": "shopping",
+            "date": "2026-09-09",
+            "note": "Winter jacket"
+          },
+          {
+            "id": "b19",
+            "amount": 45,
+            "category": "shopping",
+            "date": "2026-09-21",
+            "note": "Books"
+          },
+          {
+            "id": "b20",
+            "amount": 60,
+            "category": "health",
+            "date": "2026-09-17",
+            "note": "Dentist copay"
+          },
+          {
+            "id": "c01",
+            "amount": 1350,
+            "category": "housing",
+            "date": "2026-10-01",
+            "note": "Rent",
+            "rid": "r-rent"
+          },
+          {
+            "id": "c02",
+            "amount": 39,
+            "category": "health",
+            "date": "2026-10-03",
+            "note": "Gym membership",
+            "rid": "r-gym"
+          },
+          {
+            "id": "c03",
+            "amount": 88.7,
+            "category": "groceries",
+            "date": "2026-10-03",
+            "note": "Weekly shop"
+          },
+          {
+            "id": "c04",
+            "amount": 55,
+            "category": "transport",
+            "date": "2026-10-02",
+            "note": "Transit pass top-up"
+          },
+          {
+            "id": "c05",
+            "amount": 27.8,
+            "category": "dining",
+            "date": "2026-10-04",
+            "note": "Brunch"
+          },
+          {
+            "id": "c06",
+            "amount": 14.5,
+            "category": "fun",
+            "date": "2026-10-04",
+            "note": "Board game cafe"
+          },
+          {
+            "id": "c07",
+            "amount": 8.75,
+            "category": "dining",
+            "date": "2026-10-05",
+            "note": "Coffee and pastry"
+          }
+        ]
+      },
+      "collections": {}
+    }
+  },
+  "breakage": [],
+  "walk": [
+    {
+      "name": "add_expense",
+      "pass": false,
+      "detail": "{\"expect\":\"Coffee beans\"}: \"Coffee beans\" isn't on screen."
+    },
+    {
+      "name": "month_view",
+      "pass": true
+    },
+    {
+      "name": "previous_month",
+      "pass": true
+    },
+    {
+      "name": "search",
+      "pass": true
+    },
+    {
+      "name": "settings",
+      "pass": true
+    },
+    {
+      "name": "desktop",
+      "pass": true
+    }
+  ],
+  "used": {
+    "try_app": 4,
+    "see_app": 5,
+    "run_app_tests": 0,
+    "test_files": 0
+  }
+}

@@ -1,0 +1,74 @@
+{
+  "task": "a-how-week",
+  "rep": 2,
+  "model": "claude-code:sonnet",
+  "round": "bench-apps",
+  "skill": false,
+  "seconds": 6,
+  "score": 1,
+  "passed": 3,
+  "total": 3,
+  "checks": [
+    {
+      "name": "walk_count",
+      "pass": true
+    },
+    {
+      "name": "read_count",
+      "pass": true
+    },
+    {
+      "name": "app_unchanged",
+      "pass": true
+    }
+  ],
+  "tool_calls": 2,
+  "tool_errors": 0,
+  "usage": {
+    "input": 6,
+    "output": 351,
+    "cacheRead": 13535,
+    "cacheWrite": 2063,
+    "turns": 3,
+    "equivalentUsd": 0.014481,
+    "usd": 0
+  },
+  "usd": 0,
+  "page_bytes": 211394,
+  "data": {
+    "values": {
+      "localStorage": {
+        "habits": "[{\"date\":\"2026-09-29\",\"walk\":true,\"read\":false},{\"date\":\"2026-09-30\",\"walk\":true,\"read\":true},{\"date\":\"2026-10-01\",\"walk\":true,\"read\":false},{\"date\":\"2026-10-02\",\"walk\":false,\"read\":true},{\"date\":\"2026-10-03\",\"walk\":true,\"read\":false},{\"date\":\"2026-10-04\",\"walk\":false,\"read\":true},{\"date\":\"2026-10-05\",\"walk\":true,\"read\":false}]",
+        "theme": "dark"
+      }
+    },
+    "collections": {}
+  },
+  "answer": "Your week (29 Sep – 5 Oct) in the Habits app:\n\n- **Walked: 5 of 7 days.** You walked on 29 Sep, 30 Sep, 1 Oct, 3 Oct and 5 Oct. You missed 2 Oct and 4 Oct.\n- **Read: 3 of 7 days.** You read on 30 Sep, 2 Oct and 4 Oct.\n\nYou did both on only one day, 30 Sep. On every other day you did one or the other, so no day was completely empty. Walking was your steadier habit. Reading fell on the days you didn't walk, apart from 30 Sep.",
+  "calls": [
+    {
+      "name": "search",
+      "args": {
+        "query": "Habits"
+      },
+      "error": false,
+      "result": "{\"results\":[{\"id\":\"e1fa9d32-ebb7-4f21-8429-f295024c8f34\",\"title\":\"Habits\",\"url\":\"ambernotes://note/e1fa9d32-ebb7-4f21-8429-f295024c8f34\",\"path\":\"Habits.md\",\"snippet\":\"«Habits»\"}]}"
+    },
+    {
+      "name": "fetch",
+      "args": {
+        "id": "e1fa9d32-ebb7-4f21-8429-f295024c8f34.app/data.json"
+      },
+      "error": false,
+      "result": "{\"id\":\"e1fa9d32-ebb7-4f21-8429-f295024c8f34.app/data.json\",\"title\":\"Habits: data.json\",\"text\":\"{\\n  \\\"values\\\": {\\n    \\\"localStorage\\\": {\\n      \\\"habits\\\": [\\n        {\\n          \\\"date\\\": \\\"2026-09-29\\\",\\n          \\\"walk\\\": true,\\n          \\\"read\\\": false\\n        },\\n        {\\n          \\\"date\\\": \\\"2026-09-30\\\",\\n          \\\"walk\\\": true,\\n          \\\"read\\\": true\\n        },\\n        {\\n          \\\"date\\\": \\\"2026-10-01\\\",\\n          \\\"walk\\\": true,\\n          \\\"read\\\": false\\n        },\\n        {\\n          \\\"date\\\": \\\"2026-10-02\\\",\\n          \\\"walk\\\": false,\\n          \\\"read\\\": tr… (1684 chars)"
+    }
+  ],
+  "render": null,
+  "breakage": [],
+  "walk": [],
+  "used": {
+    "try_app": 0,
+    "run_app_tests": 0,
+    "test_files": 0
+  }
+}

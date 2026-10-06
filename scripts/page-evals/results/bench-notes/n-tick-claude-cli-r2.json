@@ -1,0 +1,60 @@
+{
+  "task": "n-tick",
+  "rep": 2,
+  "model": "claude-code:sonnet",
+  "round": "bench-notes",
+  "skill": false,
+  "seconds": 4,
+  "score": 0.6666666666666666,
+  "passed": 2,
+  "total": 3,
+  "checks": [
+    {
+      "name": "ticked",
+      "pass": true
+    },
+    {
+      "name": "unticked",
+      "pass": true
+    },
+    {
+      "name": "rest_kept",
+      "pass": false,
+      "detail": "other text changed"
+    }
+  ],
+  "tool_calls": 1,
+  "tool_errors": 0,
+  "usage": {
+    "input": 4,
+    "output": 158,
+    "cacheRead": 35573,
+    "cacheWrite": 1451,
+    "turns": 2,
+    "equivalentUsd": 0.014506600000000001,
+    "usd": 0
+  },
+  "usd": 0,
+  "page_bytes": 0,
+  "data": null,
+  "answer": "In your Groceries note, Milk and Butter are now ticked, and Apples is unticked.",
+  "calls": [
+    {
+      "name": "update_checklist_items",
+      "args": {
+        "title": "Groceries",
+        "changes": "[{\"item\":\"Milk\",\"checked\":true},{\"item\":\"Butter\",\"checked\":true},{\"item\":\"Apples\",\"checked\":false}]"
+      },
+      "error": false,
+      "result": "{\"note\":{\"id\":\"135cb52b-d07f-422e-96db-e7854b338a8b\",\"title\":\"Groceries\"},\"changed\":[{\"item\":\"Milk\",\"did\":\"checked\"},{\"item\":\"Butter\",\"did\":\"checked\"},{\"item\":\"Apples\",\"did\":\"unchecked\"}]}"
+    }
+  ],
+  "render": null,
+  "breakage": [],
+  "walk": [],
+  "used": {
+    "try_app": 0,
+    "run_app_tests": 0,
+    "test_files": 0
+  }
+}

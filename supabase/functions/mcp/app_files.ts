@@ -131,8 +131,14 @@ export async function saveProject(tx: Tx, c: Call, n: Note, unlinked: Project, c
       on conflict (note_id) do update set page_ct = excluded.page_ct, draft_ct = null, draft_problems = null`;
     await tx`select set_config('pane.coalesce', 'off', true)`;
   } else {
-    // What failed, as the checks saw it over a sample of the data (never the person's own content).
-    const why = failures.join("\n").slice(0, 3900);
+    // What failed, by name only (test and check names, never note content or data): the device
+    // shows it in App Info while the draft is held back.
+    const why = [
+      ...broken.map((b) => `import: ${b.split(" imports ")[0]}`),
+      ...scriptErrors.map((e) => `opens: ${e.split(":")[0]}`),
+      ...(smoke?.problems ?? []).map((m) => `smoke check at ${m.split(" px")[0]} px: ${/blank/.test(m) ? "blank screen" : /saving its data/.test(m) ? "saving data failed" : /pageerror|Error/.test(m) ? "script error" : "console error"}${/after tapping/.test(m) ? " after tapping a control" : ""}`),
+      ...(tested && typeof tested !== "string" ? [...(tested.tests ?? []).filter((x) => !x.ok).map((x) => `test: ${x.file ?? ""} › ${x.name}`), ...((tested.testErrors ?? []).map((e) => `test file: ${e.split(":")[0]}`))] : []),
+    ].filter((x, k, all) => all.indexOf(x) === k).join("\n").slice(0, 3900);
     await tx`insert into public.note_pages (note_id, draft_ct, draft_problems) values (${n.id}, ${sealed}, ${why})
       on conflict (note_id) do update set draft_ct = excluded.draft_ct, draft_problems = excluded.draft_problems`;
   }

@@ -1,0 +1,167 @@
+{
+  "task": "n-sort-folders",
+  "rep": 2,
+  "model": "codex:default",
+  "round": "bench-notes",
+  "skill": false,
+  "seconds": 23,
+  "score": 1,
+  "passed": 4,
+  "total": 4,
+  "checks": [
+    {
+      "name": "work",
+      "pass": true
+    },
+    {
+      "name": "home",
+      "pass": true
+    },
+    {
+      "name": "travel",
+      "pass": true
+    },
+    {
+      "name": "nothing_lost",
+      "pass": true
+    }
+  ],
+  "tool_calls": 14,
+  "tool_errors": 0,
+  "usage": {
+    "input": 18987,
+    "output": 394,
+    "cacheRead": 108672,
+    "cacheWrite": 0,
+    "turns": 1,
+    "usd": 0
+  },
+  "usd": 0,
+  "page_bytes": 0,
+  "data": null,
+  "answer": "Sorted all six loose notes:\n\n- Work: Hiring, Meeting\n- Home: Groceries, Plumber\n- Travel: Lisbon trip, Packing list\n\nTheir contents are unchanged.",
+  "calls": [
+    {
+      "name": "list",
+      "args": {},
+      "error": false,
+      "result": "{\n  \"notes\": 6,\n  \"folders\": [],\n  \"pinned\": [],\n  \"recently_edited\": [\n    {\n      \"path\": \"Packing list.md\",\n      \"id\": \"6792cdb5-e494-447a-abb7-6b95c1a90aed\",\n      \"updated\": \"2026-10-05T23:03:18.954Z\"\n    },\n    {\n      \"path\": \"Hiring.md\",\n      \"id\": \"d36a2f91-9454-4c71-83bf-0fabf4644165\",\n      \"updated\": \"2026-10-05T23:03:18.952Z\"\n    },\n    {\n      \"path\": \"Plumber.md\",\n      \"id\": \"6391bc93-dc4a-4411-87d4-307f99c557f8\",\n      \"updated\": \"2026-10-05T23:03:18.951Z\"\n    },\n    {\n      \"path\": \"Lisbon trip.md\",\n      \"id\": \"dd7eb376-cd79-473a-8d41-10abc6e15b6e\",\n      \"updated\": \"2026-… (933 chars)"
+    },
+    {
+      "name": "fetch",
+      "args": {
+        "id": "Packing list.md"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"6792cdb5-e494-447a-abb7-6b95c1a90aed\",\n  \"title\": \"Packing list\",\n  \"text\": \"Packing list\\n\\n- [ ] Passport\\n- [ ] Sunscreen\\n\",\n  \"url\": \"ambernotes://note/6792cdb5-e494-447a-abb7-6b95c1a90aed\",\n  \"metadata\": {\n    \"path\": \"Packing list.md\",\n    \"folder\": \"/\",\n    \"pinned\": false,\n    \"version\": 1,\n    \"updated\": \"2026-10-05T23:03:18.954Z\",\n    \"lines\": 5\n  }\n}"
+    },
+    {
+      "name": "fetch",
+      "args": {
+        "id": "Hiring.md"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"d36a2f91-9454-4c71-83bf-0fabf4644165\",\n  \"title\": \"Hiring\",\n  \"text\": \"Hiring\\n\\nInterview two designers next week.\\n\",\n  \"url\": \"ambernotes://note/d36a2f91-9454-4c71-83bf-0fabf4644165\",\n  \"metadata\": {\n    \"path\": \"Hiring.md\",\n    \"folder\": \"/\",\n    \"pinned\": false,\n    \"version\": 1,\n    \"updated\": \"2026-10-05T23:03:18.952Z\",\n    \"lines\": 4\n  }\n}"
+    },
+    {
+      "name": "fetch",
+      "args": {
+        "id": "Lisbon trip.md"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"dd7eb376-cd79-473a-8d41-10abc6e15b6e\",\n  \"title\": \"Lisbon trip\",\n  \"text\": \"Lisbon trip\\n\\nSpent in Lisbon with Ana.\\n\\n| Date | Item | Category | Amount |\\n| --- | --- | --- | --- |\\n| 2026-10-01 | Hotel Avenida | Stay | 1 450 |\\n| 2026-10-02 | Pastéis | Food | 12,50 |\\n\",\n  \"url\": \"ambernotes://note/dd7eb376-cd79-473a-8d41-10abc6e15b6e\",\n  \"metadata\": {\n    \"path\": \"Lisbon trip.md\",\n    \"folder\": \"/\",\n    \"pinned\": false,\n    \"version\": 1,\n    \"updated\": \"2026-10-05T23:03:18.950Z\",\n    \"lines\": 9\n  }\n}"
+    },
+    {
+      "name": "fetch",
+      "args": {
+        "id": "Groceries.md"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"b27b4606-9b27-4554-9f87-1c838a4c54e4\",\n  \"title\": \"Groceries\",\n  \"text\": \"Groceries\\n\\n## Dairy\\n- [ ] Milk\\n- [ ] Butter\\n\\n## Fruit\\n- [x] Apples\\n- [ ] Bananas\\n\",\n  \"url\": \"ambernotes://note/b27b4606-9b27-4554-9f87-1c838a4c54e4\",\n  \"metadata\": {\n    \"path\": \"Groceries.md\",\n    \"folder\": \"/\",\n    \"pinned\": false,\n    \"version\": 1,\n    \"updated\": \"2026-10-05T23:03:18.948Z\",\n    \"lines\": 10\n  }\n}"
+    },
+    {
+      "name": "fetch",
+      "args": {
+        "id": "Meeting.md"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"a31e280c-7638-4e8f-9786-ed7ea9290b38\",\n  \"title\": \"Meeting\",\n  \"text\": \"Meeting\\n\\nBudget review with Sara on Monday.\\n- Headcount\\n- Q4 targets\\n\",\n  \"url\": \"ambernotes://note/a31e280c-7638-4e8f-9786-ed7ea9290b38\",\n  \"metadata\": {\n    \"path\": \"Meeting.md\",\n    \"folder\": \"/\",\n    \"pinned\": false,\n    \"version\": 1,\n    \"updated\": \"2026-10-05T23:03:18.945Z\",\n    \"lines\": 6\n  }\n}"
+    },
+    {
+      "name": "fetch",
+      "args": {
+        "id": "Plumber.md"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"6391bc93-dc4a-4411-87d4-307f99c557f8\",\n  \"title\": \"Plumber\",\n  \"text\": \"Plumber\\n\\nThe kitchen tap drips. Call on Friday.\\n\",\n  \"url\": \"ambernotes://note/6391bc93-dc4a-4411-87d4-307f99c557f8\",\n  \"metadata\": {\n    \"path\": \"Plumber.md\",\n    \"folder\": \"/\",\n    \"pinned\": false,\n    \"version\": 1,\n    \"updated\": \"2026-10-05T23:03:18.951Z\",\n    \"lines\": 4\n  }\n}"
+    },
+    {
+      "name": "move",
+      "args": {
+        "id": "Hiring.md",
+        "to": "Work/"
+      },
+      "error": false,
+      "result": "{\n  \"moved\": \"Work/Hiring.md\"\n}"
+    },
+    {
+      "name": "move",
+      "args": {
+        "id": "Meeting.md",
+        "to": "Work/"
+      },
+      "error": false,
+      "result": "{\n  \"moved\": \"Work/Meeting.md\"\n}"
+    },
+    {
+      "name": "move",
+      "args": {
+        "id": "Groceries.md",
+        "to": "Home/"
+      },
+      "error": false,
+      "result": "{\n  \"moved\": \"Home/Groceries.md\"\n}"
+    },
+    {
+      "name": "move",
+      "args": {
+        "id": "Plumber.md",
+        "to": "Home/"
+      },
+      "error": false,
+      "result": "{\n  \"moved\": \"Home/Plumber.md\"\n}"
+    },
+    {
+      "name": "move",
+      "args": {
+        "id": "Lisbon trip.md",
+        "to": "Travel/"
+      },
+      "error": false,
+      "result": "{\n  \"moved\": \"Travel/Lisbon trip.md\"\n}"
+    },
+    {
+      "name": "move",
+      "args": {
+        "id": "Packing list.md",
+        "to": "Travel/"
+      },
+      "error": false,
+      "result": "{\n  \"moved\": \"Travel/Packing list.md\"\n}"
+    },
+    {
+      "name": "list",
+      "args": {},
+      "error": false,
+      "result": "{\n  \"notes\": 6,\n  \"folders\": [\n    {\n      \"path\": \"Work/\",\n      \"notes\": 2\n    },\n    {\n      \"path\": \"Home/\",\n      \"notes\": 2\n    },\n    {\n      \"path\": \"Travel/\",\n      \"notes\": 2\n    }\n  ],\n  \"pinned\": [],\n  \"recently_edited\": [\n    {\n      \"path\": \"Travel/Packing list.md\",\n      \"id\": \"6792cdb5-e494-447a-abb7-6b95c1a90aed\",\n      \"updated\": \"2026-10-05T23:03:38.168Z\"\n    },\n    {\n      \"path\": \"Travel/Lisbon trip.md\",\n      \"id\": \"dd7eb376-cd79-473a-8d41-10abc6e15b6e\",\n      \"updated\": \"2026-10-05T23:03:38.160Z\"\n    },\n    {\n      \"path\": \"Home/Plumber.md\",\n      \"id\": \"6391bc93-dc4a-44… (1130 chars)"
+    }
+  ],
+  "render": null,
+  "breakage": [],
+  "walk": [],
+  "used": {
+    "try_app": 0,
+    "run_app_tests": 0,
+    "test_files": 0
+  }
+}

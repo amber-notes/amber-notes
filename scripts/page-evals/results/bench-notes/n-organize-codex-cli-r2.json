@@ -1,0 +1,122 @@
+{
+  "task": "n-organize",
+  "rep": 2,
+  "model": "codex:default",
+  "round": "bench-notes",
+  "skill": false,
+  "seconds": 29,
+  "score": 1,
+  "passed": 5,
+  "total": 5,
+  "checks": [
+    {
+      "name": "moved",
+      "pass": true
+    },
+    {
+      "name": "renamed",
+      "pass": true
+    },
+    {
+      "name": "pinned",
+      "pass": true
+    },
+    {
+      "name": "folder_renamed",
+      "pass": true
+    },
+    {
+      "name": "bodies_kept",
+      "pass": true
+    }
+  ],
+  "tool_calls": 8,
+  "tool_errors": 0,
+  "usage": {
+    "input": 39283,
+    "output": 589,
+    "cacheRead": 122752,
+    "cacheWrite": 0,
+    "turns": 1,
+    "usd": 0
+  },
+  "usd": 0,
+  "page_bytes": 0,
+  "data": null,
+  "answer": "Done:\n\n- Moved Groceries to the new Kitchen folder.\n- Renamed Meeting to \"Q4 planning meeting\" and pinned it.\n- Renamed Work to Office.",
+  "calls": [
+    {
+      "name": "get_overview",
+      "args": {},
+      "error": false,
+      "result": "{\n  \"total_notes\": 2,\n  \"folders\": [\n    {\n      \"path\": \"Home\",\n      \"id\": \"8a1a6120-de11-46c0-b0ad-273b45d471ca\",\n      \"notes\": 1\n    },\n    {\n      \"path\": \"Work\",\n      \"id\": \"60976603-27af-4ddb-a4b4-cbe53a68ce87\",\n      \"notes\": 1\n    }\n  ],\n  \"pinned\": [],\n  \"recently_edited\": [\n    {\n      \"id\": \"93d8041a-9015-414a-9cb8-fba334741296\",\n      \"title\": \"Meeting\",\n      \"folder\": \"Work\",\n      \"pinned\": false,\n      \"updated\": \"2026-10-05T23:02:18.315Z\",\n      \"preview\": \"Budget review with Sara on Monday. · Headcount · Q4 targets\"\n    },\n    {\n      \"id\": \"aa4fdf82-61a3-471f-bed7-64e76c8… (832 chars)"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "aa4fdf82-61a3-471f-bed7-64e76c8b60a7"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"aa4fdf82-61a3-471f-bed7-64e76c8b60a7\",\n  \"title\": \"Groceries\",\n  \"folder\": \"Home\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T23:02:18.311Z\",\n  \"updated\": \"2026-10-05T23:02:18.311Z\",\n  \"version\": 1,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"outline\": {\n    \"headings\": [\n      {\n        \"line\": 3,\n        \"level\": 2,\n        \"text\": \"Dairy\"\n      },\n      {\n        \"line\": 7,\n        \"level\": 2,\n        \"text\": \"Fruit\"\n      }\n    ],\n    \"checklist\": {\n      \"open\": 3,\n      \"done\": 1\n    },\n    \"lines\": 10,\n    \"words\": 20\n  },\n  \"markdown\": \"Groceries… (684 chars)"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "93d8041a-9015-414a-9cb8-fba334741296"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"93d8041a-9015-414a-9cb8-fba334741296\",\n  \"title\": \"Meeting\",\n  \"folder\": \"Work\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T23:02:18.315Z\",\n  \"updated\": \"2026-10-05T23:02:18.315Z\",\n  \"version\": 1,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"outline\": {\n    \"headings\": [],\n    \"checklist\": {\n      \"open\": 0,\n      \"done\": 0\n    },\n    \"lines\": 6,\n    \"words\": 12\n  },\n  \"markdown\": \"Meeting\\n\\nBudget review with Sara on Monday.\\n- Headcount\\n- Q4 targets\\n\"\n}"
+    },
+    {
+      "name": "move_note",
+      "args": {
+        "id": "aa4fdf82-61a3-471f-bed7-64e76c8b60a7",
+        "folder": "Kitchen"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"aa4fdf82-61a3-471f-bed7-64e76c8b60a7\",\n  \"title\": \"Groceries\",\n  \"folder\": \"Kitchen\"\n}"
+    },
+    {
+      "name": "edit_note",
+      "args": {
+        "id": "93d8041a-9015-414a-9cb8-fba334741296",
+        "expected_version": "1",
+        "edits": "[{\"old_text\":\"Meeting\\n\",\"new_text\":\"Q4 planning meeting\\n\"}]"
+      },
+      "error": false,
+      "result": "{\n  \"edited\": {\n    \"id\": \"93d8041a-9015-414a-9cb8-fba334741296\",\n    \"title\": \"Q4 planning meeting\",\n    \"version\": 2,\n    \"updated\": \"2026-10-05T23:02:43.145Z\"\n  },\n  \"edits_applied\": 1\n}"
+    },
+    {
+      "name": "pin_note",
+      "args": {
+        "id": "93d8041a-9015-414a-9cb8-fba334741296",
+        "pinned": "true"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"93d8041a-9015-414a-9cb8-fba334741296\",\n  \"title\": \"Q4 planning meeting\",\n  \"pinned\": true\n}"
+    },
+    {
+      "name": "rename_folder",
+      "args": {
+        "folder": "Work",
+        "new_name": "Office"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"60976603-27af-4ddb-a4b4-cbe53a68ce87\",\n  \"path\": \"Office\"\n}"
+    },
+    {
+      "name": "get_overview",
+      "args": {},
+      "error": false,
+      "result": "{\n  \"total_notes\": 2,\n  \"folders\": [\n    {\n      \"path\": \"Home\",\n      \"id\": \"8a1a6120-de11-46c0-b0ad-273b45d471ca\",\n      \"notes\": 0\n    },\n    {\n      \"path\": \"Office\",\n      \"id\": \"60976603-27af-4ddb-a4b4-cbe53a68ce87\",\n      \"notes\": 1\n    },\n    {\n      \"path\": \"Kitchen\",\n      \"id\": \"86428c2e-0d57-4074-b153-212402b77fb3\",\n      \"notes\": 1\n    }\n  ],\n  \"pinned\": [\n    {\n      \"id\": \"93d8041a-9015-414a-9cb8-fba334741296\",\n      \"title\": \"Q4 planning meeting\",\n      \"folder\": \"Office\",\n      \"pinned\": true,\n      \"updated\": \"2026-10-05T23:02:43.153Z\",\n      \"preview\": \"Budget review with Sa… (1234 chars)"
+    }
+  ],
+  "render": null,
+  "breakage": [],
+  "walk": [],
+  "used": {
+    "try_app": 0,
+    "run_app_tests": 0,
+    "test_files": 0
+  }
+}

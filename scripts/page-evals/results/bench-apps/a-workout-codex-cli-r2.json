@@ -1,0 +1,503 @@
+{
+  "task": "a-workout",
+  "rep": 2,
+  "model": "codex:default",
+  "round": "bench-apps",
+  "skill": false,
+  "seconds": 198,
+  "score": 0.9047619047619048,
+  "passed": 19,
+  "total": 21,
+  "checks": [
+    {
+      "name": "has_page",
+      "pass": true
+    },
+    {
+      "name": "server_checks",
+      "pass": true
+    },
+    {
+      "name": "no_console_errors",
+      "pass": true
+    },
+    {
+      "name": "no_network",
+      "pass": true
+    },
+    {
+      "name": "fits_phone",
+      "pass": true
+    },
+    {
+      "name": "fits_desktop",
+      "pass": true
+    },
+    {
+      "name": "uses_wide_window",
+      "pass": true
+    },
+    {
+      "name": "phone_targets",
+      "pass": true
+    },
+    {
+      "name": "focused_screen",
+      "pass": true
+    },
+    {
+      "name": "visible_fields",
+      "pass": true
+    },
+    {
+      "name": "no_junk_text",
+      "pass": true
+    },
+    {
+      "name": "no_clipped_text",
+      "pass": true
+    },
+    {
+      "name": "shows_data",
+      "pass": true
+    },
+    {
+      "name": "dark_mode",
+      "pass": true
+    },
+    {
+      "name": "light_contrast",
+      "pass": true
+    },
+    {
+      "name": "themed",
+      "pass": true
+    },
+    {
+      "name": "labelled_controls",
+      "pass": true
+    },
+    {
+      "name": "edits_from_page",
+      "pass": false,
+      "detail": "control: no control sent an edit"
+    },
+    {
+      "name": "title_once",
+      "pass": false,
+      "detail": "The note's title is shown 2 times; show it once, as the first heading."
+    },
+    {
+      "name": "says_app",
+      "pass": true
+    },
+    {
+      "name": "page_changed",
+      "pass": true
+    }
+  ],
+  "tool_calls": 14,
+  "tool_errors": 0,
+  "usage": {
+    "input": 55256,
+    "output": 7250,
+    "cacheRead": 411008,
+    "cacheWrite": 0,
+    "turns": 1,
+    "usd": 0
+  },
+  "usd": 0,
+  "page_bytes": 231063,
+  "data": null,
+  "answer": "Turned your Workouts note into a tracker app with strength and cardio logging, sets, reps, weights, weekly goals, and searchable history.\n\nTested saving, editing, deleting, and undo. Checked phone and Mac layouts in light and dark mode.",
+  "calls": [
+    {
+      "name": "get_page_guide",
+      "args": {},
+      "error": false,
+      "result": "{\n  \"guide\": \"# Apps in Amber Notes\\n\\nA note can be an app: a habit tracker, a budget, a workout log, a game. The person opens the note and the app is all they see. This says where an app lives and what it can use. How it looks and works is your call; build it as well as you would anywhere.\\n\\n## Where it runs\\n\\n- Inside a note in Amber Notes, on iPhone (320-440 pt wide, safe areas at the edges, the keyboard shrinks the view) and on the Mac (a window from about 500 to 1,800 px, resized live). Both matter: a phone layout and a real wide layout.\\n- Light and dark mode follow the device (prefer… (9510 chars)"
+    },
+    {
+      "name": "search_notes",
+      "args": {
+        "query": "Workouts"
+      },
+      "error": false,
+      "result": "{\n  \"query\": \"Workouts\",\n  \"results\": [\n    {\n      \"id\": \"edcc7216-f173-4487-ada3-a7c068835be5\",\n      \"title\": \"Workouts\",\n      \"folder\": \"\",\n      \"pinned\": false,\n      \"updated\": \"2026-10-05T23:13:56.650Z\",\n      \"snippet\": \"«Workouts»\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "edcc7216-f173-4487-ada3-a7c068835be5"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"edcc7216-f173-4487-ada3-a7c068835be5\",\n  \"title\": \"Workouts\",\n  \"folder\": \"\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T23:13:56.650Z\",\n  \"updated\": \"2026-10-05T23:13:56.650Z\",\n  \"version\": 1,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"outline\": {\n    \"headings\": [],\n    \"checklist\": {\n      \"open\": 0,\n      \"done\": 0\n    },\n    \"lines\": 2,\n    \"words\": 1\n  },\n  \"markdown\": \"Workouts\\n\"\n}"
+    },
+    {
+      "name": "create_app",
+      "args": {
+        "id": "edcc7216-f173-4487-ada3-a7c068835be5"
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"edcc7216-f173-4487-ada3-a7c068835be5\",\n    \"title\": \"Workouts\"\n  },\n  \"saved\": \"a new project\",\n  \"files\": [\n    {\n      \"path\": \"/README.md\",\n      \"bytes\": 1924,\n      \"lines\": 21\n    },\n    {\n      \"path\": \"/index.html\",\n      \"bytes\": 218,\n      \"lines\": 12\n    },\n    {\n      \"path\": \"/package.json\",\n      \"bytes\": 689,\n      \"lines\": 29\n    },\n    {\n      \"path\": \"/src/App.tsx\",\n      \"bytes\": 908,\n      \"lines\": 27\n    },\n    {\n      \"path\": \"/src/components/app-shell.tsx\",\n      \"bytes\": 2651,\n      \"lines\": 60\n    },\n    {\n      \"path\": \"/src/components/stat-car… (3819 chars)"
+    },
+    {
+      "name": "read_app_file",
+      "args": {
+        "id": "edcc7216-f173-4487-ada3-a7c068835be5",
+        "path": "/src/lib/amber.ts"
+      },
+      "error": false,
+      "result": "{\n  \"path\": \"/src/lib/amber.ts\",\n  \"lines\": 3,\n  \"shown\": \"1-3\",\n  \"content\": \"     1\\t// The app's data (JSON in its own store: encrypted, synced, with Undo), and the note's summary line.\\n     2\\texport { useStore, useAppData, useCollection, useSettings, useImported, batch, setSummary } from \\\"amber\\\"\\n     3\\t\"\n}"
+    },
+    {
+      "name": "read_app_file",
+      "args": {
+        "id": "edcc7216-f173-4487-ada3-a7c068835be5",
+        "path": "/README.md"
+      },
+      "error": false,
+      "result": "{\n  \"path\": \"/README.md\",\n  \"lines\": 21,\n  \"shown\": \"1-21\",\n  \"content\": \"     1\\t# Workouts\\n     2\\t\\n     3\\tWhat this app is for, in one sentence.\\n     4\\t\\n     5\\t## Screens\\n     6\\t- Home (src/screens/home.tsx)\\n     7\\t- Settings (src/screens/settings.tsx)\\n     8\\t\\n     9\\t## Data\\n    10\\tThe app's data, as the person's AI reaches it in data.json. Keep this current.\\n    11\\t- settings: { name } (useSettings)\\n    12\\t\\n    13\\t## How this app runs in Amber Notes\\n    14\\t\\n    15\\t- It is the note: opening the note opens the app, on iPhone (320-440 pt wide, safe areas, the keyboa… (2205 chars)"
+    },
+    {
+      "name": "read_app_file",
+      "args": {
+        "id": "edcc7216-f173-4487-ada3-a7c068835be5",
+        "path": "/src/App.tsx"
+      },
+      "error": false,
+      "result": "{\n  \"path\": \"/src/App.tsx\",\n  \"lines\": 27,\n  \"shown\": \"1-27\",\n  \"content\": \"     1\\timport { Router, Route } from \\\"amber-router\\\"\\n     2\\timport { House, Settings as SettingsIcon } from \\\"lucide-react\\\"\\n     3\\timport { Toaster } from \\\"@/components/ui/sonner\\\"\\n     4\\timport { AppShell } from \\\"@/components/app-shell\\\"\\n     5\\timport Home from \\\"@/screens/home\\\"\\n     6\\timport Settings from \\\"@/screens/settings\\\"\\n     7\\t\\n     8\\t// The app's places: a tab bar on iPhone, a sidebar from 900 px (components/app-shell.tsx).\\n     9\\tconst screens = [\\n    10\\t  { path: \\\"/\\\", label: \\\"Hom… (1259 chars)"
+    },
+    {
+      "name": "write_app_file",
+      "args": {
+        "id": "edcc7216-f173-4487-ada3-a7c068835be5",
+        "path": "/src/App.tsx",
+        "content": "import { useEffect, useState } from \"react\";\nimport { useCollection, useSettings, setSummary } from \"@/lib/amber\";\nimport { Dumbbell, Plus, Activity, Clock, Target, Pencil, Trash2, X } from \"lucide-react\";\n\ntype Exercise = { name: string; sets: string; reps: string; weight: string };\ntype Workout = … (11495 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"edcc7216-f173-4487-ada3-a7c068835be5\",\n    \"title\": \"Workouts\"\n  },\n  \"saved\": \"/src/App.tsx (replaced)\",\n  \"files\": 33,\n  \"opens\": \"Opens cleanly at 390 and 1280 px (over a sample of its data).\",\n  \"notes\": [\n    \"390-light: 3 field(s) without a visible border or fill: , , .\",\n    \"390-light: 3 control(s) smaller than 44 pt to tap (\\\"\\\", \\\"Log your first workout\\\", \\\"1 workouts2 workouts3 workouts\\\").\",\n    \"1280-light: 3 field(s) without a visible border or fill: , , .\"\n  ],\n  \"next\": \"Keep going; run check_app (and preview_app) when the app is done.\"\n}"
+    },
+    {
+      "name": "write_app_file",
+      "args": {
+        "id": "edcc7216-f173-4487-ada3-a7c068835be5",
+        "path": "/src/index.css",
+        "content": "@import \"tailwindcss\";\n:root { font-family: var(--amber-font); color: var(--amber-text); background: var(--amber-bg); }\n* { box-sizing: border-box; }\nbody { margin: 0; }\nbutton, input, select, textarea { font: inherit; }\nbutton { min-height:44px; border:1px solid var(--amber-separator); background:v… (7204 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"edcc7216-f173-4487-ada3-a7c068835be5\",\n    \"title\": \"Workouts\"\n  },\n  \"saved\": \"/src/index.css (replaced)\",\n  \"files\": 33,\n  \"opens\": \"Opens cleanly at 390 and 1280 px (over a sample of its data).\",\n  \"notes\": [\n    \"390-light: 2 text element(s) with contrast under 4.5:1 (\\\"Log workout\\\", \\\"Log your first workout\\\").\",\n    \"1280-light: 2 text element(s) with contrast under 4.5:1 (\\\"Log workout\\\", \\\"Log your first workout\\\").\"\n  ],\n  \"next\": \"Keep going; run check_app (and preview_app) when the app is done.\"\n}"
+    },
+    {
+      "name": "write_app_file",
+      "args": {
+        "id": "edcc7216-f173-4487-ada3-a7c068835be5",
+        "path": "/README.md",
+        "content": "# Workouts\nA workout log for strength, running, cycling, walking, mobility and other sessions.\n\n## Interface\nResponsive dashboard in src/App.tsx with weekly workout count, training minutes, a configurable weekly goal and a seven-day activity view. History supports search, type filtering, editing, co… (1274 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"edcc7216-f173-4487-ada3-a7c068835be5\",\n    \"title\": \"Workouts\"\n  },\n  \"saved\": \"/README.md (replaced)\",\n  \"files\": 33,\n  \"opens\": \"Opens cleanly at 390 and 1280 px (over a sample of its data).\",\n  \"notes\": [\n    \"390-light: 2 text element(s) with contrast under 4.5:1 (\\\"Log workout\\\", \\\"Log your first workout\\\").\",\n    \"1280-light: 2 text element(s) with contrast under 4.5:1 (\\\"Log workout\\\", \\\"Log your first workout\\\").\"\n  ],\n  \"next\": \"Keep going; run check_app (and preview_app) when the app is done.\"\n}"
+    },
+    {
+      "name": "edit_app_file",
+      "args": {
+        "id": "edcc7216-f173-4487-ada3-a7c068835be5",
+        "path": "/src/index.css",
+        "old_string": "background:var(--amber-accent); color:var(--amber-on-accent);",
+        "new_string": "background:var(--amber-accent-soft); color:var(--amber-accent-text);",
+        "replace_all": "true"
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"edcc7216-f173-4487-ada3-a7c068835be5\",\n    \"title\": \"Workouts\"\n  },\n  \"saved\": \"/src/index.css (2 changes)\",\n  \"files\": 33,\n  \"opens\": \"Opens cleanly at 390 and 1280 px (over a sample of its data).\",\n  \"next\": \"Keep going; run check_app (and preview_app) when the app is done.\"\n}"
+    },
+    {
+      "name": "check_app",
+      "args": {
+        "id": "edcc7216-f173-4487-ada3-a7c068835be5"
+      },
+      "error": false,
+      "result": "{\n  \"app\": {\n    \"id\": \"edcc7216-f173-4487-ada3-a7c068835be5\",\n    \"title\": \"Workouts\"\n  },\n  \"ok\": true,\n  \"errors\": [],\n  \"notes\": [\n    \"The app's first heading should be the note's title (\\\"Sample note\\\"), read from amber.note.title: nothing around the app shows the title. Its first heading is \\\"Workouts\\\".\",\n    \"Using the app's first control: no control sent an edit.\"\n  ],\n  \"browser_checked\": \"390 px and 1280 px in light and dark, and 320 px, over a sample of its data\",\n  \"next\": \"Nothing is broken. The notes are information; act on the ones you agree with.\"\n}"
+    },
+    {
+      "name": "try_app",
+      "args": {
+        "id": "edcc7216-f173-4487-ada3-a7c068835be5",
+        "screenshots": "none",
+        "steps": "[{\"tap\":\"Log workout\"},{\"type\":\"Upper body\",\"into\":\"Workout name\"},{\"type\":\"45\",\"into\":\"Duration in minutes\"},{\"tap\":\"Add exercise\"},{\"type\":\"Bench press\",\"into\":\"Exercise 1\"},{\"type\":\"3\",\"into\":\"Sets for exercise 1\"},{\"type\":\"8\",\"into\":\"Reps for exercise 1\"},{\"type\":\"60\",\"into\":\"Weight for exercise… (495 chars)"
+      },
+      "error": false,
+      "result": "{\n  \"app\": \"Workouts\",\n  \"data\": \"a sample with the app's data shape\",\n  \"steps\": [\n    {\n      \"step\": 1,\n      \"did\": {\n        \"tap\": \"Log workout\"\n      },\n      \"screen\": [\n        \"heading: Workouts\",\n        \"button: Log workout\",\n        \"heading: This week\",\n        \"select: 1 workouts 2 workouts 3 workouts 4 workouts 5 workouts 6 wor = \\\"3\\\"\",\n        \"heading: All time\",\n        \"text: YOUR TRAINING LOG Workouts Record the work. See your progress. Log workout This week 0 workouts Time training 0 min this week Weekly goal 0 % complete Log a workout Workout name Date Workout type Dura… (15773 chars)"
+    },
+    {
+      "name": "preview_app",
+      "args": {
+        "id": "edcc7216-f173-4487-ada3-a7c068835be5",
+        "widths": "[390,1280]",
+        "themes": "[\"light\",\"dark\"]"
+      },
+      "error": false,
+      "result": "{\n  \"app\": \"Workouts\",\n  \"data\": \"a sample with the note's shape (not the person's data)\",\n  \"views\": [\n    {\n      \"view\": \"390-light\",\n      \"headings\": [\n        \"Workouts\",\n        \"Workout history\",\n        \"Your first workout starts here\",\n        \"This week\",\n        \"All time\"\n      ],\n      \"text\": \"YOUR TRAINING LOG Workouts Record the work. See your progress. Log workout This week 0 workouts Time training 0 min this week Weekly goal 0 % complete Workout history 0 total Search workouts Type Your first workout starts here Log a session to build your training history. Log your first wo… (2926 chars)"
+    }
+  ],
+  "render": {
+    "views": [
+      {
+        "name": "390-light",
+        "width": 390,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 475,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 2,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/bench-apps/shots/a-workout-codex-cli-r2-390-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Workouts",
+          "Workout history",
+          "Your first workout starts here",
+          "This week",
+          "All time"
+        ],
+        "excerpt": "YOUR TRAINING LOG Workouts Record the work. See your progress. Log workout This week 0 workouts Time training 0 min this week Weekly goal 0 % complete Workout history 0 total Search workouts Type Your first workout starts here Log a session to build your training history. Log your first workout This week 0 / 3 Oct 5, 2026 to Oct 11, 2026 M · T · W · T · F · S · S · 3 more workouts to reach your goal. Workouts per week All time Sessions logged 0 Minutes training 0",
+        "titleCount": 2,
+        "ghostFields": [],
+        "sections": 5,
+        "nav": false,
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.9179487179487179,
+        "canvases": 0,
+        "svgShapes": 10,
+        "gridCols": 7,
+        "frames": 1,
+        "look": {
+          "accentHue": 31,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
+      },
+      {
+        "name": "390-dark",
+        "width": 390,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 475,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 2,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/bench-apps/shots/a-workout-codex-cli-r2-390-dark.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Workouts",
+          "Workout history",
+          "Your first workout starts here",
+          "This week",
+          "All time"
+        ],
+        "excerpt": "YOUR TRAINING LOG Workouts Record the work. See your progress. Log workout This week 0 workouts Time training 0 min this week Weekly goal 0 % complete Workout history 0 total Search workouts Type Your first workout starts here Log a session to build your training history. Log your first workout This week 0 / 3 Oct 5, 2026 to Oct 11, 2026 M · T · W · T · F · S · S · 3 more workouts to reach your goal. Workouts per week All time Sessions logged 0 Minutes training 0",
+        "titleCount": 2,
+        "ghostFields": [],
+        "sections": 5,
+        "nav": false,
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.9179487179487179,
+        "canvases": 0,
+        "svgShapes": 10,
+        "gridCols": 7,
+        "frames": 1,
+        "look": {
+          "accentHue": 37,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
+      },
+      {
+        "name": "320-light",
+        "width": 320,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 475,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 2,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/bench-apps/shots/a-workout-codex-cli-r2-320-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Workouts",
+          "Workout history",
+          "Your first workout starts here",
+          "This week",
+          "All time"
+        ],
+        "excerpt": "YOUR TRAINING LOG Workouts Record the work. See your progress. Log workout This week 0 workouts Time training 0 min this week Weekly goal 0 % complete Workout history 0 total Search workouts Type Your first workout starts here Log a session to build your training history. Log your first workout This week 0 / 3 Oct 5, 2026 to Oct 11, 2026 M · T · W · T · F · S · S · 3 more workouts to reach your goal. Workouts per week All time Sessions logged 0 Minutes training 0",
+        "titleCount": 2,
+        "ghostFields": [],
+        "sections": 5,
+        "nav": false,
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.9,
+        "canvases": 0,
+        "svgShapes": 10,
+        "gridCols": 7,
+        "frames": 1,
+        "look": {
+          "accentHue": 31,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
+      },
+      {
+        "name": "1280-light",
+        "width": 1280,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 474,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 2,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/bench-apps/shots/a-workout-codex-cli-r2-1280-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Workouts",
+          "Workout history",
+          "Your first workout starts here",
+          "This week",
+          "All time"
+        ],
+        "excerpt": "YOUR TRAINING LOG Workouts Record the work. See your progress. Log workout This week 0 workouts Time training 0 min this week Weekly goal 0% complete Workout history 0 total Search workouts Type Your first workout starts here Log a session to build your training history. Log your first workout This week 0 / 3 Oct 5, 2026 to Oct 11, 2026 M · T · W · T · F · S · S · 3 more workouts to reach your goal. Workouts per week All time Sessions logged 0 Minutes training 0",
+        "titleCount": 2,
+        "ghostFields": [],
+        "sections": 5,
+        "nav": false,
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.9625,
+        "canvases": 0,
+        "svgShapes": 16,
+        "gridCols": 7,
+        "frames": 1,
+        "look": {
+          "accentHue": 31,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
+      },
+      {
+        "name": "1280-dark",
+        "width": 1280,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 474,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 2,
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "Workouts",
+          "Workout history",
+          "Your first workout starts here",
+          "This week",
+          "All time"
+        ],
+        "excerpt": "YOUR TRAINING LOG Workouts Record the work. See your progress. Log workout This week 0 workouts Time training 0 min this week Weekly goal 0% complete Workout history 0 total Search workouts Type Your first workout starts here Log a session to build your training history. Log your first workout This week 0 / 3 Oct 5, 2026 to Oct 11, 2026 M · T · W · T · F · S · S · 3 more workouts to reach your goal. Workouts per week All time Sessions logged 0 Minutes training 0",
+        "titleCount": 2,
+        "ghostFields": [],
+        "sections": 5,
+        "nav": false,
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.9625,
+        "canvases": 0,
+        "svgShapes": 16,
+        "gridCols": 7,
+        "frames": 1,
+        "look": {
+          "accentHue": 37,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
+      }
+    ],
+    "blocked": [],
+    "updates": [],
+    "setData": 6,
+    "interaction": {
+      "tried": "control",
+      "ok": false,
+      "framesPerSecond": 0,
+      "error": "no control sent an edit"
+    },
+    "probes": {},
+    "dataAfter": {}
+  },
+  "breakage": [],
+  "walk": [],
+  "used": {
+    "try_app": 1,
+    "run_app_tests": 0,
+    "test_files": 0
+  }
+}

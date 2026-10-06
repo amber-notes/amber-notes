@@ -1,0 +1,76 @@
+{
+  "task": "n-tracker-today",
+  "rep": 1,
+  "model": "claude-code:sonnet",
+  "round": "bench-notes",
+  "skill": false,
+  "seconds": 8,
+  "score": 1,
+  "passed": 3,
+  "total": 3,
+  "checks": [
+    {
+      "name": "tracker_kept",
+      "pass": true
+    },
+    {
+      "name": "row_for_today",
+      "pass": true
+    },
+    {
+      "name": "one_row_added",
+      "pass": true
+    }
+  ],
+  "tool_calls": 3,
+  "tool_errors": 0,
+  "usage": {
+    "input": 8,
+    "output": 513,
+    "cacheRead": 73253,
+    "cacheWrite": 2124,
+    "turns": 6,
+    "equivalentUsd": 0.0282926,
+    "usd": 0
+  },
+  "usd": 0,
+  "page_bytes": 0,
+  "data": null,
+  "answer": "I added a row to your Mood note with mood 4 and Walk set to Yes. I dated it 2026-10-06, since that was the date I was given for today. My context also said 2026-10-05 once. If you meant the 5th, tell me and I'll change the date. The table had no row for 10-04 or 10-05 either way.",
+  "calls": [
+    {
+      "name": "search_notes",
+      "args": {
+        "query": "Mood"
+      },
+      "error": false,
+      "result": "{\"query\":\"Mood\",\"results\":[{\"id\":\"80e582d1-c9cc-4641-b009-97e654dde773\",\"title\":\"Mood\",\"folder\":\"Health\",\"pinned\":false,\"updated\":\"2026-10-05T22:51:31.462Z\",\"snippet\":\"«Mood» <!-- pane-table: Date=date; «Mood»=scale 1-5; Walk=choice Yes|No --> | Date | «Mood» | Walk | | --- | --- | --- | | 2026-10-01 | 3 | Yes | | 2026-10-02\"}]}"
+    },
+    {
+      "name": "read_table",
+      "args": {
+        "id": "80e582d1-c9cc-4641-b009-97e654dde773",
+        "last": "4"
+      },
+      "error": false,
+      "result": "{\"note\":{\"id\":\"80e582d1-c9cc-4641-b009-97e654dde773\",\"title\":\"Mood\"},\"columns\":[{\"name\":\"Date\",\"type\":\"date\"},{\"name\":\"Mood\",\"type\":\"scale 1-5\"},{\"name\":\"Walk\",\"type\":\"choice Yes|No\"}],\"rows\":[{\"Date\":\"2026-10-01\",\"Mood\":\"3\",\"Walk\":\"Yes\"},{\"Date\":\"2026-10-02\",\"Mood\":\"2\",\"Walk\":\"No\"},{\"Date\":\"2026-10-03\",\"Mood\":\"4\",\"Walk\":\"Yes\"}],\"total_rows\":3}"
+    },
+    {
+      "name": "log_table_row",
+      "args": {
+        "id": "80e582d1-c9cc-4641-b009-97e654dde773",
+        "values": "{\"Date\":\"2026-10-06\",\"Mood\":4,\"Walk\":\"Yes\"}"
+      },
+      "error": false,
+      "result": "{\"note\":\"Mood\",\"added_row\":{\"Date\":\"2026-10-06\",\"Mood\":\"4\",\"Walk\":\"Yes\"}}"
+    }
+  ],
+  "render": null,
+  "breakage": [],
+  "walk": [],
+  "used": {
+    "try_app": 0,
+    "run_app_tests": 0,
+    "test_files": 0
+  }
+}

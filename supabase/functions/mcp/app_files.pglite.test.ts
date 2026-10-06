@@ -49,7 +49,7 @@ Deno.test("a project app: the starter and its tests, files, edits, the gate, see
     assertStringIncludes(broken.errors.join("\n"), "settings broke");
     let b = await boxes(pg, a, id);
     assert(!b.live!.files["/src/screens/settings.tsx"].includes("settings broke") && b.draft!.files["/src/screens/settings.tsx"].includes("settings broke"));
-    assertStringIncludes(b.why!, "settings broke");
+    assertEquals(b.why, "smoke check at 390 px: script error after tapping a control\nsmoke check at 1280 px: script error after tapping a control");
     assertStringIncludes((await tool(pg, a, "read_app_file", { id, path: "/src/screens/settings.tsx" }, false)).content, "settings broke");
     // Fixed: live again, the draft gone.
     const fixed = await tool(pg, a, "edit_app_file", { id, path: "/src/screens/settings.tsx", old_string: "\n  if (settings) throw new Error(\"settings broke\")", new_string: "" });

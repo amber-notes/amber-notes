@@ -1,0 +1,67 @@
+{
+  "task": "n-rename-remove",
+  "rep": 2,
+  "model": "claude-code:sonnet",
+  "round": "bench-notes",
+  "skill": false,
+  "seconds": 6,
+  "score": 1,
+  "passed": 3,
+  "total": 3,
+  "checks": [
+    {
+      "name": "renamed",
+      "pass": true
+    },
+    {
+      "name": "removed",
+      "pass": true
+    },
+    {
+      "name": "kept",
+      "pass": true
+    }
+  ],
+  "tool_calls": 2,
+  "tool_errors": 0,
+  "usage": {
+    "input": 6,
+    "output": 227,
+    "cacheRead": 54324,
+    "cacheWrite": 1822,
+    "turns": 3,
+    "equivalentUsd": 0.020434800000000003,
+    "usd": 0
+  },
+  "usd": 0,
+  "page_bytes": 0,
+  "data": null,
+  "answer": "In your Groceries note, I renamed Butter to Salted butter and removed Bananas.",
+  "calls": [
+    {
+      "name": "read_note",
+      "args": {
+        "title": "Groceries"
+      },
+      "error": false,
+      "result": "{\"id\":\"0d033b41-a8a3-4a3d-8885-40a347546c11\",\"title\":\"Groceries\",\"folder\":\"Home\",\"pinned\":false,\"created\":\"2026-10-05T22:51:25.685Z\",\"updated\":\"2026-10-05T22:51:25.685Z\",\"version\":1,\"in_recently_deleted\":false,\"parent\":null,\"sub_notes\":[],\"outline\":{\"headings\":[{\"line\":3,\"level\":2,\"text\":\"Dairy\"},{\"line\":7,\"level\":2,\"text\":\"Fruit\"}],\"checklist\":{\"open\":3,\"done\":1},\"lines\":10,\"words\":20},\"markdown\":\"Groceries\\n\\n## Dairy\\n- [ ] Milk\\n- [ ] Butter\\n\\n## Fruit\\n- [x] Apples\\n- [ ] Bananas\\n\"}"
+    },
+    {
+      "name": "update_checklist_items",
+      "args": {
+        "id": "0d033b41-a8a3-4a3d-8885-40a347546c11",
+        "changes": "[{\"item\":\"Butter\",\"text\":\"Salted butter\"},{\"item\":\"Bananas\",\"remove\":true}]"
+      },
+      "error": false,
+      "result": "{\"note\":{\"id\":\"0d033b41-a8a3-4a3d-8885-40a347546c11\",\"title\":\"Groceries\"},\"changed\":[{\"item\":\"Butter\",\"did\":\"renamed to \\\"Salted butter\\\"\"},{\"item\":\"Bananas\",\"did\":\"removed\"}]}"
+    }
+  ],
+  "render": null,
+  "breakage": [],
+  "walk": [],
+  "used": {
+    "try_app": 0,
+    "run_app_tests": 0,
+    "test_files": 0
+  }
+}

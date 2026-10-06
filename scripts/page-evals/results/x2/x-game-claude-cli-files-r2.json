@@ -1,0 +1,561 @@
+{
+  "task": "x-game",
+  "rep": 2,
+  "model": "claude-code:sonnet",
+  "round": "x2",
+  "skill": false,
+  "tools": "files",
+  "seconds": 84,
+  "score": 0.8571428571428571,
+  "passed": 30,
+  "total": 35,
+  "checks": [
+    {
+      "name": "has_page",
+      "pass": true
+    },
+    {
+      "name": "server_checks",
+      "pass": true
+    },
+    {
+      "name": "no_console_errors",
+      "pass": true
+    },
+    {
+      "name": "no_network",
+      "pass": true
+    },
+    {
+      "name": "fits_phone",
+      "pass": false,
+      "detail": "overflows by 18 px"
+    },
+    {
+      "name": "fits_desktop",
+      "pass": true
+    },
+    {
+      "name": "uses_wide_window",
+      "pass": false,
+      "detail": "uses 35% of 1280 px"
+    },
+    {
+      "name": "phone_targets",
+      "pass": true
+    },
+    {
+      "name": "focused_screen",
+      "pass": true
+    },
+    {
+      "name": "visible_fields",
+      "pass": true
+    },
+    {
+      "name": "no_junk_text",
+      "pass": true
+    },
+    {
+      "name": "no_clipped_text",
+      "pass": true
+    },
+    {
+      "name": "dark_mode",
+      "pass": true
+    },
+    {
+      "name": "light_contrast",
+      "pass": true
+    },
+    {
+      "name": "themed",
+      "pass": true
+    },
+    {
+      "name": "labelled_controls",
+      "pass": true
+    },
+    {
+      "name": "edits_from_page",
+      "pass": true
+    },
+    {
+      "name": "title_once",
+      "pass": false,
+      "detail": "The app's first heading should be the note's title (\"Games\"), read from amber.note.title: nothing around the app shows the title. Its first heading is \"2048\"."
+    },
+    {
+      "name": "says_app",
+      "pass": false,
+      "detail": "the reply calls it a page, or doesn't call it the app"
+    },
+    {
+      "name": "plays",
+      "pass": false,
+      "detail": "0 frames in the second after the first tap"
+    },
+    {
+      "name": "page_changed",
+      "pass": true
+    },
+    {
+      "name": "walk_shows_score",
+      "pass": true
+    },
+    {
+      "name": "walk_moves",
+      "pass": true
+    },
+    {
+      "name": "walk_new_game",
+      "pass": true
+    },
+    {
+      "name": "walk_undo",
+      "pass": true
+    },
+    {
+      "name": "walk_stats",
+      "pass": true
+    },
+    {
+      "name": "walk_desktop",
+      "pass": true
+    },
+    {
+      "name": "has_keyboard",
+      "pass": true
+    },
+    {
+      "name": "has_touch",
+      "pass": true
+    },
+    {
+      "name": "has_undo",
+      "pass": true
+    },
+    {
+      "name": "has_best",
+      "pass": true
+    },
+    {
+      "name": "has_win_2048",
+      "pass": true
+    },
+    {
+      "name": "has_keep_going",
+      "pass": true
+    },
+    {
+      "name": "has_game_over",
+      "pass": true
+    },
+    {
+      "name": "has_stats",
+      "pass": true
+    }
+  ],
+  "tool_calls": 14,
+  "tool_errors": 2,
+  "usage": {
+    "input": 18,
+    "output": 8922,
+    "cacheRead": 87698,
+    "cacheWrite": 19342,
+    "turns": 19,
+    "equivalentUsd": 0.1841636,
+    "usd": 0
+  },
+  "usd": 0,
+  "page_bytes": 242877,
+  "data": null,
+  "answer": "Your Games note is now a 2048 game. I tried it with arrow-key moves and the stats screen, and it opened without errors at phone and Mac widths. I didn't test swiping, the win screen or the game-over screen, so those are untested.\n\n- **Controls:** you swipe on the phone and use the arrow keys on the Mac. Tiles slide, new ones pop in, and merged tiles pulse. These animations are switched off if the device is set to reduce motion.\n- **Scores:** score and best score are kept with the game. A game in progress also survives closing the note.\n- **Undo:** it takes back the last move only, and it also works after a game-over.\n- **New game:** a button at the top right.\n- **Win screen:** it appears when you make 2048, with \"Keep going\" and \"New game\".\n- **Game-over screen:** it offers \"Try again\" and \"Undo\".\n- **Stats:** the chart button shows games played, best tile and average score.\n- **When a game counts:** a game is counted when it ends or when you start a new one. The stats screen says so.\n\nI removed the starter Home and Settings screens, so the note is just the game.",
+  "calls": [
+    {
+      "name": "search",
+      "args": {},
+      "error": true,
+      "result": "<tool_use_error>Error: No such tool available: search</tool_use_error>"
+    },
+    {
+      "name": "search",
+      "args": {
+        "query": "Games"
+      },
+      "error": false,
+      "result": "{\"results\":[{\"id\":\"98101530-79bf-4ff3-a2f2-8fa3f5dad45d\",\"title\":\"Games\",\"url\":\"ambernotes://note/98101530-79bf-4ff3-a2f2-8fa3f5dad45d\",\"path\":\"Games.md\",\"snippet\":\"«Games»\"}]}"
+    },
+    {
+      "name": "fetch",
+      "args": {
+        "id": "Games.md"
+      },
+      "error": false,
+      "result": "{\"id\":\"98101530-79bf-4ff3-a2f2-8fa3f5dad45d\",\"title\":\"Games\",\"text\":\"Games\\n\",\"url\":\"ambernotes://note/98101530-79bf-4ff3-a2f2-8fa3f5dad45d\",\"metadata\":{\"path\":\"Games.md\",\"folder\":\"/\",\"pinned\":false,\"version\":1,\"updated\":\"2026-10-06T00:40:43.309Z\",\"lines\":2}}"
+    },
+    {
+      "name": "list",
+      "args": {
+        "path": "Games.app"
+      },
+      "error": true,
+      "result": "\"Games\" has no app. Make one with create { type: \"app\", path: <the note> }."
+    },
+    {
+      "name": "create",
+      "args": {
+        "type": "app",
+        "path": "Games.md"
+      },
+      "error": false,
+      "result": "{\"app\":\"Games.app/\",\"saved\":\"a new React project\",\"files\":33,\"opens\":\"Opens cleanly at 390 and 1280 px (over a sample of its data).\",\"notes\":[\"390-light: 2 text element(s) with contrast under 4.5:1 (\\\"Get started\\\", \\\"Home\\\").\",\"390-light: 2 text element(s) under 12 px (\\\"Home\\\", \\\"Settings\\\").\",\"390-light: 1 control(s) smaller than 44 pt to tap (\\\"Get started\\\").\",\"1280-light: 1 text element(s) with contrast under 4.5:1 (\\\"Get started\\\").\"],\"next\":\"Read Games.app/README.md, then build the app with write and edit (files under Games.app/src/). Its data is Games.app/data.json.\"}"
+    },
+    {
+      "name": "fetch",
+      "args": {
+        "id": "Games.app/README.md"
+      },
+      "error": false,
+      "result": "{\"id\":\"98101530-79bf-4ff3-a2f2-8fa3f5dad45d.app/README.md\",\"title\":\"/README.md\",\"text\":\"# Games\\n\\nWhat this app is for, in one sentence.\\n\\n## Screens\\n- Home (src/screens/home.tsx)\\n- Settings (src/screens/settings.tsx)\\n\\n## Data\\nThe app's data, as the person's AI reaches it in data.json. Keep this current.\\n- settings: { name } (useSettings)\\n\\n## How this app runs in Amber Notes\\n\\n- It is the note: opening the note opens the app, on iPhone (320-440 pt wide, safe areas, the keyboard shrinks the view) and on the Mac (a window from about 500 to 1,800 px, resized live). Light and dark follo… (2324 chars)"
+    },
+    {
+      "name": "list",
+      "args": {
+        "path": "Games.app"
+      },
+      "error": false,
+      "result": "{\"path\":\"Games.app/\",\"files\":[{\"path\":\"Games.app/README.md\",\"bytes\":2081,\"lines\":22},{\"path\":\"Games.app/index.html\",\"bytes\":215,\"lines\":12},{\"path\":\"Games.app/package.json\",\"bytes\":686,\"lines\":29},{\"path\":\"Games.app/src/App.tsx\",\"bytes\":905,\"lines\":27},{\"path\":\"Games.app/src/components/app-shell.tsx\",\"bytes\":2651,\"lines\":60},{\"path\":\"Games.app/src/components/stat-card.tsx\",\"bytes\":576,\"lines\":15},{\"path\":\"Games.app/src/components/ui/badge.tsx\",\"bytes\":1775,\"lines\":48},{\"path\":\"Games.app/src/components/ui/button.tsx\",\"bytes\":2391,\"lines\":64},{\"path\":\"Games.app/src/components/ui/calendar.tsx\",\"b… (2376 chars)"
+    },
+    {
+      "name": "fetch",
+      "args": {
+        "id": "Games.app/src/App.tsx"
+      },
+      "error": false,
+      "result": "{\"id\":\"98101530-79bf-4ff3-a2f2-8fa3f5dad45d.app/src/App.tsx\",\"title\":\"/src/App.tsx\",\"text\":\"import { Router, Route } from \\\"amber-router\\\"\\nimport { House, Settings as SettingsIcon } from \\\"lucide-react\\\"\\nimport { Toaster } from \\\"@/components/ui/sonner\\\"\\nimport { AppShell } from \\\"@/components/app-shell\\\"\\nimport Home from \\\"@/screens/home\\\"\\nimport Settings from \\\"@/screens/settings\\\"\\n\\n// The app's places: a tab bar on iPhone, a sidebar from 900 px (components/app-shell.tsx).\\nconst screens = [\\n  { path: \\\"/\\\", label: \\\"Home\\\", icon: House },\\n  { path: \\\"/settings\\\", label: \\\"Settings\\… (1173 chars)"
+    },
+    {
+      "name": "fetch",
+      "args": {
+        "id": "Games.app/src/index.css"
+      },
+      "error": false,
+      "result": "{\"id\":\"98101530-79bf-4ff3-a2f2-8fa3f5dad45d.app/src/index.css\",\"title\":\"/src/index.css\",\"text\":\"@import \\\"tailwindcss\\\";\\n@import \\\"tw-animate-css\\\";\\n\\n@custom-variant dark (@media (prefers-color-scheme: dark));\\n\\n/* shadcn/ui's colours, from Amber Notes' tokens (they switch for dark mode by themselves). */\\n:root {\\n  --radius: 0.75rem;\\n  --background: var(--amber-bg);\\n  --foreground: var(--amber-text);\\n  --card: var(--amber-surface);\\n  --card-foreground: var(--amber-text);\\n  --popover: var(--amber-bg);\\n  --popover-foreground: var(--amber-text);\\n  --primary: var(--amber-accent);\\n  -… (2570 chars)"
+    },
+    {
+      "name": "fetch",
+      "args": {
+        "id": "Games.app/src/lib/amber.ts"
+      },
+      "error": false,
+      "result": "{\"id\":\"98101530-79bf-4ff3-a2f2-8fa3f5dad45d.app/src/lib/amber.ts\",\"title\":\"/src/lib/amber.ts\",\"text\":\"// The app's data (JSON in its own store: encrypted, synced, with Undo), and the note's summary line.\\nexport { useStore, useAppData, useCollection, useSettings, useImported, batch, setSummary } from \\\"amber\\\"\\n\",\"url\":\"ambernotes://note/98101530-79bf-4ff3-a2f2-8fa3f5dad45d\",\"metadata\":{\"path\":\"Games.app/src/lib/amber.ts\",\"lines\":3}}"
+    },
+    {
+      "name": "write",
+      "args": {
+        "id": "Games.app/src/App.tsx",
+        "content": "import { useCallback, useEffect, useRef, useState } from \"react\"\nimport { Undo2, RotateCcw, BarChart3 } from \"lucide-react\"\nimport { useStore, setSummary } from \"@/lib/amber\"\nimport { Button } from \"@/components/ui/button\"\nimport { Dialog, DialogContent, DialogHeader, DialogTitle } from \"@/component… (13057 chars)"
+      },
+      "error": false,
+      "result": "{\"app\":{\"id\":\"98101530-79bf-4ff3-a2f2-8fa3f5dad45d\",\"title\":\"Games\"},\"saved\":\"/src/App.tsx (replaced)\",\"files\":33,\"opens\":\"Opens cleanly at 390 and 1280 px (over a sample of its data).\",\"notes\":[\"390-light: 3 text element(s) with contrast under 4.5:1 (\\\"New game\\\", \\\"2\\\", \\\"2\\\").\",\"390-light: 2 text element(s) under 12 px (\\\"Score\\\", \\\"Best\\\").\",\"1280-light: 3 text element(s) with contrast under 4.5:1 (\\\"New game\\\", \\\"2\\\", \\\"2\\\").\",\"1280-light: 2 text element(s) under 12 px (\\\"Score\\\", \\\"Best\\\").\",\"1280-light: the content uses 35% of the window's width.\"],\"next\":\"Keep going; run check_app (and… (637 chars)"
+    },
+    {
+      "name": "edit",
+      "args": {
+        "id": "Games.app/src/App.tsx",
+        "edits": "[{\"old_text\":\"text-[11px] font-semibold\",\"new_text\":\"text-xs font-semibold\"},{\"old_text\":\"  8: \\\"bg-[#f2b179] text-white\\\",\\n  16: \\\"bg-[#f59563] text-white\\\",\\n  32: \\\"bg-[#f67c5f] text-white\\\",\\n  64: \\\"bg-[#f65e3b] text-white\\\",\\n  128: \\\"bg-[#edcf72] text-white\\\",\\n  256: \\\"bg-[#edcc61] text-whi… (963 chars)"
+      },
+      "error": false,
+      "result": "{\"app\":{\"id\":\"98101530-79bf-4ff3-a2f2-8fa3f5dad45d\",\"title\":\"Games\"},\"saved\":\"/src/App.tsx (3 edits)\",\"files\":33,\"opens\":\"Opens cleanly at 390 and 1280 px (over a sample of its data).\",\"notes\":[\"390-light: 1 text element(s) with contrast under 4.5:1 (\\\"New game\\\").\",\"1280-light: 1 text element(s) with contrast under 4.5:1 (\\\"New game\\\").\",\"1280-light: the content uses 35% of the window's width.\"],\"next\":\"Keep going; run check_app (and preview_app) when the app is done.\"}"
+    },
+    {
+      "name": "see_app",
+      "args": {
+        "id": "Games.md",
+        "steps": "[{\"press\":\"ArrowLeft\"},{\"press\":\"ArrowUp\"},{\"press\":\"ArrowRight\"},{\"press\":\"ArrowDown\"},{\"press\":\"ArrowLeft\"},{\"tap\":\"Stats\"}]",
+        "widths": "[390]",
+        "themes": "[\"light\"]"
+      },
+      "error": false,
+      "result": "[image]\n{\"app\":{\"id\":\"98101530-79bf-4ff3-a2f2-8fa3f5dad45d\",\"title\":\"Games\"},\"steps\":[{\"step\":1,\"did\":{\"press\":\"ArrowLeft\"},\"data_changed\":[\"~ values.g2048.tiles[0].value: 2 → 4\",\"~ values.g2048.tiles[0].c: 1 → 0\",\"~ values.g2048.tiles[0].fresh: true → false\",\"+ values.g2048.tiles[0].merged: true\",\"~ values.g2048.tiles[1].id: 2 → 3\",\"~ values.g2048.tiles[1].r: 3 → 1\",\"~ values.g2048.score: 0 → 4\",\"~ values.g2048.best: 0 → 4\",\"~ values.g2048.moves: 0 → 1\",\"~ values.g2048.prev: null → {\\\"tiles\\\":[{\\\"id\\\":1,\\\"value\\\":2,\\\"r\\\":3,\\\"c\\\":1,\\\"fresh\\\":false,\\\"merged\\\":false},{\\\"id\\\":2…\",\"~ values.g2048.… (5435 chars)"
+    },
+    {
+      "name": "edit",
+      "args": {
+        "id": "Games.app/src/App.tsx",
+        "edits": "[{\"old_text\":\"<Button className=\\\"h-11 px-4\\\" onClick={newGame}>\",\"new_text\":\"<Button className=\\\"h-11 bg-[#9a4a0a] px-4 text-white hover:bg-[#833f08]\\\" onClick={newGame}>\"}]"
+      },
+      "error": false,
+      "result": "{\"app\":{\"id\":\"98101530-79bf-4ff3-a2f2-8fa3f5dad45d\",\"title\":\"Games\"},\"saved\":\"/src/App.tsx (1 edit)\",\"files\":33,\"opens\":\"Opens cleanly at 390 and 1280 px (over a sample of its data).\",\"notes\":[\"1280-light: the content uses 35% of the window's width.\"],\"next\":\"Keep going; run check_app (and preview_app) when the app is done.\"}"
+    }
+  ],
+  "render": {
+    "views": [
+      {
+        "name": "390-light",
+        "width": 390,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 108,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/x2/shots/x-game-claude-cli-files-r2-390-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "2048"
+        ],
+        "excerpt": "2048 SCORE 0 BEST 0 Join tiles to reach 2048. New game 2 2 Swipe or use the arrow keys to move the tiles.",
+        "titleCount": 0,
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.9564102564102565,
+        "canvases": 0,
+        "svgShapes": 5,
+        "gridCols": 4,
+        "frames": 2,
+        "look": {
+          "accentHue": 30,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
+      },
+      {
+        "name": "390-dark",
+        "width": 390,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 108,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/x2/shots/x-game-claude-cli-files-r2-390-dark.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "2048"
+        ],
+        "excerpt": "2048 SCORE 0 BEST 0 Join tiles to reach 2048. New game 2 2 Swipe or use the arrow keys to move the tiles.",
+        "titleCount": 0,
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.9564102564102565,
+        "canvases": 0,
+        "svgShapes": 5,
+        "gridCols": 4,
+        "frames": 2,
+        "look": {
+          "accentHue": 30,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
+      },
+      {
+        "name": "320-light",
+        "width": 320,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 18,
+        "textLength": 108,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/x2/shots/x-game-claude-cli-files-r2-320-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "2048"
+        ],
+        "excerpt": "2048 SCORE 0 BEST 0 Join tiles to reach 2048. New game 4 2 Swipe or use the arrow keys to move the tiles.",
+        "titleCount": 0,
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.962158203125,
+        "canvases": 0,
+        "svgShapes": 5,
+        "gridCols": 4,
+        "frames": 2,
+        "look": {
+          "accentHue": 27,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
+      },
+      {
+        "name": "1280-light",
+        "width": 1280,
+        "scheme": "light",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 108,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(255, 254, 253)",
+        "fg": "rgb(42, 29, 16)",
+        "contrast": 16.26549276904237,
+        "bgLuminance": 0.992354709589862,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "screenshot": "/Users/emilwagman/Documents/Development/AmberNotes-note-pages-ai/scripts/page-evals/results/x2/shots/x-game-claude-cli-files-r2-1280-light.png",
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "2048"
+        ],
+        "excerpt": "2048 SCORE 0 BEST 0 Join tiles to reach 2048. New game 2 2 Swipe or use the arrow keys to move the tiles.",
+        "titleCount": 0,
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.3453125,
+        "canvases": 0,
+        "svgShapes": 5,
+        "gridCols": 4,
+        "frames": 2,
+        "look": {
+          "accentHue": 30,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
+      },
+      {
+        "name": "1280-dark",
+        "width": 1280,
+        "scheme": "dark",
+        "errors": [],
+        "overflowPx": 0,
+        "textLength": 108,
+        "shown": 0,
+        "sampled": 0,
+        "bg": "rgb(0, 0, 0)",
+        "fg": "rgb(246, 239, 231)",
+        "contrast": 18.419071187831342,
+        "bgLuminance": 0,
+        "unnamedControls": [],
+        "smallTargets": 0,
+        "smallText": [],
+        "smallTextCount": 0,
+        "faintText": [],
+        "faintCount": 0,
+        "headings": [
+          "2048"
+        ],
+        "excerpt": "2048 SCORE 0 BEST 0 Join tiles to reach 2048. New game 2 2 Swipe or use the arrow keys to move the tiles.",
+        "titleCount": 0,
+        "ghostFields": [],
+        "sections": 0,
+        "nav": false,
+        "junk": [],
+        "under44": [],
+        "under44Count": 0,
+        "clipped": [],
+        "clippedCount": 0,
+        "usedWidth": 0.3453125,
+        "canvases": 0,
+        "svgShapes": 5,
+        "gridCols": 4,
+        "frames": 2,
+        "look": {
+          "accentHue": 30,
+          "nonAmberVivid": 0,
+          "tintedBg": false
+        }
+      }
+    ],
+    "blocked": [],
+    "updates": [],
+    "setData": 13,
+    "interaction": {
+      "tried": "control",
+      "ok": true,
+      "framesPerSecond": 0
+    },
+    "probes": {},
+    "dataAfter": {}
+  },
+  "breakage": [
+    "320-light: wider than the screen by 18 px (content is cut off at the right edge)."
+  ],
+  "walk": [
+    {
+      "name": "shows_score",
+      "pass": true
+    },
+    {
+      "name": "moves",
+      "pass": true
+    },
+    {
+      "name": "new_game",
+      "pass": true
+    },
+    {
+      "name": "undo",
+      "pass": true
+    },
+    {
+      "name": "stats",
+      "pass": true
+    },
+    {
+      "name": "desktop",
+      "pass": true
+    }
+  ],
+  "used": {
+    "try_app": 1,
+    "see_app": 1,
+    "run_app_tests": 0,
+    "test_files": 0
+  }
+}

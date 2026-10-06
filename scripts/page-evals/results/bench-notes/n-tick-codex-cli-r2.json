@@ -1,0 +1,96 @@
+{
+  "task": "n-tick",
+  "rep": 2,
+  "model": "codex:default",
+  "round": "bench-notes",
+  "skill": false,
+  "seconds": 23,
+  "score": 0.6666666666666666,
+  "passed": 2,
+  "total": 3,
+  "checks": [
+    {
+      "name": "ticked",
+      "pass": true
+    },
+    {
+      "name": "unticked",
+      "pass": true
+    },
+    {
+      "name": "rest_kept",
+      "pass": false,
+      "detail": "other text changed"
+    }
+  ],
+  "tool_calls": 5,
+  "tool_errors": 0,
+  "usage": {
+    "input": 17292,
+    "output": 311,
+    "cacheRead": 135040,
+    "cacheWrite": 0,
+    "turns": 1,
+    "usd": 0
+  },
+  "usd": 0,
+  "page_bytes": 0,
+  "data": null,
+  "answer": "Updated Groceries: ticked Milk and Butter, and unticked Apples.",
+  "calls": [
+    {
+      "name": "search_notes",
+      "args": {
+        "query": "Groceries"
+      },
+      "error": false,
+      "result": "{\n  \"query\": \"Groceries\",\n  \"results\": [\n    {\n      \"id\": \"71d3dc4c-7de6-414c-8bfc-19d6c772ed88\",\n      \"title\": \"Groceries\",\n      \"folder\": \"Home\",\n      \"pinned\": false,\n      \"updated\": \"2026-10-05T22:55:17.180Z\",\n      \"snippet\": \"«Groceries» ## Dairy - [ ] Milk - [ ] Butter ## Fruit - [x] Apples - [ ] Bananas\"\n    }\n  ]\n}"
+    },
+    {
+      "name": "read_note",
+      "args": {
+        "id": "71d3dc4c-7de6-414c-8bfc-19d6c772ed88"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"71d3dc4c-7de6-414c-8bfc-19d6c772ed88\",\n  \"title\": \"Groceries\",\n  \"folder\": \"Home\",\n  \"pinned\": false,\n  \"created\": \"2026-10-05T22:55:17.180Z\",\n  \"updated\": \"2026-10-05T22:55:17.180Z\",\n  \"version\": 1,\n  \"in_recently_deleted\": false,\n  \"parent\": null,\n  \"sub_notes\": [],\n  \"outline\": {\n    \"headings\": [\n      {\n        \"line\": 3,\n        \"level\": 2,\n        \"text\": \"Dairy\"\n      },\n      {\n        \"line\": 7,\n        \"level\": 2,\n        \"text\": \"Fruit\"\n      }\n    ],\n    \"checklist\": {\n      \"open\": 3,\n      \"done\": 1\n    },\n    \"lines\": 10,\n    \"words\": 20\n  },\n  \"markdown\": \"Groceries… (684 chars)"
+    },
+    {
+      "name": "set_checklist_item",
+      "args": {
+        "id": "71d3dc4c-7de6-414c-8bfc-19d6c772ed88",
+        "item": "Milk",
+        "checked": "true"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"71d3dc4c-7de6-414c-8bfc-19d6c772ed88\",\n  \"item\": \"Milk\",\n  \"checked\": true\n}"
+    },
+    {
+      "name": "set_checklist_item",
+      "args": {
+        "id": "71d3dc4c-7de6-414c-8bfc-19d6c772ed88",
+        "item": "Butter",
+        "checked": "true"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"71d3dc4c-7de6-414c-8bfc-19d6c772ed88\",\n  \"item\": \"Butter\",\n  \"checked\": true\n}"
+    },
+    {
+      "name": "set_checklist_item",
+      "args": {
+        "id": "71d3dc4c-7de6-414c-8bfc-19d6c772ed88",
+        "item": "Apples",
+        "checked": "false"
+      },
+      "error": false,
+      "result": "{\n  \"id\": \"71d3dc4c-7de6-414c-8bfc-19d6c772ed88\",\n  \"item\": \"Apples\",\n  \"checked\": false\n}"
+    }
+  ],
+  "render": null,
+  "breakage": [],
+  "walk": [],
+  "used": {
+    "try_app": 0,
+    "run_app_tests": 0,
+    "test_files": 0
+  }
+}
