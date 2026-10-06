@@ -83,7 +83,7 @@ export default function App() {
 }
 `,
     "/src/screens/home.tsx": `import { useState } from "react"
-import { Plus, Trash2 } from "lucide-react"
+import { Check, Pencil, Plus, Trash2 } from "lucide-react"
 import { useCollection } from "@/lib/amber"
 import { PageHeader } from "@/components/app-shell"
 import { Button } from "@/components/ui/button"
@@ -97,11 +97,18 @@ export default function Home() {
   const items = useCollection("items")
   const list = items.items as Item[]
   const [text, setText] = useState("")
+  const [editing, setEditing] = useState<{ id: string; text: string } | null>(null)
   const add = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!text.trim()) return
     await items.add({ text: text.trim() })
     setText("")
+  }
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editing || !editing.text.trim()) return
+    await items.update(editing.id, { text: editing.text.trim() })
+    setEditing(null)
   }
   return (
     <>
@@ -113,9 +120,20 @@ export default function Home() {
       </form>
       <Card className="mt-4 gap-0 py-0">
         {list.length ? list.map((item) => (
-          <div key={item.id} className="flex items-center gap-3 border-t px-4 py-2 first:border-0">
-            <span className="min-w-0 flex-1">{item.text}</span>
-            <Button variant="ghost" size="icon" aria-label={\`Remove \${item.text}\`} onClick={() => items.remove(item.id)}><Trash2 /></Button>
+          <div key={item.id} className="flex items-center gap-2 border-t px-4 py-2 first:border-0">
+            {editing?.id === item.id ? (
+              <form onSubmit={save} className="flex flex-1 items-center gap-2">
+                <Label htmlFor="edit-item" className="sr-only">Edit item</Label>
+                <Input id="edit-item" autoFocus value={editing.text} onChange={(e) => setEditing({ id: item.id, text: e.currentTarget.value })} />
+                <Button type="submit" size="sm"><Check /> Save</Button>
+              </form>
+            ) : (
+              <>
+                <span className="min-w-0 flex-1">{item.text}</span>
+                <Button variant="ghost" size="icon" aria-label={\`Edit \${item.text}\`} onClick={() => setEditing({ id: item.id, text: item.text })}><Pencil /></Button>
+                <Button variant="ghost" size="icon" aria-label={\`Remove \${item.text}\`} onClick={() => items.remove(item.id)}><Trash2 /></Button>
+              </>
+            )}
           </div>
         )) : <p className="px-4 py-6 text-center text-muted-foreground">Nothing here yet.</p>}
       </Card>
@@ -129,13 +147,25 @@ import userEvent from "@testing-library/user-event"
 import { amber } from "amber"
 import App from "@/App"
 
+// Each feature gets a test like these: do what the person does, check what they see, and check
+// what was saved in the app's data.
+const saved = () => (amber.data.collections.items ?? []).map((item: { text: string }) => item.text)
+
 describe("Home", () => {
-  it("adds an item, lists it and saves it", async () => {
+  it("adds an item, edits it, and saves the change", async () => {
     render(<App />)
     await userEvent.type(screen.getByLabelText("New item"), "Milk")
     await userEvent.click(screen.getByRole("button", { name: "Add" }))
     expect(await screen.findByText("Milk")).toBeInTheDocument()
-    expect(amber.data.collections.items.map((item: { text: string }) => item.text)).toContain("Milk")
+    await waitFor(() => expect(saved()).toEqual(["Milk"]))
+
+    await userEvent.click(screen.getByRole("button", { name: "Edit Milk" }))
+    const field = screen.getByLabelText("Edit item")
+    await userEvent.clear(field)
+    await userEvent.type(field, "Oat milk")
+    await userEvent.click(screen.getByRole("button", { name: "Save" }))
+    expect(await screen.findByText("Oat milk")).toBeInTheDocument()
+    await waitFor(() => expect(saved()).toEqual(["Oat milk"]))
   })
 
   it("removes an item", async () => {
@@ -144,6 +174,7 @@ describe("Home", () => {
     await userEvent.click(screen.getByRole("button", { name: "Add" }))
     await userEvent.click(await screen.findByRole("button", { name: "Remove Bread" }))
     await waitFor(() => expect(screen.queryByText("Bread")).not.toBeInTheDocument())
+    await waitFor(() => expect(saved()).toEqual([]))
   })
 })
 `,
@@ -183,6 +214,8 @@ What this app is for, in one sentence.
 
 ## Tests
 \`npm test\` runs Vitest. Tests live in tests/*.test.tsx and use Testing Library (render, screen, userEvent) with the jest-dom matchers; data starts empty for each test, and \`amber\` (from "amber") shows what was saved. Amber Notes runs them, and a quick check that the app opens and its buttons work, on every save: a version that fails isn't shown to the person; the last one that passed keeps running until the failures are fixed.
+
+**Every feature you add gets a test like the ones in tests/app.test.tsx**: do what the person does, check what they see, and check what was saved. When the app changes on purpose, change its tests to match the new behaviour. Never weaken, skip or delete a test just to make it pass: fix the app instead.
 
 ${appGuide()}
 `,
