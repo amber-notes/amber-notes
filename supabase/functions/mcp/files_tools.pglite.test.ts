@@ -29,6 +29,7 @@ Deno.test("notes as files: list, fetch, edit with checks, write, move, rename, p
   const read = await tool(pg, a, "fetch", { id: "Groceries.md" });
   assertEquals([read.id, read.title, read.url], [g, "Groceries", `ambernotes://note/${g}`]);
   assertStringIncludes(read.text, "[[Recipes]]");
+  assertEquals(read.metadata.links, ["Recipes"]);
 
   // Tick, untick and add under a heading, by editing the text; [[links]] stay as written.
   const ticked = await tool(pg, a, "edit", { id: g, edits: [{ old_text: "- [ ] Milk", new_text: "- [x] Milk" }, { old_text: "- [x] Apples", new_text: "- [ ] Apples\n- [ ] Pears" }] });

@@ -6,7 +6,7 @@
 // delete, history, restore, pin, see_app. edit and write answer with checks: real breakage in a
 // note (note_checks.ts), compile and render errors in an app.
 
-import { applyEdits, fitLines, sliceLines, type Edit } from "./notes.ts";
+import { applyEdits, fitLines, sliceLines, wikiLinks, type Edit } from "./notes.ts";
 import { noteChecks } from "./note_checks.ts";
 import { cleanPath, editText, type Project } from "./app_project.ts";
 import { scaffold } from "./app_scaffold.ts";
@@ -130,9 +130,9 @@ export const FILE_TOOLS: Tool[] = ([
 
 /** What the server tells every client when this tool set is on. */
 export const FILE_INSTRUCTIONS = `Amber Notes is the person's notes app. Their notes work like a folder of files: list shows them, fetch reads anything, edit and write change it, create/move/delete/pin/history/restore do the rest, search finds notes by their words. Paths: a note "Work/Acme.md", a folder "Work/", an app "Work/Habits.app/…", a file "pane-file:<id>"; every path also takes a note's id.
-Notes are markdown; the first line is the title. Keep what's there as written: checklists "- [ ] item" / "- [x] item", tables (a "<!-- pane-table: Date=date; Mood=scale 1-5; Walk=choice Yes|No -->" line above a table makes it a tracker: keep values in range), [[wiki links]], links to sub-notes [Title](pane-note:<id>) and files ![name](pane-file:<id>). To tick an item, log a row, or add under a heading, edit the note: copy old_text exactly from fetch. edit and write answer with checks; fix anything they report.
+Notes are markdown; the first line is the title. Keep what's there as written: checklists "- [ ] item" / "- [x] item", tables (a "<!-- pane-table: Date=date; Mood=scale 1-5; Walk=choice Yes|No -->" line above a table makes it a tracker: keep values in range), links to sub-notes [Title](pane-note:<id>) and files ![name](pane-file:<id>). To tick an item, log a row, or add under a heading, edit the note: copy old_text exactly from fetch. edit and write answer with checks; fix anything they report.
 A note can be an app: a React + TypeScript + Tailwind + shadcn/ui project (create type "app"); its README.md says how apps run here. Its data is data.json: read and edit it like any file to change the person's data without opening the app ("remove these dates"); each edit is one change they can undo. Look at an app with see_app.
-Talk about "notes" and "the note's app", never "pages". Locked notes can't be read here.`;
+Talk about "notes" and "the note's app", never "pages". Link notes with [[Title]], [[Title|text]] or [[Title#Heading]]: the app follows them by title (fetch "Title" opens one; fetch lists a note's links). Locked notes can't be read here.`;
 
 export async function runFileTool(name: string, args: Args, ctx: ToolContext): Promise<unknown> {
   return await runIn(FILE_TOOLS, fileHandlers, name, args, ctx);
@@ -339,6 +339,8 @@ export const fileHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
           path, folder: pathOf(n.folder_id, all) + "/", pinned: n.is_pinned, version: Number(n.version), updated: iso(n.updated_at), lines: body.split("\n").length,
           ...(n.trashed_at ? { in_recently_deleted: true } : {}),
           ...(subs.length ? { sub_notes: await Promise.all(subs.map((s) => notePath(tx, c, s, all))) } : {}),
+          // [[wiki links]] as written; fetch a target by its title ("Recipes") to open it.
+          ...(wikiLinks(body).length ? { links: wikiLinks(body) } : {}),
           ...(await hasApp(tx, n.id) ? { app: path.replace(/\.md$/, ".app/"), app_note: "This note is an app: list its files, or fetch its data.json." } : {}),
           ...(shown.truncated ? { shown: `lines ${first}-${first + shown.lines - 1}`, next: `lines: "${first + shown.lines}-"` } : start || end ? { shown: `lines ${first}-${Math.min(end ?? Infinity, body.split("\n").length)}` } : {}),
         },
