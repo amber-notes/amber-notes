@@ -3,7 +3,7 @@
 // and kinds. Run: deno test -A supabase/functions/mcp/site_tools.test.ts
 import { assertEquals } from "jsr:@std/assert@1";
 import { MCP_TOOLS } from "../../../web/lib/mcp-tools.ts";
-import { PROTOTYPE_TOOLS, servedTools, tools } from "./tools.ts";
+import { PRODUCTION_TOOL_NAMES, servedTools, tools } from "./tools.ts";
 
 Deno.test("the site lists exactly the tools production serves", () => {
   const served = servedTools("").map((t) => ({
@@ -14,7 +14,7 @@ Deno.test("the site lists exactly the tools production serves", () => {
   assertEquals(listed, served, "web/lib/mcp-tools.ts differs from what supabase/functions/mcp serves");
 });
 
-Deno.test("prototype tools are served only with AMBER_MCP_TOOLS=pages", () => {
-  assertEquals(servedTools("").filter((t) => PROTOTYPE_TOOLS.has(t.name)), []);
+Deno.test("production serves exactly the named tools; the rest only with AMBER_MCP_TOOLS=pages", () => {
+  assertEquals(servedTools("").map((t) => t.name), [...PRODUCTION_TOOL_NAMES], "every production name is a defined tool, in order");
   assertEquals(servedTools("pages").length, tools.length);
 });
