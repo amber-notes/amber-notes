@@ -7,7 +7,7 @@ for (const round of Deno.args) {
   const dir = new URL(`results/${round}/`, import.meta.url);
   for (const e of Deno.readDirSync(dir)) if (e.name.endsWith(".json")) runs.push(JSON.parse(Deno.readTextFileSync(new URL(e.name, dir))));
 }
-const arm = (r: R) => `${r.model.split(":")[0]} ${r.hidden?.includes("try_app") ? "without" : "with"}`;
+const arm = (r: R & { arm?: string }) => `${r.model.split(":")[0]} ${r.hidden?.includes("try_app") || r.arm === "screens" ? "without" : "with"}`;
 const frac = (r: R, prefix: string) => { const c = r.checks.filter((x) => x.name.startsWith(prefix)); return c.length ? c.filter((x) => x.pass).length / c.length : NaN; };
 const mean = (xs: number[]) => { const v = xs.filter((x) => !Number.isNaN(x)); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : NaN; };
 const pct = (x: number) => Number.isNaN(x) ? "-" : `${Math.round(x * 100)}%`;

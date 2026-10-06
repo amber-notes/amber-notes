@@ -28,6 +28,9 @@ const change = { readOnlyHint: false, destructiveHint: true, openWorldHint: fals
 const add = { readOnlyHint: false, destructiveHint: false, openWorldHint: false } as const;
 const PATH = "A path from list or search: a note \"Work/Acme.md\", a folder \"Work/\", an app file \"Work/Habits.app/src/App.tsx\", an app's data \"Work/Habits.app/data.json\", a file \"pane-file:<id>\"; or a note's id (\"<id>.app/data.json\" for its app).";
 
+/** Trying an app (see_app steps) and its tests on save; off only in the experiment's control arm. */
+export const tryOn = () => Deno.env.get("AMBER_NO_TRY") !== "1";
+
 export const FILE_TOOLS: Tool[] = ([
   {
     name: "search", title: "Search",
@@ -113,7 +116,8 @@ export const FILE_TOOLS: Tool[] = ([
   },
   {
     name: "see_app", title: "See an app",
-    description: "Screenshots of a note's app at iPhone and Mac sizes, light and dark, over a sample with the shape of its data (data: \"real\" only if the person allowed it in Amber Notes), with what each view shows and anything broken.",
+    description: "Screenshots of a note's app at iPhone and Mac sizes, light and dark, over a sample with the shape of its data (data: \"real\" only if the person allowed it in Amber Notes), with what each view shows and anything broken." +
+      (tryOn() ? " With steps, uses the app like a person instead and answers after each step with what's on screen, console errors, what changed in its data, and screenshots: { tap: \"Add\" } (text, label or CSS selector), { type: \"85\", into: \"Weight\" }, { scroll: \"down\" }, { wait: 500 | \"Saved\" }, { press: \"Enter\" }, { resize: \"phone\" | \"desktop\" }, { dark: true }. Nothing is written back." : ""),
     inputSchema: {
       type: "object",
       properties: {
@@ -121,6 +125,7 @@ export const FILE_TOOLS: Tool[] = ([
         widths: { type: "array", items: { type: "integer" }, description: "Default [390, 1280]." },
         themes: { type: "array", items: { type: "string", enum: ["light", "dark"] } },
         data: { type: "string", enum: ["sample", "real"] },
+        ...(tryOn() ? { steps: { type: "array", items: { type: "object" }, description: "Up to 30 steps, done in order on a throwaway copy." } } : {}),
       },
       required: ["id"],
     },
@@ -564,6 +569,7 @@ export const fileHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
   async see_app(tx, a, c) {
     const r = await resolve(tx, c, a.id);
     if (r.kind !== "note" && r.kind !== "app") throw new ToolError("see_app takes the app's note.");
+    if (Array.isArray(a.steps) && a.steps.length && tryOn()) return await appHandlers.try_app(tx, { id: r.note.id, steps: a.steps, data: a.data, screenshots: "last" }, c);
     return await appHandlers.preview_app(tx, { id: r.note.id, widths: a.widths, themes: a.themes, data: a.data }, c);
   },
 };

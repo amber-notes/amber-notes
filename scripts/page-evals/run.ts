@@ -16,7 +16,11 @@ import { closeBrowser, renderPage, type Render } from "../page-render/render.ts"
 import { TASKS, type Check, type Final, type NoteState, type Seed, type Task } from "./tasks.ts";
 import { scoreTask } from "./score.ts";
 
-const args = parseArgs(Deno.args, { string: ["round", "model", "tasks", "server", "concurrency", "budget", "repeat", "label", "hide", "cli-model", "max-turns", "minutes", "tools"], boolean: ["skill", "no-render", "allow-paid"] });
+const args = parseArgs(Deno.args, { string: ["round", "model", "tasks", "server", "concurrency", "budget", "repeat", "label", "hide", "cli-model", "max-turns", "minutes", "tools", "arm"], boolean: ["skill", "no-render", "allow-paid"] });
+// --tools files: the file-like tool set (files_tools.ts) instead of the classic one. --arm screens:
+// the try experiment's control (see_app screenshots only, no tests on save). Set before the server loads.
+if (args.tools === "files") Deno.env.set("AMBER_MCP_TOOLS", "files");
+if (args.arm === "screens") Deno.env.set("AMBER_NO_TRY", "1");
 /** Tools taken out of tools/list for this run (an A/B on check_app and preview_app, say). */
 const hidden = new Set((args.hide ?? "").split(",").map((x) => x.trim()).filter(Boolean));
 const round = args.round ?? "dev";
@@ -84,7 +88,7 @@ if (paid && !args["allow-paid"]) throw new Error(`${modelKey} bills per token. U
 
 // What a chat client tells the model around an MCP server, kept short and neutral.
 const CLIENT_SYSTEM = `You are an AI assistant. The person has connected their Amber Notes app to you with an MCP server, and its tools are available. The person is busy and won't answer questions before you finish: make sensible choices, do the whole task with the tools, then reply briefly with what you did. Today is 2026-10-05.`;
-const variantKey = modelKey + (args.tools === "files" ? "-files" : "") + (args.skill ? "-skill" : "") + (hidden.size ? `-no-${[...hidden].join("-")}` : "");
+const variantKey = modelKey + (args.tools === "files" ? "-files" : "") + (args.arm === "screens" ? "-screens" : "") + (args.skill ? "-skill" : "") + (hidden.size ? `-no-${[...hidden].join("-")}` : "");
 const skill = args.skill ? await Deno.readTextFile(new URL("plugins/amber-notes/skills/note-pages/SKILL.md", root)).catch(() => "") : "";
 
 // MARK: An account and a connection
@@ -278,8 +282,6 @@ async function timed(cmd: Deno.Command): Promise<Deno.CommandOutput> {
   const timer = setTimeout(() => { try { p.kill("SIGTERM"); } catch { /* gone */ } }, Number(args.minutes ?? 30) * 60_000);
   try { return await p.output(); } finally { clearTimeout(timer); }
 }
-// --tools files: the file-like tool set (files_tools.ts) instead of the classic one.
-if (args.tools === "files") Deno.env.set("AMBER_MCP_TOOLS", "files");
 // Without try_app and run_app_tests (an experiment's control arm), the guide doesn't mention them.
 if (args.hide?.split(",").includes("try_app")) Deno.env.set("AMBER_GUIDE_WITHOUT_TRY", "1");
 const CLI_ENV = (() => { const e = Deno.env.toObject(); for (const k of ["ANTHROPIC_API_KEY", "OPENAI_API_KEY", "OPENROUTER_API_KEY", "RENDER_SECRET"]) delete e[k]; return e; })();
@@ -499,14 +501,14 @@ async function runTask(task: Task, rep = 1) {
   const usd = (session.usage as { usd?: number }).usd ?? cost(session.usage);
   await Deno.writeTextFile(SPEND, JSON.stringify({ at: new Date().toISOString(), round, task: task.id, model: model.id, via: model.provider, usd: +usd.toFixed(4), usage: session.usage }) + "\n", { append: true });
   const result = {
-    task: task.id, rep, model: model.id, round, skill: !!skill, ...(hidden.size ? { hidden: [...hidden] } : {}), seconds: Math.round((performance.now() - t0) / 1000),
+    task: task.id, rep, model: model.id, round, skill: !!skill, ...(args.tools ? { tools: args.tools } : {}), ...(args.arm ? { arm: args.arm } : {}), ...(hidden.size ? { hidden: [...hidden] } : {}), seconds: Math.round((performance.now() - t0) / 1000),
     score: checks.filter((c) => c.pass).length / checks.length, passed: checks.filter((c) => c.pass).length, total: checks.length,
     checks, tool_calls: session.log.length, tool_errors: session.log.filter((l) => l.error).length, usage: session.usage, usd: +usd.toFixed(4),
     page_bytes: after.page ? new TextEncoder().encode(after.page).length : 0, data: after.data,
     answer: session.answer, calls: session.log.map((l) => ({ ...l, args: JSON.parse(short(l.args, 800).startsWith("{") ? JSON.stringify(Object.fromEntries(Object.entries(l.args).map(([k, v]) => [k, short(v, 300)]))) : "{}") })),
     render: render ? { ...render, markdownAfter: undefined } : null,
     breakage, walk,
-    used: { try_app: session.log.filter((l) => l.name.endsWith("try_app")).length, run_app_tests: session.log.filter((l) => l.name.endsWith("run_app_tests")).length,
+    used: { try_app: session.log.filter((l) => l.name.endsWith("try_app") || (l.name.endsWith("see_app") && Array.isArray((l.args as { steps?: unknown }).steps))).length, see_app: session.log.filter((l) => l.name.endsWith("see_app")).length, run_app_tests: session.log.filter((l) => l.name.endsWith("run_app_tests")).length,
       test_files: Object.keys(((): Record<string, string> => { try { return JSON.parse(after.page ?? "{}").files ?? {}; } catch { return {}; } })()).filter((p) => /^\/tests?\//.test(p)).length },
   };
   await Deno.writeTextFile(new URL(`${stem}.json`, outDir), JSON.stringify(result, null, 2));

@@ -113,7 +113,7 @@ export async function saveProject(tx: Tx, c: Call, n: Note, unlinked: Project, c
   });
   const found = typeof r === "string" ? null : renderedFindings(r);
   // The project's own tests run on every save when it has them.
-  const tested = Object.keys(p.files).some(isTest) && typeof r !== "string"
+  const tested = Deno.env.get("AMBER_NO_TRY") !== "1" && Object.keys(p.files).some(isTest) && typeof r !== "string"
     ? await render({ html: stored, markdown: sampleNote(body, t), data: sampleData(await dataOf(tx, c, n.id), t), today: t, tests: true }) : null;
   const tests = tested && typeof tested !== "string" ? testSummary(tested) : null;
   // Errors: the app is broken (an import to nothing, a script error, overflow…). Notes: information.
