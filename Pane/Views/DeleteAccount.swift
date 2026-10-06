@@ -49,6 +49,8 @@ struct DeleteAccountButton: View {
             PushRegistration.shared.accountDeleted()
             await backend.signOut()
             dismiss()
+        } catch FunctionsError.httpError(_, let data) where Backend.deletePausedMessage(data) != nil {
+            self.error = Backend.deletePausedMessage(data)
         } catch {
             self.error = "Couldn't delete your account. Check your connection and try again."
         }
@@ -60,6 +62,25 @@ extension Backend {
     func deleteAccount() async throws {
         guard let client else { throw URLError(.userAuthenticationRequired) }
         try await client.functions.invoke("account", options: FunctionInvokeOptions(method: .delete))
+    }
+
+    /// The server's refusal for 72 hours after a password reset (supabase/functions/account/pause.ts),
+    /// in words, or nil for any other answer.
+    nonisolated static func deletePausedMessage(_ data: Data) -> String? {
+        struct Reply: Decodable { let hint: String?; let until: String? }
+        guard let reply = try? JSONDecoder().decode(Reply.self, from: data), reply.hint == "paused_after_reset" else { return nil }
+        let base = "Deleting your account is paused for 72 hours after a password reset, to protect your notes."
+        guard let until = reply.until.flatMap(pauseDate) else { return base + " Try again in 3 days." }
+        return base + " Try again on \(until.formatted(date: .long, time: .shortened))."
+    }
+
+    /// `2026-10-05T14:30:00.000Z` or `2026-10-05T14:30:00Z`.
+    nonisolated static func pauseDate(_ text: String) -> Date? {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let d = f.date(from: text) { return d }
+        f.formatOptions = [.withInternetDateTime]
+        return f.date(from: text)
     }
 }
 

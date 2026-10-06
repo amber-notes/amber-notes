@@ -1,0 +1,135 @@
+/* The parts a how-to post is built from (lib/PostParts.tsx, lib/PostCta.tsx, lib/Loop.tsx): the short
+   answer at the top, menu paths, numbered steps, a decorative banner, a looping capture and the one
+   call to action. The site's tokens, so they follow light and dark. */
+
+/* ── The short answer, before anything else: plain text set a little larger, closed by the dashed
+   rule the blog already uses between sections. No card and no side stripe. ── */
+.answer { margin: 0 0 32px; padding: 0 0 22px; border-bottom: 1.5px dashed var(--line); font-size: 18px; }
+.answerLabel { display: flex; align-items: center; gap: 6px; margin: 0 0 8px; font-size: 12.5px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--link); }
+.answer > :last-child { margin-bottom: 0; }
+.answer ul, .answer ol { margin-bottom: 12px; }
+.jump.jump { margin: 14px 0 0; color: var(--muted); font-size: 15px; line-height: 1.8; }
+.jumpDot { margin: 0 8px; color: var(--muted); }
+/* Each link and the dot before it stay together, so a label never breaks across lines. */
+.jumpItem { white-space: nowrap; }
+
+.leaf { flex: none; color: var(--amber); }
+
+/* ── A menu path: Settings › Apps › Notes › Password ── */
+.path { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 14px; font-size: 15px; line-height: 1.3; }
+.step { display: inline-flex; align-items: center; gap: 6px; }
+/* The › closes each step but the last, so a wrapped path never starts a line with one. */
+.step:not(:last-child)::after { content: "›"; color: var(--muted); font-weight: 600; }
+.step > span { padding: 4px 9px; border-radius: 8px; background: var(--card); font-weight: 600; box-shadow: 0 0 0 1px var(--line), 0 1px 0 var(--line); }
+.path kbd { margin-left: 4px; padding: 3px 8px; border-radius: 7px; font: 600 14px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); box-shadow: inset 0 0 0 1px var(--line), 0 1px 0 var(--line); }
+.paths { display: grid; gap: 4px 16px; grid-template-columns: max-content minmax(0, 1fr); align-items: baseline; margin: 0 0 18px; }
+.paths > dt { font-size: 14px; font-weight: 700; color: var(--muted); }
+.paths > dd { margin: 0; }
+.paths .path { margin: 0 0 6px; }
+@media (max-width: 520px) { .paths { grid-template-columns: minmax(0, 1fr); } .paths > dd { margin-bottom: 8px; } }
+
+/* ── Numbered steps: an amber number beside each, no cards ── */
+/* Doubled so it outranks the article's own list style (legal.module.css), whichever loads last. */
+.steps.steps { list-style: none; counter-reset: step; margin: 0 0 20px; padding: 0; display: grid; gap: 16px; }
+.steps > li { counter-increment: step; position: relative; padding: 1px 0 0 42px; min-height: 28px; }
+.steps > li::marker { content: none; }
+.steps > li::before {
+  content: counter(step); position: absolute; left: 0; top: 0; width: 28px; height: 28px; border-radius: 50%;
+  display: grid; place-items: center; background: var(--amber); color: #2a1d10; font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums;
+}
+.steps > li > strong:first-child { display: block; margin-bottom: 2px; }
+.steps > li > :last-child { margin-bottom: 0; }
+.steps .path { margin: 6px 0 0; }
+
+/* ── A decorative banner: paper-cut art, a fixed shape so nothing moves as it loads ── */
+.banner { margin: 0 0 22px; border-radius: 20px; box-shadow: 0 0 0 1px var(--line), 0 14px 30px -18px rgba(60, 30, 5, 0.45); overflow: hidden; aspect-ratio: 5 / 2; background: var(--soft); }
+.banner img { display: block; width: 100%; height: 100%; object-fit: cover; }
+
+/* ── A short looping capture of the app ── */
+.loop { margin: 8px 0 28px; }
+.loopStage { display: grid; place-items: center; padding: clamp(16px, 4vw, 36px); border-radius: 20px; background: var(--soft); }
+.loopBare { display: grid; place-items: center; }
+.loopFrame {
+  position: relative; width: min(100%, var(--w)); border-radius: 12px; overflow: hidden; background: #fff;
+  box-shadow: 0 0 0 0.5px rgba(60, 20, 0, 0.22), 0 18px 36px -12px rgba(60, 20, 0, 0.32), 0 2px 6px rgba(60, 20, 0, 0.12);
+}
+.loopFrame video { display: block; width: 100%; height: auto; }
+.loopToggle {
+  position: absolute; right: 10px; top: 10px; min-width: 44px; min-height: 44px; padding: 0 12px; border: 0; border-radius: 22px; cursor: pointer;
+  background: rgba(42, 29, 16, 0.72); color: #fff4e6; font-family: inherit; font-weight: 600; font-size: 13px; line-height: 1;
+}
+.loopToggle:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.loopCaption { margin-top: 10px; color: var(--muted); font-size: 14px; line-height: 1.45; text-align: center; text-wrap: balance; }
+
+/* ── The one call to action, at the end of "How Amber Notes helps" ── */
+.cta { margin: 18px 0 8px; padding: 22px; border-radius: 20px; background: var(--card); box-shadow: 0 0 0 1px var(--line); display: grid; gap: 14px; }
+.ctaTitle { margin: 0; font-size: 19px; line-height: 1.25; font-weight: 750; letter-spacing: -0.01em; }
+.cta p { margin: 0; }
+.ctaFine { color: var(--muted); font-size: 14px; }
+.cta a.ctaButton {
+  justify-self: start; display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 50px; padding: 0 24px;
+  border-radius: 14px; background: var(--cta-bg); color: var(--cta-ink); font-size: 16px; font-weight: 700; text-decoration: none;
+}
+.cta a.ctaButton:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
+@media (hover: hover) { .cta a.ctaButton:hover { background: color-mix(in srgb, var(--cta-bg) 86%, var(--amber)); } }
+@media (prefers-reduced-motion: no-preference) {
+  .cta a.ctaButton { transition: transform 0.12s ease-out, background-color 0.15s ease-out; }
+  .cta a.ctaButton:active { transform: scale(0.97); }
+}
+/* Other platforms' versions sit in the same card, left-aligned like the rest of it. */
+.cta :global(.pi) { justify-items: start; text-align: left; gap: 10px; }
+.cta :global(.pi-line) { max-width: none; font-size: 16px; }
+.cta a:global(.pi-send) { background: var(--cta-bg); color: var(--cta-ink); text-decoration: none; }
+
+/* ── Something to keep: a tinted block, its title and a Copy button on one line, the text below.
+   Doubled classes outrank the article's own p and pre styles (legal.module.css). ── */
+.keep { margin: 8px 0 24px; padding: 14px 16px 16px; border-radius: 16px; background: var(--soft); }
+.keepHead { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.keepTitle.keepTitle { margin: 0; font-size: 16px; font-weight: 750; }
+.keep.keep pre { margin: 0; padding: 0; background: none; border-radius: 0; tab-size: 2; }
+/* Prompts and plain text wrap; code keeps its lines and scrolls sideways if it must. */
+.keep.keep pre.plain { white-space: pre-wrap; font-family: inherit; font-size: 16px; line-height: 1.55; }
+.keepNote.keepNote { margin: 12px 0 0; color: var(--muted); font-size: 14px; line-height: 1.45; }
+.copy {
+  flex: none; display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 14px; border: 0; border-radius: 12px; cursor: pointer;
+  background: var(--cta-bg); color: var(--cta-ink); font-family: inherit; font-weight: 650; font-size: 14px; line-height: 1;
+}
+.copy[data-done] { background: var(--amber); color: #2a1d10; }
+.copy:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+@media (prefers-reduced-motion: no-preference) {
+  .copy { transition: transform 0.12s ease-out, background-color 0.15s ease-out; }
+  .copy:active { transform: scale(0.96); }
+}
+
+/* ── A small chooser: a question, its answers as buttons, then what to do ── */
+.chooser { margin: 8px 0 24px; padding: 18px; border-radius: 20px; background: var(--soft); }
+.chooser fieldset { margin: 0 0 14px; padding: 0; border: 0; }
+.chooser legend { padding: 0; margin-bottom: 10px; font-weight: 750; font-size: 16px; }
+.choices { display: flex; flex-wrap: wrap; gap: 8px; }
+.choices button {
+  min-height: 44px; padding: 0 16px; border: 0; border-radius: 22px; cursor: pointer; background: var(--bg); color: var(--ink);
+  font-family: inherit; font-weight: 600; font-size: 15px; line-height: 1.2; box-shadow: 0 0 0 1px var(--line);
+}
+.choices button[aria-pressed="true"] { background: var(--cta-bg); color: var(--cta-ink); box-shadow: none; }
+.choices button:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+@media (hover: hover) { .choices button:not([aria-pressed="true"]):hover { box-shadow: 0 0 0 1.5px var(--amber); } }
+.verdict { padding: 14px 16px; border-radius: 14px; background: var(--bg); }
+.verdict > :last-child { margin-bottom: 0; }
+.verdictTitle.verdictTitle { margin: 0 0 6px; font-weight: 750; }
+.chooser .restart { margin-top: 10px; min-height: 36px; padding: 0; border: 0; background: none; color: var(--link); font-family: inherit; font-weight: 600; font-size: 14px; line-height: 1; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+
+/* A checklist drawn like Notes draws one: an empty round box before each line. */
+.ticks.ticks { list-style: none; margin: 0; padding: 4px 2px; display: grid; gap: 10px; }
+.ticks > li { position: relative; padding-left: 32px; line-height: 1.45; }
+.ticks > li::marker { content: none; }
+.ticks > li::before { content: ""; position: absolute; left: 0; top: 1px; width: 20px; height: 20px; box-sizing: border-box; border-radius: 50%; border: 1.5px solid color-mix(in srgb, var(--muted) 60%, transparent); }
+
+/* ── A real capture of Apple's apps: the window or dialog itself on the page, with a soft shadow ── */
+.capture { margin: 12px 0 30px; }
+.capture picture { display: block; width: min(100%, var(--w)); margin: 0 auto; }
+@media (max-width: 600px) { .capture picture { width: min(100%, var(--pw, var(--w))); } }
+.capture img {
+  display: block; width: 100%; height: auto; border-radius: 6px;
+  filter: drop-shadow(0 14px 22px rgba(60, 25, 0, 0.22)) drop-shadow(0 1px 2px rgba(60, 25, 0, 0.18));
+}
+.captureCaption { margin-top: 12px; color: var(--muted); font-size: 14px; line-height: 1.45; text-align: center; text-wrap: balance; }

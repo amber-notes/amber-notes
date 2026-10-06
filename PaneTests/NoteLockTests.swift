@@ -141,6 +141,23 @@ private let fast = 1_000
     }
 }
 
+/// A server that holds each fetch until it's told to answer.
+private actor HeldLockRemote: NoteLockRemote {
+    let settings: LockSettings
+    private var held: CheckedContinuation<Void, Never>?
+    private(set) var asked = false
+    init(settings: LockSettings) { self.settings = settings }
+
+    func fetch() async throws -> LockSettings? {
+        await withCheckedContinuation { held = $0; asked = true }
+        return settings
+    }
+
+    func answer() { held?.resume(); held = nil }
+    func create(_ settings: LockSettings) async throws {}
+    func changePassword(_ settings: LockSettings, expecting keyID: String, notes: [ResealedNote]) async throws -> [UUID: Int64] { [:] }
+}
+
 @MainActor @Suite struct NoteVaultTests {
     let context: ModelContext
     let remote = FakeLockRemote()
@@ -159,6 +176,22 @@ private let fast = 1_000
         let v = NoteVault(keyStore: MemoryKeyStore(biometryName: biometry), remote: remote ?? self.remote, defaults: defaults, iterations: fast)
         v.attach(account: UUID(uuidString: "00000000-0000-0000-0000-00000000000a"), remote: remote ?? self.remote)
         return v
+    }
+
+    /// Sign-in no longer waits for the lock's setup, so an answer can come after the account
+    /// changed: it belongs to the one that asked.
+    @Test func aLateAnswerForTheLastAccountIsNotTakenByTheNext() async throws {
+        let other = try device()
+        try await other.setUp(password: "hunter22", hint: nil)
+        let held = HeldLockRemote(settings: try #require(other.settings))
+        let vault = NoteVault(keyStore: MemoryKeyStore(), defaults: MemoryDefaults(), iterations: fast)
+        vault.attach(account: UUID(), remote: held)
+        let refresh = Task { await vault.refresh() }
+        while !(await held.asked) { await Task.yield() }
+        vault.attach(account: UUID(), remote: FakeLockRemote())
+        await held.answer()
+        await refresh.value
+        #expect(!vault.isSetUp)
     }
 
     @Test func lockingSealsTheTextAndKeepsOnlyTheTitle() async throws {

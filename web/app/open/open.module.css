@@ -35,3 +35,6 @@
 /* The quiet links under the card's buttons take a finger. */
 .again a, .back { display: inline-flex; align-items: center; min-height: 44px; }
 .again, .backRow { margin: -6px 0; }
+/* A place's steps by hand (PlaceCard), when the app didn't open. */
+.steps { width: 100%; margin: 4px 0 0; padding-left: 1.4em; text-align: left; color: var(--ink); font-size: 15.5px; line-height: 1.5; }
+.steps li { margin: 4px 0; }

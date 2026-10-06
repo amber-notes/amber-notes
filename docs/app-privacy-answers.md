@@ -5,8 +5,8 @@ App Store Connect → Amber Notes: Notes & Lists → App Privacy. Click through 
 1. **Privacy Policy URL:** https://ambernotes.app/privacy
 2. **Get Started → "Do you or your third-party partners collect data from this app?"** → **Yes, we collect data from this app**.
 3. Tick these data types, and nothing else:
-   - **Contact Info → Email Address** (the account email, from Sign in with Apple or email sign-up)
-   - **Contact Info → Name** (the profile name you set, or the name Sign in with Apple shares)
+   - **Contact Info → Email Address** (the account email, from Sign in with Apple, Sign in with Google or email sign-up)
+   - **Contact Info → Name** (the profile name you set, or the name Sign in with Apple or Google shares)
    - **User Content → Photos or Videos** (images you add to notes, and your profile photo)
    - **User Content → Other User Content** (your notes, folders and files)
    - **Identifiers → User ID** (the account identifier)

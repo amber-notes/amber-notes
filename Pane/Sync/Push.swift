@@ -178,8 +178,10 @@ final class PushRegistration {
     }
 
     /// Signed in (with the key open): register, and send the token for this account. Another
-    /// account than before sends it again.
+    /// account than before sends it again. A token a sign-out left behind is forgotten first, so
+    /// the forget can't land after this registration and delete it.
     func attach(account: UUID, service: PushTokenService) async {
+        await retryPendingForget(service: service)
         if self.account != account { sent = nil }
         self.account = account
         self.service = service

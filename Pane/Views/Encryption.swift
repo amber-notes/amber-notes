@@ -19,6 +19,7 @@ struct KeyGateView: View {
     @FocusState private var focused: Bool
     @Environment(\.displayScale) private var displayScale
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// What you chose: `auto` is the code another device scans while the key isn't here;
     /// `noDevice` lists the other ways, `keychain` is waiting for iCloud Keychain.
@@ -70,6 +71,7 @@ struct KeyGateView: View {
                 .frame(minWidth: 300, maxWidth: 400)
                 .glassEffect(.regular, in: .rect(cornerRadius: 28))
                 .padding(20)
+                .padding(.top, 20)
                 .frame(maxWidth: .infinity)
         }
         .scrollBounceBehavior(.basedOnSize)
@@ -79,8 +81,13 @@ struct KeyGateView: View {
 
     @ViewBuilder private var card: some View {
         VStack(spacing: 22) {
-            AppMark(size: 60)
+            // The sign-in card's mark, in the same place, so it stays put from one card to the next.
+            AppMark(size: 72)
+            // One screen fades into the next while the card eases to its new height: the mark
+            // stays put and nothing snaps.
             content
+                .id(Self.shown(crypto.phase, screen))
+                .transition(.opacity)
             if let error {
                 Text(error)
                     .font(.footnote)
@@ -91,6 +98,7 @@ struct KeyGateView: View {
             }
         }
         .animation(.snappy(duration: 0.2), value: error)
+        .animation(reduceMotion ? nil : .smooth(duration: 0.3), value: Self.shown(crypto.phase, screen))
         .onChange(of: crypto.phase) { _, _ in
             // The key arrived (or the account changed) while you were on another screen.
             if crypto.phase == .ready { screen = .auto }
@@ -107,8 +115,16 @@ struct KeyGateView: View {
         case .recovery: recoveryEntry
         case .waiting: waiting
         case .unreachable: unreachable
-        case .checking: ProgressView().controlSize(.regular).frame(height: 120)
+        case .checking: checking
         }
+    }
+
+    /// A check that takes this long offers Sign out under the spinner: a server that takes
+    /// connections but never answers shouldn't hold you here until the fetch gives up.
+    static let signOutAfter: Duration = .seconds(4)
+
+    private var checking: some View {
+        CheckingScreen { signOut }
     }
 
     private func heading(_ title: String, _ message: String?) -> some View {
@@ -247,8 +263,7 @@ struct KeyGateView: View {
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
                 mainButton("Unlock notes", id: "e2ee.submit", enabled: canSubmitRecovery) {
-                    try await crypto.recover(typed: recovery)
-                    recovery = ""
+                    try await unlock()
                 }
             }
             VStack(spacing: 10) {
@@ -262,7 +277,15 @@ struct KeyGateView: View {
     private var canSubmitRecovery: Bool { recovery.filter { $0.isLetter || $0.isNumber }.count >= 28 }
 
     private func submitRecovery() {
-        run { try await crypto.recover(typed: recovery); recovery = "" }
+        run { try await unlock() }
+    }
+
+    /// The keyboard goes down first, the usual way: left up, it vanishes in one frame when the
+    /// next screen takes the field away.
+    private func unlock() async throws {
+        focused = false
+        try await crypto.recover(typed: recovery)
+        recovery = ""
     }
 
     private var startFresh: some View {
@@ -310,8 +333,8 @@ struct KeyGateView: View {
         screen = .auto
     }
 
-    /// Deleting everything takes a fresh sign-in, the way this account signs in: Apple once an
-    /// Apple ID is linked, otherwise its email and password. Then it starts fresh.
+    /// Deleting everything takes a fresh sign-in, the way this account signs in: Apple or Google
+    /// once one is linked, otherwise its email and password. Then it starts fresh.
     @ViewBuilder private var signInAgain: some View {
         Text(Copy.signInAgain)
             .font(.subheadline)
@@ -319,21 +342,15 @@ struct KeyGateView: View {
             .multilineTextAlignment(.center)
             .fixedSize(horizontal: false, vertical: true)
             .accessibilityIdentifier("e2ee.signInAgain")
-        if backend.apple != nil {
-            AppleAuthButton(label: .signIn, height: Row.height, title: "Sign in with Apple", web: webSignIn) { result in
-                switch result {
-                case .success(let credential):
-                    run {
-                        try await backend.signInWithApple(credential)
-                        try await startFreshAfterSignIn()
-                    }
-                case .failure(.canceled): break
-                case .failure(let failure): error = AppleSignIn.message(for: failure)
+        if backend.apple != nil || backend.google {
+            if backend.apple != nil { appleAgain }
+            if backend.google {
+                GoogleAuthButton(height: Row.height, cornerRadius: Row.radius) {
+                    run { try await signInWithGoogleAndStartFresh() }
                 }
+                .disabled(working)
+                .accessibilityIdentifier("e2ee.signInGoogle")
             }
-            .disabled(working)
-            .opacity(working ? 0.6 : 1)
-            .accessibilityIdentifier("e2ee.signInApple")
         } else {
             field {
                 SecureField("Password for \(email)", text: $password)
@@ -345,6 +362,44 @@ struct KeyGateView: View {
                 try await signInAndStartFresh()
             }
         }
+    }
+
+    private var appleAgain: some View {
+        AppleAuthButton(label: .signIn, height: Row.height, cornerRadius: Row.radius, title: "Sign in with Apple", web: webSignIn) { result in
+            switch result {
+            case .success(let credential):
+                run {
+                    try await backend.signInWithApple(credential)
+                    try await startFreshAfterSignIn()
+                }
+            case .failure(.canceled): break
+            case .failure(let failure): error = AppleSignIn.message(for: failure)
+            }
+        }
+        .disabled(working)
+        .opacity(working ? 0.6 : 1)
+        .accessibilityIdentifier("e2ee.signInApple")
+    }
+
+    /// Google's chooser can sign in to any Google account, so a different one would sign in to a
+    /// different Amber Notes account: that one is signed out again and nothing is deleted.
+    private func signInWithGoogleAndStartFresh() async throws {
+        let before = backend.userID
+        let after: UUID?
+        do { after = try await backend.signInWithGoogle(hint: email) } catch where Backend.isCanceled(error) { return } catch {
+            throw KeyGateFailure(message: Backend.googleMessage(for: error))
+        }
+        guard Self.sameAccount(before: before, after: after) else {
+            await backend.signOut()
+            throw KeyGateFailure(message: "That Google account signs in to a different Amber Notes account. Nothing was deleted.")
+        }
+        try await startFreshAfterSignIn()
+    }
+
+    /// Start fresh only ever runs on the account that asked for it.
+    nonisolated static func sameAccount(before: UUID?, after: UUID?) -> Bool {
+        guard let before, let after else { return false }
+        return before == after
     }
 
     private var email: String {
@@ -476,4 +531,26 @@ enum KeyCopy {
     ]
     static let signInAgain = "To delete your notes, sign in again first."
 
+}
+
+/// The spinner while the key check is out, with Sign out once it has taken a while. Its place is
+/// kept from the start so nothing moves when it appears.
+private struct CheckingScreen<SignOut: View>: View {
+    @ViewBuilder var signOut: SignOut
+    @State private var slow = false
+
+    var body: some View {
+        VStack(spacing: 18) {
+            ProgressView().controlSize(.regular).frame(height: 120)
+            signOut
+                .opacity(slow ? 1 : 0)
+                .disabled(!slow)
+                .accessibilityHidden(!slow)
+        }
+        .animation(.easeOut(duration: 0.25), value: slow)
+        .task {
+            guard (try? await Task.sleep(for: KeyGateView.signOutAfter)) != nil else { return }
+            slow = true
+        }
+    }
 }

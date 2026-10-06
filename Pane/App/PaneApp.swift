@@ -317,6 +317,8 @@ struct AppGate: View {
     @State private var setup = SetupStore()
     /// "Enjoying Amber Notes?", once, after a week of use.
     @State private var shareAsk = ShareAskStore()
+    /// "How did you hear about Amber Notes?", once, for a new account.
+    @State private var heardFrom = HeardFromStore()
     /// Asks to approve an AI connection from a browser, while signed in with the key here.
     @State private var connectAsks: ConnectAsks?
     /// "Connected ChatGPT", "Your notes were deleted…": said once on each device.
@@ -363,11 +365,19 @@ struct AppGate: View {
         }
     }
 
+    /// The notes stay closed until this device has the account's key; the first time it does,
+    /// one screen says what that means. Just signed in, before the key check has started, it's
+    /// the key screen too (the library flashed by for a few frames).
+    private var keyGateShown: Bool {
+        (crypto.phase != .ready && crypto.phase != .off) || crypto.needsWelcome
+            || (backend.client != nil && crypto.account != backend.userID)
+    }
+
     private var gate: some View {
         Group {
             switch backend.state {
             case .signedOut:
-                SignInView(backend: backend)
+                WelcomeFlow(backend: backend)
                     #if os(macOS)
                     .fixedSize()
                     .onGeometryChange(for: CGSize.self, of: \.size) { cardSize = $0 }
@@ -377,9 +387,7 @@ struct AppGate: View {
                     .toolbar(removing: .title)
                     #endif
                     .transition(.opacity)
-            case .signedIn where (crypto.phase != .ready && crypto.phase != .off) || crypto.needsWelcome:
-                // The notes stay closed until this device has the account's key; the first time
-                // it does, one screen says what that means.
+            case .signedIn where keyGateShown:
                 KeyGateView(crypto: crypto, backend: backend)
                     #if os(macOS)
                     .toolbar(removing: .title)
@@ -391,9 +399,11 @@ struct AppGate: View {
                     .environment(sync)
                     .environment(setup)
                     .shareAskSheet(shareAsk)
+                    .heardFromSheet(heardFrom)
                     .task {
                         try? await Task.sleep(for: .seconds(1.2))
                         shareAsk.showIfForced()
+                        heardFrom.showIfForced()
                     }
                     .modifier(NoticeAlerts(notices: notices, crypto: crypto, problem: $noticeProblem))
                     .transition(.opacity)
@@ -414,11 +424,10 @@ struct AppGate: View {
                 KeyDevices.shared.attach(account: backend.userID, server: backend.client.map { SupabaseKeyDevices(client: $0) })
                 await removal.resumeIfInterrupted()
             }
-            // A sign-out that was offline removes this device's push token now.
-            if let client = backend.client { await PushRegistration.shared.retryPendingForget(service: SupabasePushTokens(client: client)) }
             guard case .signedIn = backend.state, let client = backend.client else {
                 setup.attach(account: nil, service: nil)
                 shareAsk.attach(account: nil, service: nil)
+                heardFrom.attach(account: nil, service: nil)
                 if backend.state == .disabled { NoteVault.shared.attach(account: nil, remote: nil) } else { NoteVault.shared.lockNow() }
                 AccountCrypto.shared.signedOut()
                 KeyDevices.shared.attach(account: nil, server: nil)
@@ -428,15 +437,21 @@ struct AppGate: View {
                 connectAsks = nil
                 await notices?.stop()
                 notices = nil
+                // A sign-out that was offline removes this device's push token now. Signed in,
+                // registering does it first (PushRegistration.attach).
+                if let client = backend.client { await PushRegistration.shared.retryPendingForget(service: SupabasePushTokens(client: client)) }
                 return
             }
             setup.attach(account: backend.userID, service: SupabaseSetup(client: client))
             shareAsk.attach(account: backend.userID, service: SupabaseShareAsk(client: client))
+            heardFrom.attach(account: backend.userID, service: SupabaseHeardFrom(client: client))
             NoteVault.shared.attach(account: backend.userID, remote: SupabaseLockRemote(client: client))
-            await NoteVault.shared.refresh()
             KeyDevices.shared.attach(account: backend.userID, server: SupabaseKeyDevices(client: client))
             KeyDevices.shared.removedHere = { await removedFromDevices() }
-            await AccountCrypto.shared.attach(account: backend.userID, server: SupabaseAccountKeys(client: client))
+            await SignedInStartup(
+                refreshLock: { await NoteVault.shared.refresh() },
+                checkKey: { await AccountCrypto.shared.attach(account: backend.userID, server: SupabaseAccountKeys(client: client)) }
+            ).run()
             // Without the key the gate asks for it; the library starts when it's open (below).
             guard AccountCrypto.shared.allowsSync else { return }
             await openLibrary(client)
@@ -522,7 +537,7 @@ struct AppGate: View {
 
     /// The share ask, a notice or the recovery key alert is on screen.
     private var somethingAsking: Bool {
-        shareAsk.visible || notices?.current != nil || crypto.recoveryKeyChangeNeedsSaying
+        shareAsk.visible || heardFrom.visible || notices?.current != nil || crypto.recoveryKeyChangeNeedsSaying
     }
 
     /// Another device with the key removed this one: its copy of the notes and of the key go,
@@ -582,6 +597,8 @@ struct AppGate: View {
         // Tips wait for this: never a tip for something this account has used anywhere.
         await FeatureUse.refresh()
         await shareAsk.refresh()
+        // A new account is asked how it heard of us, once the notes are open.
+        await heardFrom.refresh()
         await InstallID.report(client)
     }
 
@@ -590,7 +607,7 @@ struct AppGate: View {
         guard backend.state != .signedOut else { return }
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(1.5))
-            guard backend.state != .signedOut, phase == .active else { return }
+            guard backend.state != .signedOut, phase == .active, !heardFrom.visible else { return }
             shareAsk.moment(setupVisible: setup.visible || WhatsNewStore.shared.card != nil, tipShowing: PaneTips.all.contains { $0.shouldDisplay })
         }
     }
@@ -653,7 +670,7 @@ private struct WindowCloser: NSViewRepresentable {
 
 /// Captures only (`-uitest`): one screen on its own, or the setup card at a given step, so the
 /// iPhone simulator can show them without anyone tapping through.
-///   `-captureScreen connect`, `connect-chatgpt`, `connect-claude`, `connected-chatgpt`, `connect-incredible`, `settings`, `template`, `template-added`, `copy`, `signin`, `new-device`, `add-device` (the sheet as this device opens it), `add-device-type`, `add-device-confirm`, `add-device-done`, `key-kept`, `key-kept-unconfirmed`, `key-kept-only` or `device-added-notice`; `-captureSetup 1…4` (4: the moment after your AI's first edit).
+///   `-captureScreen connect`, `connect-chatgpt`, `connect-claude`, `connected-chatgpt`, `connect-incredible`, `settings`, `template`, `template-added`, `copy`, `signin`, `welcome`, `welcome-signin`, `welcome-signin-focused`, `new-device`, `add-device` (the sheet as this device opens it), `add-device-type`, `add-device-confirm`, `add-device-done`, `key-kept`, `key-kept-unconfirmed`, `key-kept-only`, `key-checking` or `device-added-notice`; `-captureSetup 1…4` (4: the moment after your AI's first edit).
 struct CaptureScreen: View {
     let name: String
     let backend: Backend
@@ -727,8 +744,12 @@ struct CaptureScreen: View {
         case "template", "template-added", "copy":
             // "Use this template" ready to add, just added, and "Use this note".
             NoteSourceCapture(name: name)
-        case let screen where screen.hasPrefix("add-device") || screen == "new-device" || screen.hasPrefix("key-kept") || screen == "device-added-notice":
+        case let screen where screen.hasPrefix("add-device") || screen == "new-device" || screen == "key-checking" || screen.hasPrefix("key-kept") || screen == "device-added-notice":
             AddDeviceCapture(name: screen)
+        case "welcome":
+            WelcomeFlow(backend: backend, stage: .welcome)
+        case "welcome-signin", "welcome-signin-focused":
+            WelcomeFlow(backend: backend, stage: .signIn(returning: false), focusEmail: name.hasSuffix("-focused"))
         default:
             SignInView(backend: backend)
         }
@@ -823,5 +844,19 @@ private struct ConfirmDisconnect: ViewModifier {
             } message: { _ in
                 Text("It loses access to your notes right away.")
             }
+    }
+}
+
+/// Just signed in, the key gate waits on the key check alone: its fetch gives up after a few
+/// seconds and says the server can't be reached. The note lock's setup is fetched alongside it,
+/// never ahead of it, since that request waits as long as the network lets it.
+@MainActor
+struct SignedInStartup {
+    var refreshLock: @MainActor () async -> Void
+    var checkKey: @MainActor () async -> Void
+
+    func run() async {
+        Task { await refreshLock() }
+        await checkKey()
     }
 }

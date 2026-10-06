@@ -1,6 +1,6 @@
 # End-to-end encryption: the design as built
 
-Status: built on `feature/e2ee`, not deployed. The migration (`supabase/migrations/20261001090000_e2ee.sql`) and the function deploys wait for the security review. This replaces the earlier design draft (password-wrapped key, device approval protocol, web approval page). Emil's final decisions override it where they differ, and they're what's below.
+Status: live since release 1.1 (30 September 2026; PR #70). This replaces the earlier design draft (password-wrapped key, device approval protocol, web approval page). Emil's final decisions override it where they differ, and they're what's below.
 
 The requirement: we can't read anyone's notes. Everything a person writes is encrypted on their devices with a key only their devices hold. The AI connection keeps working.
 

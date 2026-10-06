@@ -5,6 +5,142 @@ assistants. Newest first. Research behind it: [seo-aeo-research-2026-09-30.md](s
 
 `docs/` had no README naming a folder for evidence, so this and the research live in `docs/Evidence/`.
 
+## 6 October 2026: a week of PostHog, Search Console, and "One memory for Claude Code, Codex and your other agents"
+
+### Measured
+
+- **PostHog (EU project 291184), 30 September to 6 October 09:00 UTC.** Data starts 2 October, when the key went live. Page views: 148 on 2 October, 39, 53, 90 on 5 October, 6 so far on 6 October; 336 in all.
+- **Top pages:** / 152, /templates 60, /blog 27, /changelog 17, /help 13, /download 12, /blog/apple-notes-ios-27 6.
+- **Where landings came from:** Google 14 (/blog/apple-notes-ios-27 5, / 3, /blog/apple-notes-api 3, /download, /blog/forgot-apple-notes-password and /blog/best-notes-app-for-ai-agents 1 each), github.com 10 (/ 6, /download 4), Bing 2 (/templates), Facebook 1. Everything else was direct.
+- **Named clicks:** `download_mac_clicked` 7 (4 on /download, 2 on /, 1 on /templates; 2 on 2 October, 1 on 3 October, 3 on 5 October, 1 on 6 October; six from macOS, which includes our own checks), `outbound_github_clicked` 25 (17 on /), `use_template_clicked` 3, `copy_prompt_clicked` 1, `outbound_claude_clicked` 1.
+- **Home page:** 126 page loads began on /, and 102 of them (81%) saw no second page; across all landings it's 160 of 191 (84%). The site keeps no id between full page loads, so a reload counts as a new visitor and these numbers overstate bounce.
+- **404s:** /& 3 (two on 3 October, one on 5 October at 10:46 UTC, before the redirect from PR 192 was live; it answers 308 now), /blog/obsidian-mcp-servers-compared 1 (5 October, direct, a guessed address; no link of ours uses it), /L9cu 1, /test 1.
+- **Google Search Console: reached** this time, in Chrome. Last 7 days (Google's data runs to 3 October): 6 clicks, 319 impressions, 1.9% click rate, average position 9.7, 35 queries. Top queries by impressions: "forgot notes password" 8, "amber notes" 5, "apple notes api" 4, "icloud notes api" 4, "apple notes mcp" 3, and five more forgotten-password variants with 2 or 3 each.
+
+Reading: GitHub and Google send about the same number of landings, and GitHub's go to the home page and /download, where most download clicks start. The forgotten-password post earns the most impressions and no clicks yet.
+
+### Picked
+
+- A developer came to Amber Notes this week for shared memory across several coding agents that they can read themselves. No post answers that; the closest, `/blog/notes-in-claude-code-and-codex`, only connects one agent at a time.
+
+### Changed (branch `site/blog-agent-memory`)
+
+- New post `/blog/shared-memory-for-coding-agents`, in Guides. Search title "Shared memory for Claude Code and Codex". Covers why a note works as shared memory, connecting both agents with an access token each, a pinned Project memory note with Decisions, Conventions and a Handoff log, the lines to put in `CLAUDE.md` and `AGENTS.md`, who changed what (Edited by, the tinted lines with Undo, version history, `note_history`), and what the encryption covers. Checked on main:
+  - Tokens are named after the agent they were made for (`ConnectAI.swift`, `ConnectTokens.create(name: guide.title)`), and that name goes on every edit (`pane.client` in `tools.ts`, the `ai_editor` trigger). A browser sign-in from a terminal (loopback redirect) is named "An app on this computer" (`displayName` in `oauth.ts`), so two agents signed in that way look the same. The post recommends a token per agent for that reason.
+  - Add to Claude Code shows only where the app can run a shell; the post says "if your copy shows it".
+  - `get_overview` lists pinned notes; `append_to_note` takes `under_heading`; each tool call locks the note row (`findNote`, `for update`), so two appends at once both land; `edit_note` with `expected_version` fails if the note changed.
+  - The bar text "Codex changed 2 lines" and Undo's merge, which fails when you changed the same lines (`AIEdit.swift`).
+  - Encryption wording follows `lib/facts.ts`. The iPhone lines follow `APP_STORE_LIVE`.
+- The card is a new crop of the existing iPhone note list capture (Standup notes Edited by Claude Code, Lisbon Edited by Claude) on a new denim ground.
+- `/blog/obsidian-mcp-servers-compared` now redirects to `/blog/obsidian-mcp` with a 308 (`next.config.ts`, tested in `seo.test.ts`).
+
+### To measure next
+
+- Search Console: impressions for "claude code codex shared memory", "shared memory for ai agents" and "claude code memory" once the post is indexed.
+- PostHog: landings on the new post, and `download_mac_clicked` by page.
+
+## 5 October 2026: status, "Apple Notes not syncing between iPhone and Mac", and the /& redirect
+
+### Measured
+
+- **Google Search Console: not reached.** The Chrome extension this loop uses wasn't connected, so whether hello@ambernotes.app or emil@incredible.one has been given access couldn't be checked. Nothing below comes from Search Console.
+- **PostHog (EU project 291184), page views on ambernotes.app, UTC days:** 39 on 3 October, 53 on 4 October, 33 on 5 October by about 09:00 UTC. 71 of the 86 views on 4 and 5 October came from macOS, which includes our own checks.
+- **Where views came from (4 and 5 October):** direct 77, google.com 7, github.com 2.
+- **Search landings:** Google sent /blog/apple-notes-ios-27 (3), / (2), /blog/apple-notes-api (1) and /blog/best-notes-app-for-ai-agents (1, a first). Bing sent none.
+- **Top pages:** / 49, /templates 11, /blog 6, /help 4, /changelog 4, /blog/apple-notes-ios-27 3, /templates/trip-plan 2.
+- **Named clicks:** `use_template_clicked` 3 (grocery-list, trip-plan, meeting-notes), `copy_prompt_clicked` 1 (grocery-list), `outbound_github_clicked` 5, `outbound_claude_clicked` 1 (the Claude directory listing). `download_mac_clicked`: 0.
+- **/&:** two views at 22:41 and 22:42 UTC on 3 October, direct, from Linux and Windows, both on the 404 page. The likely source is a link with "&" where its "?" should be.
+
+Reading: the iOS 27 post is still the only post with repeat Google clicks, and the first template clicks arrived. Search Console access remains the most useful missing piece.
+
+### Picked
+
+- Autocomplete on 5 October: "apple notes not syncing" suggests *across devices*, *between iphone and mac*, *on mac*, *when shared*, *with collaborator*; "apple notes not syncing after update" suggests *force apple notes to sync*, *why are my notes not syncing between devices*; "iphone notes not syncing to mac" and "icloud notes not syncing" have eight to ten suggestions each. "apple notes ios 27" suggests *new features*, *markdown*, *section links*, which the iOS 27 post already covers. No existing post covers sync failures.
+
+### Changed (branch `site/apple-notes-not-syncing`)
+
+- New post `/blog/apple-notes-not-syncing`, in Apple Notes. Search title "Apple Notes not syncing between iPhone and Mac? Fixes". Six checks in order (iCloud for Notes on each device, the same Apple Account, which account the note is in, icloud.com/notes and System Status, iCloud storage, a Mac behind the iPhone after iOS 27), shared notes that won't update, notes gone from every device, and four FAQ answers. Checked on 5 October:
+  - Apple Support 121669 (If you don't see your iCloud notes, March 2025): Sync this iPhone, then restart.
+  - Apple Support 108922 (Manage your iCloud storage, 14 September 2026): with full storage, iCloud apps don't stay up to date across devices.
+  - Apple Support 102462 (If you can't collaborate in the Notes app, 23 September 2026) and the iPhone guide's Share notes and collaborate (iOS 27): Share a Link or Send a Copy, People you choose can edit, no collaborating on locked notes.
+  - iCloud User Guide, Set up iCloud for Notes (macOS 15 or later: Saved to iCloud, Notes, Sync this Mac), and the Notes User Guide for Mac, About using iCloud Notes (upgraded notes and OS X 10.11 or iOS 9).
+  - iCloud Notes is its own row on Apple's System Status page (read from its status data).
+  - Notes' Localizable.loctable on macOS 26.5: "This note uses unsupported features", a shared note's changes waiting while the owner's storage is full, and the account security upgrade for real-time edits.
+  - Amber Notes: the Sync row in Settings with its status and Sync Now (`SettingsView.swift`), and conflicted copies (`SyncEngine.swift`). The iPhone line follows `APP_STORE_LIVE`.
+- Left out because I couldn't check them: per-app cellular data for Notes, Low Power Mode, and whether a specific iOS 27 feature (divider lines, section links) is what triggers the unsupported-features message on macOS 26.
+- The first picture reuses the Notes Settings capture (Default account: iCloud). The card is a new crop of the same capture, the Default account row alone, on a new lagoon ground.
+- `/blog/move-apple-notes-to-icloud` links the new post.
+- `/&`, and any path that starts with "&", now redirects to / with a 308 (`next.config.ts`, tested in `seo.test.ts` with the matcher Next.js compiles redirects with). Checked with `next start`: /&, /&amp; and /&utm_source=x answer 308 to /.
+
+## 4 October 2026: "Tables in Apple Notes: what you can and can't do"
+
+### Why
+
+- Item 20 of the keyword map ("apple notes table column width / sum", P2). Google autocomplete for "apple notes table" on 4 October: *change column width*, *sum*, *add column*, *column width*, *resize column*, *formula*, *sum column*, *adjust column width*. Each is a problem query whose honest answer is "you can't, and here's what works instead". The results are Apple Community threads and thin how-to pages.
+
+### Changed (branch `site/apple-notes-tables`)
+
+- New post `/blog/apple-notes-tables`, in Apple Notes. Search title "Apple Notes tables: column width, sums and formulas". It covers adding a table, rows and columns, column width, sums and Math Results, bringing data in, and Amber Notes' typed tables. Checked on 4 October:
+  - Apple, Add a table in Notes on Mac (macOS 27 and 26): the two-by-two default, Tab or Return in the last cell adds a row, the row and column handles, Convert to Text from Table Actions, pasting drops named styles, tables copied from Safari or Pages.
+  - Apple, Create and format notes on iPhone (iOS 27): the Add Table button. Apple's iPhone guide says nothing more about tables, so the steps in the post are the Mac's.
+  - Apple, Solve math in Notes on Mac: Math Results in the note body, variables, Format, Math Results. Apple says nothing about table cells, and the post says so.
+  - Notes on macOS 26.5: the Format menu read by loading MainMenu.nib with AppKit (Move Item, Table with Option-Command-T, Convert to Text, Reverse Table Direction, Show Note As Light Background); no width, sort or formula item anywhere in Localizable.loctable; the Shortcuts action Add Table to Note, which takes CSV, from the app's App Intents metadata.
+  - Amber Notes: column types and the column menu (`TableGrid.swift`), Show Trend (`TableChart.swift`), File, Import Spreadsheet as Table (`XLSXImporter.swift`, formulas keep their last value), the Apple Notes import keeping tables on the Mac (`RichTextToMarkdown.swift`), and `read_table` and `log_table_row` in the MCP tools.
+- Left out because I couldn't check them: whether Math Results work inside a table cell, whether the Markdown export keeps tables, iOS 27 Markdown paste of tables, and the iPhone steps for rows and columns.
+- The cover is the Format menu of Notes at Table, drawn in HTML at 2x and 2.5x with the items and order read from the nib, on a new lemon ground. The post's second picture is the existing Evening tracker capture.
+- `/blog/apple-notes-ios-27` links to the new post from its divider-lines section.
+## 4 October 2026: three new templates (Cornell notes, daily journal, grocery list)
+
+### Why
+
+- The template library (strategy 6c) had 20 templates and none for three note structures people search for by name. Google autocomplete on 4 October:
+  - "cornell notes template" suggests *word*, *docs*, *google docs*, *printable*, *onenote*, *notion*;
+  - "daily journal template" suggests *pdf*, *google docs*, *obsidian*, *notion*, *ideas*;
+  - "apple notes grocery list" suggests *template*, *template free*, *organize grocery list*, *sort grocery list*.
+- Each one is a structure an AI does the dull part of: writing the cue questions and summary, turning a ramble into a dated entry, sorting items by aisle.
+
+### Changed (branch `site/templates-cornell-journal-grocery`)
+
+- `/templates/cornell-notes` (Learning): a section per lecture with a Cue and Notes table and a summary line; the AI quizzes from the cues and keeps a "Cues to revisit" checklist.
+- `/templates/daily-journal` (Habits and health): four questions, entries newest first under a weekday heading. It's prose with labels; the mood and energy log stays the table version.
+- `/templates/grocery-list` (Home and life): one standing list under aisle headings; the AI files items from a sentence, skips duplicates and removes ticked lines after the shop. The meal plan stays the weekly dinners plus their list, and the two link each other.
+- Examples are replayed from the demo calls with the server's own note functions, as for the other 20 (`FILL_EXAMPLES=1`). One real behaviour shows in the grocery example: ticking an item moves it to the end of its list.
+- Related links: study notes and flashcards now points to Cornell notes, weekly review to the daily journal, meal plan to the grocery list.
+- Covers: paper-cut, same kit and style key as the first 20, in three new colours (petrol slate, plum, tomato red), placed so no grid neighbour shares a hue. The grocery cover was regenerated once (its trolley handle was malformed) and darkened 10% so cream text reaches 4.8:1. QC notes are in the cover kit, outside the repo.
+
+### To measure next
+
+- Search Console: impressions for "cornell notes template", "daily journal template" and "apple notes grocery list template" once the pages are indexed.
+- PostHog: `use_template_clicked` and `copy_prompt_clicked` on the three pages.
+## 4 October 2026: status, and "Apple Notes tags and Smart Folders"
+
+### Measured
+
+- **Google Search Console: not reached.** The browser profile this loop uses is signed in to hello@ambernotes.app and emil@incredible.one, and neither has access to the ambernotes.app property (domain or URL prefix). Impressions, clicks and positions by query, and the index coverage report, need Emil's account. Nothing below comes from Search Console.
+- **PostHog (EU project 291184, live since 2 October), page views on ambernotes.app:** 148 on 2 October, 39 on 3 October, 12 on 4 October by about 13:00 CEST. The id is per page load (nothing is stored), so "visitors" can't be counted. 157 of 199 views came from macOS, which includes our own checks.
+- **Where views came from (2 to 4 October):** direct 186, google.com 6, github.com 4, bing.com 2, facebook.com 1.
+- **Search landings:** Google sent /blog/apple-notes-ios-27 (2), /, /blog/apple-notes-api, /download and /blog/forgot-apple-notes-password (1 each). Bing sent /templates (2). So at least those five pages are in Google's index and /templates is in Bing's.
+- **Top pages:** / 88, /templates 35, /blog 20, /changelog 10, /help 9, /download 7. One template page was viewed once (meeting-notes). `download_mac_clicked`: 3. No `use_template_clicked` or `copy_prompt_clicked`.
+- **Web search (Claude's backend), `site:ambernotes.app`:** the home page, connect-chatgpt-to-your-notes, claude-cowork-apple-notes and claude-and-apple-notes. On 30 September it returned no site pages.
+- **Bing and IndexNow:** the sitemap lists 61 URLs and the IndexNow key file answers 200. Bing Webmaster Tools needs a login, so crawl and index numbers there weren't read.
+- **Not indexed, as far as can be seen:** no template page has had a search visit, and neither have most posts. Without Search Console it's unknown whether they're unindexed or indexed without clicks.
+
+Reading: search traffic is a handful of clicks a day, mostly to Apple Notes problem posts (iOS 27, API, forgotten password). That supports writing more Apple Notes problem posts and template pages for searched note structures. Getting Search Console access for this loop is the most useful next step: without it, picks rest on autocomplete and competitors, not our own impressions.
+
+### Picked
+
+- Autocomplete on 4 October: "apple notes tags" suggests *not working*, *vs folders*, *not showing*, *nested tags*. "apple notes smart folders" suggests *not working*, *how do smart folders work*, *subfolder*. "apple notes table" suggests *change column width*, *sum*, *formula*, *add column*. Template seeds: "cornell notes template" (*notion*, *onenote*, *google docs*), "daily journal template" (*obsidian*, *notion*), "apple notes grocery list template", "apple notes sort grocery list".
+- Two posts: Apple Notes tags and Smart Folders (plan item 18 and 19, this branch) and tables in Apple Notes (plan item 20, its own branch). Three templates: Cornell notes, daily journal, grocery list (one branch).
+- Skipped: "Apple Notes on Windows" from the plan, since the site is iPhone and Mac only; meeting notes to action items, since the meeting-notes template already targets it.
+
+### Changed (branch `site/apple-notes-tags-smart-folders`)
+
+- New post `/blog/apple-notes-tags-smart-folders`, in Apple Notes: how tags and Smart Folders work on iPhone and Mac, tags versus folders, nine "when tags don't work" cases, the Shortcuts actions, and an FAQ.
+- Facts were checked on 4 October against Apple Support 102288 (published 22 May 2026) and the Notes User Guide for Mac pages "Use tags" and "Use Smart Folders" (macOS 27 back to 15). The Mac app's own messages come from Notes' Localizable.loctable on macOS 26.5: tags need an iCloud account; IMAP and Exchange refuse tags; tagged notes can't be locked; the Convert to Smart Folder limits; a Smart Folder that uses only a deleted tag is deleted too; the unsupported Smart Folder message. The rule menu and its options come from SmartFolderFilterRow.nib, SmartFolderTagFilterView.nib, SmartFolderDateFilterView.nib and SmartFolderChecklistsFilterView.nib. The Shortcuts actions come from Notes' App Intents metadata.
+- Left out because I couldn't check them: whether On My iPhone takes tags, whether the Mac has its own Auto Convert to Tag switch, and how Amber Notes' import treats Apple Notes tags.
+- The Amber Notes section says plainly that Amber Notes has no tags or Smart Folders, and what ChatGPT or Claude can do instead with search_notes and move_note. The iPhone line follows `APP_STORE_LIVE`.
+- The cover is the first pop-up menu of a Smart Folder rule, open with Tags checked. It's drawn in HTML at 4x, with item names and order read from SmartFolderFilterRow.nib, and sits on a new coral ground. The card crops it at the bottom, so the menu text matches the size on the export-menu cover. Checked on /blog at 1440 next to the sky and mint covers. move-apple-notes-to-icloud now links the post from its IMAP paragraph.
+
 ## 2 October 2026: "How to move Apple Notes from On My iPhone or Gmail to iCloud"
 
 ### Why

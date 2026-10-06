@@ -10,7 +10,7 @@
 
 <p align="center">
   <a href="https://ambernotes.app/download"><b>Download for Mac</b></a>
-  &nbsp;·&nbsp; iPhone coming soon
+  &nbsp;·&nbsp; iPhone app in App Store review
   &nbsp;·&nbsp; <a href="https://ambernotes.app">ambernotes.app</a>
 </p>
 
@@ -108,7 +108,11 @@ In the app, open **Settings → Connect an AI** and follow the steps for your cl
 
 ## Privacy and security
 
-- Your notes are readable only by your account: row-level security applies to the app, the AI server and direct API calls alike.
+- **End-to-end encryption.** Each account has one random 256-bit key, made on your first device and kept as a synced Keychain item, so iCloud Keychain carries it to your other iPhone or Mac. Note bodies, titles, folder names, files and old versions are sealed with AES-256-GCM before upload. The server holds no key.
+- **AI connections.** When you approve an AI, the app wraps your key under the OAuth authorization code; at the token exchange it is rewrapped under the access and refresh tokens, and the server keeps only token hashes. Disconnecting deletes the wrap.
+- **The honest limit.** During an AI request the server decrypts the notes that request needs, in memory. Notes you lock with the notes password stay out of reach, because that key isn't on the server. Dates, sizes, folder structure and which notes are locked stay readable. If you lose every device, have iCloud Keychain off and never saved the recovery key, nobody can open the notes.
+- The full design: [docs/Technical/e2ee-design.md](docs/Technical/e2ee-design.md).
+- Row-level security applies to the app, the AI server and direct API calls alike, on top of the encryption.
 - AI tokens are stored as hashes and can be read-only.
 - Shared pages are public to anyone with the link. The app warns before creating one, and a page stops working the moment you stop sharing.
 - [Privacy policy](https://ambernotes.app/privacy) · [Security policy](SECURITY.md)

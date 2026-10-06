@@ -506,6 +506,9 @@ async function describeRequest(req: Request, sql: Sql): Promise<Response> {
   // A device answering a browser it can't see has no way to tell whose ChatGPT or Claude this is
   // (anyone can start a real ChatGPT sign-in and ask your devices), so no AI's mark or name is a
   // title then: the address is, and the name the client gives itself is only a claim.
+  // Showing the AI's icon or name as fact on the web connect page was considered and declined on
+  // 2 October 2026 for the same reason: a browser-started request proves where the code goes, not
+  // whose account it is. Don't add it back.
   const verified = asked.asked ? null : verifiedAI(r.redirect_uri);
   return json({
     id: r.id,
@@ -545,8 +548,8 @@ const RAW_P256 = /^[A-Za-z0-9+/]{86}[AEIMQUYcgkosw048]=$/;
 
 /// The web page, signed in only to say whose request this is, asks the account's devices to
 /// approve it. It sends the public half of a key pair it keeps in memory; the approving device
-/// seals the authorization code to it, so only that page can open it. The page signs out straight
-/// after and waits on /connect/status.
+/// seals the authorization code to it, so only that page can open it. The page then waits on
+/// /connect/status, keeping the sign-in in memory (for the recovery key) until the request ends.
 async function ask(req: Request, sql: Sql): Promise<Response> {
   if (!allowedOrigin(req)) return json({ error: "Not allowed from this site." }, 403);
   const user = await sessionUser(req);
@@ -819,7 +822,7 @@ async function label(req: Request, sql: Sql): Promise<Response> {
   const r = await pending(sql, new URL(req.url).searchParams.get("id") ?? "");
   if (!r) return json({ error: EXPIRED }, 404);
   // Before anyone signs in, the page can't know whose sign-in this is, so no AI's mark either: the
-  // address, and what the client calls itself only as a claim.
+  // address, and what the client calls itself only as a claim. (Declined on purpose: see describeRequest.)
   return json({
     client_name: addressName(r.redirect_uri),
     claimed_name: claimedName(r.client_name) || null,

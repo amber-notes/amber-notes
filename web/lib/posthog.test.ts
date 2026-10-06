@@ -1,6 +1,7 @@
 import type { CaptureResult } from "posthog-js";
 import { describe, expect, it } from "vitest";
-import { clickEvent, heatmapsAllowed, newScrollMarks, POSTHOG_DEFAULT_HOST, posthogAllowed, posthogOptions, posthogSettings, sanitizeEvent, scrolledPercent, visitorOptedOut } from "./posthog";
+import { CONSENT_KEY } from "./consent";
+import { clickEvent, clickEvents, ctaEvent, heatmapsAllowed, newScrollMarks, POSTHOG_DEFAULT_HOST, posthogAllowed, posthogOptions, posthogSettings, sanitizeEvent, scrolledPercent, visitorOptedOut } from "./posthog";
 
 const here = new URL("https://ambernotes.app/blog/claude-and-apple-notes");
 const link = (href: string, attrs: Record<string, string> = {}) => ({ tagName: "A", getAttribute: (n: string) => (n === "href" ? href : attrs[n] ?? null) });
@@ -15,7 +16,7 @@ describe("website PostHog", () => {
   });
 
   it("never loads on shared notes, connect, universal-link, report or download-redirect pages", () => {
-    for (const path of ["/n", "/n/abc123", "/connect", "/connect/done", "/connect-ai", "/open/connect", "/open/template/x", "/report/abc123", "/download/mac", "/reset-password", "/reset-password/done", "/account/reset"]) {
+    for (const path of ["/n", "/n/abc123", "/connect", "/connect/done", "/connect-ai", "/open/connect", "/open/template/x", "/report/abc123", "/download/mac", "/reset-password", "/reset-password/done", "/account/reset", "/unsubscribe", "/unsubscribe/confirm"]) {
       expect(posthogAllowed(path), path).toBe(false);
     }
     expect(posthogAllowed(null)).toBe(false);
@@ -28,9 +29,17 @@ describe("website PostHog", () => {
     expect(POSTHOG_DEFAULT_HOST).toBe("https://eu.i.posthog.com");
   });
 
-  it("keeps nothing on the device and records nobody", () => {
+  it("stays cookieless until the visitor accepts, and records nobody", () => {
     const o = posthogOptions(POSTHOG_DEFAULT_HOST);
-    expect(o.persistence).toBe("memory");
+    // No answer counts as a rejection, and a rejection is cookieless.
+    expect(o.cookieless_mode).toBe("on_reject");
+    expect(o.opt_out_capturing_by_default).toBe(true);
+    expect(o.consent_persistence_name).toBe(CONSENT_KEY);
+    expect(o.opt_out_capturing_persistence_type).toBe("localStorage");
+    // After accepting: one cookie on this host, for a year.
+    expect(o.persistence).toBe("cookie");
+    expect(o.cookie_expiration).toBe(365);
+    expect(o.cross_subdomain_cookie).toBe(false);
     expect(o.person_profiles).toBe("never");
     expect(o.disable_session_recording).toBe(true);
     expect(o.disable_surveys).toBe(true);
@@ -69,6 +78,20 @@ describe("website PostHog", () => {
   it("names the download click, with the page it came from", () => {
     expect(clickEvent(link("/download/mac"), here)).toEqual({ event: "download_mac_clicked", properties: { path: "/blog/claude-and-apple-notes" }, leaves: false });
     expect(clickEvent(link("https://ambernotes.app/download/mac"), new URL("https://ambernotes.app/"))?.properties).toEqual({ path: "/" });
+  });
+
+  it("names a click on a post's call to action, with the post, its place and the link", () => {
+    const cta = { "data-cta": "apple-notes-api", "data-cta-position": "how-amber-helps", "data-cta-action": "download_mac" };
+    const props = { path: "/blog/claude-and-apple-notes", slug: "apple-notes-api", position: "how-amber-helps", action: "download_mac" };
+    expect(ctaEvent(link("/download/mac", cta), here)).toEqual({ event: "blog_cta_clicked", properties: props, leaves: false });
+    // A download from a post is both: the call to action, and the download with the page it happened on.
+    expect(clickEvents(link("/download/mac", cta), here).map((e) => e.event)).toEqual(["blog_cta_clicked", "download_mac_clicked"]);
+    expect(clickEvents(link("/download/mac", cta), here)[1].properties).toEqual({ path: "/blog/claude-and-apple-notes" });
+    // Send myself the link has no event of its own, but inside a call to action it's counted as one.
+    const send = link("mailto:?body=x", { ...cta, "data-cta-action": "send_link" });
+    expect(clickEvents(send, here)).toEqual([{ event: "blog_cta_clicked", properties: { ...props, action: "send_link" }, leaves: false }]);
+    expect(ctaEvent(link("/download/mac"), here)).toBeNull();
+    expect(clickEvents(link("/blog"), here)).toEqual([]);
   });
 
   it("names Use template and Copy the prompt", () => {

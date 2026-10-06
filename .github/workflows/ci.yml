@@ -90,6 +90,7 @@ jobs:
           supabase/functions/mcp/tips.pglite.test.ts supabase/functions/mcp/share_ask.pglite.test.ts supabase/functions/mcp/open_source_ask.pglite.test.ts supabase/functions/mcp/download_counts.pglite.test.ts
           supabase/functions/share-files/logic.test.ts scripts/e2ee-tool.test.ts
           supabase/functions/account/account.pglite.test.ts supabase/functions/_shared/hash.test.ts
+          scripts/auth-emails.test.ts supabase/functions/lifecycle/logic.test.ts supabase/functions/lifecycle/emails.test.ts supabase/functions/lifecycle/assets.test.ts supabase/functions/lifecycle/lifecycle.pglite.test.ts
 
   web:
     name: Share site

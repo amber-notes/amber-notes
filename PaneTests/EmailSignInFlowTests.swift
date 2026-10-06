@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import Pane
 
@@ -81,11 +82,96 @@ import Testing
         #expect(f.email == "you@example.com", "the email stays so you can fix a typo")
     }
 
+    /// Sign in with Apple folds away while a password is asked for (or reset), so the card keeps
+    /// its main button in place and fits above the keyboard; everywhere else it's there.
+    @Test func signInWithAppleFoldsAwayOnlyForThePassword() {
+        var f = EmailSignInFlow(email: "you@example.com")
+        #expect(f.showsApple)
+        _ = f.beginCheck()
+        #expect(f.showsApple, "still there while the email is checked")
+        f.finishCheck(.password)
+        #expect(!f.showsApple)
+        f.back()
+        #expect(f.showsApple, "Use a different email brings it back")
+        _ = f.beginCheck()
+        f.finishCheck(.new)
+        #expect(!f.showsApple, "choosing a password too")
+        f.back()
+        _ = f.beginCheck()
+        f.finishCheck(.appleOnly)
+        #expect(f.showsApple, "an Apple account signs in with it")
+    }
+
     @Test func aLateAnswerIsIgnoredOnceYouWentBack() {
         var f = EmailSignInFlow(email: "you@example.com")
         _ = f.beginCheck()
         f.back()
         f.finishCheck(.password)
         #expect(f.step == .email)
+    }
+
+    @Test func forgotPasswordSendsALinkAndComesBack() {
+        var f = EmailSignInFlow(email: "you@example.com")
+        _ = f.beginCheck()
+        f.finishCheck(.password)
+        #expect(f.offersReset)
+        f.password = "half typed"
+        f.forgotPassword()
+        #expect(f.step == .forgot(sending: false))
+        #expect(f.password.isEmpty)
+        #expect(!f.showsPassword)
+        #expect(f.emailLocked, "the link goes to the email already typed")
+        #expect(!f.showsApple, "a password account stays on the password path")
+        #expect(f.buttonTitle == "Email Me a Link")
+        let first = f.beginReset()
+        let second = f.beginReset()
+        #expect(first)
+        #expect(!second, "a second press while it goes out sends nothing")
+        #expect(!f.buttonEnabled)
+        f.finishReset(sent: true)
+        #expect(f.step == .forgotSent)
+        #expect(!f.showsApple)
+        #expect(f.buttonTitle == "Back to Sign In")
+        f.backToSignIn()
+        #expect(f.step == .signIn(fallback: false))
+        #expect(f.showsPassword)
+    }
+
+    @Test func aResetThatDidntGoOutCanBeSentAgain() {
+        var f = EmailSignInFlow(email: "you@example.com")
+        _ = f.beginCheck()
+        f.finishCheck(nil)
+        #expect(f.offersReset, "offered when the check failed too")
+        f.forgotPassword()
+        _ = f.beginReset()
+        f.finishReset(sent: false)
+        #expect(f.step == .forgot(sending: false))
+        #expect(f.buttonEnabled)
+    }
+
+    @Test func onlyAnAccountWithAPasswordIsOfferedAReset() {
+        for status in [AccountStatus.new, .appleOnly] {
+            var f = EmailSignInFlow(email: "you@example.com")
+            _ = f.beginCheck()
+            f.finishCheck(status)
+            #expect(!f.offersReset)
+            f.forgotPassword()
+            #expect(f.step != .forgot(sending: false))
+        }
+        var f = EmailSignInFlow(email: "you@example.com")
+        #expect(!f.offersReset, "not before the email is checked")
+        f.forgotPassword()
+        #expect(f.step == .email)
+    }
+
+    @MainActor @Test func theResetRequestIsAPlainRecoverWithNoPKCE() throws {
+        let r = Backend.passwordResetRequest(base: URL(string: "https://ref.supabase.co")!, key: "anon", email: " you@example.com ")
+        #expect(r.url?.absoluteString == "https://ref.supabase.co/auth/v1/recover")
+        #expect(r.httpMethod == "POST")
+        #expect(r.value(forHTTPHeaderField: "apikey") == "anon")
+        let data = try #require(r.httpBody)
+        let body = try JSONSerialization.jsonObject(with: data) as? [String: String]
+        #expect(body == ["email": "you@example.com"], "no code_challenge, no redirect: the email's link is the template's")
+        #expect(r.url?.query == nil)
     }
 }

@@ -3,7 +3,7 @@ import { APP_TEMPLATES, pageMetadata } from "@/lib/site";
 import { JsonLd, breadcrumbs, incredible, maker, organization, templateLibrary } from "@/lib/structured-data";
 import { CATEGORIES, anchor, inCategory, templates } from "@/lib/templates";
 import Card from "./Card";
-import Library from "./Library";
+import Library, { APPS } from "./Library";
 import { COVERS, coverPath } from "@/lib/template-covers";
 import s from "./templates.module.css";
 
@@ -40,12 +40,17 @@ export default function Page() {
 
         <div className="rise" style={at(2)}>
           <Library
-            items={all.map((t) => ({ slug: t.slug, category: t.category }))}
+            items={all.map((t) => ({ slug: t.slug, category: t.category, app: t.app === true }))}
             cards={all.map((t) => <Card key={t.slug} t={t} />)}
-            categories={CATEGORIES.map((c) => {
-              const ts = inCategory(c);
-              return { name: c, anchor: anchor(c), count: ts.length, swatch: ts.slice(0, 3).map((t) => COVERS[t.slug].ground) };
-            })}
+            categories={[
+              // Apps first, once any template holds one (?category=apps, linked from the onboarding emails).
+              ...(all.some((t) => t.app) ? [{ name: "Apps", anchor: APPS, count: all.filter((t) => t.app).length,
+                swatch: all.filter((t) => t.app).slice(0, 3).map((t) => COVERS[t.slug].ground) }] : []),
+              ...CATEGORIES.map((c) => {
+                const ts = inCategory(c);
+                return { name: c, anchor: anchor(c), count: ts.length, swatch: ts.slice(0, 3).map((t) => COVERS[t.slug].ground) };
+              }),
+            ]}
           />
         </div>
       </div>

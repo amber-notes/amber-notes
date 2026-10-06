@@ -58,12 +58,15 @@ import UserNotifications
 @MainActor
 private final class FakeTokens: PushTokenService {
     var registered: [PushTokenParams] = []
+    /// Forgets and registrations, in the order the server got them.
+    var log: [String] = []
     var removed: [UUID] = []
     var fails = false
 
     func register(_ params: PushTokenParams) async throws {
         if fails { throw URLError(.notConnectedToInternet) }
         registered.append(params)
+        log.append("register \(params.p_token)")
     }
 
     var forgotten: [String] = []
@@ -77,6 +80,7 @@ private final class FakeTokens: PushTokenService {
     func forget(token: String) async throws {
         if fails { throw URLError(.notConnectedToInternet) }
         forgotten.append(token)
+        log.append("forget \(token)")
     }
 }
 
@@ -110,6 +114,18 @@ private final class FakeTokens: PushTokenService {
         await next.retryPendingForget(service: service)
         await next.retryPendingForget(service: service)
         #expect(service.forgotten == [tokenHex])
+        #expect(defaults.string(forKey: PushRegistration.pendingForgetKey) == nil)
+    }
+
+    /// The token a sign-out left behind is this device's: forgotten after this sign-in's
+    /// registration, it would delete the new row. Signing in forgets it first.
+    @Test func signingInForgetsALeftoverTokenBeforeRegisteringIt() async {
+        let service = FakeTokens(), defaults = MemoryDefaults()
+        defaults.set(tokenHex, forKey: PushRegistration.pendingForgetKey)
+        let push = registration(Calls(), defaults: defaults)
+        await push.received(token: token)
+        await push.attach(account: UUID(), service: service)
+        #expect(service.log == ["forget \(tokenHex)", "register \(tokenHex)"])
         #expect(defaults.string(forKey: PushRegistration.pendingForgetKey) == nil)
     }
 

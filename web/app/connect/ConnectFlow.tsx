@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
-  universalLink, appleSignInURL, destination, functionURL, pkcePair, returnURL, signInError, startsWithWrite,
+  universalLink, oauthSignInURL, didntFinish, type OAuthProvider, destination, functionURL, pkcePair, returnURL, signInError, startsWithWrite,
   type ConnectLabel, type ConnectRequest,
 } from "@/lib/connect";
 import {
@@ -28,8 +28,9 @@ type View =
   | { kind: "leaving"; to: string; allowed: boolean }
   | { kind: "ended"; title: string; text: string; retry?: boolean };
 
-/// The PKCE verifier for one Sign in with Apple round trip: the only thing the page ever stores.
-const APPLE_PKCE = "amber.connect.pkce";
+/// The PKCE verifier for one Sign in with Apple or Google round trip, and which one: the only thing
+/// the page ever stores.
+const OAUTH_PKCE = "amber.connect.pkce";
 export const POLL_MS = 2000;
 const OFFLINE = "Couldn't reach Amber Notes. Check your connection and try again.";
 const EXPIRED: View = { kind: "ended", title: "This request has expired", text: "Start connecting again from ChatGPT, Claude or the other app you were using." };
@@ -40,9 +41,9 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
   supabaseURL: string;
   anonKey: string;
   label: ConnectLabel | null;
-  /// Back from Sign in with Apple started on the recovery key view.
+  /// Back from Sign in with Apple or Google started on the recovery key view.
   recover: boolean;
-  /// Back from Sign in with Apple: Supabase's one-time code, or why it failed.
+  /// Back from Sign in with Apple or Google: Supabase's one-time code, or why it failed.
   authCode?: string;
   authError?: string;
   /// Shown through ?qr=1 before the QR page is public: the address keeps it through a sign-in.
@@ -90,10 +91,10 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
     void (async () => {
       const ok = await prepare();
       if (authCode) {
-        if (ok) await finishAppleSignIn(authCode);
+        if (ok) await finishOAuthSignIn(authCode);
         else window.history.replaceState(null, "", returnURL(window.location.origin, requestId, recover, keepQR));
       } else if (authError) {
-        setFailure("Sign in with Apple didn't finish. Try again.");
+        setFailure(didntFinish(takeSaved().provider));
         window.history.replaceState(null, "", returnURL(window.location.origin, requestId, recover, keepQR));
         if (ok && !recover) setView({ kind: "notifySignIn" });
       }
@@ -171,6 +172,8 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
 
   function end(v: View) {
     finished.current = true;
+    // The visit is over: end the sign-in it kept for the recovery key.
+    if (session.current) void signOut(session.current.token, true);
     handoffKey.current = null;
     publicRaw.current = null;
     pickup.current = null;
@@ -230,25 +233,21 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
 
   // MARK: Signing in
 
-  async function signInWithApple(recovering: boolean) {
+  async function signInWith(provider: OAuthProvider, recovering: boolean) {
     setBusy(true);
     const { verifier, challenge } = await pkcePair();
-    try { sessionStorage.setItem(APPLE_PKCE, JSON.stringify({ verifier, request: requestId })); } catch {}
-    window.location.assign(appleSignInURL(supabaseURL, returnURL(window.location.origin, requestId, recovering, keepQR), challenge));
+    try { sessionStorage.setItem(OAUTH_PKCE, JSON.stringify({ verifier, request: requestId, provider })); } catch {}
+    window.location.assign(oauthSignInURL(provider, supabaseURL, returnURL(window.location.origin, requestId, recovering, keepQR), challenge));
   }
 
-  async function finishAppleSignIn(code: string) {
+  async function finishOAuthSignIn(code: string) {
     // The code leaves the address bar (and the history) before anything else happens.
     window.history.replaceState(null, "", returnURL(window.location.origin, requestId, recover, keepQR));
     const back: View = recover ? { kind: "recover" } : { kind: "notifySignIn" };
-    let saved: { verifier?: string; request?: string } = {};
-    try {
-      saved = JSON.parse(sessionStorage.getItem(APPLE_PKCE) ?? "{}");
-    } catch {}
-    try { sessionStorage.removeItem(APPLE_PKCE); } catch {}
+    const saved = takeSaved();
     if (!saved.verifier || saved.request !== requestId) {
       setView(back);
-      setFailure("Sign in with Apple didn't finish. Try again.");
+      setFailure(didntFinish(saved.provider));
       return;
     }
     try {
@@ -257,10 +256,10 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
         headers: { apikey: anonKey, "content-type": "application/json" },
         body: JSON.stringify({ auth_code: code, code_verifier: saved.verifier }),
       });
-      const s = sessionFrom(await res.json().catch(() => null), "your Apple ID");
+      const s = sessionFrom(await res.json().catch(() => null), saved.provider === "google" ? "your Google account" : "your Apple ID");
       if (!res.ok || !s) {
         setView(back);
-        setFailure("Sign in with Apple didn't finish. Try again.");
+        setFailure(didntFinish(saved.provider));
         return;
       }
       session.current = s;
@@ -341,8 +340,9 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
       const body = await res.json().catch(() => null) as { expires_at?: string; error?: string } | null;
       const has = res.ok ? parseDevices(body) : null;
       const next = leadFor(has, browserOn(navigator.platform, navigator.userAgent, navigator.maxTouchPoints));
-      // No app seen lately: the recovery key leads, and it needs this session.
-      if (!res.ok || next !== "recover") await signOut(s.token);
+      // The session stays in this page's memory until the request ends, so "Use your recovery key"
+      // never asks for the password a second time (end() and pagehide sign it out).
+      if (!res.ok) await signOut(s.token);
       if (!res.ok) {
         np.fill(0);
         if (res.status === 404) return end(EXPIRED);
@@ -433,12 +433,10 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
       const check = await parseRecoveryKey(typed);
       if (!check) throw new RecoveryError("typo");
       check.fill(0);
-      let s = session.current;
+      const s = session.current;
       if (!s) {
-        s = await passwordSignIn();
-        if (!s) return;
-        session.current = s;
-        setSignedIn(s.email);
+        setFailure("Sign in first.");
+        return;
       }
       const info = await fetchRecoverInfo(s);
       if ("error" in info) {
@@ -499,13 +497,33 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
   function showRecovery() {
     forget();
     setFailure(null);
-    setView({ kind: "recover" });
+    if (session.current) void loadRecover(session.current);
+    else setView({ kind: "recover" });
+  }
+
+  /// The recovery key's first step when not signed in yet: sign in, then the key alone.
+  async function submitRecoverSignIn(e: React.FormEvent) {
+    e.preventDefault();
+    if (busy) return;
+    setBusy(true);
+    setFailure(null);
+    try {
+      const s = await passwordSignIn();
+      if (s) {
+        session.current = s;
+        setSignedIn(s.email);
+        await loadRecover(s);
+      }
+    } catch {
+      setFailure(OFFLINE);
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function backToScan() {
     forget();
     setFailure(null);
-    if (session.current) await signOut(session.current.token);
     if (!handoffKey.current) return startOver();
     setView({ kind: "scan" });
   }
@@ -528,7 +546,7 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
     case "scan":
       return <ScanScreen to={to} link={link} macLink={macLink} onNotify={showNotify} onRecover={showRecovery} />;
     case "notifySignIn":
-      return <NotifySignInScreen {...signIn} to={to} onApple={() => signInWithApple(false)} onSubmit={submitSignIn} onScan={backToScan} />;
+      return <NotifySignInScreen {...signIn} to={to} onApple={() => signInWith("apple", false)} onGoogle={() => signInWith("google", false)} onSubmit={submitSignIn} onScan={backToScan} />;
     case "notify":
       return (
         <NotifyScreen
@@ -541,7 +559,8 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
         <RecoverScreen
           noDevices={lead === "recover"}
           {...signIn} to={recoverTo} signedIn={signedIn} recoveryKey={recoveryKey} onRecoveryKey={setRecoveryKey}
-          access={{ write, canWrite, onWrite: setWrite }} onApple={() => signInWithApple(true)} onSubmit={submitRecovery} onScan={backToScan}
+          access={{ write, canWrite, onWrite: setWrite }} onApple={() => signInWith("apple", true)} onGoogle={() => signInWith("google", true)} onSubmit={submitRecovery} onSignIn={submitRecoverSignIn}
+          other={{ label: "Scan the code instead", onClick: () => void backToScan() }}
         />
       );
     case "working":
@@ -561,4 +580,14 @@ function sessionFrom(body: { access_token?: unknown; user?: { id?: unknown; emai
 
 function hostOf(url: string): string {
   try { return new URL(url).hostname || "the app"; } catch { return "the app"; }
+}
+
+/// The round trip's PKCE verifier, request and provider, read once and removed.
+function takeSaved(): { verifier?: string; request?: string; provider?: OAuthProvider } {
+  let saved: { verifier?: string; request?: string; provider?: OAuthProvider } = {};
+  try {
+    saved = JSON.parse(sessionStorage.getItem(OAUTH_PKCE) ?? "{}") ?? {};
+  } catch {}
+  try { sessionStorage.removeItem(OAUTH_PKCE); } catch {}
+  return saved;
 }

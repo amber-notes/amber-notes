@@ -44,7 +44,7 @@ final class SyncTests: XCTestCase {
         XCTAssertFalse(id.isEmpty)
 
         let app = XCUIApplication()
-        app.launchArguments = ["-synctest", "-signout"]
+        app.launchArguments = ["-synctest", "-signout", "-skipWelcome"]
         app.launch()
 
         // Email first: type it, Continue, and the password field appears for an existing account.

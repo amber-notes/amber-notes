@@ -5,7 +5,10 @@ import { flushSync } from "react-dom";
 import { FILTER_GRID, filterTransition } from "@/lib/filter-transition";
 import s from "./templates.module.css";
 
-type Item = { slug: string; category: string };
+type Item = { slug: string; category: string; app?: boolean };
+
+/// The Apps filter: templates whose note holds an app, across categories.
+export const APPS = "apps";
 type Filter = { name: string; anchor: string; count: number; swatch?: string[] };
 
 /// The gallery's one filter: a category at a time, kept in the address (?category=work) so a
@@ -27,7 +30,7 @@ export default function Library({ items, cards, categories }: { items: Item[]; c
   };
 
   const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-  const show = items.map((i) => !category || slug(i.category) === category);
+  const show = items.map((i) => !category || (category === APPS ? i.app === true : slug(i.category) === category));
   const shown = show.filter(Boolean).length;
 
   return (

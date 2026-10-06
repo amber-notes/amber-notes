@@ -25,6 +25,8 @@ function fakeServer(devices?: { iphone: boolean; mac: boolean }) {
     if (url === `${MCP}/connect/status`) return json({ state: "asked" });
     if (url === `${SUPABASE}/auth/v1/token?grant_type=password`) return json({ access_token: "tok", user: { id: "u1", email: "me@example.com" } });
     if (url.startsWith(`${SUPABASE}/auth/v1/logout`)) return new Response(null, { status: 204 });
+    if (url.startsWith(`${MCP}/connect/request`)) return json({ id: ID, client_name: "Glama", redirect_host: "glama.ai", redirect_uri: "https://glama.ai/cb", loopback: false, wants_write: true, expires_at: new Date(Date.now() + 600_000).toISOString() });
+    if (url.startsWith(`${SUPABASE}/rest/v1/account_keys`)) return json([]);
     return json({ error: "not_found" }, 404);
   });
   return { calls, fetch };
@@ -100,7 +102,8 @@ describe("the page public apps use, once you've signed in", () => {
     expect(container.textContent).toContain("Amber Notes sent a notification to your iPhone.");
     expect(container.textContent).not.toContain("iPhone or Mac");
     expect(container.textContent).not.toContain("Waiting");
-    expect(signedOutAt(server.calls)).toBeGreaterThan(-1);
+    // Still signed in: the recovery key won't ask for the password again.
+    expect(signedOutAt(server.calls)).toBe(-1);
   });
 
   it("sends the notification again with the page's pickup secret, and says so", async () => {
@@ -134,5 +137,23 @@ describe("the page public apps use, once you've signed in", () => {
     expect(new Headers(server.calls[recover].init.headers).get("authorization")).toBe("Bearer tok");
     const out = signedOutAt(server.calls);
     expect(out === -1 || out > recover).toBe(true);
+  });
+});
+
+describe("the recovery key after asking your devices", () => {
+  it("never asks for the password a second time, and shows only the key and Allow", async () => {
+    const server = await signIn({ iphone: true, mac: false });
+    await until(() => heading() === "Open Amber Notes on your iPhone");
+    const signIns = () => server.calls.filter((c) => c.url.includes("grant_type=password")).length;
+    expect(signIns()).toBe(1);
+    await act(async () => [...container.querySelectorAll("button")].find((b) => b.textContent === "Use your recovery key")!.click());
+    await until(() => !!container.querySelector("#connect-recovery"));
+    expect(heading()).toBe("Use your recovery key");
+    expect(container.querySelector("#connect-email")).toBeNull();
+    expect(container.querySelector("#connect-password")).toBeNull();
+    expect(container.textContent).toContain("glama.ai");
+    expect(container.querySelector('[role="radiogroup"]')).toBeNull();
+    expect(signIns()).toBe(1);
+    expect(signedOutAt(server.calls)).toBe(-1);
   });
 });

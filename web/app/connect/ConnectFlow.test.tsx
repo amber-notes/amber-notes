@@ -10,7 +10,7 @@ import { fromBase64, handoffPayload, sealHandoff } from "@/lib/e2ee";
 import { decodeQRMarkup } from "@/lib/qr.test-helpers";
 import ConnectFlow from "./ConnectFlow";
 import { APPLE_INSTEAD, MatchNumber, NotifySignInScreen } from "./ConnectScreens";
-import { APPLE_ON_WEB } from "@/lib/connect";
+import { APPLE_ON_WEB, GOOGLE_ON_WEB } from "@/lib/connect";
 
 const v = JSON.parse(readFileSync(resolve(__dirname, "../../../supabase/functions/_shared/e2ee-vectors.json"), "utf8"));
 
@@ -188,8 +188,8 @@ describe("the connect page's QR code", () => {
     expect(ask.body.pickup_hash).toBe(scan.body.pickup_hash);
     expect(ask.body.match_commit).toMatch(/^[0-9a-f]{64}$/);
     expect(server.calls.filter((c) => c.url === `${MCP}/connect/scan`)).toHaveLength(1);
-    // Signed out straight after asking.
-    expect(server.calls.some((c) => c.url.startsWith(`${SUPABASE}/auth/v1/logout`))).toBe(true);
+    // Still signed in after asking, so the recovery key never asks for the password again.
+    expect(server.calls.some((c) => c.url.startsWith(`${SUPABASE}/auth/v1/logout`))).toBe(false);
 
     // Back to the code: the same one.
     await act(async () => button("Scan the code instead").click());
@@ -223,7 +223,7 @@ describe("naming the device once you've signed in", () => {
     expect(container.textContent).toContain("Amber Notes sent a notification to your iPhone.");
     expect(container.textContent).not.toContain("Waiting");
     expect(container.querySelector('[role="status"]')).toBeNull();
-    expect(signedOut(server.calls)).toBeGreaterThan(-1);
+    expect(signedOut(server.calls)).toBe(-1);
     expect(button("Scan the code instead")).toBeTruthy();
     expect(button("Use your recovery key")).toBeTruthy();
 
@@ -259,6 +259,50 @@ describe("signing in for a notification", () => {
     expect(APPLE_ON_WEB).toBe(true);
     expect(html).toContain("Sign in with Apple");
     expect(html).not.toContain(APPLE_INSTEAD.replace(/'/g, "&#x27;"));
+  });
+});
+
+describe("signing in with Google", () => {
+  it("puts Sign in with Google directly under Sign in with Apple, before the email", () => {
+    const html = renderToStaticMarkup(
+      <NotifySignInScreen to="claude.ai" onSubmit={() => {}} onScan={() => {}} email="" password="" onEmail={() => {}} onPassword={() => {}}
+        onApple={() => {}} onGoogle={() => {}} busy={false} ready failure={null} />,
+    );
+    expect(GOOGLE_ON_WEB).toBe(true);
+    const apple = html.indexOf("Sign in with Apple"), google = html.indexOf("Sign in with Google"), email = html.indexOf("connect-email");
+    expect(apple).toBeGreaterThan(-1);
+    expect(google).toBeGreaterThan(apple);
+    expect(email).toBeGreaterThan(google);
+    // Google's four-colour G, as Google draws it.
+    for (const colour of ["#EA4335", "#4285F4", "#FBBC05", "#34A853"]) expect(html).toContain(colour);
+  });
+
+  it("leaves for Google through Supabase with a PKCE challenge, and keeps only the verifier, the request and the provider", async () => {
+    const server = fakeServer(() => ({ state: "waiting" }));
+    vi.stubGlobal("fetch", server.fetch);
+    sessionStorage.clear();
+    render();
+    await until(() => !!container.querySelector("svg path"));
+    await act(async () => button("Get a notification instead").click());
+    await act(async () => [...container.querySelectorAll("button")].find((b) => b.textContent?.includes("Sign in with Google"))!.click());
+    await until(() => assigned.length > 0);
+    const to = new URL(assigned[0]);
+    expect(to.origin + to.pathname).toBe(`${SUPABASE}/auth/v1/authorize`);
+    expect(to.searchParams.get("provider")).toBe("google");
+    expect(to.searchParams.get("redirect_to")).toBe(`${window.location.origin}/connect?request=${ID}`);
+    const saved = JSON.parse(sessionStorage.getItem("amber.connect.pkce")!);
+    expect(Object.keys(saved).sort()).toEqual(["provider", "request", "verifier"]);
+    expect(saved).toMatchObject({ provider: "google", request: ID });
+    const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(saved.verifier)));
+    expect(to.searchParams.get("code_challenge")).toBe(Buffer.from(digest).toString("base64url"));
+  });
+
+  it("names Google when the round trip comes back without a session", async () => {
+    vi.stubGlobal("fetch", fakeServer(() => ({ state: "waiting" })).fetch);
+    sessionStorage.setItem("amber.connect.pkce", JSON.stringify({ verifier: "v", request: ID, provider: "google" }));
+    act(() => root.render(<ConnectFlow requestId={ID} supabaseURL={SUPABASE} anonKey="anon" label={LABEL} recover={false} authError="access_denied" pollMs={20} />));
+    await until(() => container.textContent!.includes("Sign in with Google didn't finish. Try again."));
+    expect(sessionStorage.getItem("amber.connect.pkce")).toBeNull();
   });
 });
 
@@ -299,21 +343,27 @@ describe("the recovery key path", () => {
     await until(() => !!container.querySelector("svg path"));
     await act(async () => button("No iPhone? Use your recovery key").click());
     await until(() => heading() === "Use your recovery key");
-    // Access sits under a closed Options, already at Read and edit.
-    const options = container.querySelector("details")!;
-    expect(options.open).toBe(false);
-    expect(container.querySelector('[role="radio"][aria-checked="true"]')?.textContent).toBe("Read and edit");
+    // Step one is only the sign-in: no key field next to the password.
+    expect(container.querySelector("#connect-recovery")).toBeNull();
     await act(async () => {
       type("#connect-email", "me@example.com");
       type("#connect-password", "test-password-for-a-fake-server");
-      type("#connect-recovery", vectors.recovery.typed);
     });
+    await act(async () => container.querySelector<HTMLFormElement>("form")!.requestSubmit());
+    await until(() => !!container.querySelector("#connect-recovery"));
+    // Step two: the key alone. Access follows the request; read only is one unticked box when it asked to write.
+    expect(container.querySelector("#connect-email")).toBeNull();
+    expect(container.querySelector("#connect-password")).toBeNull();
+    const readOnly = container.querySelector<HTMLInputElement>('input[type="checkbox"]');
+    if (wantsWrite) expect(readOnly?.checked).toBe(false);
+    else expect(readOnly).toBeNull();
+    await act(async () => type("#connect-recovery", vectors.recovery.typed));
     await act(async () => container.querySelector<HTMLFormElement>("form")!.requestSubmit());
     await until(() => server.calls.some((c) => c.url === `${MCP}/connect/decide`));
     return server.calls.find((c) => c.url === `${MCP}/connect/decide`)!.body;
   }
 
-  it("allows Read and edit without opening Options when the app asked to write", async () => {
+  it("allows Read and edit by default when the app asked to write", async () => {
     const decided = await allowWithRecoveryKey(true);
     expect(decided.allow).toBe(true);
     expect(decided.write).toBe(true);
