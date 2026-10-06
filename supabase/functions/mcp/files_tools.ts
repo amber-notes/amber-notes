@@ -752,7 +752,7 @@ export const fileHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
         n = (await pathsOf(tx, c)).noteAt(made.path)!;
       }
       if ((await pathsOf(tx, c)).hasApp(n.id)) throw new ToolError(`"${(await pathsOf(tx, c)).pathOf(n.id)}" already has an app. Change its files with edit and write.`);
-      const proj = await withFiles({ amberApp: 1, files: {}, compiled: {} }, scaffold(n.title));
+      const proj = await withFiles({ amberApp: 1, files: {}, compiled: {} }, await scaffold(n.title));
       const result = await saveProject(tx, c, await full(tx, c, n.id), proj, "a new React project", a) as Record<string, unknown>;
       const base = (await pathsOf(tx, c, true)).pathOf(n.id)!.replace(/\.md$/, ".app");
       // The starter counts as read: its files are what the AI starts from.

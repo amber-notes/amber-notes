@@ -210,3 +210,14 @@ Deno.test("an app: create, its files, and data.json edited like a file, one chan
   assertEquals((await tool(pg, a, "fetch", { id: "Health/Habits.app" })).metadata.load_failure.message, "TypeError: x is undefined");
   assertEquals((await tool(pg, a, "see_app", { path: "Health/Habits.app" })).load_failure.device, "iPhone");
 });
+
+Deno.test("every call takes one from the MCP bucket, failed ones too (one statement, its own transaction)", async () => {
+  const pg = await schemaDB();
+  const a = await account(pg);
+  const left = async () => ((await pg.query(`select tokens from public.pane_rate where user_id = $1 and bucket = 'mcp'`, [a.id])).rows[0] as { tokens: number } | undefined)?.tokens;
+  await tool(pg, a, "list");
+  const after1 = await left();
+  assert(after1 !== undefined && after1 <= 599.5, String(after1));
+  await fails(tool(pg, a, "fetch", { id: "Nothing here.md" }));
+  assert((await left())! < after1!, "a failed call is counted");
+});

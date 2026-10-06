@@ -7,7 +7,6 @@ import { MAX_PAGE_BYTES, MAX_PAGE_DATA_BYTES, PAGE_CONTRACT } from "./page.ts";
 import { AMBER_BASE_CSS, AMBER_TOKENS } from "./amber-base.ts";
 import { scaffold } from "./app_scaffold.ts";
 
-const SCAFFOLD = scaffold("Example");
 const LIBS_BY_PACKAGE = "chart.js, d3, three, tone, dayjs, marked, dompurify, animejs, canvas-confetti, topojson-client and world-atlas";
 
 /** The few lines every client sees in the server's instructions. Clients differ in what else they
@@ -27,7 +26,9 @@ One self-contained HTML document, at most ${kb(MAX_PAGE_BYTES)}; the app's own d
 
 /** The guide get_page_guide returns, the MCP resource, and the skill's reference. Markdown. Short on
  *  purpose (Emil, 2026-10-06): where an app lives and what it can use, not how to design it. */
-export const PAGE_GUIDE = `# Apps in Amber Notes
+export async function pageGuide(): Promise<string> {
+  const SCAFFOLD = await scaffold("Example");
+  return `# Apps in Amber Notes
 
 A note can be an app: a habit tracker, a budget, a workout log, a game. The person opens the note and the app is all they see. This says where an app lives and what it can use. How it looks and works is your call; build it as well as you would anywhere.
 
@@ -86,6 +87,7 @@ The device, through the system's own prompts: device.reminders, calendar, notify
 - check_app: the full check at 320, 390 and 1280 px, light and dark, with no data, a new record and 400 records. errors mean broken; notes are information.
 - Look at it before you tell the person it's done, then say in a line or two what the app does.
 `;
+}
 
 /** MCP prompts: starting points a client can offer the person. */
 export const PAGE_PROMPTS = [

@@ -76,7 +76,7 @@ async function seed(secretsFile: string, n: number) {
   for (let i = 19; i < n; i += 20) rows[i].parent_id = ids[i - 1];
   const parents = rows.filter((r) => !r.parent_id), children = rows.filter((r) => r.parent_id);
   for (const set of [parents, children]) for (let i = 0; i < set.length; i += 200) await rest("POST", "notes", set.slice(i, i + 200));
-  const project = serialize((await linkProject(await withFiles({ amberApp: 1, files: {}, compiled: {} }, scaffold("Habits")))).project);
+  const project = serialize((await linkProject(await withFiles({ amberApp: 1, files: {}, compiled: {} }, await scaffold("Habits")))).project);
   for (let k = 0; k < 3; k++) await rest("POST", "note_pages", { note_id: ids[k + 1], page_ct: await v.sealPage(ids[k + 1], project) });
   console.log(`seeded ${n} notes, ${nf} folders, ${children.length} sub-notes, 3 apps in ${Math.round((performance.now() - t0) / 1000)} s`);
 }

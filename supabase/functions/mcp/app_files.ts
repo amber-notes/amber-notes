@@ -190,7 +190,7 @@ export const fileHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
     const n = await findNote(tx, c, a);
     const { exists } = await projectOf(tx, c, n.id);
     if (exists && a.replace !== true) throw new ToolError(`"${n.title}" already has an app. Read it with list_app_files, or pass replace: true to start over (the current app stays in its versions).`);
-    const p = await withFiles({ amberApp: 1, files: {}, compiled: {} }, scaffold(n.title));
+    const p = await withFiles({ amberApp: 1, files: {}, compiled: {} }, await scaffold(n.title));
     const r = await saveProject(tx, c, n, p, "a new project", a) as Record<string, unknown>;
     return { ...r, files: fileList(p), next: "Read /README.md, then make Home do the app's main job: edit src/screens/Home.jsx, add screens and components, and keep README.md current." };
   },
@@ -217,7 +217,7 @@ export const fileHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
     const path = pathArg(a.path), content = text(a.content, "content");
     let { project: p, exists } = await projectOf(tx, c, n.id);
     // The first file written to a note without an app starts from the project scaffold.
-    if (!exists && path !== "/index.html") for (const [f, t] of Object.entries(scaffold(n.title))) p = await withFile(p, f, t);
+    if (!exists && path !== "/index.html") for (const [f, t] of Object.entries(await scaffold(n.title))) p = await withFile(p, f, t);
     const was = p.files[path];
     if (was === content) return { app: { id: n.id, title: n.title }, saved: `${path} (unchanged)` };
     p = await withFile(p, path, content);

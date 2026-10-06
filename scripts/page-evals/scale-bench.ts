@@ -47,7 +47,7 @@ async function seed(n: number) {
     const f = await file(pg, a, `scan-${k}.pdf`, "com.adobe.pdf", new Uint8Array(100));
     await app(pg, a.id, `update public.notes set body_ct = $2 where id = $1`, [ids[k], await a.vault.sealBody(ids[k], body(k) + `\n![scan-${k}.pdf](pane-file:${f.id})\n`)]);
   }
-  const project = serialize((await linkProject(await withFiles({ amberApp: 1, files: {}, compiled: {} }, scaffold("Habits")))).project);
+  const project = serialize((await linkProject(await withFiles({ amberApp: 1, files: {}, compiled: {} }, await scaffold("Habits")))).project);
   for (let k = 0; k < 3; k++) await app(pg, a.id, `insert into public.note_pages (note_id, page_ct) values ($1, $2)`, [ids[100 % n + k], await a.vault.sealPage(ids[100 % n + k], project)]);
   return { pg, a, folders };
 }
