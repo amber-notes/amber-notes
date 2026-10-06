@@ -1,8 +1,9 @@
 // The built-in exercise library: name, primary muscle, other muscles worked, equipment.
 // Written for this app. Custom exercises live in the app's data next to it.
-const MUSCLES = ["Chest", "Back", "Shoulders", "Biceps", "Triceps", "Forearms", "Abs", "Quads", "Hamstrings", "Glutes", "Calves", "Full body", "Cardio"];
-const EQUIPMENT = ["Barbell", "Dumbbell", "Machine", "Cable", "Bodyweight", "Kettlebell", "Band", "Other"];
-const LIB = [
+export const MUSCLES = ["Chest", "Back", "Shoulders", "Biceps", "Triceps", "Forearms", "Abs", "Quads", "Hamstrings", "Glutes", "Calves", "Full body", "Cardio"];
+export const EQUIPMENT = ["Barbell", "Dumbbell", "Machine", "Cable", "Bodyweight", "Kettlebell", "Band", "Other"];
+export type Exercise = { id: string; name: string; muscle: string; other: string[]; equipment: string; custom?: boolean }
+export const LIB: Exercise[] = ([
   ["bench-press", "Bench Press", "Chest", "Triceps,Shoulders", "Barbell"],
   ["incline-bench-press", "Incline Bench Press", "Chest", "Shoulders,Triceps", "Barbell"],
   ["decline-bench-press", "Decline Bench Press", "Chest", "Triceps", "Barbell"],
@@ -105,4 +106,4 @@ const LIB = [
   ["treadmill", "Treadmill Run", "Cardio", "Quads,Calves", "Machine"],
   ["bike", "Stationary Bike", "Cardio", "Quads", "Machine"],
   ["jump-rope", "Jump Rope", "Cardio", "Calves", "Other"],
-].map(([id, name, muscle, other, equipment]) => ({ id, name, muscle, other: other ? other.split(",") : [], equipment }));
+] as string[][]).map(([id, name, muscle, other, equipment]) => ({ id, name, muscle, other: other ? other.split(",") : [], equipment }))
