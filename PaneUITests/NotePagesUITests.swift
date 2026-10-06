@@ -773,4 +773,52 @@ final class NotePagesUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Claude is working on a new version"].waitForExistence(timeout: 3))
         shot("h1-draft-app-info")
     }
+
+    // MARK: First open, from the website
+
+    /// The website's template page in Safari, Use template, Amber Notes adds it, and the first-open
+    /// moment (FIRST_OPEN=a|b|c; TEMPLATE=evening-tracker or a note template like meal-plan).
+    /// Needs the website (web: pnpm dev) and demo/onboarding/site.py on port 5211.
+    func testFirstOpenFromWeb() {
+        let env = ProcessInfo.processInfo.environment
+        let variant = env["FIRST_OPEN"] ?? "a", slug = env["TEMPLATE"] ?? "evening-tracker"
+        launch(["-firstOpen", variant, "-resetFirstOpen", "-templateSite", "http://127.0.0.1:5211"])
+        pause(2)
+        mark("web-start")
+        XCUIDevice.shared.system.open(URL(string: "http://127.0.0.1:5211/templates/\(slug)")!)
+        let safari = XCUIApplication(bundleIdentifier: "com.apple.mobilesafari")
+        XCTAssertTrue(safari.wait(for: .runningForeground, timeout: 15))
+        pause(3)
+        // Safari's first-run tip, if it shows.
+        let tipClose = safari.buttons["Close"].firstMatch
+        if tipClose.waitForExistence(timeout: 2) { tipClose.tap(); pause(0.8) }
+        shot("w1-website")
+        let use = safari.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS 'Use template'")).firstMatch
+        XCTAssertTrue(use.waitForExistence(timeout: 10))
+        use.tap()
+        // Safari asks before it opens the app. On the site's open page, "Open Amber Notes" if the
+        // page's own attempt didn't reach Safari's question.
+        let open = safari.buttons["Open"].firstMatch
+        if !open.waitForExistence(timeout: 5) {
+            let link = safari.links.matching(NSPredicate(format: "label CONTAINS 'Open Amber Notes'")).firstMatch
+            if link.waitForExistence(timeout: 3) { shot("w2-open-page"); link.tap() }
+        }
+        if open.waitForExistence(timeout: 6) { pause(0.8); shot("w2-open-in-app"); open.tap() }
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 10))
+        let add = app.buttons["noteSource.add"].firstMatch
+        XCTAssertTrue(add.waitForExistence(timeout: 12))
+        pause(1)
+        shot("w3-add")
+        add.tap()
+        pause(2.5)
+        shot("w4-first-open")
+        let start = app.buttons["firstOpen.start"].firstMatch
+        XCTAssertTrue(start.waitForExistence(timeout: 8))
+        if !start.isHittable { app.swipeUp() }
+        start.tap()
+        pause(2)
+        shot("w5-app")
+        mark("web-end")
+        pause(1)
+    }
 }

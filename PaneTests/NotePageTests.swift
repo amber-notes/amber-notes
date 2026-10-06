@@ -1121,6 +1121,27 @@ import WebKit
         #expect(store.drafts[id]?.by == "Claude" && store.live(id) == fixed, "a draft never runs")
     }
 
+    /// An app template brings its app and first ask; the first-open moment shows once per person
+    /// for apps and once for notes, and later templates get a small line instead.
+    @Test func firstOpenShowsOncePerKind() throws {
+        let json = #"{"slug":"evening-tracker","title":"Evening tracker","note":"Evening tracker\n","app":"/templates/apps/evening-tracker.json","preview":"/templates/apps/evening-tracker.jpg","ask":"Add a sleep column."}"#
+        let t = try JSONDecoder().decode(NoteTemplate.self, from: Data(json.utf8))
+        #expect(t.app == "/templates/apps/evening-tracker.json" && t.ask == "Add a sleep column.")
+        var draft = NoteDraft(template: t, link: NoteSourceLink(kind: .template, slug: t.slug))
+        draft.appProject = #"{"amberApp":1,"files":{"/index.html":"<p>x</p>"}}"#
+        let defaults = UserDefaults(suiteName: "firstOpen-\(UUID())")!
+        let fo = FirstOpen(defaults: defaults)
+        let a = UUID(), b = UUID(), n = UUID()
+        fo.added(note: a, draft: draft)
+        #expect(fo.pending[a]?.full == true && fo.pending[a]?.isApp == true)
+        fo.start(fo.pending[a]!)
+        fo.added(note: b, draft: draft)
+        #expect(fo.pending[b]?.full == false, "the second app: just Added to your notes")
+        draft.appProject = nil
+        fo.added(note: n, draft: draft)
+        #expect(fo.pending[n]?.full == true && fo.pending[n]?.isApp == false, "a note template has its own first time")
+    }
+
     @Test func projectsHaveLimitsAndMustBeCompiled() throws {
         func stored(_ files: [String: String], _ compiled: [String: String] = [:]) -> String {
             String(data: try! JSONSerialization.data(withJSONObject: ["amberApp": 1, "files": files, "compiled": compiled]), encoding: .utf8)!

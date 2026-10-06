@@ -117,6 +117,19 @@ struct NoteDetailView: View {
             .sheet(item: $addingKey) { d in APIKeyForm(draft: d) }
             .sheet(isPresented: $showNetLog) { NotePageNetLogView(noteID: note.id) }
             .sheet(isPresented: $showMakeApp) { MakeAppSheet(title: note.title, body_: note.body) }
+            .sheet(item: firstOpenSheet) { m in FirstOpenSheet(moment: m) { startFirstOpen(m) } }
+            #if os(iOS)
+            .fullScreenCover(item: firstOpenWelcome) { m in FirstOpenWelcome(moment: m) { startFirstOpen(m) } }
+            #else
+            .sheet(item: firstOpenWelcome) { m in FirstOpenWelcome(moment: m) { startFirstOpen(m) } }
+            #endif
+            // Later templates: just a line.
+            .task(id: firstOpen?.note) {
+                guard let m = firstOpen, !m.full else { return }
+                try? await Task.sleep(for: .seconds(0.6))
+                notice("Added to your notes")
+                FirstOpen.shared.start(m)
+            }
             .sheet(isPresented: $showAppInfo) {
                 if let p = notePage {
                     AppInfoSheet(noteID: note.id, html: p.html,
@@ -345,6 +358,13 @@ struct NoteDetailView: View {
                         .opacity(showingPage ? 1 : 0)
                         .allowsHitTesting(showingPage)
                         .accessibilityHidden(!showingPage)
+                        // B: the first-open card inside the app, at its top, until Start.
+                        .safeAreaInset(edge: .top, spacing: 0) {
+                            if showingPage, let m = firstOpen, m.full, m.isApp, FirstOpen.variant == .b {
+                                FirstOpenCard(moment: m) { startFirstOpen(m) }
+                                    .transition(.move(edge: .top).combined(with: .opacity))
+                            }
+                        }
                 }
             }
         } else {
@@ -363,6 +383,29 @@ struct NoteDetailView: View {
     /// The version that runs: the newest that passed its checks and opens here (NotePageStore.live).
     private var notePage: NotePageStore.Page? { note.isLocked ? nil : NotePageStore.shared.live(note.id) }
     private var showingPage: Bool { notePage != nil && mode == .page }
+
+    /// A template just added from the website, opening for the first time.
+    private var firstOpen: FirstOpen.Moment? { FirstOpen.shared.pending[note.id] }
+
+    private func startFirstOpen(_ m: FirstOpen.Moment) {
+        withAnimation(.smooth(duration: 0.3)) { FirstOpen.shared.start(m) }
+    }
+
+    /// A: a sheet over the app (and, for a note template, its lighter version, whatever the design).
+    private var firstOpenSheet: Binding<FirstOpen.Moment?> {
+        Binding(get: {
+            guard let m = firstOpen, m.full else { return nil }
+            return !m.isApp || FirstOpen.variant == .a ? m : nil
+        }, set: { if $0 == nil, let m = firstOpen { FirstOpen.shared.start(m) } })
+    }
+
+    /// C: a short welcome before the app.
+    private var firstOpenWelcome: Binding<FirstOpen.Moment?> {
+        Binding(get: {
+            guard let m = firstOpen, m.full, m.isApp, FirstOpen.variant == .c else { return nil }
+            return m
+        }, set: { if $0 == nil, let m = firstOpen { FirstOpen.shared.start(m) } })
+    }
 
     /// What of the app's bottom edge Amber covers: on the Mac the receipt (its height, its margin and
     /// a gap); on iPhone nothing (the receipt goes in the navigation bar, and the App side has no
@@ -490,7 +533,7 @@ struct NoteDetailView: View {
         let before = shownPage
         shownPage = now
         if now != nil { NotePageActions.importIfNeeded(note) }
-        guard let now, now != before, now.by != AIGlyph.page else { return }
+        guard let now, now != before, now.by != AIGlyph.page, now.by != FirstOpen.templateWriter else { return }
         withAnimation(.smooth(duration: 0.3)) { mode = .page }
         let r = AIEdit.Receipt(noteID: note.id, by: now.by, at: now.at, previous: note.body, lines: 0, kind: before == nil ? .pageMade : .pageChanged)
         undoPage = before
