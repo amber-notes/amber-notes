@@ -21,9 +21,8 @@ import { FILE_INSTRUCTIONS, FILE_TOOLS, runFileTool } from "./files_tools.ts";
 const fileSet = () => Deno.env.get("AMBER_MCP_TOOLS") === "files";
 import { challenge, handleOAuth, isOAuthPath, publicBase, resolveAccessToken, subpath } from "./oauth.ts";
 import { SERVER_CARD_PATH, SERVER_INFO, serverCardResponse } from "./card.ts";
-import { BASE_CSS_URI, GUIDE_URI, PAGE_GUIDE, PAGE_INSTRUCTIONS, PAGE_PROMPTS } from "./page_guide.ts";
+import { BASE_CSS_URI, GUIDE_URI, PAGE_INSTRUCTIONS, PAGE_PROMPTS, pageGuide } from "./page_guide.ts";
 import { AMBER_BASE_CSS } from "./amber-base.ts";
-import { APP_EXAMPLES } from "./app_examples.gen.ts";
 
 const PROTOCOL_VERSIONS = ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"];
 export const INSTRUCTIONS = `Amber Notes is the user's personal notes app. Notes are markdown; the first line is the title.
@@ -254,12 +253,12 @@ async function respond(msg: Rpc, id: string | number | null, ctx: ToolContext): 
         }
       }
       case "resources/list":
-        return ok(id, { resources: fileSet() ? [] : RESOURCES.map(({ text: _, ...r }) => r) });
+        return ok(id, { resources: fileSet() ? [] : (await RESOURCES()).map(({ text: _, ...r }) => r) });
       case "resources/templates/list":
         return ok(id, { resourceTemplates: [] });
       case "resources/read": {
         const uri = String(msg.params?.uri ?? "");
-        const r = RESOURCES.find((x) => x.uri === uri);
+        const r = (await RESOURCES()).find((x) => x.uri === uri);
         if (!r) return { jsonrpc: "2.0", id, error: { code: -32002, message: `Resource not found: ${uri}` } };
         return ok(id, { contents: [{ uri: r.uri, mimeType: r.mimeType, text: r.text }] });
       }
@@ -282,12 +281,17 @@ async function respond(msg: Rpc, id: string | number | null, ctx: ToolContext): 
   }
 }
 
-/** Read-only documents a client can attach: the guide, the default stylesheet and an example app project. */
-const RESOURCES = [
-  { uri: GUIDE_URI, name: "note-pages-guide", title: "Building note pages", description: "How to build and edit Amber Notes pages: the window.amber API, data model, design rules and a starter page.", mimeType: "text/markdown", text: PAGE_GUIDE },
-  { uri: BASE_CSS_URI, name: "amber-base-css", title: "amber-base.css", description: "The default stylesheet every note's app gets, before its own styles and in a cascade layer: override any rule, or opt out with <meta name=\"amber-base\" content=\"none\">.", mimeType: "text/css", text: AMBER_BASE_CSS },
-  ...Object.entries(APP_EXAMPLES).flatMap(([name, ex]) => Object.entries(ex.files).map(([path, text]) => ({ uri: `amber://examples/${name}${path}`, name: `example-${name}${path.replace(/[/.]/g, "-")}`, title: `Example app ${name}: ${path}`, description: `A file of the ${name} example project.`, mimeType: path.endsWith(".md") ? "text/markdown" : path.endsWith(".css") ? "text/css" : path.endsWith(".html") ? "text/html" : "text/javascript", text }))),
-];
+/** Read-only documents a client can attach: the guide, the default stylesheet and an example app
+ *  project. Made the first time a client asks (they're big; most requests never need them). */
+let resources: Promise<{ uri: string; name: string; title: string; description: string; mimeType: string; text: string }[]> | null = null;
+const RESOURCES = () => resources ??= (async () => {
+  const { APP_EXAMPLES } = await import("./app_examples.gen.ts");
+  return [
+    { uri: GUIDE_URI, name: "note-pages-guide", title: "Building note pages", description: "How to build and edit Amber Notes pages: the window.amber API, data model, design rules and a starter page.", mimeType: "text/markdown", text: await pageGuide() },
+    { uri: BASE_CSS_URI, name: "amber-base-css", title: "amber-base.css", description: "The default stylesheet every note's app gets, before its own styles and in a cascade layer: override any rule, or opt out with <meta name=\"amber-base\" content=\"none\">.", mimeType: "text/css", text: AMBER_BASE_CSS },
+    ...Object.entries(APP_EXAMPLES).flatMap(([name, ex]) => Object.entries(ex.files).map(([path, text]) => ({ uri: `amber://examples/${name}${path}`, name: `example-${name}${path.replace(/[/.]/g, "-")}`, title: `Example app ${name}: ${path}`, description: `A file of the ${name} example project.`, mimeType: path.endsWith(".md") ? "text/markdown" : path.endsWith(".css") ? "text/css" : path.endsWith(".html") ? "text/html" : "text/javascript", text: text as string }))),
+  ];
+})();
 
 function ok(id: unknown, result: unknown) {
   return { jsonrpc: "2.0", id, result };

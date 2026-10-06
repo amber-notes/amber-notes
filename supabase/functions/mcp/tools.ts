@@ -314,11 +314,11 @@ export async function runIn(list: Tool[], impl: Record<string, (tx: Tx, a: Args,
   const claims = JSON.stringify({ sub: ctx.userId, role: "authenticated" });
   // Every call costs one from the account's MCP bucket (600, then 5 a second). Taken in its
   // own transaction so a call that fails still counts: failures are no free way to hammer.
+  // One statement, one round trip, in its own transaction: the claims are set (from the subquery,
+  // which runs first) for the take in the same statement.
   const tTake = performance.now();
-  await ctx.sql.begin(async (tx) => {
-    await tx`select set_config('request.jwt.claims', ${claims}, true)`;
-    await tx`select public.pane_take('mcp')`;
-  }).catch((e) => { throw new ToolError((e as Error).message); });
+  await ctx.sql`select public.pane_take('mcp') from (select set_config('request.jwt.claims', ${claims}, true)) as claims`
+    .catch((e) => { throw new ToolError((e as Error).message); });
   if (ctx.timing) ctx.timing.rate_take = performance.now() - tTake;
   const call: Call = { v: ctx.vault, ctx, scanMs: 0 };
   try {
@@ -337,10 +337,8 @@ export async function runIn(list: Tool[], impl: Record<string, (tx: Tx, a: Args,
   } finally {
     // Scan time is charged on its own too, so a call that fails after scanning still pays.
     if (call.scanMs > 0) {
-      await ctx.sql.begin(async (tx) => {
-        await tx`select set_config('request.jwt.claims', ${claims}, true)`;
-        await tx`select public.pane_scan_budget(${call.scanMs}::double precision)`;
-      }).catch((e) => log("scan_charge_failed", { tool: name, ...errorKind(e) }));
+      await ctx.sql`select public.pane_scan_budget(${call.scanMs}::double precision) from (select set_config('request.jwt.claims', ${claims}, true)) as claims`
+        .catch((e) => log("scan_charge_failed", { tool: name, ...errorKind(e) }));
     }
   }
 }

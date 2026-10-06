@@ -170,7 +170,7 @@ export const FILE_TOOLS: Tool[] = ([
 
 /** What the server tells every client when this tool set is on: how the files are laid out. The
  *  format rules live where they're needed (the tools' checks and descriptions, an app's README). */
-export const FILE_INSTRUCTIONS = `Amber Notes is the person's notes, as files: each note is a markdown file in folders ("Work/Acme.md"; its first line is its title). A note's sub-notes and files are in the folder with its name ("Work/Acme/Agenda.md", "Work/Acme/contract.pdf"); folders also hold files of their own ("To read/Paper.pdf"). A folder ending in .app is the note's app, a small React project with its data in data.json; read its README.md first. Deleted notes are in "Recently Deleted/". Read before you edit; edit and write answer with checks: fix what they report.`;
+export const FILE_INSTRUCTIONS = `Amber Notes is the person's notes, as files: each note is a markdown file in folders ("Work/Acme.md"; its first line is its title). A note's sub-notes and files are in the folder with its name ("Work/Acme/Agenda.md", "Work/Acme/contract.pdf"); folders also hold files of their own ("To read/Paper.pdf"). A folder ending in .app is the note's app, a small React project with its data in data.json; read its README.md first, give every feature a test, and never weaken a test. Deleted notes are in "Recently Deleted/". Read before you edit; edit and write answer with checks: fix what they report.`;
 
 const SWITCHES = new Set(["title_only", "case_sensitive", "pinned", "sub_notes", "deleted", "replace_all", "raw"]);
 export async function runFileTool(name: string, args: Args, ctx: ToolContext): Promise<unknown> {
@@ -773,7 +773,7 @@ export const fileHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
         n = (await pathsOf(tx, c)).noteAt(made.path)!;
       }
       if ((await pathsOf(tx, c)).hasApp(n.id)) throw new ToolError(`"${(await pathsOf(tx, c)).pathOf(n.id)}" already has an app. Change its files with edit and write.`);
-      const proj = await withFiles({ amberApp: 1, files: {}, compiled: {} }, scaffold(n.title));
+      const proj = await withFiles({ amberApp: 1, files: {}, compiled: {} }, await scaffold(n.title));
       const result = await saveProject(tx, c, await full(tx, c, n.id), proj, "a new React project", a) as Record<string, unknown>;
       const base = (await pathsOf(tx, c, true)).pathOf(n.id)!.replace(/\.md$/, ".app");
       // The starter counts as read: its files are what the AI starts from.
