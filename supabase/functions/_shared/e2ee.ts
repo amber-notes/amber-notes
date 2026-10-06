@@ -37,6 +37,7 @@ export const fileContext = (id: string) => `file:${id.toLowerCase()}`;
 export const pageContext = (id: string) => `page:${id.toLowerCase()}`;
 export const pageDataContext = (id: string) => `page-data:${id.toLowerCase()}`;
 export const apiKeyContext = (id: string) => `api-key:${id.toLowerCase()}`;
+export const titleIndexContext = (userId: string) => `title-index:${userId.toLowerCase()}`;
 export const wrapContext = (purpose: WrapPurpose, userId: string) => `wrap:${purpose}:${userId.toLowerCase()}`;
 
 /** What a note shows in lists, sealed next to its body. A locked note's head is its title only. */
@@ -592,6 +593,9 @@ export class Vault {
   sealAPIKeyMeta(id: string, json: string) { return seal(json, this.key, this.keyId, apiKeyContext(id)); }
   openAPIKeyMeta(id: string, sealed: string) { return open(sealed, this.key, apiKeyContext(id)); }
   sealFolder(id: string, name: string) { return seal(name, this.key, this.keyId, folderContext(id)); }
+  /** The MCP file tools' index of titles and folder names (mcp_title_index). */
+  sealTitleIndex(json: string) { return seal(json, this.key, this.keyId, titleIndexContext(this.userId)); }
+  openTitleIndex(sealed: string) { return open(sealed, this.key, titleIndexContext(this.userId)); }
   openFolder(id: string, sealed: string) { return open(sealed, this.key, folderContext(id)); }
   sealFileMeta(id: string, meta: FileMeta) { return seal(JSON.stringify(meta), this.key, this.keyId, fileMetaContext(id)); }
   async openFileMeta(id: string, sealed: string): Promise<FileMeta> {

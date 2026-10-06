@@ -8,7 +8,6 @@ import "../../supabase/functions/mcp/tools.ts";
 import { schemaDB } from "../../supabase/functions/mcp/pglite.ts";
 import { account, app, file, folder, note, toolContext } from "../../supabase/functions/mcp/sealed.ts";
 import { runFileTool } from "../../supabase/functions/mcp/files_tools.ts";
-import { Paths } from "../../supabase/functions/mcp/paths.ts";
 import { scaffold } from "../../supabase/functions/mcp/app_scaffold.ts";
 import { withFiles } from "../../supabase/functions/mcp/app_files.ts";
 import { linkProject, serialize } from "../../supabase/functions/mcp/app_project.ts";
@@ -73,7 +72,7 @@ for (const n of sizes) {
   const results = new Map<string, Row[]>();
   for (let r = 0; r < repeat; r++) {
     // The first round starts cold (no titles cached), like a new isolate.
-    if (r === 0) Paths.forget(a.vault);
+    if (r === 0) await app(pg, a.id, `delete from public.mcp_title_index`);
     for (const [label, name, x] of ops) {
       // The edit goes back and forth, so each round has something to change.
       const row = await time(ctxOf, label, name, label === "edit note" && r % 2 ? { ...x, old_string: x.new_string, new_string: x.old_string } : x);

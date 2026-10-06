@@ -11,12 +11,11 @@
 // is restored there. A real folder and a note's folder with the same name ("Work/Acme/" and
 // "Work/Acme.md") are one folder.
 //
-// Building this opens every note's title (they're sealed). Titles are kept per account in the warm
-// isolate for a few minutes, checked against each row's version, so a call opens only what
-// changed since the last one (TITLE_CACHE below).
+// Building this needs every note's title and folder's name, which are sealed. They're kept per
+// account in one sealed box (mcp_title_index, with each note's version), so a call opens that box
+// and only the titles that changed since, not every note's head.
 
 import { type FolderRow, type Note, type NoteRow, type Tx, type Call, ToolError } from "./tools.ts";
-import type { Vault } from "../_shared/e2ee.ts";
 
 export const DELETED = "Recently Deleted/";
 
@@ -28,12 +27,8 @@ export type Entry =
 export type PathTiming = { rows: number; opened: number; dbMs: number; openMs: number; buildMs: number; cached: boolean };
 
 type Light = Omit<NoteRow, "head_ct" | "body_ct"> & { locked: boolean };
-type Cached = { at: number; heads: Map<string, { version: string; title: string; preview?: string }>; folders: Map<string, { ct: string; name: string }> };
-
-/** Titles and folder names per account and key, for TTL_MS; at most MAX_ACCOUNTS accounts. */
-const TITLE_CACHE = new Map<string, Cached>();
-const TTL_MS = 5 * 60_000;
-const MAX_ACCOUNTS = 50;
+/** The sealed index: note id → [version, title]; folder id → [its sealed name, the name]. */
+type Index = { v: 1; notes: Record<string, [string, string]>; folders: Record<string, [string, string]> };
 
 const UNREADABLE = "(this note can't be opened here)";
 export const safeName = (t: string) => t.replace(/\//g, "∕").replace(/[\r\n]+/g, " ").trim() || "Untitled";
@@ -50,65 +45,61 @@ export class Paths {
 
   static async load(tx: Tx, c: Call): Promise<Paths> {
     const t0 = performance.now();
-    const key = `${c.v.userId}:${c.v.keyId}`;
-    const now = Date.now();
-    // AMBER_TITLE_CACHE=off: nothing kept between requests (every call opens every title).
-    const keep = Deno.env.get("AMBER_TITLE_CACHE") !== "off" && !c.ctx.cold;
-    let cache = keep ? TITLE_CACHE.get(key) : undefined;
-    if (!cache || now - cache.at > TTL_MS) cache = { at: now, heads: new Map(), folders: new Map() };
-    const hit = cache.heads.size > 0;
-    const [rows, frows, apps] = await Promise.all([
+    const [rows, frows, apps, stored] = await Promise.all([
       tx<Light[]>`select id, folder_id, parent_id, is_pinned, created_at, updated_at, trashed_at, version, locked_body is not null as locked
         from public.notes where deleted_at is null`,
       tx<{ id: string; name_ct: string; parent_id: string | null; sort_index: number; created_at: Date }[]>`
         select id, name_ct, parent_id, sort_index, created_at from public.folders where deleted_at is null`,
       tx<{ note_id: string }[]>`select note_id from public.note_pages where page_ct is not null or draft_ct is not null`,
+      tx<{ index_ct: string }[]>`select index_ct from public.mcp_title_index`,
     ]);
     const dbMs = performance.now() - t0;
     const t1 = performance.now();
-    const stale = rows.filter((r) => cache!.heads.get(r.id)?.version !== String(r.version)).map((r) => r.id);
-    let opened = 0;
+    let index: Index = { v: 1, notes: {}, folders: {} };
+    const cached = stored.length > 0 && !c.ctx.cold;
+    if (cached) { try { index = JSON.parse(await c.v.openTitleIndex(stored[0].index_ct)); } catch { /* another key's, or old: rebuilt */ } }
+    let opened = 0, changed = false;
+    const stale = rows.filter((r) => index.notes[r.id]?.[0] !== String(r.version)).map((r) => r.id);
     for (let i = 0; i < stale.length; i += 1000) {
       const chunk = stale.slice(i, i + 1000);
       const heads = await tx<{ id: string; head_ct: string; version: string }[]>`select id, head_ct, version from public.notes where id = any(${chunk}::uuid[])`;
       await Promise.all(heads.map(async (h) => {
-        let head: { title: string; preview?: string };
-        try { head = await c.v.openHead(h.id, h.head_ct); } catch { head = { title: UNREADABLE }; }
-        cache!.heads.set(h.id, { version: String(h.version), ...head });
+        let title: string;
+        try { title = (await c.v.openHead(h.id, h.head_ct)).title; } catch { title = UNREADABLE; }
+        index.notes[h.id] = [String(h.version), title];
         opened++;
       }));
+      changed = true;
     }
-    const created = new Map(frows.map((f) => [f.id, +new Date(f.created_at)]));
     const folders: FolderRow[] = await Promise.all(frows.map(async (f) => {
-      let name = cache!.folders.get(f.id)?.ct === f.name_ct ? cache!.folders.get(f.id)!.name : null;
+      let name = index.folders[f.id]?.[0] === f.name_ct ? index.folders[f.id][1] : null;
       if (name === null) {
         name = await c.v.openFolder(f.id, f.name_ct).catch(() => "(can't be opened here)");
-        cache!.folders.set(f.id, { ct: f.name_ct, name });
+        index.folders[f.id] = [f.name_ct, name];
         opened++;
+        changed = true;
       }
       return { id: f.id, name, parent_id: f.parent_id, sort_index: Number(f.sort_index) };
     }));
-    // Forget what's gone, keep the account's titles for the next call.
-    const live = new Set(rows.map((r) => r.id));
-    for (const id of cache.heads.keys()) if (!live.has(id)) cache.heads.delete(id);
-    TITLE_CACHE.delete(key);
-    if (keep) TITLE_CACHE.set(key, cache);
-    while (TITLE_CACHE.size > MAX_ACCOUNTS) TITLE_CACHE.delete(TITLE_CACHE.keys().next().value!);
+    // What's gone leaves the index too.
+    const live = new Set(rows.map((r) => r.id)), liveFolders = new Set(frows.map((f) => f.id));
+    for (const id of Object.keys(index.notes)) if (!live.has(id)) { delete index.notes[id]; changed = true; }
+    for (const id of Object.keys(index.folders)) if (!liveFolders.has(id)) { delete index.folders[id]; changed = true; }
+    if (changed) {
+      const sealed = await c.v.sealTitleIndex(JSON.stringify(index));
+      await tx`insert into public.mcp_title_index (index_ct) values (${sealed})
+        on conflict (user_id) do update set index_ct = excluded.index_ct, updated_at = now()`;
+    }
     const openMs = performance.now() - t1;
     const t2 = performance.now();
     const hasApp = new Set(apps.map((a) => a.note_id));
-    const notes: Note[] = rows.map(({ locked, ...r }) => {
-      const h = cache!.heads.get(r.id)!;
-      return { ...r, head_ct: "", locked_body: locked ? "locked" : null, version: String(r.version), title: h.title, ...(h.preview !== undefined ? { preview: h.preview } : {}) };
-    });
-    const p = new Paths({ rows: rows.length, opened, dbMs: Math.round(dbMs), openMs: Math.round(openMs), buildMs: 0, cached: hit });
+    const notes: Note[] = rows.map(({ locked, ...r }) => ({ ...r, head_ct: "", locked_body: locked ? "locked" : null, version: String(r.version), title: index.notes[r.id]?.[1] ?? UNREADABLE }));
+    const created = new Map(frows.map((f) => [f.id, +new Date(f.created_at)]));
+    const p = new Paths({ rows: rows.length, opened, dbMs: Math.round(dbMs), openMs: Math.round(openMs), buildMs: 0, cached });
     p.build(folders, notes, hasApp, created);
     p.timing.buildMs = Math.round(performance.now() - t2);
     return p;
   }
-
-  /** Forgets an account's cached titles (tests, and after this call renamed things). */
-  static forget(v: Vault) { TITLE_CACHE.delete(`${v.userId}:${v.keyId}`); }
 
   private build(folders: FolderRow[], notes: Note[], hasApp: Set<string>, folderCreated: Map<string, number>) {
     const byId = new Map(notes.map((n) => [n.id, n]));
