@@ -1,5 +1,6 @@
 import type { CaptureResult } from "posthog-js";
 import { describe, expect, it } from "vitest";
+import { CONSENT_KEY } from "./consent";
 import { clickEvent, heatmapsAllowed, newScrollMarks, POSTHOG_DEFAULT_HOST, posthogAllowed, posthogOptions, posthogSettings, sanitizeEvent, scrolledPercent, visitorOptedOut } from "./posthog";
 
 const here = new URL("https://ambernotes.app/blog/claude-and-apple-notes");
@@ -28,10 +29,17 @@ describe("website PostHog", () => {
     expect(POSTHOG_DEFAULT_HOST).toBe("https://eu.i.posthog.com");
   });
 
-  it("keeps nothing on the device and records nobody", () => {
+  it("stays cookieless until the visitor accepts, and records nobody", () => {
     const o = posthogOptions(POSTHOG_DEFAULT_HOST);
-    expect(o.cookieless_mode).toBe("always");
-    expect(o.persistence).toBe("memory");
+    // No answer counts as a rejection, and a rejection is cookieless.
+    expect(o.cookieless_mode).toBe("on_reject");
+    expect(o.opt_out_capturing_by_default).toBe(true);
+    expect(o.consent_persistence_name).toBe(CONSENT_KEY);
+    expect(o.opt_out_capturing_persistence_type).toBe("localStorage");
+    // After accepting: one cookie on this host, for a year.
+    expect(o.persistence).toBe("cookie");
+    expect(o.cookie_expiration).toBe(365);
+    expect(o.cross_subdomain_cookie).toBe(false);
     expect(o.person_profiles).toBe("never");
     expect(o.disable_session_recording).toBe(true);
     expect(o.disable_surveys).toBe(true);

@@ -7,6 +7,7 @@ import GitHubLink, { GitHubGlyph } from "./GitHubLink";
 import PlatformNote from "./PlatformNote";
 import MobileMenu from "./MobileMenu";
 import { themeFor } from "@/lib/theme";
+import { CONSENT_OPEN_EVENT } from "@/lib/consent";
 
 const GITHUB = "https://github.com/amber-notes/amber-notes";
 const X_URL = "https://x.com/EmilWagman";
@@ -91,6 +92,10 @@ export default function SiteChrome({ version, stars, children }: { version: stri
             <a href="/privacy">Privacy Policy</a>
             <a href="/terms">Terms</a>
             <a href="/help">Help</a>
+            {/* Opens the cookie banner again (app/ConsentBanner.tsx); only in builds with PostHog. */}
+            {process.env.NEXT_PUBLIC_POSTHOG_KEY && (
+              <button type="button" className="site-footlink" onClick={() => window.dispatchEvent(new Event(CONSENT_OPEN_EVENT))}>Cookie settings</button>
+            )}
           </nav>
           <span className="site-footsep" aria-hidden="true" />
           <div className="site-social">
