@@ -6,12 +6,18 @@
 //   POST /render  Authorization: Bearer <RENDER_SECRET>
 //     { html, markdown, data?, today?, views?: [{ width, scheme }], capture?: boolean, interact?: boolean, probes?: boolean, widget?: boolean, steps?: [...] }
 //   -> { views: [...], interaction, probes, blocked, ms }
+//   POST /build   (same header) the app's build step, which the hosted edge runtime can't run:
+//     { compile: [{ path, source }], jsx: "react" | "preact" } -> { compiled: { [path]: { code } | { error } } }
+//     { tailwind: css, sources } -> { css } | { error }
 //
 // Nothing is stored or logged but timings and sizes. Each request gets fresh browser contexts with
 // no network: the page's own requests are refused, as in the app.
 import { renderPage, type RenderOptions, type Step, testRunnerProject } from "./render.ts";
+import { compileHere, tailwindHere } from "../../supabase/functions/mcp/app_build.ts";
 
 const MAX_BODY = 2 * 1024 * 1024;
+/** A whole project's sources can reach 3 MB (MAX_PROJECT_BYTES in app_project.ts). */
+const MAX_BUILD_BODY = 4 * 1024 * 1024;
 const secret = Deno.env.get("RENDER_SECRET");
 if (!secret) throw new Error("Set RENDER_SECRET.");
 
@@ -27,8 +33,9 @@ function memory(): number | null {
 export async function handle(req: Request): Promise<Response> {
   const url = new URL(req.url);
   if (req.method === "GET" && url.pathname === "/health") return new Response("ok");
-  if (req.method !== "POST" || url.pathname !== "/render") return new Response("Not found", { status: 404 });
+  if (req.method !== "POST" || (url.pathname !== "/render" && url.pathname !== "/build")) return new Response("Not found", { status: 404 });
   if (req.headers.get("authorization") !== `Bearer ${secret}`) return new Response("Unauthorized", { status: 401 });
+  if (url.pathname === "/build") return await buildRequest(await req.text());
   const text = await req.text();
   if (text.length > MAX_BODY) return new Response("Too big", { status: 413 });
   let body: { html?: unknown; markdown?: unknown; data?: unknown; today?: unknown; views?: unknown; capture?: unknown; interact?: unknown; probes?: unknown; widget?: unknown; steps?: unknown; tests?: unknown; smoke?: unknown };
@@ -51,6 +58,26 @@ export async function handle(req: Request): Promise<Response> {
   const ms = Math.round(performance.now() - t0);
   console.log(JSON.stringify({ at: new Date().toISOString(), ms, views: r.views.length, bytes: text.length, memoryBytes: memory() }));
   return Response.json({ views: r.views.map(({ screenshot: _, ...v }) => v), interaction: r.interaction, probes: r.probes, blocked: r.blocked, ms, memoryBytes: memory(), ...(r.trial ? { trial: r.trial, dataAfter: r.dataAfter } : {}), ...(r.tests ? { tests: r.tests, testErrors: r.testErrors } : {}), ...(r.smoke ? { smoke: r.smoke } : {}) });
+}
+
+async function buildRequest(text: string): Promise<Response> {
+  if (text.length > MAX_BUILD_BODY) return new Response("Too big", { status: 413 });
+  let body: { compile?: unknown; jsx?: unknown; tailwind?: unknown; sources?: unknown };
+  try { body = JSON.parse(text); } catch { return new Response("Bad JSON", { status: 400 }); }
+  const t0 = performance.now();
+  if (Array.isArray(body.compile)) {
+    const items = (body.compile as { path?: unknown; source?: unknown }[]).filter((x) => typeof x?.path === "string" && typeof x?.source === "string").slice(0, 200) as { path: string; source: string }[];
+    const compiled = await compileHere(items, body.jsx === "react" ? "react" : "preact");
+    console.log(JSON.stringify({ at: new Date().toISOString(), build: "compile", files: items.length, ms: Math.round(performance.now() - t0), bytes: text.length }));
+    return Response.json({ compiled });
+  }
+  if (typeof body.tailwind === "string" && typeof body.sources === "string") {
+    let out: { css: string } | { error: string };
+    try { out = { css: await tailwindHere(body.tailwind, body.sources) }; } catch (e) { out = { error: (e as Error).message }; }
+    console.log(JSON.stringify({ at: new Date().toISOString(), build: "tailwind", ms: Math.round(performance.now() - t0), bytes: text.length }));
+    return Response.json(out);
+  }
+  return new Response("compile or tailwind is required", { status: 400 });
 }
 
 if (import.meta.main) {

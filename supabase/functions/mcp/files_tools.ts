@@ -10,7 +10,7 @@ import { applyEdits, fitLines, sliceLines, wikiLinks, type Edit } from "./notes.
 import { noteChecks } from "./note_checks.ts";
 import { cleanPath, editText, type Project } from "./app_project.ts";
 import { scaffold } from "./app_scaffold.ts";
-import { fileList, projectOf, saveProject, withFile } from "./app_files.ts";
+import { fileList, projectOf, saveProject, withFile, withFiles } from "./app_files.ts";
 import { pageDataOf, storePageData } from "./data_tools.ts";
 import { dataShape } from "./data_ops.ts";
 import { appHandlers } from "./app_tools.ts";
@@ -398,8 +398,7 @@ export const fileHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
         n = await noteById(tx, c, made.created.id, false);
       }
       if (await hasApp(tx, n.id)) throw new ToolError(`"${n.title}" already has an app. Change its files with edit and write.`);
-      let proj: Project = { amberApp: 1, files: {}, compiled: {} };
-      for (const [path, content] of Object.entries(scaffold(n.title))) proj = await withFile(proj, path, content);
+      const proj = await withFiles({ amberApp: 1, files: {}, compiled: {} }, scaffold(n.title));
       const result = await saveProject(tx, c, n, proj, "a new React project", a) as Record<string, unknown>;
       const base = (await notePath(tx, c, n, await folders(tx, c.v))).replace(/\.md$/, ".app");
       return { ...result, app: `${base}/`, next: `Read ${base}/README.md, then build the app with write and edit (files under ${base}/src/). Its data is ${base}/data.json.` };

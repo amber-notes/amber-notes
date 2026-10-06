@@ -8,7 +8,7 @@ import { hostDeclared, declaredHosts } from "./page.ts";
 import { sampleData, sampleNote } from "./app_sample.ts";
 import { render, renderedFindings, testSummary } from "./app_check.ts";
 import {
-  brokenImports, cleanPath, compile, editText, isReact, isTest, linkProject, needsCompile, numbered, parseStored, type Project, projectProblems, serialize, sourceProblems, styleWarnings,
+  brokenImports, cleanPath, compileMany, editText, isReact, isTest, linkProject, needsCompile, numbered, parseStored, type Project, projectProblems, serialize, sourceProblems, styleWarnings,
 } from "./app_project.ts";
 import { scaffold } from "./app_scaffold.ts";
 import { bodyOf, Content, findNote, type Note, ToolError, type Call, type Tx } from "./tools.ts";
@@ -161,11 +161,19 @@ export async function saveProject(tx: Tx, c: Call, n: Note, unlinked: Project, c
 }
 
 /** A project with one file set: compiled if it needs it. A syntax error refuses the write. */
-export async function withFile(p: Project, path: string, content: string): Promise<Project> {
-  const next: Project = { amberApp: 1, files: { ...p.files, [path]: content }, compiled: { ...p.compiled } };
+export function withFile(p: Project, path: string, content: string): Promise<Project> {
+  return withFiles(p, { [path]: content });
+}
+
+/** A project with these files set, compiled in one build. A syntax error refuses the write. */
+export async function withFiles(p: Project, files: Record<string, string>): Promise<Project> {
+  const next: Project = { amberApp: 1, files: { ...p.files, ...files }, compiled: { ...p.compiled } };
   const react = isReact(next);
-  if (needsCompile(path, react)) {
-    const out = await compile(path, content, react ? "react" : "preact");
+  const items = Object.entries(files).filter(([path]) => needsCompile(path, react)).map(([path, source]) => ({ path, source }));
+  let built;
+  try { built = await compileMany(items, react ? "react" : "preact"); } catch (e) { throw new ToolError(`Not saved: ${(e as Error).message}`); }
+  for (const { path } of items) {
+    const out = built[path] ?? { error: `${path}: not compiled` };
     if ("error" in out) throw new ToolError(`Not saved: ${path} doesn't compile.\n${out.error}`);
     next.compiled[path] = out.code;
   }
@@ -180,8 +188,7 @@ export const fileHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
     const n = await findNote(tx, c, a);
     const { exists } = await projectOf(tx, c, n.id);
     if (exists && a.replace !== true) throw new ToolError(`"${n.title}" already has an app. Read it with list_app_files, or pass replace: true to start over (the current app stays in its versions).`);
-    let p: Project = { amberApp: 1, files: {}, compiled: {} };
-    for (const [path, content] of Object.entries(scaffold(n.title))) p = await withFile(p, path, content);
+    const p = await withFiles({ amberApp: 1, files: {}, compiled: {} }, scaffold(n.title));
     const r = await saveProject(tx, c, n, p, "a new project", a) as Record<string, unknown>;
     return { ...r, files: fileList(p), next: "Read /README.md, then make Home do the app's main job: edit src/screens/Home.jsx, add screens and components, and keep README.md current." };
   },
