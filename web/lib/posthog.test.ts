@@ -30,6 +30,7 @@ describe("website PostHog", () => {
 
   it("keeps nothing on the device and records nobody", () => {
     const o = posthogOptions(POSTHOG_DEFAULT_HOST);
+    expect(o.cookieless_mode).toBe("always");
     expect(o.persistence).toBe("memory");
     expect(o.person_profiles).toBe("never");
     expect(o.disable_session_recording).toBe(true);
