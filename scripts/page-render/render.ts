@@ -438,7 +438,7 @@ async function trial(open: (w: number, s: "light" | "dark") => Promise<{ page: P
     const dialog = page.locator("[role=dialog]:visible, dialog[open]").last();
     const scope = (await dialog.count().catch(() => 0)) ? dialog : page;
     const order = field
-      ? [scope.getByLabel(w, { exact: false }), scope.getByPlaceholder(w), scope.getByRole("textbox", { name: w }), scope.getByRole("spinbutton", { name: w }), scope.getByRole("combobox", { name: w })]
+      ? [scope.getByLabel(w, { exact: false }).and(scope.locator("input, textarea, select, [contenteditable=true], [role=textbox], [role=combobox], [role=spinbutton]")), scope.getByPlaceholder(w), scope.getByRole("textbox", { name: w }), scope.getByRole("spinbutton", { name: w }), scope.getByRole("combobox", { name: w })]
       : [scope.getByRole("button", { name: w }), scope.getByRole("link", { name: w }), scope.getByRole("tab", { name: w }), scope.getByRole("menuitem", { name: w }), scope.getByRole("option", { name: w }), scope.getByRole("checkbox", { name: w }), scope.getByRole("switch", { name: w }), scope.getByLabel(w, { exact: false }), scope.getByText(w, { exact: false })];
     // Visible and not covered by something else (a sheet over the page): what a tap would reach. If
     // nothing passes that (an animation still running), the first visible one.
