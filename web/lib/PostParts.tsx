@@ -92,3 +92,22 @@ export function Checklist({ title, items, note }: { title: string; items: string
     </Keep>
   );
 }
+
+/// A real capture from Apple's own apps (public/blog/macos27, taken in a clean macOS 27 VM with no
+/// account), as AVIF with a WebP fallback. The caption says which OS it shows. Lazy unless it's the
+/// first thing on the page; the box has the capture's own shape, so nothing moves as it loads.
+export function Capture({ src, alt, width, height, caption, priority = false, maxWidth }: {
+  src: string; alt: string; width: number; height: number; caption: string; priority?: boolean; maxWidth?: number;
+}) {
+  return (
+    <figure className={s.capture}>
+      <div className={s.captureStage}>
+        <picture style={{ "--w": `${maxWidth ?? width / 2}px` } as React.CSSProperties}>
+          <source type="image/avif" srcSet={`${src}.avif`} />
+          <img src={`${src}.webp`} alt={alt} width={width} height={height} loading={priority ? "eager" : "lazy"} decoding="async" fetchPriority={priority ? "high" : undefined} />
+        </picture>
+      </div>
+      <figcaption className={s.captureCaption}>{caption}</figcaption>
+    </figure>
+  );
+}

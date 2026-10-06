@@ -81,10 +81,10 @@ function AllPosts({ slug }: { slug: string }) {
 /// A blog post: the date and category, the title, the byline, an intro, a real capture of the app,
 /// then the text in the legal pages' readable column. A how-to post can put its short answer
 /// (PostParts' Answer) right under the intro, and open with a paper-cut banner (`art`) above the
-/// intro in place of the capture, which it then shows further down where it belongs. A share rail on wide screens, and at the end
+/// intro in place of the capture (or a real capture, `hero`, which wins over the art), which it then shows further down where it belongs. A share rail on wide screens, and at the end
 /// two more posts and every other post by title. Emits Article, BreadcrumbList and (when the post
 /// has real questions) FAQPage JSON-LD.
-export function PostPage({ slug, intro, answer, art, faq, children }: { slug: string; intro: React.ReactNode; answer?: React.ReactNode; art?: string; faq?: QA[]; children: React.ReactNode }) {
+export function PostPage({ slug, intro, answer, art, hero, faq, children }: { slug: string; intro: React.ReactNode; answer?: React.ReactNode; art?: string; hero?: React.ReactNode; faq?: QA[]; children: React.ReactNode }) {
   const x = post(slug);
   const path = `/blog/${x.slug}`;
   const minutes = readingMinutes(slug);
@@ -129,10 +129,10 @@ export function PostPage({ slug, intro, answer, art, faq, children }: { slug: st
         </header>
 
         <div className={`${legal.article} ${p.body} rise`} style={{ "--i": 1 } as React.CSSProperties}>
-          {art && <Banner src={art} />}
+          {hero ?? (art && <Banner src={art} />)}
           <p className={p.intro}>{intro}</p>
           {answer}
-          {!art && <Figure shot={x.image} ground={x.thumb.ground} priority />}
+          {!art && !hero && <Figure shot={x.image} ground={x.thumb.ground} priority />}
           {children}
           {faq?.length ? (
             <>

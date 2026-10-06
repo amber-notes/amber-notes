@@ -1,7 +1,7 @@
 import { Figure } from "@/lib/blog";
 import { PostCta } from "@/lib/PostCta";
 import { PostPage, postMetadata } from "@/lib/PostPage";
-import { Answer, Keep } from "@/lib/PostParts";
+import { Answer, Capture, Keep } from "@/lib/PostParts";
 import { SHOTS } from "@/lib/posts";
 
 export const dynamic = "force-static";
@@ -96,6 +96,10 @@ export default function Page() {
         devices with Apple Intelligence, the Use Model action can put a model, including ChatGPT, between those actions: for example, ask it
         to summarize some text and append the result to a note.
       </p>
+
+      <Capture src="/blog/macos27/notes-export-to" width={1000} height={880} maxWidth={440}
+        alt="The File menu of Apple Notes on macOS 27, open at Export To, with PDF and Markdown, and Import Markdown above it."
+        caption="Export To and Import Markdown in Notes on macOS 27: one note at a time, a copy rather than a connection." />
 
       <h2 id="applescript">AppleScript, and Python on top of it</h2>
       <p>

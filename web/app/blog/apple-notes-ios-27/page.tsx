@@ -1,16 +1,14 @@
-import { Figure } from "@/lib/blog";
 import { Loop } from "@/lib/Loop";
 import { PostCta } from "@/lib/PostCta";
 import { PostPage, postMetadata } from "@/lib/PostPage";
-import { Answer, Checklist, Keep, Paths, Steps } from "@/lib/PostParts";
-import { SHOTS } from "@/lib/posts";
+import { Answer, Capture, Checklist, Keep, Paths, Steps } from "@/lib/PostParts";
 
 export const dynamic = "force-static";
 export const metadata = postMetadata("apple-notes-ios-27", { title: "What's new in Apple Notes in iOS 27, and how to use it" });
 
 const FAQ = [
   { q: "What's new in Apple Notes in iOS 27?", a: [
-    "Divider lines, links to a section of a note, Copy as Markdown and Markdown that formats itself when you paste it, and Siri AI, which can find a note, search inside one, and add to or reformat a note when you ask. On a Mac, macOS 27 brings the same, and renames File, Export as to File, Export To.",
+    "Divider lines, links to a section of a note, Copy as Markdown and Markdown that turns into headings and lists when you paste it (on a Mac, with Edit, Paste as Markdown), and Siri AI, which can find a note, search inside one, and add to or reformat a note when you ask. On a Mac, macOS 27 brings the same, and renames File, Export as to File, Export To.",
   ] },
   { q: "How do I add a divider line in Apple Notes?", a: [
     "On iPhone, tap where the line should go, tap the Expand button in the edit menu, then choose Insert Divider Line. On a Mac, choose Edit, Insert Divider Line, or press Command-L.",
@@ -26,7 +24,7 @@ const FAQ = [
 const TRY_TODAY = [
   "Add a divider line to your longest note",
   "Make its sections headings, then link to one from the top",
-  "Paste a ChatGPT or Claude answer into a note and watch it format itself",
+  "Paste a ChatGPT or Claude answer into a note as Markdown and watch it format itself",
   "Select part of a note and choose Copy as Markdown",
   "Ask Siri AI \u201cWhat was the note with\u2026\u201d (iPhone 15 Pro or later)",
 ];
@@ -47,13 +45,15 @@ export default function Page() {
           { href: "#chatgpt-and-claude", label: "ChatGPT and Claude" },
         ]}>
           <p>
-            Five things: divider lines, links to a section of a note, Markdown that formats itself when you paste it, Copy as Markdown,
+            Five things: divider lines, links to a section of a note, Markdown that formats itself when you paste it (Paste as Markdown on a Mac), Copy as Markdown,
             and Siri AI, which can find a note and add to it. ChatGPT and Claude still can&apos;t search or edit Apple Notes from iPhone
             or the web.
           </p>
         </Answer>
       }
-      art="/blog/art/apple-notes-ios-27"
+      hero={<Capture priority src="/blog/macos27/notes-trip-note-light" width={1000} height={944} maxWidth={400}
+        alt="A Lisbon trip note in Apple Notes on macOS 27: a title, a link reading Jump to where to eat, a Day by day heading with a four-item checklist, a divider line, a Where to eat heading with a table of places and dishes, and a Pack list pasted as Markdown with Cash in bold."
+        caption="Apple Notes on macOS 27: a heading you can link to, a checklist, a divider line, a table and a list pasted as Markdown. The same options are in the iPhone edit menu." />}
       faq={FAQ}
     >
       <Checklist title="Try these 5 things in Apple Notes today" items={TRY_TODAY}
@@ -69,7 +69,7 @@ export default function Page() {
             <tr><th scope="row">Divider lines</th><td>Edit menu, Expand button, Insert Divider Line</td><td>Edit, Insert Divider Line (Command-L)</td></tr>
             <tr><th scope="row">Links to a section</th><td>Add Link, then Link to Section</td><td>Edit, Add Link, then Link to Section</td></tr>
             <tr><th scope="row">Copy as Markdown</th><td>In the edit menu</td><td>Edit, Copy as Markdown</td></tr>
-            <tr><th scope="row">Paste Markdown</th><td>Turns into headings and lists as you paste</td><td>The same</td></tr>
+            <tr><th scope="row">Paste Markdown</th><td>Turns into headings and lists as you paste</td><td>Edit, Paste as Markdown</td></tr>
             <tr><th scope="row">Export as Markdown</th><td>Share, Export as Markdown (since iOS 26)</td><td>File, Export To, Markdown (was Export as)</td></tr>
             <tr><th scope="row">Siri AI in Notes</th><td>Finds notes, and adds to or reformats one when you ask</td><td>Siri AI is in beta on macOS 27 too</td></tr>
           </tbody>
@@ -90,6 +90,9 @@ export default function Page() {
         Tables aren&apos;t on this year&apos;s list. They still have no column widths and no formulas; <a href="/blog/apple-notes-tables">tables
         in Apple Notes</a> covers what they do and the workarounds.
       </p>
+      <Capture src="/blog/macos27/notes-edit-menu-dark" width={960} height={1216} maxWidth={400}
+        alt="The Edit menu of Apple Notes on macOS 27 in dark mode, with Copy as Markdown, Paste as Markdown, Add Link (Command-K) and Insert Divider Line (Command-L)."
+        caption="The Edit menu in Notes on macOS 27, in dark mode: Insert Divider Line, Add Link, Copy as Markdown and Paste as Markdown all live here." />
 
       <h2 id="section-links">Links to a section of a note</h2>
       <p>
@@ -101,6 +104,9 @@ export default function Page() {
         <li>Select the text for the link, or tap where it should go, then choose Add Link from the edit menu (on a Mac, Edit, Add Link).</li>
         <li>Choose Link to Section and pick a heading. Turn on Use Section Title to name the link after it, or type your own name.</li>
       </Steps>
+      <Capture src="/blog/macos27/notes-link-to-section" width={838} height={690} maxWidth={420}
+        alt="The Add Link dialog in Apple Notes on macOS 27: Link To the note Lisbon, 4 days in May, Link to Section set to Where to eat, Use Section Title off, and the name Jump to where to eat."
+        caption="Add Link on macOS 27, pointing the link at the Where to eat heading in the same note." />
       <p>
         To link to a section in another note, link to that note first, then choose Link to Section. There&apos;s a shortcut on iPhone: type
         <code>&gt;&gt;</code> and the note&apos;s title, then <code>/</code> to pick one of its sections. If a heading is renamed, links named after
@@ -111,6 +117,7 @@ export default function Page() {
       <Paths rows={[
         { on: "iPhone", steps: ["Select text", "Edit menu", "Copy as Markdown"] },
         { on: "Mac", steps: ["Edit", "Copy as Markdown"] },
+        { on: "Paste, Mac", steps: ["Edit", "Paste as Markdown"] },
         { on: "Export, Mac", steps: ["File", "Export To", "Markdown"] },
       ]} />
       <p>
@@ -120,12 +127,23 @@ export default function Page() {
         asterisks.
       </p>
       <p>
+        On a Mac, use Edit, Paste as Markdown. When I tried it on macOS 27, a plain Command-V kept the <code>##</code> and <code>**</code> as
+        text, and Paste as Markdown turned them into a heading, a list and bold. On iPhone, Apple and the
+        early <a href="https://www.macrumors.com/2026/06/17/ios-27-apple-notes-app-new-features/" rel="noopener">reports</a> say Markdown
+        formats itself as you paste it.
+      </p>
+      <p>
         On a Mac, the export menu moved: it&apos;s now File, Export To, then Markdown or PDF. <a href="/blog/export-apple-notes-to-markdown">How
         to export Apple Notes to Markdown</a> has the steps for both versions, what to check in the file, and what to use for every note at once.
       </p>
       <Keep title="A prompt for ChatGPT, Claude or Gemini" text={PROMPT}
-        note="Add it to the end of a question, then paste the answer into a note. It arrives formatted instead of full of asterisks." />
-      <Figure shot={SHOTS.notesExportMenu} caption="The menu before the move: File, Export as, Markdown, in Notes on macOS 26. On macOS 27 it reads File, Export To." />
+        note="Add it to the end of a question, then paste the answer into a note (on a Mac, with Edit, Paste as Markdown). It arrives formatted instead of full of asterisks." />
+      <Loop src="/blog/macos27/notes-paste-markdown.mp4" poster="/blog/macos27/notes-paste-markdown.webp" width={1088} height={886}
+        label="Apple Notes on macOS 27. Edit, Paste as Markdown is chosen, and a Markdown packing list becomes a Pack heading and a bulleted list with Cash in bold."
+        caption="Edit, Paste as Markdown in Notes on macOS 27: the ## becomes a heading and the ** becomes bold." />
+      <Capture src="/blog/macos27/notes-export-to" width={1000} height={880} maxWidth={440}
+        alt="The File menu of Apple Notes on macOS 27, open at Export To, with PDF and Markdown in the submenu. Import Markdown is in the same menu."
+        caption="File, Export To on macOS 27, with Markdown and PDF. Import Markdown sits just above it." />
 
       <h2 id="siri-ai">Siri AI and your notes</h2>
       <p>

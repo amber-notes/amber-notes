@@ -47,7 +47,7 @@
 
 /* ── A short looping capture of the app ── */
 .loop { margin: 8px 0 28px; }
-.loopStage { display: grid; place-items: center; padding: clamp(16px, 4vw, 36px); border-radius: 20px; background: linear-gradient(160deg, #fbe7c9, #f6d3a4); }
+.loopStage { display: grid; place-items: center; padding: clamp(16px, 4vw, 36px); border-radius: 20px; background: var(--soft); }
 .loopFrame {
   position: relative; width: min(100%, var(--w)); border-radius: 12px; overflow: hidden; background: #fff;
   box-shadow: 0 0 0 0.5px rgba(60, 20, 0, 0.22), 0 18px 36px -12px rgba(60, 20, 0, 0.32), 0 2px 6px rgba(60, 20, 0, 0.12);
@@ -122,3 +122,13 @@
 .ticks > li { position: relative; padding-left: 32px; line-height: 1.45; }
 .ticks > li::marker { content: none; }
 .ticks > li::before { content: ""; position: absolute; left: 0; top: 1px; width: 20px; height: 20px; box-sizing: border-box; border-radius: 50%; border: 1.5px solid color-mix(in srgb, var(--muted) 60%, transparent); }
+
+/* ── A real capture of Apple's apps: on a soft ground, with the window's own corners ── */
+.capture { margin: 8px 0 28px; }
+.captureStage { display: grid; place-items: center; padding: clamp(12px, 3.5vw, 32px); border-radius: 20px; background: var(--soft); }
+.captureStage picture { display: block; width: min(100%, var(--w)); }
+.captureStage img {
+  display: block; width: 100%; height: auto; border-radius: 10px;
+  box-shadow: 0 0 0 0.5px rgba(60, 20, 0, 0.2), 0 14px 30px -14px rgba(60, 20, 0, 0.35);
+}
+.captureCaption { margin-top: 10px; color: var(--muted); font-size: 14px; line-height: 1.45; text-align: center; text-wrap: balance; }

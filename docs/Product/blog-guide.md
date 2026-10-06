@@ -31,6 +31,11 @@ give more than they take.
   - Caption a capture with the OS version it came from. Never let a macOS 26 capture pass for iOS 27.
   - For a feature you can't capture, use numbered steps plus Apple's own wording, linked to Apple's
     support page.
+  - For Apple's own apps, capture them in a throwaway macOS VM with no account (tart's vanilla
+    image for the current macOS, on the fleet Air), never on anyone's real Mac or iCloud. Delete the
+    VM after. There's no honest way to capture a new iOS's Notes this way, so don't put a Mac
+    capture in a phone frame; say the same option is in the iPhone menu, in Apple's words.
+  - A real capture beats decoration: put the best one where the banner would go (`hero`).
   - Generated art is decoration only (`alt=""`), and never a picture of an app's screen.
 - **The Amber Notes section comes last, and stays honest and modest.**
   - It starts only once the reader has been helped.
@@ -78,6 +83,7 @@ is no dark version to check.
 | `Checklist` | `web/lib/PostParts.tsx` | A checklist to copy, drawn like a Notes checklist, copied as lines that become one with a tap |
 | `ResetChooser` | `web/lib/ResetChooser.tsx` | A question-by-question helper; copy its shape for other choosers |
 | `Loop` | `web/lib/Loop.tsx` | A short muted loop of the real app, from `web/public/blog/loops/` |
+| `Capture` | `web/lib/PostParts.tsx` | A real capture of Apple's apps from `web/public/blog/macos27/`, AVIF and WebP, captioned with its OS; `hero` puts one above the intro |
 | `Figure` | `web/lib/blog.tsx` | A real capture in a window or phone frame |
 | `PostCta` | `web/lib/PostCta.tsx` | The one call to action, at the end of the Amber Notes section |
 
