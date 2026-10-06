@@ -381,7 +381,8 @@ final class NotePageStore {
     private(set) var drafts: [UUID: Draft] = [:]
 
     func setDraft(_ id: UUID, problems: String?, by: String?) {
-        drafts[id] = problems.map { Draft(by: by ?? "Your AI", problems: $0) }
+        let next = problems.map { Draft(by: by ?? "Your AI", problems: $0) }
+        if drafts[id] != next { drafts[id] = next }
     }
 
     /// A version you asked for after it was reverted: shown even though it failed.
@@ -417,30 +418,14 @@ final class NotePageStore {
         }
     }
 
-    /// The version to run: the newest one that passed its checks (a project the tooling tested; a
-    /// one-file app has none and counts as passing) and hasn't failed to open here. A newer version
-    /// that failed is kept, in its place in history, and goes live once a passing one follows it.
-    /// With none that qualifies, the newest.
+    /// The version to run: the newest one that opens on this device. (The server only ever sends
+    /// versions that passed their checks; a failing one waits there as a draft.) One that didn't
+    /// open here is skipped, unless you asked for it (Undo on "Reverted…").
     func live(_ id: UUID) -> Page? {
         guard let now = pages[id] else { return nil }
         let candidates = [now] + (history[id] ?? []).reversed()
         if let f = forced[id], let page = candidates.first(where: { Self.hash($0.html) == f }) { return page }
-        return candidates.first { Self.passes($0.html) && !(broken[id]?.contains(Self.hash($0.html)) ?? false) } ?? now
-    }
-
-    /// The tooling's verdict, in the project: "checks": { "passed": false, ... } holds a version back.
-    static func passes(_ stored: String) -> Bool {
-        guard NotePageProject.isProject(stored),
-              let o = try? JSONSerialization.jsonObject(with: Data(stored.utf8)) as? [String: Any],
-              let checks = o["checks"] as? [String: Any] else { return true }
-        return checks["passed"] as? Bool ?? true
-    }
-
-    /// Why a version was held back, from its checks.
-    static func checkProblems(_ stored: String) -> [String] {
-        guard let o = try? JSONSerialization.jsonObject(with: Data(stored.utf8)) as? [String: Any],
-              let checks = o["checks"] as? [String: Any] else { return [] }
-        return (checks["errors"] as? [String]) ?? []
+        return candidates.first { !(broken[id]?.contains(Self.hash($0.html)) ?? false) } ?? now
     }
 
     static func hash(_ text: String) -> String { E2EE.sha256Hex(text) }

@@ -481,8 +481,11 @@ extension Capture {
             NotePageStore.shared[n.id] = .init(html: html, by: by, at: .now.addingTimeInterval(-3600))
         }
         // `-aiDraft "Title=today.test.tsx failed"`: the server holds an AI's failing version as a draft.
-        if let arg = argument("-aiDraft"), let eq = arg.firstIndex(of: "="), let n = note(String(arg[..<eq])) {
-            NotePageStore.shared.setDraft(n.id, problems: String(arg[arg.index(after: eq)...]), by: by)
+        if let arg = argument("-aiDraft"), let eq = arg.firstIndex(of: "=") {
+            let delay = argument("-aiDraftAfter").flatMap(Double.init) ?? 0
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                if let n = note(String(arg[..<eq])) { NotePageStore.shared.setDraft(n.id, problems: String(arg[arg.index(after: eq)...]), by: by) }
+            }
         }
         // `-aiPages "Title=/a.json,/b.json" -aiEvery 6`: an AI saves several versions in a row.
         if let arg = argument("-aiPages"), let eq = arg.firstIndex(of: "=") {

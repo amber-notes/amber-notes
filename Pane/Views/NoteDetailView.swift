@@ -143,6 +143,12 @@ struct NoteDetailView: View {
             }
             .onChange(of: note.aiEditedAt) { _, _ in showAIEdit() }
             .onChange(of: NotePageStore.shared[note.id]) { _, _ in pageArrived(NotePageStore.shared.live(note.id)) }
+            // An AI's new version failed its checks on the server and waits there as a draft: the
+            // working one keeps running; say so once.
+            .onChange(of: NotePageStore.shared.drafts[note.id]) { _, draft in
+                guard let draft, showingPage else { return }
+                showPageReceipt(AIEdit.Receipt(noteID: note.id, by: draft.by, at: .now, previous: note.body, lines: 0, kind: .heldBack))
+            }
             .onChange(of: mode) { _, now in if now == .text { tintPageEdits() } }
             // An AI (or MCP tool) changed the app's data while it's open: the app already shows it;
             // say who, and offer Undo back to before.
@@ -283,7 +289,7 @@ struct NoteDetailView: View {
             }
             return
         }
-        if r.kind == .reverted || r.kind == .heldBack {
+        if r.kind == .reverted {
             if let page = revertedFrom { NotePageStore.shared.force(note.id, page); shownPage = page }
             revertedFrom = nil
             return
@@ -484,13 +490,6 @@ struct NoteDetailView: View {
         let before = shownPage
         shownPage = now
         if now != nil { NotePageActions.importIfNeeded(note) }
-        // A new version that didn't pass its checks is kept but doesn't run: say so, quietly.
-        if let newest = NotePageStore.shared[note.id], newest.html != now?.html, !NotePageStore.passes(newest.html),
-           newest.at.timeIntervalSinceNow > -60 {
-            // Undo on it runs the new version anyway.
-            revertedFrom = newest
-            showPageReceipt(AIEdit.Receipt(noteID: note.id, by: newest.by, at: .now, previous: note.body, lines: 0, kind: .heldBack))
-        }
         guard let now, now != before, now.by != AIGlyph.page else { return }
         withAnimation(.smooth(duration: 0.3)) { mode = .page }
         let r = AIEdit.Receipt(noteID: note.id, by: now.by, at: now.at, previous: note.body, lines: 0, kind: before == nil ? .pageMade : .pageChanged)

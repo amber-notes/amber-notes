@@ -94,6 +94,7 @@ struct AIReceipt: View {
                 .font(.system(size: compact ? 13 : Self.text, weight: .semibold))
                 .lineLimit(1)
                 .foregroundStyle(Color.amberInk)
+            if receipt.kind != .heldBack {
             Divider().frame(height: 14)
             Button("Undo", action: undo)
                 .buttonStyle(.plain)
@@ -101,6 +102,7 @@ struct AIReceipt: View {
                 .foregroundStyle(Color.amberInk)
                 .contentShape(.rect)
                 .accessibilityHint("Puts the note back the way it was before \(receipt.by)'s edit")
+            }
         }
         .padding(.horizontal, compact ? 11 : 14)
         .frame(height: compact ? 32 : Self.height)
