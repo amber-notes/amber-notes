@@ -66,6 +66,8 @@ const config: NextConfig = {
       // Page 1 of the blog and of each category lives at the list's own address.
       { source: "/blog/page/1", destination: "/blog", permanent: true },
       { source: "/blog/category/:category/page/1", destination: "/blog/category/:category", permanent: true },
+      // A link with "&" where its "?" should be (ambernotes.app/&utm_source=…) lands on /&…, a 404.
+      { source: "/:junk(&.*)", destination: "/", permanent: true },
     ];
   },
   async rewrites() {

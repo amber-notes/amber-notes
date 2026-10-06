@@ -776,6 +776,13 @@ final class ConnectCenter: NSObject {
     /// A request by link on this device. It shows now, or next when a sheet is showing: it never
     /// replaces what the person is looking at.
     func receive(_ url: URL, from sender: URL? = nil) {
+        // Places the onboarding emails link to (Settings › Connect an AI, import, version history).
+        if AppPlaceCenter.shared.receive(url) {
+            #if os(macOS)
+            activate()
+            #endif
+            return
+        }
         // "Use this template" and "Use this note" links: their sheet shows over the notes.
         if NoteSourceCenter.shared.receive(url) {
             #if os(macOS)

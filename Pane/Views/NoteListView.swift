@@ -228,6 +228,7 @@ struct NoteListView: View {
             if let backend { SettingsView(backend: backend, sync: sync) }
         }
         #endif
+        .onChange(of: AppPlaceCenter.shared.pending, initial: true) { _, place in openConnectAI(place) }
         .task {
             // A moment after the list first shows, so the card never lands mid-transition.
             try? await Task.sleep(for: .seconds(1))
@@ -407,6 +408,18 @@ struct NoteListView: View {
                 await setup.refresh()
             }
         }
+    }
+
+    /// ambernotes.app/open/connect-ai from an email: Settings, at Connect an AI.
+    private func openConnectAI(_ place: AppPlace?) {
+        guard place == .connectAI else { return }
+        AppPlaceCenter.shared.pending = nil
+        SettingsRoute.shared.target = SettingsRoute.connectAI
+        #if os(iOS)
+        showSettings = true
+        #else
+        openSettings()
+        #endif
     }
 
     private func whatsNewCard(_ release: WhatsNew.Release) -> some View {
