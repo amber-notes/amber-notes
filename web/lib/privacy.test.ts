@@ -99,7 +99,7 @@ describe("privacy copy", () => {
     expect(policy).toMatch(/\| Consent, which you can withdraw at any time with Cookie settings \|/);
   });
 
-  it("is a cream page like the other legal pages", () => {
-    expect(themeFor(PRIVACY_PATH)).toBe("cream");
+  it("is a dark leaf page like the other fine print (Terms, Privacy & Security, Help)", () => {
+    expect(themeFor(PRIVACY_PATH)).toBe("leaf");
   });
 });
