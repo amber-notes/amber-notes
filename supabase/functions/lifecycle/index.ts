@@ -9,6 +9,9 @@
 //   POST /functions/v1/lifecycle/click?s=<send id>&to=<link>&t=<token>
 //        → 200 { ok: true } · 400 a link that isn't one. Called by ambernotes.app/go, which then
 //        sends the reader on. Records which email and the link's host and path; nothing else.
+//   POST /functions/v1/lifecycle/welcome   (x-lifecycle-secret)
+//        → 200 { enabled, accounts, due, sent, failed, deferred }: the welcome to accounts made 2 to 60
+//        minutes ago. lifecycle_welcome_tick calls it every minute, only when one is waiting.
 //   POST /functions/v1/lifecycle/stats   (x-lifecycle-secret)
 //        → 200 [{ kind, variant, sent, clicked, done }]: counts per email and subject line.
 //
@@ -19,7 +22,7 @@ import { connect, readiness } from "../_shared/db.ts";
 import { atHome } from "../_shared/region.ts";
 import { errorKind, log } from "../_shared/log.ts";
 import { config, sameSecret, validClick, validUnsubscribe } from "./logic.ts";
-import { recordClick, resend, run, stats } from "./run.ts";
+import { recordClick, resend, run, stats, welcome } from "./run.ts";
 
 const sql = connect(Deno.env, 2);
 const ready = readiness(sql);
@@ -70,6 +73,21 @@ Deno.serve(atHome("lifecycle", async (req) => {
     if (!settings.ok || !sameSecret(req.headers.get("x-lifecycle-secret") ?? "", settings.config.cronSecret)) return reply({ error: "not allowed" }, 401);
     await ready();
     return reply(await stats(sql));
+  }
+
+  if (path === "/welcome") {
+    const settings = config(Deno.env);
+    if (!settings.ok) return reply({ enabled: false, reason: settings.reason });
+    if (!sameSecret(req.headers.get("x-lifecycle-secret") ?? "", settings.config.cronSecret)) return reply({ error: "not allowed" }, 401);
+    await ready();
+    try {
+      const report = await welcome({ sql, send: resend(settings.config.resendKey), cfg: settings.config });
+      log("lifecycle_welcome", { status: report.enabled ? "on" : "off", count: report.sent, attempts: report.failed });
+      return reply(report);
+    } catch (e) {
+      log("lifecycle_welcome", { status: "failed", ...errorKind(e) });
+      return reply({ error: "unavailable" }, 500);
+    }
   }
 
   if (path === "/" || path === "/run") {
