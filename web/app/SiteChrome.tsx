@@ -50,8 +50,9 @@ export default function SiteChrome({ version, stars, children }: { version: stri
     return () => document.removeEventListener("click", onClick);
   }, [router]);
 
-  // The connect pages and the reset page are one card: the site's colours without its header and footer.
-  if (!site || path === "/connect" || path === "/open/connect" || path === "/reset-password") return <>{children}</>;
+  // The connect pages and the reset page are one card under a quiet top bar (lib/ui.tsx TopBar): the
+  // site's colours without its header and footer. The Dev preview of /connect renders the same way.
+  if (!site || ["/connect", "/connect/preview", "/open/connect", "/reset-password"].includes(path)) return <>{children}</>;
 
   const current = (href: string) => (path === href ? "page" : undefined);
   // On the home page the logo takes you back to the top instead of reloading.

@@ -1,5 +1,5 @@
 /* The connect pages (/connect, /open/connect): the site's cream theme, one card. */
-.page { min-height: 100dvh; display: grid; grid-template-columns: minmax(0, 440px); place-content: center; justify-items: center; gap: 20px; padding: 32px 16px; box-sizing: border-box; }
+.page { flex: 1; display: grid; grid-template-columns: minmax(0, 440px); place-content: center; justify-items: center; gap: 20px; padding: 32px 16px; box-sizing: border-box; }
 .card {
   width: min(440px, 100%); box-sizing: border-box; display: grid; gap: 16px; justify-items: center; text-align: center;
   padding: 32px 28px 28px; border-radius: 28px; background: var(--card);
