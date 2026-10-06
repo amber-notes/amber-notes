@@ -76,6 +76,13 @@ struct PaneApp: App {
         #endif
         // Note pages: compile the sandbox's rules and start a web view now, not when a page opens.
         if !PaneApp.isUnitTestHost, !ProcessInfo.processInfo.arguments.contains("-noPagePrewarm") { NotePageSandbox.prewarm() }
+        // Collaboration (prototype): `-collab <name>` against the local relay (scripts/collab-demo.sh).
+        if let collab = CollabStore.fromArguments() {
+            collab.context = container.mainContext
+            CollabStore.shared = collab
+            Task { @MainActor in await collab.start() }
+            CollabDemo.run(container.mainContext, store: collab)
+        }
         #if os(macOS)
         Capture.demoSequenceFromArguments(container.mainContext)
         Capture.importSequenceFromArguments()
@@ -109,6 +116,19 @@ struct PaneApp: App {
         WindowGroup(id: Self.mainWindowID) {
             if Self.isUnitTestHost {
                 UnitTestHostView()
+            } else if ProcessInfo.processInfo.arguments.contains("-collabGallery") {
+                // Collaboration prototype: avatars and Share with sample people (CollabGallery).
+                if ProcessInfo.processInfo.arguments.contains("-emailStill") {
+                    EmailStill().tint(Color(PColor.paneAccent))
+                } else if ProcessInfo.processInfo.arguments.contains("-badges") {
+                    BadgeGallery.fromArguments().tint(Color(PColor.paneAccent))
+                } else if ProcessInfo.processInfo.arguments.contains("-template") {
+                    CollabGallery.templateSheet().tint(Color(PColor.paneAccent))
+                } else if ProcessInfo.processInfo.arguments.contains("-share") {
+                    NavigationStack { ShareForm(title: "Team offsite", state: CollabGallery.shareWithPhoto) }.tint(Color(PColor.paneAccent))
+                } else {
+                    CollabGallery().tint(Color(PColor.paneAccent))
+                }
             } else {
                 AppGate(backend: backend, sync: sync)
                     .connectHandler(backend: backend)

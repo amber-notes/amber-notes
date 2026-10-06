@@ -35,7 +35,15 @@ function GetAmberNotes() {
 
 /// A shared note: the page is the note, as in the app. The bar holds only the logo and "Use this note";
 /// who shared it sits under the title.
-export function NotePage({ slug, note, files }: { slug: string; note: SharedNote; files: Record<string, SharedFile> }) {
+export function NotePage({ slug, note, files, page, sealed = false, editHref = null }: {
+  slug: string; note: SharedNote; files: Record<string, SharedFile>;
+  /** The note's page, shown above its text (sealed links, prototype). */
+  page?: React.ReactNode;
+  /** A sealed link (/s/<id>#…): the copy opened in this browser; no Use this note or report link yet. */
+  sealed?: boolean;
+  /** An Edit link: where the app opens it to join the note. */
+  editHref?: string | null;
+}) {
   const html = renderNote(withoutTitle(note.body), {
     files,
     subNoteHref: (id) => (note.include_subnotes ? `/n/${slug}/${id}` : null),
@@ -61,28 +69,42 @@ export function NotePage({ slug, note, files }: { slug: string; note: SharedNote
     </nav>
   );
   // Copies the whole note into the visitor's own Amber Notes, once the app handles the link.
-  const use = APP_TEMPLATES.live && <a className={s.use} href={copyLink(slug)}>Use this note</a>;
+  const use = editHref
+    ? <a className={s.use} href={editHref}>Edit in Amber Notes</a>
+    : !sealed && APP_TEMPLATES.live && <a className={s.use} href={copyLink(slug)}>Use this note</a>;
 
   return (
     <Shell className={s.plain}>
-      <TopBar href={`/n/${slug}`}>{use}</TopBar>
+      <TopBar href={sealed ? "/" : `/n/${slug}`}>{use}</TopBar>
       <main className={s.plainMain}>
         {parent}
-        <h1 className={s.bigTitle}>{note.title}</h1>
-        <div className={s.byline} title={email ? `${name} · ${email}` : name}>
-          <Avatar by={note.shared_by} size={36} />
-          <p>
-            <span className={s.bylineName}><span className={s.sharerLabel}>Shared by </span>{name}</span>
-            <span className={s.bylineDate}>Edited {edited(note.updated_at)}</span>
+        {page ? (
+          // A note with an app: the app shows the note's title itself, so the page doesn't repeat it.
+          <p className={s.sharedLine} title={email ? `${name} · ${email}` : name}>
+            <span className={s.sharerLabel}>Shared by </span><b>{name}</b> · Edited {edited(note.updated_at)}
           </p>
-        </div>
+        ) : (
+          <>
+            <h1 className={s.bigTitle}>{note.title}</h1>
+            <div className={s.byline} title={email ? `${name} · ${email}` : name}>
+              <Avatar by={note.shared_by} size={36} />
+              <p>
+                <span className={s.bylineName}><span className={s.sharerLabel}>Shared by </span>{name}</span>
+                <span className={s.bylineDate}>Edited {edited(note.updated_at)}</span>
+              </p>
+            </div>
+          </>
+        )}
+        {page}
         <article className="note" dangerouslySetInnerHTML={{ __html: html }} />
         {subnotes}
         <GetAmberNotes />
       </main>
-      <footer className={s.foot}>
-        <Link href={`/report/${slug}`}>Report this page</Link>
-      </footer>
+      {!sealed && (
+        <footer className={s.foot}>
+          <Link href={`/report/${slug}`}>Report this page</Link>
+        </footer>
+      )}
     </Shell>
   );
 }
