@@ -1,7 +1,7 @@
 // A note's app as a small web project (the stored format agreed with the app side): what's stored, path rules, file edits the way a coding agent makes
 // them, the compile step (the device never compiles) and import checks. Pure; the tools are in
 // app_files.ts.
-import * as esbuild from "npm:esbuild-wasm@0.24.0";
+import type { CompileItem, Compiled } from "./app_build.ts";
 
 export type Project = { amberApp: 1; files: Record<string, string>; compiled: Record<string, string> };
 
@@ -92,21 +92,35 @@ export function numbered(text: string, offset = 1, limit = 2000): { text: string
   return { text: lines.slice(from - 1, to).map((l, i) => `${String(from + i).padStart(6)}\t${l}`).join("\n"), lines: lines.length, shown: [from, to] };
 }
 
-let ready: Promise<void> | null = null;
-/** The agreed transform: esbuild, JSX automatic (React's runtime, which the app maps to
- *  preact/compat, or Preact's for older projects), ESM, es2020, imports as written. */
-export async function compile(path: string, source: string, jsxImportSource: "react" | "preact" = "preact"): Promise<{ code: string } | { error: string }> {
-  ready ??= esbuild.initialize({ worker: false });
-  await ready;
-  const loader = path.endsWith(".tsx") ? "tsx" : path.endsWith(".ts") ? "ts" : /\.m?js$/.test(path) ? "js" : "jsx";
+/** The build step (app_build.ts): on the render service when RENDER_URL is set (the hosted edge
+ *  runtime can't start esbuild's WebAssembly), here otherwise. */
+async function build<T>(body: Record<string, unknown>, here: () => Promise<T>): Promise<T> {
+  const url = Deno.env.get("RENDER_URL"), secret = Deno.env.get("RENDER_SECRET");
+  if (!url || !secret) return await here();
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), 20_000);
   try {
-    const r = await esbuild.transform(source, { loader, jsx: "automatic", jsxImportSource, format: "esm", target: "es2020", sourcemap: false, sourcefile: path });
-    return { code: r.code };
+    const res = await fetch(`${url.replace(/\/$/, "")}/build`, { method: "POST", headers: { authorization: `Bearer ${secret}`, "content-type": "application/json" }, body: JSON.stringify(body), signal: ctl.signal });
+    if (!res.ok) { await res.body?.cancel(); throw new Error(`the build service answered ${res.status}`); }
+    return await res.json() as T;
   } catch (e) {
-    // deno-lint-ignore no-explicit-any
-    const errs = (e as any).errors as { text: string; location?: { line: number; column: number; lineText: string } }[] | undefined;
-    return { error: errs?.length ? errs.slice(0, 5).map((x) => `${path}:${x.location?.line ?? "?"}:${(x.location?.column ?? 0) + 1}: ${x.text}${x.location?.lineText ? `\n    ${x.location.lineText.trim()}` : ""}`).join("\n") : String(e) };
+    throw new Error(`The app couldn't be built right now (${ctl.signal.aborted ? "the build service didn't answer in time" : (e as Error).message}). Try again.`);
+  } finally {
+    clearTimeout(timer);
   }
+}
+
+/** Compiles modules (the agreed transform: esbuild, JSX automatic, ESM, es2020); each gets its code or its error. */
+export async function compileMany(items: CompileItem[], jsxImportSource: "react" | "preact" = "preact"): Promise<Compiled> {
+  if (!items.length) return {};
+  return (await build<{ compiled: Compiled }>({ compile: items, jsx: jsxImportSource }, async () => {
+    const { compileHere } = await import("./app_build.ts");
+    return { compiled: await compileHere(items, jsxImportSource) };
+  })).compiled;
+}
+
+export async function compile(path: string, source: string, jsxImportSource: "react" | "preact" = "preact"): Promise<{ code: string } | { error: string }> {
+  return (await compileMany([{ path, source }], jsxImportSource))[path] ?? { error: `${path}: not compiled` };
 }
 export const needsCompile = (path: string, react = false) => COMPILED.test(path) || (react && /\.m?js$/.test(path));
 
@@ -158,19 +172,14 @@ export async function linkProject(p: Project): Promise<{ project: Project; ms: {
   return { project: { amberApp: 1, files: p.files, compiled }, ms: { tailwind: Math.round(performance.now() - t0) } };
 }
 
-/** Tailwind v4 from the classes in the project's sources (no scanner: every token is a candidate,
- *  and Tailwind keeps the ones that are classes). */
+/** Tailwind v4 for one stylesheet, from the classes in the project's sources. */
 async function tailwind(css: string, sources: string): Promise<string> {
-  const [{ compile: twCompile }, { STYLESHEETS }] = await Promise.all([import("npm:tailwindcss@4.1.14"), import("./tailwind.gen.ts")]);
-  const c = await twCompile(css, {
-    base: "/",
-    loadStylesheet: (id: string) => {
-      if (STYLESHEETS[id] !== undefined) return Promise.resolve({ base: "/", content: STYLESHEETS[id], path: id });
-      throw new Error(`@import "${id}": only "tailwindcss" and "tw-animate-css" can be imported in CSS here.`);
-    },
-    loadModule: () => { throw new Error("Tailwind plugins (@plugin) aren't available here."); },
+  const r = await build<{ css?: string; error?: string }>({ tailwind: css, sources }, async () => {
+    const { tailwindHere } = await import("./app_build.ts");
+    try { return { css: await tailwindHere(css, sources) }; } catch (e) { return { error: (e as Error).message }; }
   });
-  return c.build([...new Set(sources.split(/[^A-Za-z0-9_\-:\[\]\/.#%()!@&*=,'+]+/).filter((x) => x && x.length < 200))]);
+  if (r.error !== undefined || r.css === undefined) throw new Error(r.error ?? "no CSS came back");
+  return r.css;
 }
 
 /** Static import specifiers in a module (import … from "x", import "x", import("x"), export … from "x"). */
