@@ -124,6 +124,7 @@ Deno.test("search like grep and ranked, list like glob, at scale-ish", async () 
   // grep: files, content with context, count; scope, pinned, title_only, case.
   assertEquals((await tool(pg, a, "search", { pattern: "deposit" })).files.sort(), ["Work/Budget 2026.md", "Work/Clients/Acme.md"]);
   assertEquals((await tool(pg, a, "search", { pattern: "deposit", case_sensitive: true })).files, []);
+  assertEquals((await tool(pg, a, "search", { pattern: "(?i)DEPOSIT|nothing at all", case_sensitive: true })).files.length, 2);
   assertEquals((await tool(pg, a, "search", { pattern: "deposit", path: "Work/Clients/" })).files, ["Work/Clients/Acme.md"]);
   assertEquals((await tool(pg, a, "search", { pattern: "deposit", pinned: true })).files, ["Work/Budget 2026.md"]);
   const lines = await tool(pg, a, "search", { pattern: "^Deposit \\d+", output: "content", context: 1 });

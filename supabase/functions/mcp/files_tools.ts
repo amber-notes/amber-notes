@@ -486,9 +486,12 @@ export const fileHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
       .filter((e) => !before || +new Date(e.note.updated_at) < before + 86_400_000)
       .filter((e) => a.sub_notes !== false || !e.note.parent_id || !P.pathOf(e.note.parent_id))
       .sort((x, y) => +new Date(y.note.updated_at) - +new Date(x.note.updated_at));
-    const flags = a.case_sensitive === true ? "" : "i";
+    // Leading inline flags as grep and ripgrep take them ("(?i)deposit"); JavaScript has none.
+    const inline = pattern.match(/^\(\?([imsx]+)\)/);
+    const source = inline ? pattern.slice(inline[0].length) : pattern;
+    const flags = [...new Set(((a.case_sensitive === true ? "" : "i") + (inline?.[1] ?? "").replace("x", "")).split(""))].join("");
     let re: RegExp | null = null;
-    if (pattern) { try { re = new RegExp(pattern, flags); } catch { re = new RegExp(pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), flags); } }
+    if (pattern) { try { re = new RegExp(source, flags); } catch { re = new RegExp(source.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), flags); } }
     const nameHit = (path: string) => re ? re.test(path) : searchFilter(query)({ title: path, body: "", updated_at: new Date() });
     const t0 = performance.now();
 

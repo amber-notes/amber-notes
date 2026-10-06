@@ -111,12 +111,19 @@ async function bench(url: string, tokenFile: string, repeat: number) {
     ["edit note", "edit", { path: g, old_string: `## ${pick(3, 1)}\n`, new_string: `## ${pick(3, 1)}!\n` }],
   ];
   const rows = new Map<string, { cold: number[]; warm: number[]; parts: Record<string, number>; err?: string }>();
+  let lastFetch = "";
   for (let r = 0; r < repeat; r++) {
     for (const [label, name, x] of ops) {
       // Every other round with the title cache bypassed (x-amber-cold, honoured only when AMBER_BENCH=1).
       const cold = r % 2 === 0;
-      const xx = label === "edit note" && Math.floor(r / 2) % 2 ? { ...x, old_string: x.new_string, new_string: x.old_string } : x;
+      // The edit changes the heading the fetch just read, back and forth.
+      let xx = x;
+      if (label === "edit note") {
+        const line = (lastFetch.split("\n")[2] ?? "").replace(/^ *\d+\t/, "");
+        xx = { ...x, old_string: line, new_string: line.endsWith("!") ? line.slice(0, -1) : line + "!" };
+      }
       const res = await call(name, xx, cold);
+      if (label === "fetch note") lastFetch = parse(res.text).text ?? "";
       const row = rows.get(label) ?? rows.set(label, { cold: [], warm: [], parts: {} }).get(label)!;
       (cold ? row.cold : row.warm).push(res.ms);
       if (cold && r === 0) row.parts = res.timing;
