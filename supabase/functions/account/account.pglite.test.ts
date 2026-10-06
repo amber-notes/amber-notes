@@ -44,9 +44,6 @@ async function seed(pg: PGlite, me: string) {
   await app(pg, me, `update public.notes set trashed_at = now() where id = $1`, [trashed]);
   const locked = await sealed.lockedNote(pg, a, lockKey, "Bank");
   const plan = await sealed.file(pg, a, "plan.pdf", "com.adobe.pdf", new TextEncoder().encode("%PDF"));
-  // What an AI read (read-before-edit) and its sealed path index.
-  await app(pg, me, `insert into public.mcp_reads (session, item, stamp) values ('s1', 'note:x', '1')`);
-  await app(pg, me, `insert into public.mcp_title_index (index_ct) values ($1)`, [await a.vault.sealTitleIndex("{}")]);
   // An earlier version of it (the AI replaced it).
   await app(pg, me, `insert into public.attachment_versions (attachment_id, meta_ct, size, storage_path, made_at) values ($1, $2, 4, $3, now())`,
     [plan.id, await a.vault.sealFileMeta(plan.id, { name: "plan.pdf", type: "com.adobe.pdf", size: 4 }), `${plan.path}.v1`]);
