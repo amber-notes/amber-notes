@@ -2,9 +2,10 @@
 
 The emails Supabase Auth sends (reset, sign-in code, confirmations, invite, reauthentication, the
 "password changed" notice) share the lifecycle emails' look (`docs/Technical/lifecycle-emails.md`):
-the mark, cream ground, a window with a title bar, one big button or a large code, the address in
-full, Emil signing off, and a line saying why the email came. Dark mode, images blocked and phone
-widths are handled the same way.
+the mark, cream ground, a window with a title bar, and Emil signing off. Each says as little as it
+can (shortened on 6 October 2026): a headline, one sentence, the button or the code, one grey line
+(how long it works, what to do if it wasn't you), "Or open:" with the link, and a one-line footer.
+Dark mode, images blocked and phone widths are handled as in the lifecycle emails.
 
 ## Where they come from
 
@@ -36,6 +37,8 @@ page has to exist before either email is turned on.
   Outlook gets the button as a coloured table cell, and only its label is pressable there.
 - **The code is one string** with letter spacing, never digits split by spaces, so a long press or
   double click copies exactly the code.
+- **The address in the sentence sits in a link with no target.** Gmail and Apple Mail turn a bare
+  address into a blue link, but leave text that is already inside a link alone.
 - **No code in the subject line.** It would show on a locked phone.
 - **Pictures are the mark and Emil's photo** from `https://ambernotes.app/email/`. With pictures
   blocked, their cells show "A" on amber and "E" on brown.

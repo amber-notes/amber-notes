@@ -18,6 +18,9 @@
   }
 </style>
 <style>
+  a[x-apple-data-detectors] { color: inherit !important; text-decoration: none !important; font: inherit !important; }
+</style>
+<style>
   :root { color-scheme: light dark; supported-color-schemes: light dark; }
   @media (prefers-color-scheme: dark) {
     .ground { background: #2e180a !important; }
@@ -65,16 +68,15 @@
           <td width="70" style="width:70px;">&nbsp;</td>
         </tr></table>
       </td></tr>
-      <tr><td class="pad" style="padding:26px 32px 6px;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Roboto,Helvetica,Arial,sans-serif;overflow-wrap:break-word;word-wrap:break-word;">
+      <tr><td class="pad" style="padding:26px 32px 14px;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Roboto,Helvetica,Arial,sans-serif;overflow-wrap:break-word;word-wrap:break-word;">
         <h1 class="ink h1" style="margin:0 0 16px;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:27px;line-height:1.2;font-weight:700;color:#1d1d1f;">New address, same notes</h1>
-<p class="ink body" style="margin:0 0 18px;font-size:17px;line-height:1.5;mso-line-height-rule:exactly;color:#1d1d1f;">You asked to change the email you sign in with, from <b class="ink" style="color:#1d1d1f;font-weight:600;">{{ .Email }}</b> to <b class="ink" style="color:#1d1d1f;font-weight:600;">{{ .NewEmail }}</b>.</p>
-<p class="ink body" style="margin:0 0 18px;font-size:17px;line-height:1.5;mso-line-height-rule:exactly;color:#1d1d1f;">This goes to both addresses, and the change happens once both are confirmed.</p>
+<p class="ink body" style="margin:0 0 20px;font-size:17px;line-height:1.5;mso-line-height-rule:exactly;color:#1d1d1f;">Press the button to sign in with <a class="ink" style="color:#1d1d1f;font-weight:600;text-decoration:none;">{{ .NewEmail }}</a> instead of <a class="ink" style="color:#1d1d1f;font-weight:600;text-decoration:none;">{{ .Email }}</a>.</p>
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:6px 0 20px;"><tr>
 <td class="btn" align="center" bgcolor="#2a1d10" style="background:#2a1d10;border-radius:14px;">
 <a href="{{ .SiteURL }}/account/confirm?token_hash={{ .TokenHash }}&type=email_change" target="_blank" style="display:block;padding:15px 20px;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:17px;font-weight:600;line-height:22px;color:#fff4e6;text-decoration:none;border-radius:14px;"><span class="btn-ink" style="color:#fff4e6;">Confirm the change</span></a>
 </td></tr></table>
-<p class="sec small" style="margin:0 0 16px;font-size:14px;line-height:1.5;mso-line-height-rule:exactly;color:#6e6e73;">Button not working? Paste this into your browser:<br><a class="lnk" href="{{ .SiteURL }}/account/confirm?token_hash={{ .TokenHash }}&type=email_change" style="color:#a85700;word-break:break-all;overflow-wrap:anywhere;">{{ .SiteURL }}/account/confirm?token_hash={{ .TokenHash }}&type=email_change</a></p>
-        <p class="ink small" style="margin:0 0 22px;font-size:15px;line-height:1.5;mso-line-height-rule:exactly;color:#1d1d1f;">Didn't ask for this? Ignore this email and your address stays the same. Then change your password, just in case.</p>
+<p class="sec small" style="margin:0 0 10px;font-size:14px;line-height:1.5;mso-line-height-rule:exactly;color:#6e6e73;">Both addresses get this email. Didn't ask for this? Ignore it.</p>
+<p class="sec small" style="margin:0 0 10px;font-size:13px;line-height:1.5;mso-line-height-rule:exactly;color:#6e6e73;word-break:break-all;overflow-wrap:anywhere;">Or open: <a class="lnk" href="{{ .SiteURL }}/account/confirm?token_hash={{ .TokenHash }}&type=email_change" style="color:#a85700;">{{ .SiteURL }}/account/confirm?token_hash={{ .TokenHash }}&type=email_change</a></p>
       </td></tr>
       <tr><td class="pad" style="padding:0 32px 26px;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"><tr><td class="rule" style="border-top:1px solid #ebe6df;padding-top:18px;">
@@ -90,7 +92,6 @@
     </table>
   </td></tr>
   <tr><td class="muted" style="padding:20px 8px 0;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;line-height:1.55;color:#74604c;">
-    You got this email because someone asked to change the email of an Amber Notes account.<br><br>
     Amber Notes, made by Emil Wagman in Sweden. <a class="foot-lnk" href="https://ambernotes.app/help" style="color:#a85700;">Help</a> &middot; <a class="foot-lnk" href="https://ambernotes.app/privacy" style="color:#a85700;">Privacy</a>
   </td></tr>
 </table>
