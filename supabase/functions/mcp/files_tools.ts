@@ -159,7 +159,7 @@ export const FILE_TOOLS: Tool[] = ([
 
 /** What the server tells every client when this tool set is on: how the files are laid out. The
  *  format rules live where they're needed (the tools' checks and descriptions, an app's README). */
-export const FILE_INSTRUCTIONS = `Amber Notes is the person's notes, as files: each note is a markdown file in folders ("Work/Acme.md"; its first line is its title). A note's sub-notes and files are in the folder with its name ("Work/Acme/Agenda.md", "Work/Acme/contract.pdf"). A folder ending in .app is the note's app, a small React project with its data in data.json; read its README.md first. Deleted notes are in "Recently Deleted/". Read before you edit; edit and write answer with checks: fix what they report.`;
+export const FILE_INSTRUCTIONS = `Amber Notes is the person's notes, as files: each note is a markdown file in folders ("Work/Acme.md"; its first line is its title). A note's sub-notes and files are in the folder with its name ("Work/Acme/Agenda.md", "Work/Acme/contract.pdf"). A folder ending in .app is the note's app, a small React project with its data in data.json; read its README.md first, give every feature a test, and never weaken a test. Deleted notes are in "Recently Deleted/". Read before you edit; edit and write answer with checks: fix what they report.`;
 
 const SWITCHES = new Set(["title_only", "case_sensitive", "pinned", "sub_notes", "deleted", "replace_all"]);
 export async function runFileTool(name: string, args: Args, ctx: ToolContext): Promise<unknown> {
