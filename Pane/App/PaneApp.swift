@@ -348,6 +348,40 @@ private struct WindowShaper: NSViewRepresentable {
 }
 #endif
 
+/// A flag in UserDefaults that tells its views only when its own value changes. `@AppStorage`
+/// on "e2ee.removedHere" reported a change on every write to the app's defaults, and the
+/// split view writes its column state there on every sidebar toggle: AppGate, and with it
+/// the whole notes window, was worked out again each time.
+@MainActor @Observable
+final class DefaultsFlag {
+    @ObservationIgnored private let key: String
+    @ObservationIgnored private let defaults: UserDefaults
+    @ObservationIgnored private var observer: NSObjectProtocol?
+    private var stored: Bool
+
+    var value: Bool {
+        get { stored }
+        set {
+            defaults.set(newValue, forKey: key)
+            refresh()
+        }
+    }
+
+    init(_ key: String, defaults: UserDefaults = .standard) {
+        self.key = key
+        self.defaults = defaults
+        stored = defaults.bool(forKey: key)
+        observer = NotificationCenter.default.addObserver(forName: UserDefaults.didChangeNotification, object: defaults, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.refresh() }
+        }
+    }
+
+    private func refresh() {
+        let now = defaults.bool(forKey: key)
+        if now != stored { stored = now }
+    }
+}
+
 /// Sign-in when sync is on and you're signed out; the library otherwise.
 struct AppGate: View {
     let backend: Backend
@@ -365,7 +399,7 @@ struct AppGate: View {
     @State private var notices: AccountNotices?
     @State private var noticeProblem: String?
     /// This device was removed from another one, and hasn't said so yet.
-    @AppStorage(DeviceRemoval.noticeFlag) private var removedHere = false
+    @State private var removedHere = DefaultsFlag(DeviceRemoval.noticeFlag)
     /// Captures: `-captureConsent ChatGPT` shows the Allow sheet over the notes.
     @State private var consent = CaptureScreen.consentRequest
     @Environment(\.modelContext) private var context
@@ -384,8 +418,8 @@ struct AppGate: View {
         .sheet(item: $consent) { r in
             ConsentSheet(client: CaptureScreen.client, requestID: r.id, initial: .asking(r), finish: { _ in })
         }
-        .alert(PrivacyCopy.removedTitle, isPresented: $removedHere) {
-            Button("OK", role: .cancel) { removedHere = false }
+        .alert(PrivacyCopy.removedTitle, isPresented: $removedHere.value) {
+            Button("OK", role: .cancel) { removedHere.value = false }
         } message: {
             Text(PrivacyCopy.removedMessage)
         }
