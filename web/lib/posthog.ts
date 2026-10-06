@@ -3,13 +3,17 @@ import { CONSENT_COOKIE_DAYS, CONSENT_KEY } from "./consent";
 
 // Website usage with PostHog (app/PostHogAnalytics.tsx): page views, clicks on links and buttons,
 // and how far a page is scrolled. On the marketing pages only (heatmapsAllowed), also where on the
-// page clicks land, and rage and dead clicks, counted into heatmaps; never a recording of a visit. Only when NEXT_PUBLIC_POSTHOG_KEY is set at build time; without
-// it nothing loads. Never in the apps, and never on a page that can show something private: shared
-// notes, the connect pages, universal links, report pages and the download redirect. Until a visitor
-// accepts the cookie banner (lib/consent.ts): no cookies, nothing kept in the browser, and visits
-// are told apart for a day only, by a hash made on PostHog's servers. After accepting, one
-// first-party cookie recognises return visits for up to a year. Never person profiles or recordings.
-// Everything here is decided without PostHog loaded, so the tests can check it.
+// page clicks land, and rage and dead clicks, counted into heatmaps. Only when NEXT_PUBLIC_POSTHOG_KEY
+// is set at build time; without it nothing loads. Never in the apps, and never on a page that can
+// show something private: shared notes, the connect pages, password reset, account pages, universal
+// links, report pages and the download redirect. Until a visitor accepts the cookie banner
+// (lib/consent.ts): no cookies, nothing kept in the browser, and visits are told apart for a day
+// only, by a hash made on PostHog's servers. After accepting, one first-party cookie recognises
+// return visits for up to a year, and the visit is recorded as a session replay (replayAllowed):
+// what the public pages showed and where the pointer went, with everything typed into a field
+// masked. A visitor who rejects, never answers, or sends Do Not Track or Global Privacy Control is
+// never recorded. Never person profiles. Everything here is decided without PostHog loaded, so the
+// tests can check it.
 
 export const POSTHOG_DEFAULT_HOST = "https://eu.i.posthog.com";
 
@@ -24,6 +28,21 @@ const MARKETING = /^\/(?:|download|templates(?:\/[^/]+)?|blog(?:\/.+)?|help|chan
 export function heatmapsAllowed(path: string | null | undefined): path is string {
   return posthogAllowed(path) && MARKETING.test(path);
 }
+
+/// Whether this page view may be recorded as a session replay: a public page, a visitor who pressed
+/// Accept (the stored answer is "1"), and no Do Not Track or Global Privacy Control.
+export function replayAllowed(path: string | null | undefined, consent: string | null | undefined, optedOut: boolean): boolean {
+  return posthogAllowed(path) && (consent === "1" || consent === "true") && !optedOut;
+}
+
+/// What PostHog's project settings would otherwise send for replay. The site fetches no remote
+/// config (advanced_disable_flags), so replay is turned on from here, only for a visitor
+/// replayAllowed lets through (app/posthog-client.ts): no console logs, no network requests, no
+/// canvas, sent to PostHog's usual recording endpoint.
+export const REPLAY_REMOTE_CONFIG = {
+  sessionRecording: { endpoint: "/s/", consoleLogRecordingEnabled: false, recordCanvas: false },
+  capturePerformance: false,
+} as const;
 
 /// Whether PostHog may load, or send anything, on this page.
 export function posthogAllowed(path: string | null | undefined): path is string {
@@ -76,8 +95,20 @@ export function posthogOptions(host: string): Partial<PostHogConfig> {
     capture_heatmaps: true,
     capture_exceptions: false,
     capture_performance: false,
+    // Replay starts off for everyone, and app/posthog-client.ts turns it on for a visitor who
+    // accepted (replayAllowed). What anyone types into a field never leaves the browser: every
+    // input, text area and select is masked, and so is anything marked data-private.
     disable_session_recording: true,
-    session_recording: { maskAllInputs: true },
+    enable_recording_console_log: false,
+    session_recording: {
+      maskAllInputs: true,
+      maskInputOptions: { password: true, email: true, text: true, textarea: true, select: true, search: true, tel: true, url: true, number: true },
+      maskTextSelector: "[data-private], [contenteditable]",
+      blockSelector: "[data-private-block]",
+      recordCrossOriginIframes: false,
+      recordHeaders: false,
+      recordBody: false,
+    },
     disable_surveys: true,
     disable_product_tours: true,
     disable_conversations: true,
@@ -108,6 +139,8 @@ export function sanitizeEvent(event: CaptureResult | null): CaptureResult | null
   const here = typeof window === "undefined" ? undefined : window.location.pathname;
   const paths = [here, props.$pathname, pathOf(props.$current_url)].filter((p): p is string => p !== undefined);
   if (paths.some((path) => !posthogAllowed(path))) return null;
+  // A replay batch only from a visitor who accepted, read again at the moment it's sent.
+  if (event.event === "$snapshot" && !replayAllowed(here ?? props.$pathname, storedConsent(), false)) return null;
   if (HEATMAP_EVENTS.has(event.event) && event.event !== "$$heatmap" && !paths.every(heatmapsAllowed)) return null;
   if (event.event === "$$heatmap") {
     const data = heatmapData(props.$heatmap_data);
@@ -135,6 +168,15 @@ function heatmapData(data: unknown): Record<string, unknown[]> | null {
     out[key] = [...(out[key] ?? []), ...clicks];
   }
   return Object.keys(out).length ? out : null;
+}
+
+/// The banner's stored answer, or null outside a browser or when storage is blocked.
+function storedConsent(): string | null {
+  try {
+    return globalThis.localStorage?.getItem(CONSENT_KEY) ?? null;
+  } catch {
+    return null;
+  }
 }
 
 function pathOf(url: unknown): string | undefined {
