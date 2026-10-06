@@ -1,0 +1,25 @@
+{
+ "values": {
+  "settings": {
+   "time": "21:30",
+   "range": "Last 12 months",
+   "celebrate": true
+  },
+  "habits": {
+   "Walk": {
+    "goal": 7
+   },
+   "Read": {
+    "goal": 7,
+    "bell": true
+   },
+   "Stretch": {
+    "goal": 4
+   },
+   "No phone in bed": {
+    "goal": 5
+   }
+  }
+ },
+ "collections": {}
+}

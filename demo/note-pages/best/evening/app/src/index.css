@@ -1,0 +1,127 @@
+@import "tailwindcss";
+
+/* Evening's Calm look: warm paper, white cards, one orange for what to do next. shadcn/ui's
+   colour names are mapped onto it, with a dark version of the same warmth. */
+:root {
+  --radius: 1.25rem;
+  --background: #FBF8F4;
+  --foreground: #2A1D10;
+  --card: #FFFFFF;
+  --card-foreground: #2A1D10;
+  --popover: #FFFFFF;
+  --popover-foreground: #2A1D10;
+  --primary: #D96A06;
+  --primary-foreground: #FFFFFF;
+  --secondary: #F4EEE7;
+  --secondary-foreground: #2A1D10;
+  --muted: #F4EEE7;
+  --muted-foreground: #8A7560;
+  --accent: #F4EEE7;
+  --accent-foreground: #2A1D10;
+  --destructive: #C62828;
+  --border: #EBE2D8;
+  --input: #E3D8CC;
+  --ring: #D96A06;
+  --faint: #BCAB99;
+  --primary-ink: #A85700;
+  --primary-soft: #FFF1DC;
+  --mid: #F2C089;
+  --good: #2E7D4F;
+  --bad: #C62828;
+  --chart-1: #D96A06;
+  --chart-2: #2E7D4F;
+  --chart-3: #3D6DB5;
+  --chart-4: #8E5BB5;
+  --shadow-card: 0 1px 0 rgb(120 70 20 / .05), 0 6px 20px rgb(120 70 20 / .06);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #15110D;
+    --foreground: #F6EFE7;
+    --card: #211A14;
+    --card-foreground: #F6EFE7;
+    --popover: #2A221A;
+    --popover-foreground: #F6EFE7;
+    --primary: #F08A24;
+    --primary-foreground: #1F1300;
+    --secondary: #2C241C;
+    --secondary-foreground: #F6EFE7;
+    --muted: #2C241C;
+    --muted-foreground: #BCA993;
+    --accent: #2C241C;
+    --accent-foreground: #F6EFE7;
+    --destructive: #FF6B5E;
+    --border: #382D22;
+    --input: #44372A;
+    --faint: #7A6A59;
+    --primary-ink: #F4AD33;
+    --primary-soft: #3A2A12;
+    --mid: #7A4F22;
+    --good: #4CC27F;
+    --bad: #FF6B5E;
+    --chart-1: #F4AD33;
+    --chart-2: #4CC27F;
+    --chart-3: #7DA6F0;
+    --chart-4: #C39BE6;
+    --shadow-card: none;
+    color-scheme: dark;
+  }
+}
+
+@theme inline {
+  --font-sans: var(--amber-font, -apple-system, system-ui, sans-serif);
+  --font-serif: "New York", ui-serif, Georgia, serif;
+  --font-rounded: ui-rounded, -apple-system, system-ui, sans-serif;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-faint: var(--faint);
+  --color-primary-ink: var(--primary-ink);
+  --color-primary-soft: var(--primary-soft);
+  --color-mid: var(--mid);
+  --color-good: var(--good);
+  --color-bad: var(--bad);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --shadow-card: var(--shadow-card);
+  --radius-sm: calc(var(--radius) - 8px);
+  --radius-md: calc(var(--radius) - 6px);
+  --radius-lg: calc(var(--radius) - 4px);
+  --radius-xl: var(--radius);
+  --radius-2xl: calc(var(--radius) + 2px);
+}
+
+@layer base {
+  * { @apply border-border outline-ring/50; }
+  html { -webkit-text-size-adjust: 100%; overflow-x: clip; }
+  body { @apply bg-background text-foreground antialiased; overflow-x: clip; -webkit-tap-highlight-color: transparent; }
+  button { cursor: pointer; }
+  button:disabled { cursor: default; }
+}
+
+@utility num { font-variant-numeric: tabular-nums; }
+@utility kicker { font-size: .76rem; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--primary-ink); }
+@utility card-calm { background: var(--card); border-radius: 22px; box-shadow: var(--shadow-card); }
+
+/* Sonner is full width on phones; with its side offsets that is wider than the screen. */
+@media (max-width: 600px) { [data-sonner-toaster] { width: auto !important; } }
+
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }

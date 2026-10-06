@@ -18,3 +18,4 @@ __pycache__/
 # Eval runs and their results stay out of git (the repository is public): copies live in
 # ~/content-tools/projects/amber-proto/note-pages/evals/.
 scripts/page-evals/results/
+demo/note-pages/best/_tools/node_modules/

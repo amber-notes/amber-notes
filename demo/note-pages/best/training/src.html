@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="app-settings" content='{"settings":[{"key":"rest","label":"Rest between sets","type":"choice","options":[{"value":60,"label":"1 minute"},{"value":90,"label":"1½ minutes"},{"value":120,"label":"2 minutes"},{"value":180,"label":"3 minutes"},{"value":240,"label":"4 minutes"},{"value":300,"label":"5 minutes"}],"default":120},{"key":"step","label":"Weight step","type":"choice","options":[{"value":1.25,"label":"1.25 kg"},{"value":2.5,"label":"2.5 kg"},{"value":5,"label":"5 kg"}],"default":2.5,"help":"How much the − and + buttons change, and how much heavier the next workout suggests."},{"key":"notify","label":"Notify when rest is over","type":"toggle","default":true,"help":"Even with the phone locked."}]}'>
+<title>Training</title>
+<style>
+/*KIT_CSS*/
+/* Today */
+.hero { padding: 1.4rem 1.3rem 1.3rem; border-radius: calc(var(--amber-radius) + 6px); background: radial-gradient(120% 100% at 100% 0%, color-mix(in srgb, var(--amber-accent) 22%, transparent), transparent 60%), var(--amber-surface); }
+.hero .k { font-size: .8rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--amber-accent-text); }
+.hero h2 { font-size: 2.1rem; font-weight: 800; letter-spacing: -.025em; margin: .2rem 0 1rem; }
+.lifts { display: grid; gap: .1rem; margin-bottom: 1.3rem; }
+.lifts div { display: flex; align-items: baseline; gap: .6rem; padding: .5rem 0; border-bottom: 1px solid var(--amber-separator); }
+.lifts div:last-child { border-bottom: 0; }
+.lifts b { flex: 1; font-weight: 600; font-size: 1.05rem; }
+.lifts span { font-variant-numeric: tabular-nums; color: var(--amber-text-secondary); }
+.lifts span strong { color: var(--amber-text); font-weight: 700; }
+.startb { width: 100%; min-height: 3.6rem; font-size: 1.2rem; border-radius: 1rem; }
+.alt { display: block; margin: .8rem auto 0; }
+.weekrow { display: flex; gap: .35rem; }
+.weekrow div { flex: 1; text-align: center; font-size: .7rem; font-weight: 700; color: var(--amber-text-secondary); }
+.weekrow i { display: grid; place-items: center; height: 2.2rem; border-radius: .7rem; background: var(--amber-fill); margin-bottom: .3rem; color: var(--amber-on-accent); }
+.weekrow i svg { width: 1rem; height: 1rem; stroke-width: 3; }
+.weekrow .on i { background: var(--amber-accent); }
+.weekrow .today i { box-shadow: inset 0 0 0 2px var(--amber-text); }
+.lastw { font-size: .92rem; color: var(--amber-text-secondary); line-height: 1.5; }
+.lastw b { color: var(--amber-text); font-weight: 600; }
+.record { padding: 1.1rem 1.2rem; display: flex; gap: .9rem; align-items: center; background: var(--amber-accent-soft); }
+.record svg { width: 2rem; height: 2rem; color: var(--amber-accent-text); flex: none; animation: pop .6s var(--ease-pop); }
+.record h3 { font-size: 1.05rem; }
+.record p { font-size: .88rem; color: var(--amber-text-secondary); }
+.todaygrid { display: grid; gap: 1.2rem; }
+@media (min-width: 900px) { .todaygrid { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); align-items: start; } }
+
+/* The workout: one set at a time */
+.wk { max-width: 34rem; margin: 0 auto; }
+.wkhead { display: flex; align-items: center; gap: .6rem; margin-bottom: .8rem; }
+.wkhead .grow .k { font-size: .8rem; color: var(--amber-text-secondary); font-weight: 600; }
+.wkhead .clock { font-family: var(--amber-font-rounded); font-weight: 800; font-size: 1.2rem; font-variant-numeric: tabular-nums; }
+.exbar { display: flex; gap: .35rem; margin-bottom: 1.1rem; }
+.exbar div { flex: 1; }
+.exbar span { display: block; font-size: .68rem; font-weight: 700; color: var(--amber-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: .25rem; }
+.exbar .now span { color: var(--amber-text); }
+.exbar i { display: flex; gap: 2px; }
+.exbar b { flex: 1; height: .32rem; border-radius: 99px; background: var(--amber-fill); }
+.exbar b.done { background: var(--good); }
+.exbar b.cur { background: var(--amber-accent); }
+.setcard { border-radius: calc(var(--amber-radius) + 8px); background: var(--amber-surface); padding: 1.3rem 1.2rem 1.2rem; text-align: center; }
+.setcard .ex { font-size: 1.6rem; font-weight: 800; letter-spacing: -.02em; }
+.setcard .which { font-size: .95rem; color: var(--amber-text-secondary); margin-top: .15rem; }
+.dials { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; margin: 1.3rem 0 1.1rem; }
+.dial { background: var(--amber-bg); border-radius: 1rem; padding: .7rem .5rem .6rem; }
+@media (prefers-color-scheme: dark) { .dial { background: var(--amber-fill); } }
+.dial .v { font-family: var(--amber-font-rounded); font-size: 2.6rem; font-weight: 800; letter-spacing: -.03em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.dial .u { font-size: .78rem; font-weight: 700; color: var(--amber-text-secondary); text-transform: uppercase; letter-spacing: .06em; }
+.dial .pm { display: flex; justify-content: center; gap: .6rem; margin-top: .5rem; }
+.dial .pm button { width: 2.9rem; height: 2.9rem; border-radius: 50%; border: 0; background: var(--amber-fill); color: var(--amber-text); font-size: 1.4rem; font-weight: 600; }
+@media (prefers-color-scheme: dark) { .dial .pm button { background: color-mix(in srgb, var(--amber-text) 12%, var(--amber-fill)); } }
+.lasttime { font-size: .85rem; color: var(--amber-text-secondary); margin-bottom: 1rem; }
+.doneb { width: 100%; min-height: 3.8rem; font-size: 1.25rem; border-radius: 1rem; background: var(--good); color: #fff; }
+.restcard { text-align: center; }
+.ringbig { width: 12rem; height: 12rem; margin: .4rem auto 1rem; position: relative; }
+.ringbig svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.ringbig .t { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--amber-font-rounded); font-size: 3rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.restrow { display: flex; gap: .6rem; justify-content: center; }
+.restrow .btn { min-width: 7rem; }
+.nextup { margin-top: 1.2rem; }
+.nextup .row { font-size: .92rem; }
+.summary { text-align: center; padding: 1.6rem 1.2rem; }
+.summary .big { font-family: var(--amber-font-rounded); font-size: 3.2rem; font-weight: 800; letter-spacing: -.03em; }
+.summary p { color: var(--amber-text-secondary); margin: .3rem 0 1.2rem; }
+
+/* Plan */
+.plancard { padding: 1rem 1.1rem; display: block; width: 100%; text-align: left; border: 0; color: inherit; font: inherit; }
+.plancard h3 { font-size: 1.1rem; display: flex; align-items: center; gap: .4rem; }
+.plancard h3 .grow { flex: 1; }
+.plancard p { color: var(--amber-text-secondary); font-size: .9rem; margin-top: .25rem; }
+.plans { display: grid; gap: .7rem; }
+.edrow { display: grid !important; grid-template-columns: minmax(0, 1fr) auto auto; grid-template-areas: "nm up del" "ctl ctl ctl"; gap: .35rem .3rem !important; align-items: center; }
+.edrow .nm { grid-area: nm; font-weight: 600; }
+.edrow .ctl { grid-area: ctl; display: flex; align-items: center; gap: .5rem .8rem; flex-wrap: wrap; }
+.edrow [data-move] { grid-area: up; } .edrow [data-del] { grid-area: del; }
+@media (min-width: 700px) { .edrow { grid-template-columns: minmax(0, 1fr) auto auto auto; grid-template-areas: "nm ctl up del"; } }
+.mini { display: inline-flex; align-items: center; gap: .3rem; }
+.mini button { width: 2.2rem; height: 2.2rem; border-radius: 50%; border: 0; background: var(--amber-fill); color: var(--amber-text); font-weight: 700; }
+.mini b { min-width: 4.2rem; text-align: center; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mini .x { font-size: .8rem; color: var(--amber-text-secondary); }
+.iconb { width: 2.2rem; height: 2.2rem; border: 0; border-radius: 50%; background: none; color: var(--amber-text-secondary); display: grid; place-items: center; }
+.iconb svg { width: 1.05rem; height: 1.05rem; }
+.iconb.danger { color: var(--amber-danger); }
+
+/* Progress */
+.chips { display: flex; gap: .4rem; overflow-x: auto; scrollbar-width: none; padding: .1rem 0 .8rem; }
+.chips::-webkit-scrollbar { display: none; }
+.chip { border: 0; border-radius: 999px; padding: .4rem .9rem; min-height: 2.3rem; font-size: .9rem; font-weight: 600; background: var(--amber-fill); color: var(--amber-text-secondary); white-space: nowrap; }
+.chip[aria-pressed="true"] { background: var(--amber-text); color: var(--amber-bg); }
+.prog { padding: 1rem 1rem .8rem; }
+.prog svg { display: block; width: 100%; height: auto; overflow: visible; }
+.prog .ax { fill: var(--amber-text-secondary); font: 600 10px var(--amber-font); }
+.prog .grid { stroke: var(--amber-separator); }
+.prog .ln { fill: none; stroke: var(--amber-accent); stroke-width: 2.5; stroke-linejoin: round; }
+.prog .area { fill: var(--amber-accent); opacity: .1; }
+.prog .pt { fill: var(--amber-surface); stroke: var(--amber-accent); stroke-width: 2; }
+.prog .rec { fill: var(--amber-accent); }
+.bignum { display: flex; align-items: baseline; gap: .5rem; flex-wrap: wrap; margin-bottom: .5rem; }
+.bignum b { font-family: var(--amber-font-rounded); font-size: 2.2rem; font-weight: 800; letter-spacing: -.03em; }
+.recs .row { font-variant-numeric: tabular-nums; }
+.recs .up { color: var(--good); font-size: .8rem; font-weight: 700; }
+.sess .when { font-weight: 600; }
+.sess .what { font-size: .85rem; color: var(--amber-text-secondary); margin-top: .1rem; }
+.badge2 { font-size: .72rem; font-weight: 700; color: var(--amber-accent-text); background: var(--amber-accent-soft); border-radius: 99px; padding: .15rem .5rem; margin-left: .3rem; }
+.progrid { display: grid; gap: 0 1.4rem; }
+@media (min-width: 1100px) { .progrid { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); align-items: start; } }
+</style>
+</head>
+<body>
+<main id="app" aria-live="polite"></main>
+<script>
+/*KIT_JS*/
+const { esc, ico, D, num, col, announce } = Kit;
+const S = () => { const s = Kit.settings(); return { rest: Number(s.rest) || 120, step: Number(s.step) || 2.5, notify: Kit.on(s.notify) }; };
+const kgText = (n) => (Math.round(n * 100) / 100).toString().replace(".", ",");
+const e1rm = (kg, reps) => kg * (1 + Math.min(reps, 12) / 30);
+let editing = 0, lift = null, record = null, chosenPlan = null, restNote = null, ticker = null;
+
+function model(note) {
+  const t = Kit.table(note, /^date$/i, /^exercise$/i);
+  if (!t) return null;
+  const c = { date: col(t, /^date$/i), ex: col(t, /^exercise$/i), sets: col(t, /^sets$/i), reps: col(t, /^reps$/i), kg: col(t, /^(kg|weight)$/i) };
+  const rows = t.rows.map((r, i) => ({ i, date: r[c.date].trim(), ex: r[c.ex].trim(), sets: parseInt(r[c.sets]) || 1, reps: parseInt(r[c.reps]) || 0, kg: num(r[c.kg]) }))
+    .filter((r) => D.parse(r.date) && r.ex && Number.isFinite(r.kg));
+  const lifts = {};
+  for (const r of rows) {
+    const L = lifts[r.ex] || (lifts[r.ex] = { name: r.ex, pts: [], best: 0, bestRow: null, last: null, records: new Set() });
+    const v = e1rm(r.kg, r.reps);
+    if (v > L.best + 0.01) { L.best = v; L.bestRow = r; L.records.add(r.i); }
+    L.pts.push({ date: r.date, v, r }); L.last = r;
+  }
+  const sessions = [...new Set(rows.map((r) => r.date))].sort().reverse().map((d) => ({ date: d, rows: rows.filter((r) => r.date === d) }));
+  return { t, c, rows, lifts, sessions };
+}
+const plans = () => amber.data.values.plans || [];
+function nextPlan(m) {
+  const ps = plans(); if (!ps.length) return null;
+  if (chosenPlan && ps.find((p) => p.name === chosenPlan)) return ps.find((p) => p.name === chosenPlan);
+  const last = m.sessions[0]; if (!last) return ps[0];
+  const names = new Set(last.rows.map((r) => r.ex));
+  const score = (p) => p.lifts.filter((l) => names.has(l.name)).length - p.lifts.length / 100;
+  const idx = ps.reduce((b, p, k) => (score(p) > score(ps[b]) ? k : b), 0);
+  return ps[(idx + 1) % ps.length];
+}
+// The last weight, plus a step when every rep was done.
+function nextKg(m, l) {
+  const lt = m.lifts[l.name] && m.lifts[l.name].last; if (!lt) return 20;
+  const step = S().step;
+  return lt.reps >= l.reps ? lt.kg + (/press|bench/i.test(l.name) ? step / 2 : step) : lt.kg;
+}
+
+// ---------- Today ----------
+function today(note, m) {
+  const s = amber.data.values.session, p = nextPlan(m), ws = D.weekStart(note.today);
+  const thisWeek = m.sessions.filter((x) => x.date >= ws).length, last = m.sessions[0];
+  const hero = s ? (() => { const done = s.lifts.reduce((a, l) => a + l.sets.filter((x) => x.done).length, 0), all = s.lifts.reduce((a, l) => a + l.sets.length, 0);
+      return `<section class="hero"><div class="k">In progress</div><h2>${esc(s.name)}</h2><p class="muted" style="margin:-.5rem 0 1.2rem">${done} of ${all} sets done</p><button class="btn primary startb" id="resume">${ico("play")} Continue</button></section>`; })()
+    : p ? `<section class="hero"><div class="k">${last ? `Next workout` : "First workout"}</div><h2>${esc(p.name)}</h2>
+      <div class="lifts">${p.lifts.map((l) => `<div><b>${esc(l.name)}</b><span>${l.sets}×${l.reps} · <strong>${kgText(nextKg(m, l))} kg</strong></span></div>`).join("")}</div>
+      <button class="btn primary startb" id="start">${ico("play")} Start</button>
+      ${plans().length > 1 ? `<button class="btn plain alt" id="other">Do ${esc(plans().find((x) => x.name !== p.name).name)} instead</button>` : ""}</section>`
+    : `<section class="card empty">${ico("dumbbell")}<h3>No plan yet</h3><p>Make a workout in Plan, and it shows here ready to start.</p></section>`;
+  return `<header class="top"><div class="titles"><h1>${esc(note.title)}</h1><div class="sub">${thisWeek ? `${thisWeek} ${thisWeek === 1 ? "workout" : "workouts"} this week` : "Nothing yet this week"}</div></div></header>
+    ${record ? `<section class="card record rise" style="margin-bottom:1rem">${ico("trophy")}<div><h3>${record.length === 1 ? "New personal record" : `${record.length} new records`}</h3><p>${record.map((r) => `${esc(r.ex)} ${r.sets}×${r.reps} at ${kgText(r.kg)} kg`).join(" · ")}</p></div></section>` : ""}
+    <div class="todaygrid"><div>${hero}</div><div>
+      <div class="label" style="margin-top:.2rem">This week</div>
+      <section class="card pad"><div class="weekrow">${[...Array(7)].map((_, k) => { const d = D.add(ws, k), on = m.sessions.some((x) => x.date === d); return `<div class="${on ? "on" : ""} ${d === note.today ? "today" : ""}"><i>${on ? ico("check") : ""}</i>${D.fmt(d, { weekday: "narrow" })}</div>`; }).join("")}</div></section>
+      ${last ? `<div class="label">Last time</div><section class="card pad lastw"><b>${D.fmt(last.date, { weekday: "long", day: "numeric", month: "short" })}</b><br>${last.rows.map((r) => `${esc(r.ex)} ${r.sets}×${r.reps} at ${kgText(r.kg)} kg`).join("<br>")}</section>` : ""}
+    </div></div>`;
+}
+
+// ---------- The workout, pushed over Today ----------
+const cursor = (s) => { for (let l = 0; l < s.lifts.length; l++) for (let k = 0; k < s.lifts[l].sets.length; k++) if (!s.lifts[l].sets[k].done) return { l, k }; return null; };
+function workout(note) {
+  const s = amber.data.values.session; if (!s) return `<div class="wk"><div class="card empty"><p>No workout running.</p></div></div>`;
+  const m = model(note), cur = cursor(s), rest = s.restUntil && Date.parse(s.restUntil) > Date.now();
+  const bar = `<div class="exbar" aria-label="Exercises">${s.lifts.map((l, li) => `<div class="${cur && cur.l === li ? "now" : ""}"><span>${esc(l.name)}</span><i>${l.sets.map((x, k) => `<b class="${x.done ? "done" : cur && cur.l === li && cur.k === k ? "cur" : ""}"></b>`).join("")}</i></div>`).join("")}</div>`;
+  const head = `<div class="wkhead"><div class="grow"><div class="k">${esc(s.name)}</div><div class="clock" id="clock">0:00</div></div><button class="btn plain" id="finish">${cur ? "Finish early" : "Finish"}</button></div>`;
+  if (!cur) {
+    const total = s.lifts.reduce((a, l) => a + l.sets.length, 0), mins = Math.max(1, Math.round((Date.now() - Date.parse(s.started)) / 60000));
+    return `<div class="wk">${head}${bar}<section class="setcard summary rise"><div class="big num">${total} sets</div><p>${mins} minutes · ${s.lifts.map((l) => esc(l.name)).join(", ")}</p><button class="btn primary startb" id="save">Save to the note</button></section></div>`;
+  }
+  const L = s.lifts[cur.l], set = L.sets[cur.k], lt = m.lifts[L.name] && m.lifts[L.name].last;
+  const next = cursor({ lifts: s.lifts.map((l, li) => ({ sets: l.sets.map((x, k) => ({ done: x.done || (li === cur.l && k === cur.k) })) })) });
+  const nextLabel = next ? `${s.lifts[next.l].name}, set ${next.k + 1}` : "Finish";
+  if (rest) {
+    const total = s.restFor || S().rest, left = Math.max(0, Math.round((Date.parse(s.restUntil) - Date.now()) / 1000)), C = 2 * Math.PI * 52;
+    return `<div class="wk">${head}${bar}<section class="setcard restcard rise" aria-label="Rest">
+      <div class="which">Rest</div>
+      <div class="ringbig"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="52" fill="none" stroke="var(--amber-fill)" stroke-width="9"/><circle id="restarc" cx="60" cy="60" r="52" fill="none" stroke="var(--amber-accent)" stroke-width="9" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - left / total)}" style="transition:stroke-dashoffset 1s linear"/></svg><div class="t" id="restt">${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}</div></div>
+      <p class="which" style="margin-bottom:1rem">Next: <b style="color:var(--amber-text)">${esc(L.name)}, set ${cur.k + 1}</b> · ${kgText(set.kg)} kg × ${set.reps}</p>
+      <div class="restrow"><button class="btn" id="more30" aria-label="Thirty seconds more">+30 s</button><button class="btn primary" id="skip">Skip rest</button></div></section></div>`;
+  }
+  return `<div class="wk">${head}${bar}<section class="setcard" aria-label="${esc(L.name)}, set ${cur.k + 1} of ${L.sets.length}">
+      <div class="ex">${esc(L.name)}</div><div class="which">Set ${cur.k + 1} of ${L.sets.length}</div>
+      <div class="dials">
+        <div class="dial"><div class="v" id="kgv">${kgText(set.kg)}</div><div class="u">kg</div><div class="pm"><button data-adj="kg" data-d="-1" aria-label="Lighter">−</button><button data-adj="kg" data-d="1" aria-label="Heavier">+</button></div></div>
+        <div class="dial"><div class="v" id="repv">${set.reps}</div><div class="u">reps</div><div class="pm"><button data-adj="reps" data-d="-1" aria-label="One rep fewer">−</button><button data-adj="reps" data-d="1" aria-label="One rep more">+</button></div></div>
+      </div>
+      ${lt ? `<div class="lasttime">Last time ${lt.sets}×${lt.reps} at ${kgText(lt.kg)} kg</div>` : ""}
+      <button class="btn doneb" id="done">${ico("check")} Done</button></section>
+    <div class="label nextup">After this</div><section class="card list">${(() => { const out = []; for (let li = cur.l; li < s.lifts.length && out.length < 4; li++) s.lifts[li].sets.forEach((x, k) => { if (!x.done && !(li === cur.l && k === cur.k) && out.length < 4) out.push(`<div class="row"><span class="grow">${esc(s.lifts[li].name)}, set ${k + 1}</span><span class="muted num">${kgText(x.kg)} kg × ${x.reps}</span></div>`); }); return out.join("") || `<div class="row muted">That's the last set.</div>`; })()}</section></div>`;
+}
+async function patch(fn) { const s = JSON.parse(JSON.stringify(amber.data.values.session)); fn(s); await amber.store.set("session", s); }
+async function start(plan) {
+  const m = model(amber.note); record = null;
+  await amber.store.set("session", { name: plan.name, started: new Date().toISOString(), lifts: plan.lifts.map((l) => ({ name: l.name, sets: [...Array(l.sets)].map(() => ({ kg: nextKg(m, l), reps: l.reps, done: false })) })) });
+  shell.push({ backLabel: "Today", render: workout, after: wire, immersive: true });
+}
+async function doneSet() {
+  const s = amber.data.values.session, cur = cursor(s); if (!cur) return;
+  const secs = S().rest;
+  await patch((x) => { x.lifts[cur.l].sets[cur.k].done = true; const more = cursor(x); x.restUntil = more ? new Date(Date.now() + secs * 1000).toISOString() : null; x.restFor = secs; });
+  if (cursor(amber.data.values.session)) await notifyRest(secs); else cancelRest();
+  announce("Set done.");
+}
+async function notifyRest(secs) {
+  cancelRest();
+  const s = amber.data.values.session, cur = cursor(s);
+  if (S().notify && cur) { const r = await amber.device.notify({ title: "Rest's over", body: `Next: ${s.lifts[cur.l].name}, set ${cur.k + 1}`, in: secs }); if (r.ok) restNote = r.id; }
+}
+function cancelRest() { if (restNote) { amber.device.notify.cancel(restNote); restNote = null; } }
+async function endRest() { cancelRest(); await patch((x) => { x.restUntil = null; }); }
+async function finish() {
+  const m = model(amber.note), s = amber.data.values.session, prs = [], rows = [];
+  for (const l of s.lifts) {
+    const done = l.sets.filter((x) => x.done); if (!done.length) continue;
+    const kg = Math.max(...done.map((x) => x.kg)), reps = Math.min(...done.filter((x) => x.kg === kg).map((x) => x.reps));
+    const r = { date: amber.note.today, ex: l.name, sets: done.length, reps, kg }; rows.push(r);
+    const L = m.lifts[l.name]; if (!L || e1rm(kg, reps) > L.best + 0.01) prs.push(r);
+  }
+  cancelRest();
+  if (rows.length) {
+    const n = (k) => m.t.columns[m.c[k]].name;
+    const res = await Kit.addRows(m.t.index, rows.map((r) => ({ [n("date")]: r.date, [n("ex")]: r.ex, [n("sets")]: String(r.sets), [n("reps")]: String(r.reps), [n("kg")]: kgText(r.kg) })));
+    if (!res.ok) { announce(res.error); return; }
+    await amber.store.collection("workouts").add({ date: amber.note.today, name: s.name, started: s.started, lifts: s.lifts });
+  }
+  record = prs.length ? prs : null; chosenPlan = null;
+  await amber.store.set("session", null);
+  shell.pop();
+}
+function tick() {
+  clearInterval(ticker);
+  ticker = setInterval(() => {
+    const s = amber.data.values.session; if (!s) return clearInterval(ticker);
+    const c = document.getElementById("clock"); if (c) { const sec = Math.floor((Date.now() - Date.parse(s.started)) / 1000); c.textContent = `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`; }
+    if (s.restUntil) {
+      const left = Math.round((Date.parse(s.restUntil) - Date.now()) / 1000);
+      const t = document.getElementById("restt"), a = document.getElementById("restarc");
+      if (t) t.textContent = `${Math.floor(Math.max(0, left) / 60)}:${String(Math.max(0, left) % 60).padStart(2, "0")}`;
+      if (a) { const C = 2 * Math.PI * 52; a.setAttribute("stroke-dashoffset", C * (1 - Math.max(0, left) / (s.restFor || 120))); }
+      if (left <= 0) { patch((x) => { x.restUntil = null; }); announce("Rest's over."); }
+    }
+  }, 500);
+}
+
+// ---------- Plan ----------
+function plan(note, m) {
+  const ps = plans();
+  return `<header class="top"><div class="titles"><h1>Plan</h1><div class="sub">Workouts take turns, in this order.</div></div><button class="round accent" id="newplan" aria-label="New workout">${ico("plus")}</button></header>
+    <div class="plans">${ps.map((p, k) => `<button class="card plancard" data-plan="${k}"><h3><span class="grow">${esc(p.name)}</span>${ico("chevron", 'class="chev"')}</h3><p>${p.lifts.map((l) => `${esc(l.name)} ${l.sets}×${l.reps}`).join(" · ")}</p></button>`).join("") || `<div class="card empty"><p>No workouts yet.</p></div>`}</div>`;
+}
+function planEditor(k) {
+  return () => {
+    const p = plans()[k]; if (!p) return `<div class="card empty"><p>That workout is gone.</p></div>`;
+    const m = model(amber.note), known = m ? Object.keys(m.lifts) : [];
+    return `<header class="top"><div class="titles"><h1>${esc(p.name)}</h1><div class="sub">${p.lifts.length} exercises</div></div></header>
+      <label class="field" style="margin-bottom:1rem">Name<input class="in" id="pname" value="${esc(p.name)}" maxlength="40"></label>
+      <div class="label">Exercises</div>
+      <section class="card list">${p.lifts.map((l, i) => `<div class="row edrow"><span class="nm ellipsis">${esc(l.name)}</span>
+        <span class="ctl">${["sets", "reps"].map((k) => `<span class="mini"><button data-ed="${k}" data-i="${i}" data-d="-1" aria-label="Fewer ${k} of ${esc(l.name)}">−</button><b>${l[k]} <span class="x">${k}</span></b><button data-ed="${k}" data-i="${i}" data-d="1" aria-label="More ${k} of ${esc(l.name)}">+</button></span>`).join("")}</span>
+        <button class="iconb" data-move="${i}" data-d="-1" aria-label="Move ${esc(l.name)} up" ${i ? "" : "disabled"}>${ico("up")}</button>
+        <button class="iconb danger" data-del="${i}" aria-label="Remove ${esc(l.name)}">${ico("trash")}</button></div>`).join("")}</section>
+      <form id="addex" class="fields two" style="margin-top:.8rem"><input class="in" id="exn" list="known" placeholder="Add an exercise" aria-label="Exercise to add" maxlength="40"><button class="btn tint">${ico("plus")} Add</button></form>
+      <datalist id="known">${known.map((n) => `<option value="${esc(n)}">`).join("")}</datalist>
+      <button class="btn danger" id="delplan" style="margin-top:1.4rem">${ico("trash")} Delete this workout</button>`;
+  };
+}
+async function savePlans(ps) { await amber.store.set("plans", ps); }
+function wirePlan(k) {
+  return (root) => {
+    root.querySelector("#pname").onchange = (e) => { const ps = plans(); ps[k].name = e.target.value.trim() || ps[k].name; savePlans(ps); };
+    root.querySelector("#addex").onsubmit = (e) => { e.preventDefault(); const n = root.querySelector("#exn").value.trim(); if (!n) return; const ps = plans(); ps[k].lifts.push({ name: n, sets: 3, reps: 8 }); savePlans(ps); };
+    root.querySelector("#delplan").onclick = (e) => { if (e.target.dataset.sure) { const ps = plans(); ps.splice(k, 1); savePlans(ps); shell.pop(); } else { e.target.dataset.sure = 1; e.target.textContent = "Tap again to delete"; } };
+  };
+}
+
+// ---------- Progress ----------
+function chart(m, name) {
+  const L = m.lifts[name]; if (!L || L.pts.length < 2) return `<p class="muted">Log ${esc(name)} a few times to see it climb.</p>`;
+  const W = Math.round(Math.max(260, Kit.width("prog", innerWidth - 64))), H = Math.round(Math.min(260, Math.max(170, W * .45))), Lp = 30, R = 8, T = 10, B = 20;
+  const t0 = D.parse(L.pts[0].date), t1 = D.parse(L.pts[L.pts.length - 1].date);
+  const vs = L.pts.map((p) => p.v), lo = Math.floor(Math.min(...vs) / 10) * 10, hi = Math.ceil(Math.max(...vs) / 10) * 10 || 10;
+  const x = (d) => Lp + ((D.parse(d) - t0) / Math.max(1, t1 - t0)) * (W - Lp - R), y = (v) => T + (1 - (v - lo) / Math.max(1, hi - lo)) * (H - T - B);
+  const path = L.pts.map((p, k) => `${k ? "L" : "M"}${x(p.date).toFixed(1)} ${y(p.v).toFixed(1)}`).join(" ");
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(name)}: estimated one-rep max over time">
+    ${[lo, (lo + hi) / 2, hi].map((v) => `<line class="grid" x1="${Lp}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text class="ax" x="0" y="${y(v) + 3}">${Math.round(v)}</text>`).join("")}
+    <path class="area" d="${path} L ${x(L.pts[L.pts.length - 1].date)} ${H - B} L ${x(L.pts[0].date)} ${H - B} Z"/><path class="ln" d="${path}"/>
+    ${L.pts.map((p) => `<circle class="${L.records.has(p.r.i) ? "rec" : "pt"}" cx="${x(p.date)}" cy="${y(p.v)}" r="${L.records.has(p.r.i) ? 3.4 : 2.6}"/>`).join("")}
+    <text class="ax" x="${Lp}" y="${H - 4}">${D.fmt(L.pts[0].date, { day: "numeric", month: "short" })}</text><text class="ax" x="${W - R}" y="${H - 4}" text-anchor="end">${D.fmt(L.pts[L.pts.length - 1].date, { day: "numeric", month: "short" })}</text></svg>`;
+}
+function progress(note, m) {
+  const names = Object.keys(m.lifts).sort((a, b) => m.lifts[b].pts.length - m.lifts[a].pts.length);
+  if (!lift || !m.lifts[lift]) lift = names[0];
+  const L = m.lifts[lift];
+  return `<header class="top"><div class="titles"><h1>Progress</h1><div class="sub">${m.sessions.length} workouts since ${D.fmt(m.sessions[m.sessions.length - 1].date, { day: "numeric", month: "long" })}</div></div></header>
+    <div class="chips" role="group" aria-label="Exercise">${names.map((n) => `<button class="chip" data-lift="${esc(n)}" aria-pressed="${n === lift}">${esc(n)}</button>`).join("")}</div>
+    <div class="progrid"><div>
+      <section class="card prog"><div data-w="prog"></div><div class="bignum"><b class="num">${Math.round(L.best)} kg</b><span class="muted small">estimated one-rep max · up ${Math.round(L.best - L.pts[0].v)} kg</span></div>${chart(m, lift)}<p class="muted small" style="margin-top:.4rem">Filled dots are personal records.</p></section>
+    </div><div>
+      <div class="label">Records</div>
+      <section class="card list recs">${names.map((n) => { const x = m.lifts[n], ago = x.pts.filter((p) => p.date <= D.add(note.today, -28)).pop(), d = ago ? x.best - ago.v : 0; return `<div class="row"><span class="grow">${esc(n)}</span>${d > 0.5 ? `<span class="up">+${Math.round(d)} kg</span>` : ""}<b class="num">${kgText(x.bestRow.kg)} kg × ${x.bestRow.reps}</b></div>`; }).join("")}</section>
+      <div class="label">History</div>
+      <section class="card list">${m.sessions.slice(0, 6).map((s) => { const prs = s.rows.filter((r) => m.lifts[r.ex].records.has(r.i)).length; return `<div class="row sess"><div class="grow"><div class="when">${D.fmt(s.date, { weekday: "long", day: "numeric", month: "short" })}${prs ? `<span class="badge2">${prs} PR</span>` : ""}</div><div class="what">${s.rows.map((r) => `${esc(r.ex)} ${r.sets}×${r.reps} ${kgText(r.kg)}`).join(" · ")}</div></div></div>`; }).join("")}</section>
+    </div></div>`;
+}
+
+// ---------- The frame ----------
+const shell = Kit.app({
+  tabs: [{ id: "today", label: "Today", icon: "dumbbell" }, { id: "plan", label: "Plan", icon: "list" }, { id: "progress", label: "Progress", icon: "chart" }],
+  screen(tab, note) {
+    const m = model(note);
+    if (!m) return `<header class="top"><div class="titles"><h1>${esc(note.title)}</h1></div></header><div class="card empty">${ico("dumbbell")}<h3>No workouts yet</h3><p>Workouts go in a table in this note: Date, Exercise, Sets, Reps and Kg.</p></div>`;
+    return tab === "today" ? today(note, m) : tab === "plan" ? plan(note, m) : progress(note, m);
+  },
+  after(tab, root) { if (tab === "progress") Kit.fit(() => shell.draw()); },
+});
+function wire(root) { tick(); }
+
+document.addEventListener("click", async (e) => {
+  const t = e.target.closest("#start,#resume,#other,#done,#skip,#more30,#finish,#save,#newplan,[data-adj],[data-plan],[data-lift],[data-ed],[data-del],[data-move]"); if (!t) return;
+  const m = model(amber.note);
+  if (t.id === "start") start(nextPlan(m));
+  else if (t.id === "resume") shell.push({ backLabel: "Today", render: workout, after: wire, immersive: true });
+  else if (t.id === "other") { chosenPlan = plans().find((x) => x.name !== nextPlan(m).name).name; shell.draw(); }
+  else if (t.id === "done") doneSet();
+  else if (t.id === "skip") endRest();
+  else if (t.id === "more30") { await patch((x) => { x.restUntil = new Date(Date.parse(x.restUntil) + 30000).toISOString(); x.restFor = (x.restFor || S().rest) + 30; }); notifyRest(Math.round((Date.parse(amber.data.values.session.restUntil) - Date.now()) / 1000)); }
+  else if (t.id === "finish" || t.id === "save") finish();
+  else if (t.dataset.adj) { const s = amber.data.values.session, cur = cursor(s), d = +t.dataset.d; await patch((x) => { const L = x.lifts[cur.l]; for (let k = cur.k; k < L.sets.length; k++) { const st = L.sets[k]; if (t.dataset.adj === "kg") st.kg = Math.max(0, Math.round((st.kg + d * S().step) * 100) / 100); else if (k === cur.k) st.reps = Math.max(1, st.reps + d); } }); }
+  else if (t.id === "newplan") { const ps = plans(); ps.push({ name: `Workout ${String.fromCharCode(65 + ps.length)}`, lifts: [] }); await savePlans(ps); editing = ps.length - 1; shell.push({ backLabel: "Plan", render: planEditor(editing), after: wirePlan(editing) }); }
+  else if (t.dataset.plan) { const k = +t.dataset.plan; editing = k; shell.push({ backLabel: "Plan", render: planEditor(k), after: wirePlan(k) }); }
+  else if (t.dataset.lift) { lift = t.dataset.lift; shell.draw(); }
+  else if (t.dataset.ed) { const ps = plans(), l = ps[editing].lifts[+t.dataset.i]; l[t.dataset.ed] = Math.max(1, l[t.dataset.ed] + +t.dataset.d); savePlans(ps); }
+  else if (t.dataset.del) { const ps = plans(); ps[editing].lifts.splice(+t.dataset.del, 1); savePlans(ps); }
+  else if (t.dataset.move) { const ps = plans(), i = +t.dataset.move, L = ps[editing].lifts; [L[i - 1], L[i]] = [L[i], L[i - 1]]; savePlans(ps); }
+});
+// The workout keeps its place: open the app mid-workout and it goes straight back to the set.
+let first = true;
+amber.onChange(() => { shell.draw(); if (first) { first = false; if (amber.data.values.session) shell.push({ backLabel: "Today", render: workout, after: wire, immersive: true }); } });
+Kit.onResize(() => shell.draw());
+</script>
+</body>
+</html>

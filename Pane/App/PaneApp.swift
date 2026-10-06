@@ -70,6 +70,7 @@ struct PaneApp: App {
         Capture.scheduleFromArguments(container.mainContext)
         Capture.importVaultFromArguments(container.mainContext)
         Capture.notePagesFromArguments(container.mainContext)
+        Capture.bestAppsFromArguments(container.mainContext)
         #if os(iOS)
         FrameProbe.startFromArguments()
         #endif

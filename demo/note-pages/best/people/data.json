@@ -1,0 +1,93 @@
+{
+ "values": {
+  "settings": {
+   "soon": "6 weeks",
+   "remindAt": "18:00",
+   "defaultEvery": "1 month"
+  },
+  "contacts": {
+   "maja lindqvist": {
+    "phone": "+46 70 214 88 31",
+    "email": "maja.l@example.com",
+    "how": "Uni friend, now in Göteborg"
+   },
+   "mormor sigrid": {
+    "phone": "+46 8 612 40 19",
+    "how": "Sundays are best, after lunch"
+   },
+   "farah haddad": {
+    "phone": "+46 73 551 02 76",
+    "how": "Old team, moved to Malmö"
+   },
+   "jonas ek": {
+    "email": "jonas.ek@example.com",
+    "how": "Climbing friend"
+   },
+   "karin holm": {
+    "email": "karin.holm@example.com",
+    "how": "Mentor from the first job"
+   },
+   "elin sandberg": {
+    "phone": "+46 76 330 19 52"
+   },
+   "oskar nyström": {
+    "phone": "+46 70 990 13 44"
+   },
+   "linnea berg": {
+    "phone": "+46 72 118 60 03"
+   }
+  }
+ },
+ "collections": {
+  "notes": [
+   {
+    "id": "n1",
+    "person": "maja lindqvist",
+    "kind": "Call",
+    "text": "New job at the hospital starts in November. Wants us to visit in the spring.",
+    "date": "{{d-44}}",
+    "created": "{{t-44}}"
+   },
+   {
+    "id": "n2",
+    "person": "maja lindqvist",
+    "kind": "Coffee",
+    "text": "Talked about the half marathon in May. She's training with Elin.",
+    "date": "{{d-102}}",
+    "created": "{{t-102}}"
+   },
+   {
+    "id": "n3",
+    "person": "farah haddad",
+    "kind": "Message",
+    "text": "Asked about the flat in Malmö. Send her the moving company's name.",
+    "date": "{{d-71}}",
+    "created": "{{t-71}}"
+   },
+   {
+    "id": "n4",
+    "person": "mormor sigrid",
+    "kind": "Call",
+    "text": "The knee is better. Wants the photos from Linnea's birthday printed.",
+    "date": "{{d-9}}",
+    "created": "{{t-9}}"
+   },
+   {
+    "id": "n5",
+    "person": "karin holm",
+    "kind": "Lunch",
+    "text": "Advice on the team lead role: write down what I want to stop doing first.",
+    "date": "{{d-50}}",
+    "created": "{{t-50}}"
+   },
+   {
+    "id": "n6",
+    "person": "jonas ek",
+    "kind": "Climbing",
+    "text": "Back from Fontainebleau. Planning Kullaberg next summer.",
+    "date": "{{d-130}}",
+    "created": "{{t-130}}"
+   }
+  ]
+ }
+}

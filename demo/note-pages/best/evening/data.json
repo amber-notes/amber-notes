@@ -1,0 +1,1218 @@
+{
+ "values": {},
+ "collections": {
+  "days": [
+   {
+    "id": "d0",
+    "date": "2026-08-26",
+    "workHours": 7.5,
+    "goodWorkHours": 4,
+    "energy": 8,
+    "mood": 8,
+    "focus": 8,
+    "sleep": 7,
+    "habits": {
+     "exercise": "Yes",
+     "walk": "Yes",
+     "reading": "Yes",
+     "plan": "No"
+    },
+    "helped": "Walk after lunch",
+    "hurt": "Late meeting ran over, skipped lunch",
+    "notes": "Two hours lost to a broken build.",
+    "tomorrow": {
+     "win": "Hire decision made",
+     "outcomes": [
+      "Two references called",
+      "Offer drafted"
+     ],
+     "firstTask": "Call the first reference",
+     "alarmsSet": true
+    },
+    "loggedAt": "2026-08-26T21:47:00"
+   },
+   {
+    "id": "d1",
+    "date": "2026-08-27",
+    "workHours": 6.5,
+    "goodWorkHours": 4,
+    "energy": 9,
+    "mood": 8,
+    "focus": 7,
+    "sleep": 8,
+    "habits": {
+     "exercise": "N/A",
+     "walk": "No",
+     "reading": "Yes",
+     "plan": "No"
+    },
+    "helped": "Deep work block before lunch",
+    "hurt": "Slept badly",
+    "notes": "",
+    "tomorrow": {
+     "win": "Demo ready for Thursday",
+     "outcomes": [
+      "Script done",
+      "Recording clean",
+      "Slides in order"
+     ],
+     "firstTask": "Outline the demo in ten bullets",
+     "alarmsSet": true
+    },
+    "loggedAt": "2026-08-27T21:48:00"
+   },
+   {
+    "id": "d2",
+    "date": "2026-08-28",
+    "workHours": 8.5,
+    "goodWorkHours": 6,
+    "energy": 7,
+    "mood": 9,
+    "focus": 7,
+    "sleep": 7,
+    "habits": {
+     "exercise": "Yes",
+     "walk": "Yes",
+     "reading": "Yes",
+     "plan": "N/A"
+    },
+    "helped": "Walk after lunch",
+    "hurt": "Slack all afternoon",
+    "notes": "",
+    "tomorrow": {
+     "win": "Demo ready for Thursday",
+     "outcomes": [
+      "Script done",
+      "Recording clean",
+      "Slides in order"
+     ],
+     "firstTask": "Outline the demo in ten bullets",
+     "alarmsSet": true
+    },
+    "loggedAt": "2026-08-28T21:32:00"
+   },
+   {
+    "id": "d3",
+    "date": "2026-08-29",
+    "workHours": 0,
+    "goodWorkHours": 0,
+    "energy": 8,
+    "mood": 8,
+    "focus": 8,
+    "sleep": 6,
+    "habits": {
+     "exercise": "N/A",
+     "walk": "Yes",
+     "reading": "Yes",
+     "plan": "N/A"
+    },
+    "helped": "Cooked dinner",
+    "hurt": "Skipped lunch",
+    "notes": "",
+    "tomorrow": {
+     "win": "Demo ready for Thursday",
+     "outcomes": [
+      "Script done",
+      "Recording clean",
+      "Slides in order"
+     ],
+     "firstTask": "Outline the demo in ten bullets",
+     "alarmsSet": false
+    },
+    "loggedAt": "2026-08-29T21:31:00"
+   },
+   {
+    "id": "d4",
+    "date": "2026-08-30",
+    "workHours": 0,
+    "goodWorkHours": 0,
+    "energy": 7,
+    "mood": 9,
+    "focus": 7,
+    "sleep": 8,
+    "habits": {
+     "exercise": "N/A",
+     "walk": "Yes",
+     "reading": "Yes",
+     "plan": "Yes"
+    },
+    "helped": "Phone in the other room",
+    "hurt": "Slack all afternoon",
+    "notes": "",
+    "tomorrow": {
+     "win": "Hire decision made",
+     "outcomes": [
+      "Two references called",
+      "Offer drafted"
+     ],
+     "firstTask": "Call the first reference",
+     "alarmsSet": true
+    },
+    "loggedAt": "2026-08-30T21:24:00"
+   },
+   {
+    "id": "d5",
+    "date": "2026-08-31",
+    "workHours": 8,
+    "goodWorkHours": 4,
+    "energy": 8,
+    "mood": 7,
+    "focus": 7,
+    "sleep": 8,
+    "habits": {
+     "exercise": "No",
+     "walk": "No",
+     "reading": "No",
+     "plan": "No"
+    },
+    "helped": "Early gym",
+    "hurt": "Slack all afternoon",
+    "notes": "",
+    "tomorrow": {
+     "win": "Hire decision made",
+     "outcomes": [
+      "Two references called",
+      "Offer drafted"
+     ],
+     "firstTask": "Call the first reference",
+     "alarmsSet": true
+    },
+    "loggedAt": "2026-08-31T21:40:00"
+   },
+   {
+    "id": "d6",
+    "date": "2026-09-01",
+    "workHours": 9,
+    "goodWorkHours": 4.5,
+    "energy": 7,
+    "mood": 8,
+    "focus": 8,
+    "sleep": 5,
+    "habits": {
+     "exercise": "N/A",
+     "walk": "Yes",
+     "reading": "No",
+     "plan": "Yes"
+    },
+    "helped": "Clear win condition and first task ready",
+    "hurt": "Slack all afternoon",
+    "notes": "",
+    "tomorrow": {
+     "win": "Pricing page live",
+     "outcomes": [
+      "Copy final",
+      "Stripe test passes"
+     ],
+     "firstTask": "Write the plan-card copy",
+     "alarmsSet": true
+    },
+    "loggedAt": "2026-09-01T21:27:00"
+   },
+   {
+    "id": "d7",
+    "date": "2026-09-02",
+    "workHours": 7,
+    "goodWorkHours": 4.5,
+    "energy": 5,
+    "mood": 8,
+    "focus": 7,
+    "sleep": 5,
+    "habits": {
+     "exercise": "Yes",
+     "walk": "Yes",
+     "reading": "No",
+     "plan": "No"
+    },
+    "helped": "Clear win condition and first task ready",
+    "hurt": "Slack all afternoon",
+    "notes": "",
+    "tomorrow": {
+     "win": "Pricing page live",
+     "outcomes": [
+      "Copy final",
+      "Stripe test passes"
+     ],
+     "firstTask": "Write the plan-card copy",
+     "alarmsSet": false
+    },
+    "loggedAt": "2026-09-02T21:48:00"
+   },
+   {
+    "id": "d8",
+    "date": "2026-09-03",
+    "workHours": 7.5,
+    "goodWorkHours": 4,
+    "energy": 7,
+    "mood": 7,
+    "focus": 6,
+    "sleep": 6,
+    "habits": {
+     "exercise": "N/A",
+     "walk": "Yes",
+     "reading": "No",
+     "plan": "Yes"
+    },
+    "helped": "Early gym, deep work block before lunch",
+    "hurt": "Late meeting ran over, skipped lunch",
+    "notes": "",
+    "tomorrow": {
+     "win": "Ship the onboarding fix to prerelease",
+     "outcomes": [
+      "Fix merged and tested",
+      "Two investor replies sent",
+      "Gym before work"
+     ],
+     "firstTask": "Reproduce the sign-in bug",
+     "alarmsSet": true
+    },
+    "loggedAt": "2026-09-03T21:29:00"
+   },
+   {
+    "id": "d9",
+    "date": "2026-09-04",
+    "workHours": 9,
+    "goodWorkHours": 6,
+    "energy": 6,
+    "mood": 7,
+    "focus": 7,
+    "sleep": 5,
+    "habits": {
+     "exercise": "No",
+     "walk": "No",
+     "reading": "Yes",
+     "plan": "N/A"
+    },
+    "helped": "",
+    "hurt": "Slack all afternoon",
+    "notes": "",
+    "tomorrow": {
+     "win": "Demo ready for Thursday",
+     "outcomes": [
+      "Script done",
+      "Recording clean",
+      "Slides in order"
+     ],
+     "firstTask": "Outline the demo in ten bullets",
+     "alarmsSet": true
+    },
+    "loggedAt": "2026-09-04T21:39:00"
+   },
+   {
+    "id": "d10",
+    "date": "2026-09-05",
+    "workHours": 1,
+    "goodWorkHours": 0.5,
+    "energy": 4,
+    "mood": 7,
+    "focus": 6,
+    "sleep": 4,
+    "habits": {
+     "exercise": "N/A",
+     "walk": "Yes",
+     "reading": "Yes",
+     "plan": "N/A"
+    },
+    "helped": "Deep work block before lunch",
+    "hurt": "Late meeting ran over, skipped lunch",
+    "notes": "",
+    "tomorrow": {
+     "win": "Hire decision made",
+     "outcomes": [
+      "Two references called",
+      "Offer drafted"
+     ],
+     "firstTask": "Call the first reference",
+     "alarmsSet": true
+    },
+    "loggedAt": "2026-09-05T21:43:00"
+   },
+   {
+    "id": "d11",
+    "date": "2026-09-06",
+    "workHours": 2,
+    "goodWorkHours": 1.5,
+    "energy": 6,
+    "mood": 7,
+    "focus": 6,
+    "sleep": 6,
+    "habits": {
+     "exercise": "N/A",
+     "walk": "Yes",
+     "reading": "No",
+     "plan": "Yes"
+    },
+    "helped": "Early gym",
+    "hurt": "Late meeting ran over",
+    "notes": "Felt flat in the afternoon.",
+    "tomorrow": {
+     "win": "Hire decision made",
+     "outcomes": [
+      "Two references called",
+      "Offer drafted"
+     ],
+     "firstTask": "Call the first reference",
+     "alarmsSet": false
+    },
+    "loggedAt": "2026-09-06T21:25:00"
+   },
+   {
+    "id": "d12",
+    "date": "2026-09-07",
+    "workHours": 7,
+    "goodWorkHours": 4.5,
+    "energy": 5,
+    "mood": 6,
+    "focus": 5,
+    "sleep": 6,
+    "habits": {
+     "exercise": "Yes",
+     "walk": "Yes",
+     "reading": "No",
+     "plan": "Yes"
+    },
+    "helped": "Slept 8 hours",
+    "hurt": "",
+    "notes": "Two hours lost to a broken build.",
+    "tomorrow": {
+     "win": "Demo ready for Thursday",
+     "outcomes": [
+      "Script done",
+      "Recording clean",
+      "Slides in order"
+     ],
+     "firstTask": "Outline the demo in ten bullets",
+     "alarmsSet": true
+    },
+    "loggedAt": "2026-09-07T21:23:00"
+   },
+   {
+    "id": "d13",
+    "date": "2026-09-08",
+    "workHours": 8,
+    "goodWorkHours": 4,
+    "energy": 6,
+    "mood": 5,
+    "focus": 5,
+    "sleep": 5,
+    "habits": {
+     "exercise": "N/A",
+     "walk": "Yes",
+     "reading": "Yes",
+     "plan": "No"
+    },
+    "helped": "Early gym",
+    "hurt": "Too many small tasks",
+    "notes": "Good call with the design partner.",
+    "tomorrow": {
+     "win": "Demo ready for Thursday",
+     "outcomes": [
+      "Script done",
+      "Recording clean",
+      "Slides in order"
+     ],
+     "firstTask": "Outline the demo in ten bullets",
+     "alarmsSet": false
+    },
+    "loggedAt": "2026-09-08T21:43:00"
+   },
+   {
+    "id": "d14",
+    "date": "2026-09-09",
+    "workHours": 8,
+    "goodWorkHours": 5.5,
+    "energy": 5,
+    "mood": 6,
+    "focus": 6,
+    "sleep": 5,
+    "habits": {
+     "exercise": "No",
+     "walk": "Yes",
+     "reading": "Yes",
+     "plan": "Yes"
+    },
+    "helped": "Cooked dinner",
+    "hurt": "Late meeting ran over, skipped lunch",
+    "notes": "",
+    "tomorrow": {
+     "win": "Pricing page live",
+     "outcomes": [
+      "Copy final",
+      "Stripe test passes"
+     ],
+     "firstTask": "Write the plan-card copy",
+     "alarmsSet": false
+    },
+    "loggedAt": "2026-09-09T21:49:00"
+   },
+   {
+    "id": "d15",
+    "date": "2026-09-10",
+    "workHours": 8,
+    "goodWorkHours": 6,
+    "energy": 5,
+    "mood": 6,
+    "focus": 7,
+    "sleep": 6,
+    "habits": {
+     "exercise": "N/A",
+     "walk": "No",
+     "reading": "Yes",
+     "plan": "Yes"
+    },
+    "helped": "Phone in the other room",
+    "hurt": "Context switching",
+    "notes": "Two hours lost to a broken build.",
+    "tomorrow": {
+     "win": "Pricing page live",
+     "outcomes": [
+      "Copy final",
+      "Stripe test passes"
+     ],
+     "firstTask": "Write the plan-card copy",
+     "alarmsSet": false
+    },
+    "loggedAt": "2026-09-10T21:39:00"
+   },
+   {
+    "id": "d16",
+    "date": "2026-09-11",
+    "workHours": 8,
+    "goodWorkHours": 4.5,
+    "energy": 4,
+    "mood": 5,
+    "focus": 5,
+    "sleep": 5,
+    "habits": {
+     "exercise": "No",
+     "walk": "Yes",
+     "reading": "No",
+     "plan": "N/A"
+    },
+    "helped": "Deep work block before lunch",
+    "hurt": "",
+    "notes": "",
+    "tomorrow": {
+     "win": "Pricing page live",
+     "outcomes": [
+      "Copy final",
+      "Stripe test passes"
+     ],
+     "firstTask": "Write the plan-card copy",
+     "alarmsSet": true
+    },
+    "loggedAt": "2026-09-11T21:40:00"
+   },
+   {
+    "id": "d17",
+    "date": "2026-09-12",
+    "workHours": 0,
+    "goodWorkHours": 0,
+    "energy": 3,
+    "mood": 6,
+    "focus": 6,
+    "sleep": 4,
+    "habits": {
+     "exercise": "N/A",
+     "walk": "No",
+     "reading": "Yes",
+     "plan": "N/A"
+    },
+    "helped": "Phone in the other room",
+    "hurt": "",
+    "notes": "",
+    "tomorrow": {
+     "win": "Ship the onboarding fix to prerelease",
+     "outcomes": [
+      "Fix merged and tested",
+      "Two investor replies sent",
+      "Gym before work"
+     ],
+     "firstTask": "Reproduce the sign-in bug",
+     "alarmsSet": true
+    },
+    "loggedAt": "2026-09-12T21:23:00"
+   },
+   {
+    "id": "d18",
+    "date": "2026-09-13",
+    "workHours": 0,
+    "goodWorkHours": 0,
+    "energy": 5,
+    "mood": 6,
+    "focus": 6,
+    "sleep": 5,
+    "habits": {
+     "exercise": "N/A",
+     "walk": "Yes",
+     "reading": "No",
+     "plan": "Yes"
+    },
+    "helped": "Early gym, deep work block before lunch",
+    "hurt": "Skipped lunch",
+    "notes": "Good call with the design partner.",
+    "tomorrow": {
+     "win": "Pricing page live",
+     "outcomes": [
+      "Copy final",
+      "Stripe test passes"
+     ],
+     "firstTask": "Write the plan-card copy",
+     "alarmsSet": true
+    },
+    "loggedAt": "2026-09-13T21:26:00"
+   },
+   {
+    "id": "d19",
+    "date": "2026-09-14",
+    "workHours": 7,
+    "goodWorkHours": 3.5,
+    "energy": 4,
+    "mood": 5,
+    "focus": 6,
+    "sleep": 4,
+    "habits": {
+     "exercise": "Yes",
+     "walk": "Yes",
+     "reading": "No",
+     "plan": "Yes"
+    },
+    "helped": "Slept 8 hours",
+    "hurt": "Slack all afternoon",
+    "notes": "",
+    "tomorrow": {
+     "win": "Hire decision made",
+     "outcomes": [
+      "Two references called",
+      "Offer drafted"
+     ],
+     "firstTask": "Call the first reference",
+     "alarmsSet": false
+    },
+    "loggedAt": "2026-09-14T21:32:00"
+   },
+   {
+    "id": "d20",
+    "date": "2026-09-15",
+    "workHours": 8.5,
+    "goodWorkHours": 5.5,
+    "energy": 3,
+    "mood": 7,
+    "focus": 7,
+    "sleep": 4,
+    "habits": {
+     "exercise": "N/A",
+     "walk": "No",
+     "reading": "No",
+     "plan": "Yes"
+    },
+    "helped": "Early gym",
+    "hurt": "Slack all afternoon",
+    "notes": "",
+    "tomorrow": {
+     "win": "Demo ready for Thursday",
+     "outcomes": [
+      "Script done",
+      "Recording clean",
+      "Slides in order"
+     ],
+     "firstTask": "Outline the demo in ten bullets",
+     "alarmsSet": false
+    },
+    "loggedAt": "2026-09-15T21:28:00"
+   },
+   {
+    "id": "d21",
+    "date": "2026-09-16",
+    "workHours": 6.5,
+    "goodWorkHours": 4,
+    "energy": 3,
+    "mood": 5,
+    "focus": 6,
+    "sleep": 4,
+    "habits": {
+     "exercise": "Yes",
+     "walk": "Yes",
+     "reading": "Yes",
+     "plan": "Yes"
+    },
+    "helped": "Slept 8 hours",
+    "hurt": "Skipped lunch",
+    "notes": "",
+    "tomorrow": {
+     "win": "Ship the onboarding fix to prerelease",
+     "outcomes": [
+      "Fix merged and tested",
+      "Two investor replies sent",
+      "Gym before work"
+     ],
+     "firstTask": "Reproduce the sign-in bug",
+     "alarmsSet": true
+    },
+    "loggedAt": "2026-09-16T21:38:00"
+   },
+   {
+    "id": "d22",
+    "date": "2026-09-17",
+    "workHours": 8.5,
+    "goodWorkHours": 6.5,
+    "energy": 5,
+    "mood": 6,
+    "focus": 6,
+    "sleep": 4,
+    "habits": {
+     "exercise": "N/A",
+     "walk": "Yes",
+     "reading": "Yes",
+     "plan": "No"
+    },
+    "helped": "Walk after lunch",
+    "hurt": "Late meeting ran over",
+    "notes": "Good call with the design partner.",
+    "tomorrow": {
+     "win": "Ship the onboarding fix to prerelease",
+     "outcomes": [
+      "Fix merged and tested",
+      "Two investor replies sent",
+      "Gym before work"
+     ],
+     "firstTask": "Reproduce the sign-in bug",
+     "alarmsSet": true
+    },
+    "loggedAt": "2026-09-17T21:30:00"
+   },
+   {
+    "id": "d23",
+    "date": "2026-09-18",
+    "workHours": 8,
+    "goodWorkHours": 4,
+    "energy": 5,
+    "mood": 6,
+    "focus": 6,
+    "sleep": 4,
+    "habits": {
+     "exercise": "Yes",
+     "walk": "Yes",
+     "reading": "No",
+     "plan": "N/A"
+    },
+    "helped": "",
+    "hurt": "",
+    "notes": "Two hours lost to a broken build.",
+    "tomorrow": {
+     "win": "Hire decision made",
+     "outcomes": [
+      "Two references called",
+      "Offer drafted"
+     ],
+     "firstTask": "Call the first reference",
+     "alarmsSet": true
+    },
+    "loggedAt": "2026-09-18T21:39:00"
+   },
+   {
+    "id": "d24",
+    "date": "2026-09-19",
+    "workHours": 0,
+    "goodWorkHours": 0,
+    "energy": 7,
+    "mood": 6,
+    "focus": 6,
+    "sleep": 7,
+    "habits": {
+     "exercise": "N/A",
+     "walk": "Yes",
+     "reading": "No",
+     "plan": "N/A"
+    },
+    "helped": "Deep work block before lunch",
+    "hurt": "",
+    "notes": "",
+    "tomorrow": {
+     "win": "Ship the onboarding fix to prerelease",
+     "outcomes": [
+      "Fix merged and tested",
+      "Two investor replies sent",
+      "Gym before work"
+     ],
+     "firstTask": "Reproduce the sign-in bug",
+     "alarmsSet": true
+    },
+    "loggedAt": "2026-09-19T21:34:00"
+   },
+   {
+    "id": "d25",
+    "date": "2026-09-20",
+    "workHours": 2,
+    "goodWorkHours": 1.5,
+    "energy": 6,
+    "mood": 8,
+    "focus": 6,
+    "sleep": 7,
+    "habits": {
+     "exercise": "N/A",
+     "walk": "Yes",
+     "reading": "No",
+     "plan": "No"
+    },
+    "helped": "Cooked dinner",
+    "hurt": "",
+    "notes": "",
+    "tomorrow": {
+     "win": "Pricing page live",
+     "outcomes": [
+      "Copy final",
+      "Stripe test passes"
+     ],
+     "firstTask": "Write the plan-card copy",
+     "alarmsSet": true
+    },
+    "loggedAt": "2026-09-20T21:44:00"
+   },
+   {
+    "id": "d26",
+    "date": "2026-09-22",
+    "workHours": 7,
+    "goodWorkHours": 3,
+    "energy": 8,
+    "mood": 6,
+    "focus": 7,
+    "sleep": 7,
+    "habits": {
+     "exercise": "N/A",
+     "walk": "Yes",
+     "reading": "No",
+     "plan": "No"
+    },
+    "helped": "Walk after lunch",
+    "hurt": "Context switching",
+    "notes": "",
+    "tomorrow": {
+     "win": "Hire decision made",
+     "outcomes": [
+      "Two references called",
+      "Offer drafted"
+     ],
+     "firstTask": "Call the first reference",
+     "alarmsSet": true
+    },
+    "loggedAt": "2026-09-22T21:34:00"
+   },
+   {
+    "id": "d27",
+    "date": "2026-09-23",
+    "workHours": 8,
+    "goodWorkHours": 6,
+    "energy": 7,
+    "mood": 8,
+    "focus": 8,
+    "sleep": 7,
+    "habits": {
+     "exercise": "Yes",
+     "walk": "Yes",
+     "reading": "Yes",
+     "plan": "Yes"
+    },
+    "helped": "Cooked dinner",
+    "hurt": "Slack all afternoon",
+    "notes": "Felt flat in the afternoon.",
+    "tomorrow": {
+     "win": "Hire decision made",
+     "outcomes": [
+      "Two references called",
+      "Offer drafted"
+     ],
+     "firstTask": "Call the first reference",
+     "alarmsSet": true
+    },
+    "loggedAt": "2026-09-23T21:46:00"
+   },
+   {
+    "id": "d28",
+    "date": "2026-09-24",
+    "workHours": 7.5,
+    "goodWorkHours": 5,
+    "energy": 7,
+    "mood": 7,
+    "focus": 8,
+    "sleep": 7,
+    "habits": {
+     "exercise": "N/A",
+     "walk": "Yes",
+     "reading": "Yes",
+     "plan": "Yes"
+    },
+    "helped": "Clear win condition",
+    "hurt": "Context switching",
+    "notes": "",
+    "tomorrow": {
+     "win": "Ship the onboarding fix to prerelease",
+     "outcomes": [
+      "Fix merged and tested",
+      "Two investor replies sent",
+      "Gym before work"
+     ],
+     "firstTask": "Reproduce the sign-in bug",
+     "alarmsSet": true
+    },
+    "loggedAt": "2026-09-24T21:23:00"
+   },
+   {
+    "id": "d29",
+    "date": "2026-09-25",
+    "workHours": 8,
+    "goodWorkHours": 4.5,
+    "energy": 8,
+    "mood": 8,
+    "focus": 7,
+    "sleep": 7,
+    "habits": {
+     "exercise": "Yes",
+     "walk": "Yes",
+     "reading": "No",
+     "plan": "N/A"
+    },
+    "helped": "Early gym, deep work block before lunch",
+    "hurt": "",
+    "notes": "",
+    "tomorrow": {
+     "win": "Hire decision made",
+     "outcomes": [
+      "Two references called",
+      "Offer drafted"
+     ],
+     "firstTask": "Call the first reference",
+     "alarmsSet": false
+    },
+    "loggedAt": "2026-09-25T21:28:00"
+   },
+   {
+    "id": "d30",
+    "date": "2026-09-26",
+    "workHours": 0,
+    "goodWorkHours": 0,
+    "energy": 8,
+    "mood": 7,
+    "focus": 8,
+    "sleep": 8,
+    "habits": {
+     "exercise": "N/A",
+     "walk": "Yes",
+     "reading": "No",
+     "plan": "N/A"
+    },
+    "helped": "Phone in the other room",
+    "hurt": "",
+    "notes": "",
+    "tomorrow": {
+     "win": "Hire decision made",
+     "outcomes": [
+      "Two references called",
+      "Offer drafted"
+     ],
+     "firstTask": "Call the first reference",
+     "alarmsSet": true
+    },
+    "loggedAt": "2026-09-26T21:48:00"
+   },
+   {
+    "id": "d31",
+    "date": "2026-09-27",
+    "workHours": 0,
+    "goodWorkHours": 0,
+    "energy": 8,
+    "mood": 9,
+    "focus": 9,
+    "sleep": 6,
+    "habits": {
+     "exercise": "N/A",
+     "walk": "Yes",
+     "reading": "Yes",
+     "plan": "No"
+    },
+    "helped": "Cooked dinner",
+    "hurt": "Late meeting ran over, skipped lunch",
+    "notes": "",
+    "tomorrow": {
+     "win": "Demo ready for Thursday",
+     "outcomes": [
+      "Script done",
+      "Recording clean",
+      "Slides in order"
+     ],
+     "firstTask": "Outline the demo in ten bullets",
+     "alarmsSet": true
+    },
+    "loggedAt": "2026-09-27T21:20:00"
+   },
+   {
+    "id": "d32",
+    "date": "2026-09-28",
+    "workHours": 8,
+    "goodWorkHours": 6.5,
+    "energy": 7,
+    "mood": 8,
+    "focus": 8,
+    "sleep": 6,
+    "habits": {
+     "exercise": "Yes",
+     "walk": "Yes",
+     "reading": "No",
+     "plan": "Yes"
+    },
+    "helped": "Cooked dinner",
+    "hurt": "",
+    "notes": "",
+    "tomorrow": {
+     "win": "Demo ready for Thursday",
+     "outcomes": [
+      "Script done",
+      "Recording clean",
+      "Slides in order"
+     ],
+     "firstTask": "Outline the demo in ten bullets",
+     "alarmsSet": true
+    },
+    "loggedAt": "2026-09-28T21:29:00"
+   },
+   {
+    "id": "d33",
+    "date": "2026-09-29",
+    "workHours": 7.5,
+    "goodWorkHours": 4.5,
+    "energy": 8,
+    "mood": 8,
+    "focus": 8,
+    "sleep": 8,
+    "habits": {
+     "exercise": "N/A",
+     "walk": "Yes",
+     "reading": "Yes",
+     "plan": "Yes"
+    },
+    "helped": "Clear win condition and first task ready",
+    "hurt": "",
+    "notes": "",
+    "tomorrow": {
+     "win": "Pricing page live",
+     "outcomes": [
+      "Copy final",
+      "Stripe test passes"
+     ],
+     "firstTask": "Write the plan-card copy",
+     "alarmsSet": false
+    },
+    "loggedAt": "2026-09-29T21:49:00"
+   },
+   {
+    "id": "d34",
+    "date": "2026-09-30",
+    "workHours": 7.5,
+    "goodWorkHours": 5.5,
+    "energy": 7,
+    "mood": 7,
+    "focus": 8,
+    "sleep": 6,
+    "habits": {
+     "exercise": "Yes",
+     "walk": "Yes",
+     "reading": "Yes",
+     "plan": "No"
+    },
+    "helped": "Early gym, deep work block before lunch",
+    "hurt": "Skipped lunch",
+    "notes": "",
+    "tomorrow": {
+     "win": "Ship the onboarding fix to prerelease",
+     "outcomes": [
+      "Fix merged and tested",
+      "Two investor replies sent",
+      "Gym before work"
+     ],
+     "firstTask": "Reproduce the sign-in bug",
+     "alarmsSet": true
+    },
+    "loggedAt": "2026-09-30T21:44:00"
+   },
+   {
+    "id": "d35",
+    "date": "2026-10-01",
+    "workHours": 8.5,
+    "goodWorkHours": 7,
+    "energy": 7,
+    "mood": 8,
+    "focus": 9,
+    "sleep": 7,
+    "habits": {
+     "exercise": "N/A",
+     "walk": "Yes",
+     "reading": "Yes",
+     "plan": "Yes"
+    },
+    "helped": "Slept 8 hours",
+    "hurt": "Late meeting ran over",
+    "notes": "",
+    "tomorrow": {
+     "win": "Hire decision made",
+     "outcomes": [
+      "Two references called",
+      "Offer drafted"
+     ],
+     "firstTask": "Call the first reference",
+     "alarmsSet": true
+    },
+    "loggedAt": "2026-10-01T21:22:00"
+   },
+   {
+    "id": "d36",
+    "date": "2026-10-02",
+    "workHours": 7.5,
+    "goodWorkHours": 5.5,
+    "energy": 8,
+    "mood": 8,
+    "focus": 7,
+    "sleep": 8,
+    "habits": {
+     "exercise": "Yes",
+     "walk": "Yes",
+     "reading": "Yes",
+     "plan": "N/A"
+    },
+    "helped": "",
+    "hurt": "Slept badly",
+    "notes": "",
+    "tomorrow": {
+     "win": "Hire decision made",
+     "outcomes": [
+      "Two references called",
+      "Offer drafted"
+     ],
+     "firstTask": "Call the first reference",
+     "alarmsSet": true
+    },
+    "loggedAt": "2026-10-02T21:33:00"
+   },
+   {
+    "id": "d37",
+    "date": "2026-10-03",
+    "workHours": 0,
+    "goodWorkHours": 0,
+    "energy": 7,
+    "mood": 7,
+    "focus": 9,
+    "sleep": 6,
+    "habits": {
+     "exercise": "N/A",
+     "walk": "Yes",
+     "reading": "Yes",
+     "plan": "N/A"
+    },
+    "helped": "Phone in the other room",
+    "hurt": "Skipped lunch",
+    "notes": "Felt flat in the afternoon.",
+    "tomorrow": {
+     "win": "Ship the onboarding fix to prerelease",
+     "outcomes": [
+      "Fix merged and tested",
+      "Two investor replies sent",
+      "Gym before work"
+     ],
+     "firstTask": "Reproduce the sign-in bug",
+     "alarmsSet": false
+    },
+    "loggedAt": "2026-10-03T21:33:00"
+   },
+   {
+    "id": "d38",
+    "date": "2026-10-04",
+    "workHours": 0,
+    "goodWorkHours": 0,
+    "energy": 8,
+    "mood": 8,
+    "focus": 8,
+    "sleep": 8,
+    "habits": {
+     "exercise": "N/A",
+     "walk": "Yes",
+     "reading": "Yes",
+     "plan": "No"
+    },
+    "helped": "Slept 8 hours",
+    "hurt": "Late meeting ran over, skipped lunch",
+    "notes": "",
+    "tomorrow": {
+     "win": "Ship the onboarding fix to prerelease",
+     "outcomes": [
+      "Fix merged and tested",
+      "Two investor replies sent",
+      "Gym before work"
+     ],
+     "firstTask": "Reproduce the sign-in bug",
+     "alarmsSet": true
+    },
+    "loggedAt": "2026-10-04T21:23:00"
+   },
+   {
+    "id": "d39",
+    "date": "2026-10-05",
+    "workHours": 6.5,
+    "goodWorkHours": 4.5,
+    "energy": 6,
+    "mood": 8,
+    "focus": 7,
+    "sleep": 5,
+    "habits": {
+     "exercise": "Yes",
+     "walk": "Yes",
+     "reading": "Yes",
+     "plan": "No"
+    },
+    "helped": "",
+    "hurt": "Slept badly",
+    "notes": "",
+    "tomorrow": {
+     "win": "Ship the onboarding fix to prerelease",
+     "outcomes": [
+      "Fix merged and tested",
+      "Two investor replies sent",
+      "Gym before work"
+     ],
+     "firstTask": "Reproduce the sign-in bug, 8:30",
+     "alarmsSet": true
+    },
+    "loggedAt": "2026-10-05T21:37:00"
+   }
+  ],
+  "weeks": [
+   {
+    "id": "w5",
+    "start": "2026-08-31",
+    "target": 71,
+    "note": "Too many meetings on Tuesday. Protect mornings."
+   },
+   {
+    "id": "w4",
+    "start": "2026-09-07",
+    "target": 71,
+    "note": "Good week. Keep the early gym."
+   },
+   {
+    "id": "w3",
+    "start": "2026-09-14",
+    "target": 71,
+    "note": "Sleep slipped on Thursday: lights out by 23:00."
+   },
+   {
+    "id": "w2",
+    "start": "2026-09-21",
+    "target": 71,
+    "note": "Replies keep sliding: do them before leaving, not after."
+   },
+   {
+    "id": "w1",
+    "start": "2026-09-28",
+    "target": 71,
+    "note": "Steady. Same budget."
+   }
+  ]
+ }
+}

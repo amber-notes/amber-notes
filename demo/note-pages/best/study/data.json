@@ -1,0 +1,147 @@
+{
+ "values": {
+  "settings": {
+   "exam": "{{d+18}}",
+   "newPerDay": 5,
+   "order": "Most overdue first"
+  },
+  "schedule": {
+   "qvruve": {
+    "ef": 2.65,
+    "interval": 2,
+    "reps": 2,
+    "due": "{{d-1}}",
+    "lapses": 0
+   },
+   "zifq22": {
+    "ef": 2.26,
+    "interval": 1,
+    "reps": 2,
+    "due": "{{d-0}}",
+    "lapses": 0
+   },
+   "drbmhq": {
+    "ef": 2.6,
+    "interval": 6,
+    "reps": 3,
+    "due": "{{d-1}}",
+    "lapses": 0
+   },
+   "ejxow9": {
+    "ef": 2.48,
+    "interval": 2,
+    "reps": 1,
+    "due": "{{d-3}}",
+    "lapses": 1
+   },
+   "12ycbqm": {
+    "ef": 2.57,
+    "interval": 1,
+    "reps": 3,
+    "due": "{{d-3}}",
+    "lapses": 0
+   },
+   "19wd6wj": {
+    "ef": 2.59,
+    "interval": 3,
+    "reps": 1,
+    "due": "{{d-0}}",
+    "lapses": 0
+   },
+   "35kaqz": {
+    "ef": 2.57,
+    "interval": 6,
+    "reps": 3,
+    "due": "{{d-3}}",
+    "lapses": 0
+   },
+   "1rxojyu": {
+    "ef": 2.63,
+    "interval": 6,
+    "reps": 1,
+    "due": "{{d-3}}",
+    "lapses": 0
+   },
+   "zpzwfn": {
+    "ef": 2.23,
+    "interval": 2,
+    "reps": 2,
+    "due": "{{d-0}}",
+    "lapses": 1
+   },
+   "1urdo3j": {
+    "ef": 2.4,
+    "interval": 3,
+    "reps": 2,
+    "due": "{{d-3}}",
+    "lapses": 0
+   },
+   "1n66yhs": {
+    "ef": 2.24,
+    "interval": 6,
+    "reps": 3,
+    "due": "{{d-2}}",
+    "lapses": 0
+   },
+   "zgrmyv": {
+    "ef": 2.6,
+    "interval": 22,
+    "reps": 3,
+    "due": "{{d+1}}",
+    "lapses": 0
+   },
+   "1b21ou1": {
+    "ef": 2.6,
+    "interval": 26,
+    "reps": 3,
+    "due": "{{d+9}}",
+    "lapses": 1
+   },
+   "odlc87": {
+    "ef": 2.6,
+    "interval": 31,
+    "reps": 2,
+    "due": "{{d+5}}",
+    "lapses": 1
+   },
+   "wpwqqa": {
+    "ef": 2.6,
+    "interval": 38,
+    "reps": 4,
+    "due": "{{d+8}}",
+    "lapses": 0
+   },
+   "on2cef": {
+    "ef": 2.6,
+    "interval": 45,
+    "reps": 4,
+    "due": "{{d+3}}",
+    "lapses": 0
+   },
+   "owu816": {
+    "ef": 2.33,
+    "interval": 4,
+    "reps": 2,
+    "due": "{{d+2}}",
+    "lapses": 1
+   },
+   "gp2xey": {
+    "ef": 2.7,
+    "interval": 12,
+    "reps": 3,
+    "due": "{{d+6}}",
+    "lapses": 0
+   }
+  },
+  "days": {
+   "{{d-1}}": 14,
+   "{{d-2}}": 9,
+   "{{d-3}}": 17,
+   "{{d-4}}": 11,
+   "{{d-5}}": 8,
+   "{{d-7}}": 12,
+   "{{d-8}}": 6
+  }
+ },
+ "collections": {}
+}
