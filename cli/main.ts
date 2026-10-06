@@ -62,6 +62,10 @@ function summary(r: Report): string {
 
 async function run(dir: string, mode: Mode, server: string, flags: { watch: boolean; interval: number; force: boolean; quiet: boolean }) {
   const { mcp, remote } = await session(server);
+  if (mode === "sync" && !["write", "replace_note_body"].some((t) => mcp.tools.includes(t))) {
+    await mcp.close();
+    fail("This token can only read notes. Use `amber pull`, or make a token that can write (Settings › Connect an AI).");
+  }
   const log = flags.quiet ? undefined : (l: string) => out(l);
   let first = true;
   const once = async () => {

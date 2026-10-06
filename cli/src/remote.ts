@@ -24,8 +24,9 @@ export interface Remote {
 }
 
 export function remoteFor(mcp: Mcp): Remote {
-  if (["list", "fetch", "create", "edit", "write", "move", "delete"].every((t) => mcp.tools.includes(t))) return new FilesRemote(mcp);
-  if (["list_notes", "read_note", "create_note", "edit_note", "move_note", "delete_note"].every((t) => mcp.tools.includes(t))) return new ClassicRemote(mcp);
+  // A read-only token sees only the read tools: enough for pull.
+  if (["list", "fetch"].every((t) => mcp.tools.includes(t))) return new FilesRemote(mcp);
+  if (["list_notes", "read_note"].every((t) => mcp.tools.includes(t))) return new ClassicRemote(mcp);
   throw new Error(`The server offers neither the files tools nor the classic tools (it has: ${mcp.tools.join(", ")}).`);
 }
 
