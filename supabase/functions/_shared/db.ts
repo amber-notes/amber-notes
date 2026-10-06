@@ -62,8 +62,7 @@ export function target(env: Env, max = 3): Target {
   const ref = projectRef(env.get("SUPABASE_URL"), u.hostname);
   if (!ref) return one;
   u.hostname = host;
-  // 6543 is transaction mode; DB_POOLER_PORT=5432 is session mode (measured on staging, see the PR).
-  u.port = (env.get("DB_POOLER_PORT") ?? "").trim() === "5432" ? "5432" : "6543";
+  u.port = "6543";
   u.username = `${decodeURIComponent(u.username).split(".")[0] || "postgres"}.${ref}`;
   // Ours to decide for the pooler, whatever the direct address said.
   u.searchParams.delete("sslmode");
