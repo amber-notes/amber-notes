@@ -490,8 +490,8 @@ const FOLLOWUPS: Task[] = (() => {
     return [{
       id: `f-${id.slice(2)}`, prompt: f.ask, seed: { body, page, data }, page: true, interact: true,
       checks: (fin: Final) => {
-        const reads = fin.calls.map((c, i) => ({ i, c })).filter(({ c }) => c.name === "fetch" && /docs\//.test(String(c.args.id ?? "")));
-        const firstChange = fin.calls.findIndex((c) => (c.name === "edit" || c.name === "write") && /\.app\/(src|tests|index)/.test(String(c.args.id ?? "")));
+        const reads = fin.calls.map((c, i) => ({ i, c })).filter(({ c }) => c.name === "fetch" && /docs\//.test(String(c.args.path ?? c.args.id ?? "")));
+        const firstChange = fin.calls.findIndex((c) => (c.name === "edit" || c.name === "write") && /\.app\/(src|tests|index)/.test(String(c.args.path ?? c.args.id ?? "")));
         return [
           pageChanged(fin),
           check("docs_existed", !!seededDocs, "the first session's app had no docs/README.md"),

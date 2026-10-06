@@ -144,7 +144,9 @@ export async function saveProject(tx: Tx, c: Call, n: Note, unlinked: Project, c
   }
   const [{ has_live }] = await tx<{ has_live: boolean }[]>`select page_ct is not null as has_live from public.note_pages where note_id = ${n.id}`;
   const errors = [...broken, ...(found?.errors ?? []), ...(smoke?.problems ?? []), ...(tests?.failures.map((f) => `test failed: ${f}`) ?? [])];
-  const notes = [...warnings, ...(found?.notes ?? [])].slice(0, 10);
+  // Slow taps: a warning, never a held-back save.
+  const slow = (smoke?.slow ?? []).map((x) => `Tapping "${x.name}" took ${(x.ms / 1000).toFixed(1)} s to show its result at ${x.width} px: find what that screen computes or draws on open (long lists, work on every render) and make it fast.`);
+  const notes = [...slow, ...warnings, ...(found?.notes ?? [])].slice(0, 10);
   const result = {
     app: { id: n.id, title: n.title }, [changed.startsWith("deleted") ? "deleted" : "saved"]: changed.replace(/^deleted /, ""), files: Object.keys(p.files).length,
     live: live ? "Live: the person's devices run this version." : has_live
