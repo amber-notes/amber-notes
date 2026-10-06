@@ -109,7 +109,8 @@ enum WikiLinks {
     /// How titles are compared: case and spacing don't matter, nor markdown's backslash escapes
     /// (an imported title "a\_b" is the note "a_b").
     static func key(_ title: String) -> String {
-        let unescaped = title.replacingOccurrences(of: #"\\([!-/:-@\[-`{-~])"#, with: "$1", options: .regularExpression)
+        // Most titles escape nothing: no pattern to run then (the index keys every title on every save).
+        let unescaped = title.contains("\\") ? title.replacingOccurrences(of: #"\\([!-/:-@\[-`{-~])"#, with: "$1", options: .regularExpression) : title
         return unescaped.split(whereSeparator: \.isWhitespace).joined(separator: " ").lowercased()
     }
 
@@ -240,7 +241,16 @@ enum WikiDirectory {
             }
         }
         let notes = ((try? context.fetch(FetchDescriptor<Note>())) ?? []).filter { $0.deletedAt == nil && $0.trashedAt == nil }
-        let index = WikiIndex(notes.map { WikiIndex.Entry(id: $0.id, title: $0.title, folders: context.folderPath($0.folder), updated: $0.updatedAt) })
+        // Each folder's path worked out once, not once per note in it.
+        var paths: [ObjectIdentifier: [String]] = [:]
+        func path(_ folder: Folder?) -> [String] {
+            guard let folder else { return [] }
+            if let p = paths[ObjectIdentifier(folder)] { return p }
+            let p: [String] = context.folderPath(folder)
+            paths[ObjectIdentifier(folder)] = p
+            return p
+        }
+        let index = WikiIndex(notes.map { WikiIndex.Entry(id: $0.id, title: $0.title, folders: path($0.folder), updated: $0.updatedAt) })
         cached = index
         // Most saves are typing: the editor recolours only when a title or folder changed.
         let signature = index.entries.map { "\($0.id)\u{1F}\(WikiLinks.key($0.title))\u{1F}\($0.folders.joined(separator: "/"))" }.sorted()
@@ -293,8 +303,10 @@ extension ModelContext {
         let index = WikiDirectory.index(self)
         let noteLink = "pane-note:\(note.id.uuidString.lowercased())"
         let key = WikiLinks.key(note.title)
-        let notes = ((try? fetch(FetchDescriptor<Note>(sortBy: [SortDescriptor(\.updatedAt, order: .reverse)]))) ?? [])
-        return notes.filter { other in
+        // Only notes that could link here are read: the store picks them, instead of every
+        // note's text being loaded and searched here (on opening a note and after every save).
+        let candidates = (try? fetch(FetchDescriptor<Note>(predicate: #Predicate { $0.body.contains("[[") || $0.body.contains(noteLink) }))) ?? []
+        return candidates.sorted { $0.updatedAt > $1.updatedAt }.filter { other in
             guard other.id != note.id, other.deletedAt == nil, other.trashedAt == nil, !other.isLocked else { return false }
             if other.id != note.parentID, other.body.contains(noteLink) { return true }
             guard other.body.contains("[["), other.body.lowercased().contains(key.split(separator: " ").first.map(String.init) ?? key) else { return false }
