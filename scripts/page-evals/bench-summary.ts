@@ -5,7 +5,7 @@ type R = { task: string; model: string; score: number; passed: number; total: nu
 const runs: { r: R; set: string }[] = [];
 for (const round of Deno.args) {
   const dir = new URL(`results/${round}/`, import.meta.url);
-  for (const e of Deno.readDirSync(dir)) if (e.name.endsWith(".json")) runs.push({ r: JSON.parse(Deno.readTextFileSync(new URL(e.name, dir))), set: e.name.includes("-files") ? "new" : "old" });
+  for (const e of Deno.readDirSync(dir)) if ((e.name.endsWith(".json") && !e.name.endsWith(".trace.json"))) runs.push({ r: JSON.parse(Deno.readTextFileSync(new URL(e.name, dir))), set: e.name.includes("-files") ? "new" : "old" });
 }
 const cli = (r: R) => r.model.split(":")[0];
 const tasks = [...new Set(runs.map((x) => x.r.task))].sort();

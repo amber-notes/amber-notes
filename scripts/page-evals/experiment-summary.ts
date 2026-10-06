@@ -5,7 +5,7 @@ type R = { task: string; hidden?: string[]; seconds: number; tool_calls: number;
 const runs: R[] = [];
 for (const round of Deno.args) {
   const dir = new URL(`results/${round}/`, import.meta.url);
-  for (const e of Deno.readDirSync(dir)) if (e.name.endsWith(".json")) runs.push(JSON.parse(Deno.readTextFileSync(new URL(e.name, dir))));
+  for (const e of Deno.readDirSync(dir)) if ((e.name.endsWith(".json") && !e.name.endsWith(".trace.json"))) runs.push(JSON.parse(Deno.readTextFileSync(new URL(e.name, dir))));
 }
 const arm = (r: R & { arm?: string }) => `${r.model.split(":")[0]} ${r.hidden?.includes("try_app") || r.arm === "screens" ? "without" : "with"}`;
 const frac = (r: R, prefix: string) => { const c = r.checks.filter((x) => x.name.startsWith(prefix)); return c.length ? c.filter((x) => x.pass).length / c.length : NaN; };
