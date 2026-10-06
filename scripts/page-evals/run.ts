@@ -133,7 +133,7 @@ async function setup(task: Task) {
   const call = async (name: string, a: Record<string, unknown>) => {
     const r = await rpc("tools/call", { name, arguments: a });
     const blocks = (r.content ?? []) as { type: string; text?: string; data?: string; mimeType?: string }[];
-    return { text: blocks.map((c) => (c.type === "text" ? c.text : `[${c.type}]`)).join("\n"), isError: r.isError === true, images: blocks.filter((c) => c.type === "image").map((c) => ({ data: c.data!, mimeType: c.mimeType! })) };
+    return { text: blocks.map((c) => (c.type === "text" ? c.text : `[${c.type}]`)).join("\n"), isError: r.isError === true, images: blocks.filter((c) => c.type === "image").map((c) => ({ data: c.data!, mimeType: c.mimeType! })), raw: r.content };
   };
   for (const [nid, s] of [[id, task.seed], ...(task.others ?? []).map((o, i) => [others[i], o] as const)] as const) {
     // A project (compiled JSON) goes in as the app stores it; a one-file page through the tool.
@@ -165,10 +165,19 @@ async function setup(task: Task) {
     } catch { /* a server without page data */ }
     return { body, page, data };
   };
-  // The same server over HTTP on this Mac, for the CLIs.
-  const http = Deno.serve({ hostname: "127.0.0.1", port: 0, onListen: () => {} }, (req) => {
+  // The same server over HTTP on this Mac, for the CLIs. Every tools/call is kept as it crossed the
+  // wire (request and response bodies), for the verbatim trace.
+  const wire: Wire[] = [];
+  const http = Deno.serve({ hostname: "127.0.0.1", port: 0, onListen: () => {} }, async (req) => {
     const u = new URL(req.url);
-    return handleRequest(new Request(`http://127.0.0.1/functions/v1/mcp${u.pathname === "/" ? "" : u.pathname}`, req), sql);
+    const body = req.method === "POST" ? await req.text() : undefined;
+    const res = await handleRequest(new Request(`http://127.0.0.1/functions/v1/mcp${u.pathname === "/" ? "" : u.pathname}`, { method: req.method, headers: req.headers, body }), sql);
+    let call: { id?: unknown; params?: { name?: string; arguments?: unknown } } | undefined;
+    try { const j = JSON.parse(body ?? ""); if (j?.method === "tools/call") call = j; } catch { /* not JSON-RPC */ }
+    if (!call) return res;
+    const text = await res.text();
+    wire.push({ at: performance.now(), name: String(call.params?.name ?? ""), args: call.params?.arguments, response: text });
+    return new Response(text, { status: res.status, headers: res.headers });
   });
   const url = `http://127.0.0.1:${http.addr.port}/`;
   // Every note: title, text, folder path, pinned, in Recently Deleted, parent.
@@ -182,19 +191,80 @@ async function setup(task: Task) {
     for (const r of rows) { const o = await opened(pg, a, r.id); out.push({ id: r.id, title: o.head?.title ?? "", body: o.body ?? "", folder: pathOf(r.folder_id), pinned: r.is_pinned, trashed: r.trashed_at !== null, parent: r.parent_id }); }
     return out;
   };
-  return { pg, id, others, rpc, call, init, state, fileIds, url, token, http, snapshot };
+  return { pg, id, others, rpc, call, init, state, fileIds, url, token, http, snapshot, wire };
 }
 
 // MARK: A model session
 
-type Called = { text: string; isError: boolean; images?: { data: string; mimeType: string }[] };
+type Called = { text: string; isError: boolean; images?: { data: string; mimeType: string }[]; raw?: unknown };
+
+// MARK: Verbatim traces
+//
+// Next to each result, <stem>.trace.json holds the whole session in order, nothing shortened: the
+// prompt, every assistant text and (where the model path exposes it) thinking, every tool call with
+// its exact arguments and every tool result exactly as returned, then the answer. Images keep their
+// base64 data. Its context is only what we serve and control: the server's instructions and
+// tools/list as returned, the seeded notes, the run's settings and backend. A CLI's own built-in
+// prompt isn't in it.
+
+type TraceEvent = { t: number; type: "user" | "assistant_text" | "thinking" | "tool_call" | "tool_result" | "answer"; name?: string; id?: string; text?: string; args?: unknown; result?: unknown; error?: boolean; server_result?: unknown };
+type Wire = { at: number; name: string; args: unknown; response: string };
+type Trace = { start: number; started_at: string; events: TraceEvent[]; raw?: string; add: (e: Omit<TraceEvent, "t">, at?: number) => void };
+function tracer(): Trace {
+  const start = performance.now();
+  const events: TraceEvent[] = [];
+  return { start, started_at: new Date().toISOString(), events, add: (e, at = performance.now()) => { events.push({ t: Math.round(at - start), ...e }); } };
+}
+const decodedBytes = (b64: string) => Math.floor((b64.length * 3) / 4) - (b64.endsWith("==") ? 2 : b64.endsWith("=") ? 1 : 0);
+/** A result's content as returned, with every image (Anthropic or MCP shape) as {type, mime, bytes, data}. */
+// deno-lint-ignore no-explicit-any
+const verbatim = (c: any): unknown => !Array.isArray(c) ? c : c.map((b: any) => {
+  if (b?.type !== "image") return b;
+  const data: string = b.source?.data ?? b.data ?? "";
+  return { type: "image", mime: b.source?.media_type ?? b.mimeType ?? b.mime_type ?? "", bytes: decodedBytes(data), data };
+});
+/** A CLI's stdout, line by line with the time each line arrived; stopped after --minutes (default 30). */
+async function streamed(cmd: Deno.Command): Promise<{ lines: { at: number; line: string }[]; stdout: string; stderr: string }> {
+  const p = cmd.spawn();
+  const timer = setTimeout(() => { try { p.kill("SIGTERM"); } catch { /* gone */ } }, Number(args.minutes ?? 30) * 60_000);
+  const lines: { at: number; line: string }[] = [];
+  let stdout = "", buf = "";
+  const err = new Response(p.stderr).text();
+  try {
+    for await (const chunk of p.stdout.pipeThrough(new TextDecoderStream())) {
+      stdout += chunk; buf += chunk;
+      let i: number;
+      while ((i = buf.indexOf("\n")) >= 0) { lines.push({ at: performance.now(), line: buf.slice(0, i) }); buf = buf.slice(i + 1); }
+    }
+    if (buf) lines.push({ at: performance.now(), line: buf });
+    await p.status;
+  } finally { clearTimeout(timer); }
+  return { lines, stdout, stderr: await err };
+}
+/** The MCP result the server sent for this call, for a CLI's trace: the first unclaimed one with this tool and arguments. */
+function wireResult(wire: Wire[], used: Set<number>, name: string, a: unknown, before: number): unknown {
+  // Only calls that reached the server before the CLI reported the result (a call the CLI refused never does).
+  const open = (w: Wire, k: number) => !used.has(k) && w.at <= before && w.name === name;
+  const key = JSON.stringify(a ?? {});
+  const i = wire.findIndex((w, k) => open(w, k) && JSON.stringify(w.args ?? {}) === key);
+  const k = i >= 0 ? i : wire.findIndex(open);
+  if (k < 0) return undefined;
+  used.add(k);
+  let r: { result?: { content?: unknown; isError?: boolean }; error?: unknown } | undefined;
+  try { r = JSON.parse(wire[k].response); } catch {
+    // An SSE response: the data line holds the JSON-RPC message.
+    const d = wire[k].response.split("\n").filter((l) => l.startsWith("data:")).map((l) => l.slice(5).trim()).pop();
+    try { r = JSON.parse(d ?? ""); } catch { return wire[k].response; }
+  }
+  return r?.result ? { ...r.result, content: verbatim(r.result.content) } : r;
+}
 
 type Usage = { input: number; output: number; cacheRead: number; cacheWrite: number; turns: number };
 type Logged = { name: string; args: Record<string, unknown>; error: boolean; result: string };
 
 const short = (v: unknown, n = 400) => { const s = typeof v === "string" ? v : JSON.stringify(v); return s.length > n ? s.slice(0, n) + `… (${s.length} chars)` : s; };
 
-async function claudeSession(system: string, tools: { name: string; description: string; inputSchema: unknown }[], prompt: string, call: (n: string, a: Record<string, unknown>) => Promise<Called>) {
+async function claudeSession(system: string, tools: { name: string; description: string; inputSchema: unknown }[], prompt: string, call: (n: string, a: Record<string, unknown>) => Promise<Called>, tr: Trace) {
   const client = new Anthropic({ maxRetries: 4 });
   const messages: Anthropic.MessageParam[] = [{ role: "user", content: prompt }];
   const usage: Usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, turns: 0 };
@@ -211,6 +281,12 @@ async function claudeSession(system: string, tools: { name: string; description:
     usage.input += res.usage.input_tokens; usage.output += res.usage.output_tokens;
     usage.cacheRead += res.usage.cache_read_input_tokens ?? 0; usage.cacheWrite += res.usage.cache_creation_input_tokens ?? 0;
     messages.push({ role: "assistant", content: res.content });
+    for (const b of res.content) {
+      if (b.type === "text") tr.add({ type: "assistant_text", text: b.text });
+      else if (b.type === "thinking") tr.add({ type: "thinking", text: b.thinking });
+      else if (b.type === "redacted_thinking") tr.add({ type: "thinking", text: "", result: b });
+      else if (b.type === "tool_use") tr.add({ type: "tool_call", name: b.name, id: b.id, args: b.input });
+    }
     const uses = res.content.filter((b): b is Anthropic.ToolUseBlock => b.type === "tool_use");
     const text = res.content.filter((b): b is Anthropic.TextBlock => b.type === "text").map((b) => b.text).join("\n");
     if (text) answer = text;
@@ -219,6 +295,7 @@ async function claudeSession(system: string, tools: { name: string; description:
     for (const u of uses) {
       const r: Called = await call(u.name, u.input as Record<string, unknown>).catch((e) => ({ text: String(e), isError: true }));
       log.push({ name: u.name, args: u.input as Record<string, unknown>, error: r.isError, result: short(r.text, 600) });
+      tr.add({ type: "tool_result", name: u.name, id: u.id, result: verbatim(r.raw ?? r.text), error: r.isError });
       const content: Anthropic.ToolResultBlockParam["content"] = r.images?.length
         ? [{ type: "text", text: r.text }, ...r.images.map((im) => ({ type: "image" as const, source: { type: "base64" as const, media_type: im.mimeType as "image/png", data: im.data } }))]
         : r.text;
@@ -229,7 +306,7 @@ async function claudeSession(system: string, tools: { name: string; description:
   return { usage, log, answer };
 }
 
-async function openaiSession(system: string, tools: { name: string; description: string; inputSchema: unknown }[], prompt: string, call: (n: string, a: Record<string, unknown>) => Promise<Called>) {
+async function openaiSession(system: string, tools: { name: string; description: string; inputSchema: unknown }[], prompt: string, call: (n: string, a: Record<string, unknown>) => Promise<Called>, tr: Trace) {
   const key = Deno.env.get("OPENAI_API_KEY");
   if (!key) throw new Error("OPENAI_API_KEY isn't set");
   const usage: Usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, turns: 0 };
@@ -256,6 +333,11 @@ async function openaiSession(system: string, tools: { name: string; description:
     usage.cacheRead += j.usage?.input_tokens_details?.cached_tokens ?? 0;
     usage.output += j.usage?.output_tokens ?? 0;
     previous = j.id;
+    for (const o of j.output ?? []) {
+      if (o.type === "reasoning") tr.add({ type: "thinking", text: (o.summary ?? []).map((x: { text?: string }) => x.text ?? "").join("\n"), ...(o.encrypted_content ? { result: { encrypted: true } } : {}) });
+      if (o.type === "message") for (const c of o.content ?? []) if (c.type === "output_text") tr.add({ type: "assistant_text", text: c.text });
+      if (o.type === "function_call") { let a: unknown = o.arguments; try { a = JSON.parse(o.arguments || "{}"); } catch { /* kept as the string sent */ } tr.add({ type: "tool_call", name: o.name, id: o.call_id, args: a }); }
+    }
     const calls = (j.output ?? []).filter((o: { type: string }) => o.type === "function_call");
     const text = (j.output ?? []).filter((o: { type: string }) => o.type === "message").flatMap((o: { content: { type: string; text: string }[] }) => o.content.filter((c) => c.type === "output_text").map((c) => c.text)).join("\n");
     if (text) answer = text;
@@ -266,6 +348,7 @@ async function openaiSession(system: string, tools: { name: string; description:
       try { a = JSON.parse(c.arguments || "{}"); } catch { /* sent as is */ }
       const r: Called = await call(c.name, a).catch((e) => ({ text: String(e), isError: true }));
       log.push({ name: c.name, args: a, error: r.isError, result: short(r.text, 600) });
+      tr.add({ type: "tool_result", name: c.name, id: c.call_id, result: verbatim(r.raw ?? r.text), error: r.isError });
       input.push({ type: "function_call_output", call_id: c.call_id, output: r.isError ? `Error: ${r.text}` : r.images?.length
         ? [{ type: "input_text", text: r.text }, ...r.images.map((im) => ({ type: "input_image", image_url: `data:${im.mimeType};base64,${im.data}` }))]
         : r.text });
@@ -277,12 +360,6 @@ async function openaiSession(system: string, tools: { name: string; description:
 // The CLIs see none of the person's own setup: no API keys in their environment (so they use the
 // subscription), a fresh empty working directory, no user or project settings or CLAUDE.md, and
 // only the Amber MCP server.
-/** A CLI session, stopped after --minutes (default 30) so one stuck task can't hold the round. */
-async function timed(cmd: Deno.Command): Promise<Deno.CommandOutput> {
-  const p = cmd.spawn();
-  const timer = setTimeout(() => { try { p.kill("SIGTERM"); } catch { /* gone */ } }, Number(args.minutes ?? 30) * 60_000);
-  try { return await p.output(); } finally { clearTimeout(timer); }
-}
 // Without try_app and run_app_tests (an experiment's control arm), the guide doesn't mention them.
 if (args.hide?.split(",").includes("try_app")) Deno.env.set("AMBER_GUIDE_WITHOUT_TRY", "1");
 const CLI_ENV = (() => { const e = Deno.env.toObject(); for (const k of ["ANTHROPIC_API_KEY", "OPENAI_API_KEY", "OPENROUTER_API_KEY", "RENDER_SECRET"]) delete e[k]; return e; })();
@@ -292,7 +369,7 @@ const scratch = () => Deno.makeTempDir({ prefix: "amber-eval-" });
 // deno-lint-ignore no-explicit-any
 const resultText = (c: any): string => typeof c === "string" ? c : Array.isArray(c) ? c.map((b) => (b?.type === "text" ? b.text : b?.type ? `[${b.type}]` : JSON.stringify(b))).join("\n") : JSON.stringify(c ?? "");
 
-async function claudeCliSession(system: string, url: string, token: string, prompt: string, hide: Set<string>) {
+async function claudeCliSession(system: string, url: string, token: string, prompt: string, hide: Set<string>, tr: Trace, wire: Wire[]) {
   const dir = await scratch();
   const config = `${dir}/mcp.json`;
   await Deno.writeTextFile(config, JSON.stringify({ mcpServers: { amber: { type: "http", url, headers: { Authorization: `Bearer ${token}` } } } }));
@@ -303,12 +380,15 @@ async function claudeCliSession(system: string, url: string, token: string, prom
       "--output-format", "stream-json", "--verbose", "--no-session-persistence", "--max-turns", String(args["max-turns"] ?? 40)],
     cwd: dir, env: CLI_ENV, clearEnv: true, stdout: "piped", stderr: "piped",
   });
-  const out = await timed(cmd);
+  const out = await streamed(cmd);
+  tr.raw = out.stdout;
   const usage: Usage & { equivalentUsd?: number } = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, turns: 0 };
   const log: Logged[] = [];
   const pending = new Map<string, Logged>();
+  const called = new Map<string, string>();
+  const used = new Set<number>();
   let answer = "";
-  for (const line of new TextDecoder().decode(out.stdout).split("\n")) {
+  for (const { at, line } of out.lines) {
     // deno-lint-ignore no-explicit-any
     let ev: any;
     try { ev = JSON.parse(line); } catch { continue; }
@@ -317,12 +397,23 @@ async function claudeCliSession(system: string, url: string, token: string, prom
       usage.turns++;
       for (const b of ev.message?.content ?? []) {
         if (b.type === "text" && b.text?.trim()) answer = b.text;
-        if (b.type === "tool_use") { const l = { name: String(b.name).replace(/^mcp__amber__/, ""), args: b.input ?? {}, error: false, result: "" }; log.push(l); pending.set(b.id, l); }
+        if (b.type === "text") tr.add({ type: "assistant_text", text: b.text }, at);
+        // The CLI prints thinking as a signature only; that stays in the raw stream.
+        if (b.type === "thinking" && b.thinking) tr.add({ type: "thinking", text: b.thinking }, at);
+        if (b.type === "tool_use") { const l = { name: String(b.name).replace(/^mcp__amber__/, ""), args: b.input ?? {}, error: false, result: "" }; log.push(l); pending.set(b.id, l); called.set(b.id, String(b.name)); tr.add({ type: "tool_call", name: b.name, id: b.id, args: b.input }, at); }
       }
     }
     if (ev.type === "user") {
       for (const b of ev.message?.content ?? []) {
         if (b.type === "tool_result" && pending.has(b.tool_use_id)) { const l = pending.get(b.tool_use_id)!; l.error = b.is_error === true; l.result = short(resultText(b.content), 600); }
+        if (b.type === "tool_result") {
+          // What the model saw (the CLI's tool_result), plus what the server sent when the CLI changed it.
+          const l = pending.get(b.tool_use_id);
+          const seen = verbatim(b.content);
+          const sent = l ? wireResult(wire, used, l.name, l.args, at) : undefined;
+          const same = sent && typeof sent === "object" && JSON.stringify((sent as { content?: unknown }).content) === JSON.stringify(typeof seen === "string" ? [{ type: "text", text: seen }] : seen);
+          tr.add({ type: "tool_result", name: called.get(b.tool_use_id), id: b.tool_use_id, result: seen, error: b.is_error === true, ...(sent !== undefined && !same ? { server_result: sent } : {}) }, at);
+        }
       }
     }
     if (ev.type === "result") {
@@ -332,12 +423,12 @@ async function claudeCliSession(system: string, url: string, token: string, prom
       usage.equivalentUsd = ev.total_cost_usd;
     }
   }
-  if (!answer && !log.length) throw new Error(`claude -p produced nothing: ${new TextDecoder().decode(out.stderr).slice(0, 300)}`);
+  if (!answer && !log.length) throw new Error(`claude -p produced nothing: ${out.stderr.slice(0, 300)}`);
   await Deno.remove(dir, { recursive: true }).catch(() => {});
   return { usage: { ...usage, usd: 0 }, log, answer };
 }
 
-async function codexCliSession(system: string, url: string, token: string, prompt: string, hide: Set<string>) {
+async function codexCliSession(system: string, url: string, token: string, prompt: string, hide: Set<string>, tr: Trace, wire: Wire[]) {
   // Its own CODEX_HOME: no user config or AGENTS.md, the login linked from ~/.codex.
   const home = await scratch();
   const dir = await scratch();
@@ -354,18 +445,29 @@ async function codexCliSession(system: string, url: string, token: string, promp
       `${system}\n\n---\n\n${prompt}`],
     cwd: dir, env: { ...CLI_ENV, CODEX_HOME: home, AMBER_EVAL_TOKEN: token }, clearEnv: true, stdout: "piped", stderr: "piped",
   });
-  const out = await timed(cmd);
+  const out = await streamed(cmd);
+  tr.raw = out.stdout;
   const usage: Usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, turns: 0 };
   const log: Logged[] = [];
+  const used = new Set<number>();
   let answer = "";
-  for (const line of new TextDecoder().decode(out.stdout).split("\n")) {
+  for (const { at, line } of out.lines) {
     // deno-lint-ignore no-explicit-any
     let ev: any;
     try { ev = JSON.parse(line); } catch { continue; }
     const item = ev.item ?? {};
     if (ev.type === "item.completed" && item.type === "mcp_tool_call") {
       log.push({ name: String(item.tool), args: item.arguments ?? {}, error: item.status === "failed" || item.result?.isError === true || !!item.error, result: short(resultText(item.result?.content ?? item.error ?? ""), 600) });
+      // Codex reports a call once it's done: the call at its start (item.started), the result here.
+      if (!tr.events.some((e) => e.type === "tool_call" && e.id === item.id)) tr.add({ type: "tool_call", name: String(item.tool), id: item.id, args: item.arguments }, at);
+      const seen = item.result ? verbatim(item.result.content) : item.error;
+      const sent = wireResult(wire, used, String(item.tool), item.arguments, at);
+      const same = sent && typeof sent === "object" && JSON.stringify((sent as { content?: unknown }).content) === JSON.stringify(seen);
+      tr.add({ type: "tool_result", name: String(item.tool), id: item.id, result: seen, error: log[log.length - 1].error, ...(sent !== undefined && !same ? { server_result: sent } : {}) }, at);
     }
+    if (ev.type === "item.started" && item.type === "mcp_tool_call") tr.add({ type: "tool_call", name: String(item.tool), id: item.id, args: item.arguments }, at);
+    if (ev.type === "item.completed" && item.type === "agent_message") tr.add({ type: "assistant_text", text: item.text ?? "" }, at);
+    if (ev.type === "item.completed" && item.type === "reasoning") tr.add({ type: "thinking", text: item.text ?? "" }, at);
     if (ev.type === "item.completed" && item.type === "agent_message" && item.text?.trim()) answer = item.text;
     if (ev.type === "turn.completed") {
       usage.turns++;
@@ -373,7 +475,7 @@ async function codexCliSession(system: string, url: string, token: string, promp
       usage.input += (u.input_tokens ?? 0) - (u.cached_input_tokens ?? 0); usage.cacheRead += u.cached_input_tokens ?? 0; usage.output += u.output_tokens ?? 0;
     }
   }
-  if (!answer && !log.length) throw new Error(`codex exec produced nothing: ${new TextDecoder().decode(out.stderr).slice(-400)}`);
+  if (!answer && !log.length) throw new Error(`codex exec produced nothing: ${out.stderr.slice(-400)}`);
   await Deno.remove(home, { recursive: true }).catch(() => {});
   await Deno.remove(dir, { recursive: true }).catch(() => {});
   return { usage: { ...usage, usd: 0 }, log, answer };
@@ -384,7 +486,7 @@ async function codexCliSession(system: string, url: string, token: string, promp
  * breakpoints on the system prompt and the newest message; images from preview_app go in a user
  * message after the tool results (tool messages are text there). Cost is OpenRouter's own figure.
  */
-async function openrouterSession(system: string, tools: { name: string; description: string; inputSchema: unknown }[], prompt: string, call: (n: string, a: Record<string, unknown>) => Promise<Called>) {
+async function openrouterSession(system: string, tools: { name: string; description: string; inputSchema: unknown }[], prompt: string, call: (n: string, a: Record<string, unknown>) => Promise<Called>, tr: Trace) {
   const key = Deno.env.get("OPENROUTER_API_KEY");
   if (!key) throw new Error("OPENROUTER_API_KEY isn't set");
   const usage: Usage & { usd?: number } = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, turns: 0, usd: 0 };
@@ -419,6 +521,9 @@ async function openrouterSession(system: string, tools: { name: string; descript
     const msg = j.choices?.[0]?.message ?? {};
     if (typeof msg.content === "string" && msg.content.trim()) answer = msg.content;
     const calls = (msg.tool_calls ?? []) as { id: string; function: { name: string; arguments: string } }[];
+    if (typeof msg.reasoning === "string" && msg.reasoning) tr.add({ type: "thinking", text: msg.reasoning });
+    if (typeof msg.content === "string" && msg.content) tr.add({ type: "assistant_text", text: msg.content });
+    for (const c of calls) { let a: unknown = c.function.arguments; try { a = JSON.parse(c.function.arguments || "{}"); } catch { /* kept as the string sent */ } tr.add({ type: "tool_call", name: c.function.name, id: c.id, args: a }); }
     messages.push({ role: "assistant", content: msg.content ?? "", ...(calls.length ? { tool_calls: calls } : {}), ...(msg.reasoning_details ? { reasoning_details: msg.reasoning_details } : {}) });
     if (!calls.length) break;
     const images: { data: string; mimeType: string }[] = [];
@@ -427,6 +532,7 @@ async function openrouterSession(system: string, tools: { name: string; descript
       try { a = JSON.parse(c.function.arguments || "{}"); } catch { /* sent as is */ }
       const r: Called = await call(c.function.name, a).catch((e) => ({ text: String(e), isError: true }));
       log.push({ name: c.function.name, args: a, error: r.isError, result: short(r.text, 600) });
+      tr.add({ type: "tool_result", name: c.function.name, id: c.id, result: verbatim(r.raw ?? r.text), error: r.isError });
       messages.push({ role: "tool", tool_call_id: c.id, content: r.isError ? `Error: ${r.text}` : r.text });
       images.push(...(r.images ?? []));
     }
@@ -450,15 +556,21 @@ async function runTask(task: Task, rep = 1) {
   const s = await setup(task);
   const before = await s.state(s.id);
   const othersBefore = await Promise.all(s.others.map((o) => s.state(o)));
-  const listed = (await s.rpc("tools/list")).tools.filter((t: { name: string }) => !hidden.has(t.name));
+  const toolsList = await s.rpc("tools/list");
+  const seeded = await s.snapshot();
+  const listed = toolsList.tools.filter((t: { name: string }) => !hidden.has(t.name));
   const system = `${CLIENT_SYSTEM}\n\n<mcp_server name="amber-notes">\n${s.init.instructions}\n</mcp_server>${skill ? `\n\n<skill name="note-pages">\n${skill}\n</skill>` : ""}`;
   // The CLIs get the server's instructions from the server itself, as any client does.
   const cliSystem = `${CLIENT_SYSTEM}${skill ? `\n\n<skill name="note-pages">\n${skill}\n</skill>` : ""}`;
-  const session = model.provider === "claude-cli" ? await claudeCliSession(cliSystem, s.url, s.token, task.prompt, hidden)
-    : model.provider === "codex-cli" ? await codexCliSession(cliSystem, s.url, s.token, task.prompt, hidden)
-    : model.provider === "anthropic" ? await claudeSession(system, listed, task.prompt, s.call)
-    : model.provider === "openrouter" ? await openrouterSession(system, listed, task.prompt, s.call)
-    : await openaiSession(system, listed, task.prompt, s.call);
+  const tr = tracer();
+  tr.add({ type: "user", text: model.provider === "codex-cli" ? `${cliSystem}\n\n---\n\n${task.prompt}` : task.prompt });
+  const session = model.provider === "claude-cli" ? await claudeCliSession(cliSystem, s.url, s.token, task.prompt, hidden, tr, s.wire)
+    : model.provider === "codex-cli" ? await codexCliSession(cliSystem, s.url, s.token, task.prompt, hidden, tr, s.wire)
+    : model.provider === "anthropic" ? await claudeSession(system, listed, task.prompt, s.call, tr)
+    : model.provider === "openrouter" ? await openrouterSession(system, listed, task.prompt, s.call, tr)
+    : await openaiSession(system, listed, task.prompt, s.call, tr);
+  const sessionSeconds = (performance.now() - tr.start) / 1000;
+  tr.add({ type: "answer", text: session.answer });
   // An open request ("build me a workout tracker app") may get a new note of its own: score that one
   // when the seeded note was left without an app.
   let after = await s.state(s.id);
@@ -526,6 +638,34 @@ async function runTask(task: Task, rep = 1) {
       test_files: Object.keys(((): Record<string, string> => { try { return JSON.parse(after.page ?? "{}").files ?? {}; } catch { return {}; } })()).filter((p) => /^\/tests?\//.test(p)).length },
   };
   await Deno.writeTextFile(new URL(`${stem}.json`, outDir), JSON.stringify(result, null, 2));
+  const cli = model.provider === "claude-cli" || model.provider === "codex-cli";
+  const trace = {
+    task: task.id, rep, model: model.id, round, started_at: tr.started_at, seconds: +sessionSeconds.toFixed(1),
+    score: result.score, passed: result.passed, total: result.total,
+    context: {
+      date: tr.started_at.slice(0, 10),
+      model: model.id,
+      settings: {
+        via: model.provider, prompt: task.prompt,
+        // The system text we pass (the CLIs add their own around it; the API paths send exactly this).
+        system: model.provider === "codex-cli" ? `${cliSystem}\n\n---\n\n${task.prompt}` : cli ? cliSystem : system,
+        tools: args.tools ?? "pages", skill: !!skill, hidden: [...hidden], arm: args.arm ?? null,
+        ...(cli ? { cli_model: args["cli-model"] ?? (model.provider === "claude-cli" ? "sonnet" : "default"), max_turns: Number(args["max-turns"] ?? 40), minutes: Number(args.minutes ?? 30) } : {}),
+      },
+      backend: { mcp_url: s.url, server: "supabase/functions/mcp/server.ts, in process", database: "PGlite in memory, every migration, one test account", render: Deno.env.get("RENDER_URL"), production: false },
+      server_instructions: s.init.instructions ?? null,
+      tools_list: toolsList,
+      seeded: {
+        notes: seeded.map((n) => ({ path: `${n.folder ? n.folder + "/" : ""}${n.title}.md`, pinned: n.pinned, content: n.body })),
+        ...([task.seed, ...(task.others ?? [])].some((x) => x.page || x.data) ? { apps: [task.seed, ...(task.others ?? [])].filter((x) => x.page || x.data).map((x) => ({ note: x.body.split("\n")[0], page: x.page ?? null, data: x.data ?? null })) } : {}),
+        ...(task.files?.length ? { files: task.files } : {}),
+        ...(task.apiKeys?.length ? { api_keys: task.apiKeys } : {}),
+      },
+    },
+    events: tr.events, answer: session.answer,
+  };
+  await Deno.writeTextFile(new URL(`${stem}.trace.json`, outDir), JSON.stringify(trace, null, 2));
+  if (cli && tr.raw !== undefined) await Deno.writeTextFile(new URL(`${stem}.stream.jsonl`, outDir), tr.raw);
   await Deno.writeTextFile(new URL(`${stem}.page.html`, outDir), after.page ?? "");
   await Deno.writeTextFile(new URL(`${stem}.note.md`, outDir), after.body);
   await s.http.shutdown();
