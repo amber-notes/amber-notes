@@ -47,7 +47,7 @@ import Testing
         try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
         let only = ProcessInfo.processInfo.environment["AMBER_BEST_ONLY"].flatMap { $0.isEmpty ? nil : $0 }.map { Set($0.split(separator: ",").map(String.init)) }
         let apps = [("words", "Swedish words"), ("beat", "Beat"), ("shelf", "Bookshelf"), ("habits", "Habits"), ("money", "Money"), ("training", "Training"), ("reading", "Reading"),
-                    ("trip", "Rome"), ("people", "People"), ("kitchen", "Kitchen"), ("study", "Biology: the cell"), ("lift", "Lifting")]
+                    ("trip", "Rome"), ("people", "People"), ("kitchen", "Kitchen"), ("study", "Biology: the cell"), ("lift", "Lifting"), ("evening", "Evening")]
         for (name, title) in apps where only?.contains(name) ?? true {
             for dark in [false, true] {
                 let w = try await Self.open(title, size: CGSize(width: 1440, height: 920), dark: dark)

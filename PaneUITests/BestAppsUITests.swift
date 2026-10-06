@@ -71,8 +71,8 @@ final class BestAppsUITests: XCTestCase {
     func testStills() {
         let only = ProcessInfo.processInfo.environment["ONLY"].flatMap { $0.isEmpty ? nil : $0 }.map { Set($0.split(separator: ",").map(String.init)) }
         for (dirName, title) in [("habits", "Habits"), ("money", "Money"), ("training", "Training"), ("reading", "Reading"),
-                                 ("trip", "Rome"), ("people", "People"), ("kitchen", "Kitchen"), ("study", "Biology: the cell"), ("lift", "Lifting"), ("words", "Swedish words"), ("beat", "Beat"), ("shelf", "Bookshelf")] {
-            guard FileManager.default.fileExists(atPath: "\(dir)/\(dirName)/app.html"), only?.contains(dirName) ?? true else { continue }
+                                 ("trip", "Rome"), ("people", "People"), ("kitchen", "Kitchen"), ("study", "Biology: the cell"), ("lift", "Lifting"), ("evening", "Evening"), ("words", "Swedish words"), ("beat", "Beat"), ("shelf", "Bookshelf")] {
+            guard ["app.html", "app.json"].contains(where: { FileManager.default.fileExists(atPath: "\(dir)/\(dirName)/\($0)") }), only?.contains(dirName) ?? true else { continue }
             launch(title)
             pause(1.5)
             if dirName == "trip" { allowHost(wait: 4); pause(3) }
@@ -466,34 +466,100 @@ final class BestAppsUITests: XCTestCase {
             skip()
             if k == 2 { scroll(0.4) }
         }
-        let more = app.webViews.buttons.matching(NSPredicate(format: "label BEGINSWITH 'More for Lateral'")).firstMatch
-        for _ in 0..<5 where !more.isHittable { scroll(0.5) }
-        tap(more, then: 1.0)
-        shot("lift-menu")
-        app.webViews.buttons.matching(NSPredicate(format: "label == 'Close'")).firstMatch.tap(); pause(0.6)
         let add = button("Add exercises")
-        for _ in 0..<6 where !add.isHittable { scroll(0.5) }
+        for _ in 0..<8 where !add.isHittable { scroll(0.5) }
         tap(add, then: 1.0)
-        type(app.webViews.searchFields.firstMatch.exists ? app.webViews.searchFields.firstMatch : app.webViews.textFields["Search exercises"].firstMatch, "curl")
+        type(app.webViews.searchFields.firstMatch.exists ? app.webViews.searchFields.firstMatch : app.webViews.textFields["Search exercises"].firstMatch, "hammer")
         pause(0.8)
         let choose = app.webViews.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH 'Choose Hammer'")).firstMatch
         if choose.waitForExistence(timeout: 3) { choose.tap(); pause(0.6) }
         shot("lift-picker")
         tap(webBegins("Add 1"), then: 1.2)
+        // Reorder: drag Hammer Curl, now last, up to the top by its handle.
+        let reorder = button("Reorder")
+        for _ in 0..<6 where !reorder.isHittable { scroll(0.4) }
+        tap(reorder, then: 1.0)
+        let handles = webMatches { $0 == "Drag to reorder" }
+        if let last = handles.last, let first = handles.first {
+            let start = app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: last.midX, dy: last.midY))
+            let end = app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: first.midX, dy: first.midY - 8))
+            start.press(forDuration: 0.25, thenDragTo: end, withVelocity: 260, thenHoldForDuration: 0.3)
+            pause(0.8)
+        }
+        shot("lift-reorder")
+        tap(button("Done"), then: 1.0)
         let fin = app.webViews.buttons.matching(NSPredicate(format: "label == 'Finish'")).firstMatch
-        for _ in 0..<8 where !fin.isHittable { scroll(-0.6) }
+        for _ in 0..<10 where !fin.isHittable { scroll(-0.6) }
         tap(fin, then: 1.0)
         if let f = webMatches({ $0 == "Finish" }).last { tapAt(f) }
-        pause(4.0)
+        pause(3.5)
         shot("lift-done")
+        scroll(0.4); pause(1.4); scroll(-0.5)
         tap(button("Done"), then: 1.0)
         tabTo("Exercises"); pause(1.0)
         let bench = app.webViews.links.matching(NSPredicate(format: "label BEGINSWITH 'Bench Press'")).firstMatch
         if bench.waitForExistence(timeout: 3) { bench.tap(); pause(1.4) }
-        tap(button("Heaviest"), then: 1.2)
+        tap(button("Heaviest"), then: 1.0)
+        tap(button("Rep maxes"), then: 1.2)
         shot("lift-exercise")
         tabTo("History"); pause(1.4)
         tabTo("Progress"); pause(1.2); scroll(0.5); pause(1.2)
+        mark("end")
+    }
+
+
+    /// The keyboard's Done (the check mark above it), when it's up.
+    func hideKeyboard() {
+        let done = app.toolbars.buttons["Done"].firstMatch
+        if done.exists { done.tap(); pause(0.6) }
+    }
+
+    /// Evening, used: the Overview, tonight's check-in step by step, back to the Overview, then the review screens.
+    func testEvening() {
+        launch("Evening")
+        pause(2.5)
+        mark("start")
+        pause(1.0)
+        scroll(0.45); pause(0.6); scroll(-0.6)
+        tap(button("Log today"), then: 1.2)
+        tap(button("Work hours: more"), then: 0.5)
+        tap(button("Good work hours: more"), then: 0.7)
+        shot("evening-1")
+        tap(button("Next"), then: 1.0)
+        for label in ["Energy 7", "Mood 8", "Focus / output 7", "Sleep quality 7"] { tap(web(label), then: 0.45) }
+        pause(0.4)
+        shot("evening-2")
+        tap(button("Next"), then: 1.0)
+        for (name, v) in [("Exercise", "Yes"), ("Walk", "No"), ("Reading", "Yes"), ("Plan tomorrow", "Yes")] {
+            let e = web("\(name): \(v)")
+            if e.waitForExistence(timeout: 2) { e.tap(); pause(0.4) }
+        }
+        pause(0.4)
+        shot("evening-3")
+        tap(button("Next"), then: 1.0)
+        type(app.webViews.textViews.element(boundBy: 0), "Early gym, phone in the other room")
+        type(app.webViews.textViews.element(boundBy: 1), "Late meeting ran over")
+        pause(0.5)
+        shot("evening-4")
+        hideKeyboard()
+        tap(button("Next"), then: 1.0)
+        type(app.webViews.textFields["Win condition"].firstMatch, "Pricing page live")
+        type(app.webViews.textFields["Outcome 1"].firstMatch, "Copy final")
+        type(app.webViews.textFields["Outcome 2"].firstMatch, "Stripe test passes")
+        type(app.webViews.textFields["First task"].firstMatch, "Write the plan-card copy")
+        hideKeyboard()
+        let alarms = button("Alarms and timers set")
+        if alarms.exists { alarms.tap(); pause(0.5) }
+        shot("evening-5")
+        tap(button("Finish"), then: 0.8)
+        allowSystem(["Allow"], wait: 3)
+        pause(2.2)
+        shot("evening-after")
+        scroll(0.5); pause(1.0); scroll(-0.6)
+        tabTo("Week"); pause(1.4); scroll(0.5); pause(1.0)
+        tabTo("Trends"); pause(1.4); scroll(0.5); pause(1.0)
+        tabTo("Plan"); pause(1.4)
+        tabTo("Overview"); pause(1.4)
         mark("end")
     }
 }

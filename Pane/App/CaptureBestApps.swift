@@ -3,7 +3,7 @@ import SwiftData
 import UniformTypeIdentifiers
 
 /// Note apps (prototype), the best-apps set for recordings: `-bestApps <dir>` seeds the notes in
-/// <dir>/seed.json, each from <app>/note.md, <app>/app.html and <app>/data.json. Dates in those files
+/// <dir>/seed.json, each from <app>/note.md, <app>/app.json or app.html, and <app>/data.json. Dates in those files
 /// are written relative to today, so the demo data is never stale:
 ///   {{d}} today, {{d-3}} three days ago, {{d+2}}; {{t-3}} and {{t-3@08:15}} for ISO timestamps.
 /// A note's body can link another seeded note with {{link:<dir>}}; an app note linked like that
@@ -79,7 +79,10 @@ extension Capture {
             n.updatedAt = .now.addingTimeInterval(-60 * (seed.minutesAgo ?? Double(i * 7)))
             if let d = seed.dir {
                 made[d] = n
-                if let html = try? String(contentsOf: dir.appending(path: "\(d)/app.html"), encoding: .utf8) {
+                // An app made of files (app.json, from scripts/build-app.ts), or a one-file app.
+                if let project = try? String(contentsOf: dir.appending(path: "\(d)/app.json"), encoding: .utf8) {
+                    NotePageStore.shared[n.id] = .init(html: project, by: "Claude", at: .now.addingTimeInterval(-86400))
+                } else if let html = try? String(contentsOf: dir.appending(path: "\(d)/app.html"), encoding: .utf8) {
                     NotePageStore.shared[n.id] = .init(html: inlineLibs(html), by: "Claude", at: .now.addingTimeInterval(-86400))
                 }
                 if let raw = try? String(contentsOf: dir.appending(path: "\(d)/data.json"), encoding: .utf8),

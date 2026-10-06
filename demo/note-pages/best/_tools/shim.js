@@ -66,9 +66,12 @@
     files: { save: () => Promise.resolve({ ok: false }), read: () => Promise.resolve({ ok: false }), url: () => "" },
     device: { notify: Object.assign((x) => ask({ op: "device.notify", ...x }), { cancel: (id) => ask({ op: "device.notify.cancel", id }) }),
       reminders: { create: (x) => ask({ op: "device.reminders.create", ...x }), delete: (id) => ask({ op: "device.reminders.delete", id }), complete: (id) => ask({ op: "device.reminders.complete", id }) },
-      openURL: (u) => ask({ op: "device.openURL", url: u }), maps: { snapshot: () => Promise.resolve({ ok: false }), open: () => Promise.resolve({ ok: true }) }, contacts: { pick: () => ask({ op: "device.contacts.pick" }) } },
+      openURL: (u) => ask({ op: "device.openURL", url: u }), share: (f) => ask({ op: "device.share", name: f && f.name }), maps: { snapshot: () => Promise.resolve({ ok: false }), open: () => Promise.resolve({ ok: true }) }, contacts: { pick: () => ask({ op: "device.contacts.pick" }) } },
     ai: { available: () => Promise.resolve({ ok: true, available: false, reason: "not in the lab" }), respond: () => Promise.resolve({ ok: false, error: "No AI in the lab." }) },
     fetch: (u) => ask({ op: "fetch", url: u }), insets: { bottom: 0 },
+    // Inside batch(), every change is still applied at once here; the host sends them as one Undo.
+    batch: async (fn) => { log.push({ batch: "start" }); try { return await fn(); } finally { log.push({ batch: "end" }); } },
+    setSummary: (t) => { log.push({ summary: String(t) }); window.__amberSummary = String(t); return Promise.resolve({ ok: true }); },
   };
   Object.defineProperty(amber, "_receive", { value(nt, d) { amber.note = nt; if (d) amber.data = d; listeners.forEach((f) => f(nt, amber.data)); } });
   Object.defineProperty(amber, "_body", { get: () => body });

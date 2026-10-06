@@ -1,5 +1,9 @@
 [
  {
+  "dir": "evening",
+  "pinned": true
+ },
+ {
   "dir": "habits",
   "pinned": true,
   "minutesAgo": 3
