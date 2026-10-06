@@ -52,6 +52,9 @@ To turn PostHog off again: `vercel env rm NEXT_PUBLIC_POSTHOG_KEY production` an
 | `download_mac_clicked` | Any link to `/download/mac` (Download for Mac) | `path` |
 | `use_template_clicked` | Any link to `/open/template/<slug>` | `path`, `template` |
 | `copy_prompt_clicked` | The Copy the prompt button on template pages (`data-event` on the button) | `path` |
+| `blog_cta_clicked` | Any link in a blog post's call to action (`web/lib/PostCta.tsx`, its `data-cta…` attributes). Sent as well as the link's own event, so a download from a post is also a `download_mac_clicked` with the post's `path` | `path`, `slug`, `position`, `action` (`download_mac`, `send_link`, `app_store`) |
+| `blog_copy_clicked` | A Copy button on a post's checklist, cheat sheet, script or prompt (`Keep` in `web/lib/PostParts.tsx`) | `path` |
+| `blog_helper_used` | An answer in a post's chooser, such as "which reset applies to you" (`web/lib/ResetChooser.tsx`); which answer isn't sent | `path` |
 | `outbound_app_store_clicked`, `outbound_github_clicked`, `outbound_claude_clicked`, `outbound_chatgpt_clicked` | Links to apps.apple.com, github.com, claude.ai or claude.com, chatgpt.com or openai.com | `path`, `destination` (origin and path) |
 | `$autocapture` | Other clicks on links and buttons | PostHog's own element chain |
 

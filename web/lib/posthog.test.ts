@@ -1,7 +1,7 @@
 import type { CaptureResult } from "posthog-js";
 import { describe, expect, it } from "vitest";
 import { CONSENT_KEY } from "./consent";
-import { clickEvent, heatmapsAllowed, newScrollMarks, POSTHOG_DEFAULT_HOST, posthogAllowed, posthogOptions, posthogSettings, sanitizeEvent, scrolledPercent, visitorOptedOut } from "./posthog";
+import { clickEvent, clickEvents, ctaEvent, heatmapsAllowed, newScrollMarks, POSTHOG_DEFAULT_HOST, posthogAllowed, posthogOptions, posthogSettings, sanitizeEvent, scrolledPercent, visitorOptedOut } from "./posthog";
 
 const here = new URL("https://ambernotes.app/blog/claude-and-apple-notes");
 const link = (href: string, attrs: Record<string, string> = {}) => ({ tagName: "A", getAttribute: (n: string) => (n === "href" ? href : attrs[n] ?? null) });
@@ -78,6 +78,20 @@ describe("website PostHog", () => {
   it("names the download click, with the page it came from", () => {
     expect(clickEvent(link("/download/mac"), here)).toEqual({ event: "download_mac_clicked", properties: { path: "/blog/claude-and-apple-notes" }, leaves: false });
     expect(clickEvent(link("https://ambernotes.app/download/mac"), new URL("https://ambernotes.app/"))?.properties).toEqual({ path: "/" });
+  });
+
+  it("names a click on a post's call to action, with the post, its place and the link", () => {
+    const cta = { "data-cta": "apple-notes-api", "data-cta-position": "how-amber-helps", "data-cta-action": "download_mac" };
+    const props = { path: "/blog/claude-and-apple-notes", slug: "apple-notes-api", position: "how-amber-helps", action: "download_mac" };
+    expect(ctaEvent(link("/download/mac", cta), here)).toEqual({ event: "blog_cta_clicked", properties: props, leaves: false });
+    // A download from a post is both: the call to action, and the download with the page it happened on.
+    expect(clickEvents(link("/download/mac", cta), here).map((e) => e.event)).toEqual(["blog_cta_clicked", "download_mac_clicked"]);
+    expect(clickEvents(link("/download/mac", cta), here)[1].properties).toEqual({ path: "/blog/claude-and-apple-notes" });
+    // Send myself the link has no event of its own, but inside a call to action it's counted as one.
+    const send = link("mailto:?body=x", { ...cta, "data-cta-action": "send_link" });
+    expect(clickEvents(send, here)).toEqual([{ event: "blog_cta_clicked", properties: { ...props, action: "send_link" }, leaves: false }]);
+    expect(ctaEvent(link("/download/mac"), here)).toBeNull();
+    expect(clickEvents(link("/blog"), here)).toEqual([]);
   });
 
   it("names Use template and Copy the prompt", () => {

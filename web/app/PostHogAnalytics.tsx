@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import type { PostHog } from "posthog-js";
-import { clickEvent, newScrollMarks, posthogAllowed, scrolledPercent } from "@/lib/posthog";
+import { clickEvents, newScrollMarks, posthogAllowed, scrolledPercent } from "@/lib/posthog";
 import { startPostHog } from "./posthog-client";
 
 /// Website usage with PostHog (lib/posthog.ts). SiteAnalytics renders this only on public pages,
@@ -17,8 +17,9 @@ export default function PostHogAnalytics({ apiKey, host, path }: { apiKey: strin
     const onClick = (e: MouseEvent) => {
       const el = e.target instanceof Element ? e.target.closest("a, button") : null;
       if (!posthog || !el || !posthogAllowed(window.location.pathname)) return;
-      const named = clickEvent(el, new URL(window.location.href));
-      if (named) posthog.capture(named.event, named.properties, named.leaves ? { transport: "sendBeacon" } : { send_instantly: true });
+      for (const named of clickEvents(el, new URL(window.location.href))) {
+        posthog.capture(named.event, named.properties, named.leaves ? { transport: "sendBeacon" } : { send_instantly: true });
+      }
     };
     // Measured on each scroll event, not in an animation frame: a background tab runs none.
     const onScroll = () => {
