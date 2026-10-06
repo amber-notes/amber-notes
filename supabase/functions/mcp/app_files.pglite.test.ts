@@ -1,7 +1,7 @@
 // A note's app as a project of files (app_files.ts) in an in-process Postgres, opened through a
 // local render service: the starter (with its tests), reading and editing files, compile errors,
 // see-and-try, and the gate: a version that fails its tests or the smoke check is held back as a
-// version that is saved but held back while the last passing one stays live.
+// draft while the last passing one stays live.
 //   cd supabase/functions/mcp && deno test -A app_files.pglite.test.ts
 import { assert, assertEquals, assertStringIncludes } from "jsr:@std/assert@1";
 import type { PGlite } from "npm:@electric-sql/pglite@0.2.17";
@@ -14,14 +14,11 @@ import { parseStored } from "./app_project.ts";
 const tool = async (pg: PGlite, a: Account, name: string, args: Record<string, unknown> = {}, write = true) => await runTool(name, args, await toolContext(pg, a, write)) as any;
 const fails = async (p: Promise<unknown>) => { try { await p; } catch (e) { assert(e instanceof ToolError, String(e)); return (e as Error).message; } throw new Error("expected a ToolError"); };
 
-/** The newest version (what the AI works on) and the one devices run: the newest that passed its checks. */
+/** What devices run (page_ct) and what the AI is working on (draft_ct). */
 async function boxes(pg: PGlite, a: Account, id: string) {
-  const [row] = (await pg.query(`select page_ct from public.note_pages where note_id = $1`, [id])).rows as { page_ct: string }[];
-  const newest = parseStored(await a.vault.openPage(id, row.page_ct));
-  const older = (await pg.query(`select page_ct from public.note_page_versions where note_id = $1 and page_ct is not null order by id desc`, [id])).rows as { page_ct: string }[];
-  let live = newest.checks?.passed !== false ? newest : null;
-  for (const v of older) { if (live) break; const p = parseStored(await a.vault.openPage(id, v.page_ct)); if (p.checks?.passed !== false) live = p; }
-  return { newest, live, why: newest.checks?.passed === false ? newest.checks.errors.join("\n") : null };
+  const [row] = (await pg.query(`select page_ct, draft_ct, draft_problems from public.note_pages where note_id = $1`, [id])).rows as { page_ct: string | null; draft_ct: string | null; draft_problems: string | null }[];
+  const open = async (b: string | null) => (b ? parseStored(await a.vault.openPage(id, b)) : null);
+  return { live: await open(row.page_ct), draft: await open(row.draft_ct), why: row.draft_problems };
 }
 
 Deno.test("a project app: the starter and its tests, files, edits, the gate, see and try", async () => {
@@ -46,19 +43,19 @@ Deno.test("a project app: the starter and its tests, files, edits, the gate, see
     // A syntax error is refused outright.
     assertStringIncludes(await fails(tool(pg, a, "write_app_file", { id, path: "/src/Bad.tsx", content: "export default () => <div>\n" })), "/src/Bad.tsx:2:");
 
-    // A change that breaks a screen is held back: the person keeps the last good app; the AI works on the newest.
+    // A change that breaks a screen is held back: the person keeps the last good app; the AI works on the draft.
     const broken = await tool(pg, a, "edit_app_file", { id, path: "/src/screens/settings.tsx", old_string: "const [settings, update] = useSettings(DEFAULTS)", new_string: "const [settings, update] = useSettings(DEFAULTS)\n  if (settings) throw new Error(\"settings broke\")" });
     assertStringIncludes(broken.live, "Held back");
     assertStringIncludes(broken.errors.join("\n"), "settings broke");
     let b = await boxes(pg, a, id);
-    assert(!b.live!.files["/src/screens/settings.tsx"].includes("settings broke") && b.newest.files["/src/screens/settings.tsx"].includes("settings broke"));
+    assert(!b.live!.files["/src/screens/settings.tsx"].includes("settings broke") && b.draft!.files["/src/screens/settings.tsx"].includes("settings broke"));
     assertStringIncludes(b.why!, "settings broke");
     assertStringIncludes((await tool(pg, a, "read_app_file", { id, path: "/src/screens/settings.tsx" }, false)).content, "settings broke");
-    // Fixed: the newest passes and is what devices run.
+    // Fixed: live again, the draft gone.
     const fixed = await tool(pg, a, "edit_app_file", { id, path: "/src/screens/settings.tsx", old_string: "\n  if (settings) throw new Error(\"settings broke\")", new_string: "" });
     assertStringIncludes(fixed.live, "Live");
     b = await boxes(pg, a, id);
-    assertEquals([b.newest.checks?.passed, b.why, b.live === b.newest], [true, null, true]);
+    assertEquals([b.draft, b.why], [null, null]);
 
     // A failing test holds a version back too.
     const red = await tool(pg, a, "edit_app_file", { id, path: "/tests/app.test.tsx", old_string: `toContain("Milk")`, new_string: `toContain("Cheese")` });
@@ -69,7 +66,7 @@ Deno.test("a project app: the starter and its tests, files, edits, the gate, see
     const moved = await tool(pg, a, "move_app_file", { id, from: "/src/screens/settings.tsx", to: "/src/screens/preferences.tsx" });
     assertStringIncludes(moved.errors.join("\n"), "@/screens/settings");
     await tool(pg, a, "edit_app_file", { id, path: "/src/App.tsx", old_string: "@/screens/settings", new_string: "@/screens/preferences" });
-    assertEquals((await boxes(pg, a, id)).newest.checks?.passed, true);
+    assertEquals((await boxes(pg, a, id)).draft, null);
 
     // try_app uses the app like a person, on a throwaway copy.
     const tried = await tool(pg, a, "try_app", { id, steps: [{ type: "Milk", into: "New item" }, { tap: "Add" }, { tap: "Nowhere" }] }, false);

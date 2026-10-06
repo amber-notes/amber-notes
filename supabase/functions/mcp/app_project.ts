@@ -3,10 +3,7 @@
 // app_files.ts.
 import * as esbuild from "npm:esbuild-wasm@0.24.0";
 
-/** checks: the save's verdict (the app's tests and the smoke check). Devices run the newest version
- *  whose checks passed (or that has none); one that failed is kept but held back. */
-export type Checks = { passed: boolean; at: string; errors: string[] };
-export type Project = { amberApp: 1; files: Record<string, string>; compiled: Record<string, string>; checks?: Checks };
+export type Project = { amberApp: 1; files: Record<string, string>; compiled: Record<string, string> };
 
 export const MAX_FILES = 200;
 export const MAX_FILE_BYTES = 512 * 1024;
@@ -41,7 +38,7 @@ export function parseStored(text: string | null): Project {
   if (text.trimStart().startsWith("{")) {
     try {
       const p = JSON.parse(text);
-      if (p?.amberApp === 1 && p.files && typeof p.files === "object") return { amberApp: 1, files: p.files, compiled: p.compiled ?? {}, ...(p.checks ? { checks: p.checks } : {}) };
+      if (p?.amberApp === 1 && p.files && typeof p.files === "object") return { amberApp: 1, files: p.files, compiled: p.compiled ?? {} };
     } catch { /* HTML that starts with a brace is still HTML */ }
   }
   return { amberApp: 1, files: { "/index.html": text }, compiled: {} };
@@ -50,9 +47,9 @@ export function parseStored(text: string | null): Project {
 /** What's sealed into page_ct: a lone /index.html stays plain HTML, so one-file apps are unchanged. */
 export function serialize(p: Project): string {
   const names = Object.keys(p.files);
-  if (names.length === 1 && names[0] === "/index.html" && !Object.keys(p.compiled).length && !p.checks) return p.files["/index.html"];
+  if (names.length === 1 && names[0] === "/index.html" && !Object.keys(p.compiled).length) return p.files["/index.html"];
   const sorted = (o: Record<string, string>) => Object.fromEntries(Object.keys(o).sort().map((k) => [k, o[k]]));
-  return JSON.stringify({ amberApp: 1, files: sorted(p.files), compiled: sorted(p.compiled), ...(p.checks ? { checks: p.checks } : {}) });
+  return JSON.stringify({ amberApp: 1, files: sorted(p.files), compiled: sorted(p.compiled) });
 }
 
 /** A path as the tools accept it: "/src/App.jsx"; "src/App.jsx" gets its slash. */

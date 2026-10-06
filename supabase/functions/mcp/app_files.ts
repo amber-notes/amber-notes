@@ -72,20 +72,12 @@ export const fileTools = [
   },
 ];
 
-/** Whether some earlier version of the app passed its checks (what devices fall back to). */
-async function liveVersionExists(tx: Tx, c: Call, id: string): Promise<boolean> {
-  const rows = await tx<{ page_ct: string | null }[]>`select page_ct from public.note_page_versions where note_id = ${id} and page_ct is not null order by id desc limit 10`;
-  for (const r of rows) {
-    try { if (parseStored(await c.v.openPage(id, r.page_ct!)).checks?.passed !== false) return true; } catch { /* another key */ }
-  }
-  return false;
-}
-
-/** The app's newest version (what the AI works on), passing its checks or not. */
-export async function projectOf(tx: Tx, c: Call, id: string): Promise<{ project: Project; exists: boolean }> {
-  const [row] = await tx<{ page_ct: string | null }[]>`select page_ct from public.note_pages where note_id = ${id} for update`;
-  if (!row?.page_ct) return { project: parseStored(null), exists: false };
-  try { return { project: parseStored(await c.v.openPage(id, row.page_ct)), exists: true }; } catch { throw new ToolError("This note's app can't be opened with this connection's key."); }
+/** The app the AI is working on: its draft when the last save was held back, else the live one. */
+export async function projectOf(tx: Tx, c: Call, id: string): Promise<{ project: Project; exists: boolean; draft?: string | null }> {
+  const [row] = await tx<{ page_ct: string | null; draft_ct: string | null; draft_problems: string | null }[]>`select page_ct, draft_ct, draft_problems from public.note_pages where note_id = ${id} for update`;
+  const box = row?.draft_ct ?? row?.page_ct;
+  if (!box) return { project: parseStored(null), exists: false };
+  try { return { project: parseStored(await c.v.openPage(id, box)), exists: true, draft: row?.draft_ct ? row.draft_problems ?? "" : null }; } catch { throw new ToolError("This note's app can't be opened with this connection's key."); }
 }
 
 /** The app's own data (for a sample with its shape), or empty. */
@@ -100,11 +92,11 @@ export const fileList = (p: Project) => Object.keys(p.files).sort().map((path) =
 
 /** Checks, stores and reports a project after one change. Refuses what the app couldn't run. */
 /**
- * Checks a project and saves it with the verdict in it ("checks", the contract with the app): its
- * own tests and a smoke check (opens at phone and desktop sizes, each visible tab and button tapped
+ * Checks a project and saves it. It goes live (devices run it) only when it passes the gate: its own
+ * tests and a smoke check (opens at phone and desktop sizes, each visible tab and button tapped
  * once, on a throwaway copy of the data: no crash, no console errors, no blank screen, the data
- * store working). Every version is saved; devices run the newest one that passed, so a version that
- * fails is held back and the person keeps the last working one until a fix passes.
+ * store working). A version that fails is kept as the app's draft, which the AI keeps working on;
+ * the last one that passed keeps running for the person (20261007100800_app_drafts.sql).
  */
 export async function saveProject(tx: Tx, c: Call, n: Note, unlinked: Project, changed: string, a: Args) {
   const linked = await linkProject(unlinked);
@@ -129,18 +121,22 @@ export async function saveProject(tx: Tx, c: Call, n: Note, unlinked: Project, c
   const smoke = smoked && typeof smoked !== "string" ? smoked.smoke : null;
   const scriptErrors = (found?.errors ?? []).filter((e) => /script error|blank|tried to load/.test(e));
   const failures = [...broken, ...scriptErrors, ...(smoke?.problems ?? []), ...(tests?.failures.map((f) => `test failed: ${f}`) ?? [])];
-  const live = failures.length === 0 || (!gateOn && broken.length === 0);
-  const checks = { passed: live, at: new Date().toISOString(), errors: failures.slice(0, 20) };
-  // The newest version before this one: a passing one is never dropped by a failing save.
-  const { project: before, exists } = await projectOf(tx, c, n.id);
-  const keepBefore = exists && before.checks?.passed !== false && !live;
-  // The file tools write often: within ten minutes, the same writer's earlier app isn't kept as
-  // another version (20261007100600_app_file_writes_coalesce.sql), so Previous App means "before".
-  if (!keepBefore) await tx`select set_config('pane.coalesce', 'on', true)`;
-  await tx`insert into public.note_pages (note_id, page_ct) values (${n.id}, ${await c.v.sealPage(n.id, serialize({ ...p, checks }))})
-    on conflict (note_id) do update set page_ct = excluded.page_ct`;
-  await tx`select set_config('pane.coalesce', 'off', true)`;
-  const has_live = live || await liveVersionExists(tx, c, n.id);
+  const live = failures.length === 0;
+  const sealed = await c.v.sealPage(n.id, stored);
+  if (live) {
+    // The file tools write often: within ten minutes, the same writer's earlier app isn't kept as
+    // another version (20261007100600_app_file_writes_coalesce.sql), so Previous App means "before".
+    await tx`select set_config('pane.coalesce', 'on', true)`;
+    await tx`insert into public.note_pages (note_id, page_ct) values (${n.id}, ${sealed})
+      on conflict (note_id) do update set page_ct = excluded.page_ct, draft_ct = null, draft_problems = null`;
+    await tx`select set_config('pane.coalesce', 'off', true)`;
+  } else {
+    // What failed, as the checks saw it over a sample of the data (never the person's own content).
+    const why = failures.join("\n").slice(0, 3900);
+    await tx`insert into public.note_pages (note_id, draft_ct, draft_problems) values (${n.id}, ${sealed}, ${why})
+      on conflict (note_id) do update set draft_ct = excluded.draft_ct, draft_problems = excluded.draft_problems`;
+  }
+  const [{ has_live }] = await tx<{ has_live: boolean }[]>`select page_ct is not null as has_live from public.note_pages where note_id = ${n.id}`;
   const errors = [...broken, ...(found?.errors ?? []), ...(smoke?.problems ?? []), ...(tests?.failures.map((f) => `test failed: ${f}`) ?? [])];
   const notes = [...warnings, ...(found?.notes ?? [])].slice(0, 10);
   const result = {

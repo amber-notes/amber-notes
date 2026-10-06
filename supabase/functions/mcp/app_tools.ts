@@ -72,9 +72,9 @@ const today = () => new Intl.DateTimeFormat("sv-SE", { timeZone: Deno.env.get("P
 
 async function appOf(tx: Tx, c: Call, a: Args) {
   const n = await findNote(tx, c, a, true);
-  // The newest version (what the AI is working on), even when it was held back.
-  const [row] = await tx<{ page_ct: string | null; data_ct: string | null }[]>`select page_ct, data_ct from public.note_pages where note_id = ${n.id}`;
-  const box = row?.page_ct;
+  // The AI's draft when its last save was held back (what it's working on), else the live app.
+  const [row] = await tx<{ page_ct: string | null; draft_ct: string | null; data_ct: string | null }[]>`select page_ct, draft_ct, data_ct from public.note_pages where note_id = ${n.id}`;
+  const box = row?.draft_ct ?? row?.page_ct;
   if (!box) throw new ToolError(`"${n.title}" has no app yet. Make one with create.`);
   let html: string, data: unknown = { values: {}, collections: {} };
   try { html = await c.v.openPage(n.id, box); } catch { throw new ToolError("This note's app can't be opened with this connection's key."); }
