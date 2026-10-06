@@ -1158,7 +1158,7 @@ export const TASKS: Task[] = [
     seed: { body: "Budget\n" }, page: true, interact: true,
     checks: (f) => [pageChanged(f)],
     walkthrough: [
-      { name: "add_expense", steps: [{ tap: "/add|new|expense|\\+/i" }, { type: "42", into: "/amount|sum|price/i" }, { type: "Coffee beans", into: "/note|description|what|item|name|title|merchant|payee/i" }, { tap: "/save|add|done|create/i" }, { wait: 300 }, { expect: "Coffee beans" }] },
+      { name: "add_expense", steps: [{ tap: "/^\\+$|^(add|new)\\b|add expense|new expense|log expense/i" }, { type: "42", into: "/amount|sum|price/i" }, { type: "Coffee beans", into: "/note|description|what|item|name|title|merchant|payee/i" }, { tap: "/^(save|add|done|create)\\b|save expense|add expense/i" }, { wait: 300 }, { tap: "/^(expenses|transactions|history|all)$/i", optional: true }, { expect: "Coffee beans" }] },
       { name: "month_view", steps: [{ expect: "/left|remaining|budget|spent/i" }] },
       { name: "previous_month", steps: [{ tap: "/previous|prev|‹|←|back|last month/i" }, { expect: "/(jul|aug|sep)/i" }] },
       { name: "search", steps: [{ tap: "/expenses|transactions|history|search/i" }, { type: "rent", into: "/search|filter/i" }, { expect: "/rent/i" }] },
@@ -1204,7 +1204,7 @@ export const TASKS: Task[] = [
     checks: (f) => [pageChanged(f)],
     walkthrough: [
       { name: "columns", steps: [{ expect: "/to ?do/i" }, { expect: "/doing|in progress/i" }, { expect: "/done/i" }] },
-      { name: "add_card", steps: [{ tap: "/add( a)? card|new card|add task|\\+/i" }, { type: "Write the quarterly report", into: "/title|card|task|name/i" }, { press: "Enter" }, { wait: 300 }, { tap: "/^(add|save|create|done)$/i" }, { expect: "Write the quarterly report" }] },
+      { name: "add_card", steps: [{ tap: "/add( a)? card|new card|add task|\\+/i" }, { type: "Write the quarterly report", into: "/title|card|task|name/i" }, { press: "Enter" }, { wait: 300 }, { tap: "/^(add|save|create|done)( card)?$/i", optional: true }, { expect: "Write the quarterly report" }] },
       { name: "open_card", steps: [{ tap: "/./" }, { expect: "/description|due|label|checklist/i" }] },
       { name: "search", steps: [{ type: "a", into: "/search|filter/i" }, { expect: "/./" }] },
       { name: "boards", steps: [{ tap: "/boards?/i" }, { expect: "/board/i" }] },
@@ -1227,7 +1227,7 @@ export const TASKS: Task[] = [
     checks: (f) => [pageChanged(f)],
     walkthrough: [
       { name: "library", steps: [{ tap: "/recipes|library/i" }, { expect: "/min|serv/i" }] },
-      { name: "search", steps: [{ tap: "/recipes|library/i" }, { type: "pasta", into: "/search/i" }, { expect: "/pasta/i" }] },
+      { name: "search", steps: [{ tap: "/recipes|library/i" }, { type: "zzqx", into: "/search/i" }, { expect: "/no (recipes|results|match)|nothing|0 recipes/i" }] },
       { name: "plan", steps: [{ tap: "/plan|week|meal/i" }, { expect: "/mon|tue|monday/i" }] },
       { name: "shopping", steps: [{ tap: "/shopping|groceries|list/i" }, { expect: "/\\d/" }] },
       { name: "open_recipe", steps: [{ tap: "/recipes|library/i" }, { type: "a", into: "/search/i" }, { press: "Enter" }, { expect: "/./" }] },

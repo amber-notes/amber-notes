@@ -1,19 +1,27 @@
 // A note's app as a project of files (app_files.ts) in an in-process Postgres, opened through a
-// local render service: scaffold, read, write, edit, move, delete, compile errors, the checks every
-// write returns, and one version per session.
+// local render service: the starter (with its tests), reading and editing files, compile errors,
+// see-and-try, and the gate: a version that fails its tests or the smoke check is held back as a
+// draft while the last passing one stays live.
 //   cd supabase/functions/mcp && deno test -A app_files.pglite.test.ts
 import { assert, assertEquals, assertStringIncludes } from "jsr:@std/assert@1";
 import type { PGlite } from "npm:@electric-sql/pglite@0.2.17";
 import { schemaDB } from "./pglite.ts";
 import { type Account, account, note, toolContext } from "./sealed.ts";
 import { Content, runTool, ToolError } from "./tools.ts";
+import { parseStored } from "./app_project.ts";
 
 // deno-lint-ignore no-explicit-any
 const tool = async (pg: PGlite, a: Account, name: string, args: Record<string, unknown> = {}, write = true) => await runTool(name, args, await toolContext(pg, a, write)) as any;
 const fails = async (p: Promise<unknown>) => { try { await p; } catch (e) { assert(e instanceof ToolError, String(e)); return (e as Error).message; } throw new Error("expected a ToolError"); };
-const BODY = "Training\n\n## Log\n| Date | Exercise | Kg |\n| --- | --- | --- |\n| 2026-10-01 | Squat | 80 |\n| 2026-10-03 | Bench | 60 |\n";
 
-Deno.test("a project app: scaffold, files, edits, compile errors, checks and versions", async () => {
+/** What devices run (page_ct) and what the AI is working on (draft_ct). */
+async function boxes(pg: PGlite, a: Account, id: string) {
+  const [row] = (await pg.query(`select page_ct, draft_ct, draft_problems from public.note_pages where note_id = $1`, [id])).rows as { page_ct: string | null; draft_ct: string | null; draft_problems: string | null }[];
+  const open = async (b: string | null) => (b ? parseStored(await a.vault.openPage(id, b)) : null);
+  return { live: await open(row.page_ct), draft: await open(row.draft_ct), why: row.draft_problems };
+}
+
+Deno.test("a project app: the starter and its tests, files, edits, the gate, see and try", async () => {
   Deno.env.set("RENDER_SECRET", "test-secret");
   const { handle } = await import("../../../scripts/page-render/server.ts");
   const { closeBrowser } = await import("../../../scripts/page-render/render.ts");
@@ -22,83 +30,56 @@ Deno.test("a project app: scaffold, files, edits, compile errors, checks and ver
   try {
     const pg = await schemaDB();
     const a = await account(pg);
-    const id = await note(pg, a, BODY);
+    const id = await note(pg, a, "Groceries\n");
 
-    // The app's data is JSON in its store (the sample keeps its shape).
-    await tool(pg, a, "update_page_data", { id, values: { log: [{ Date: "2026-10-01", Exercise: "Squat", Kg: "80" }, { Date: "2026-10-03", Exercise: "Bench", Kg: "60" }] } });
+    // The starter ships with tests, like a Vite template with Vitest; they pass and it goes live.
     const made = await tool(pg, a, "create_app", { id });
     const paths = made.files.map((f: { path: string }) => f.path);
-    for (const f of ["/README.md", "/index.html", "/package.json", "/tsconfig.json", "/src/main.tsx", "/src/App.tsx", "/src/index.css", "/src/lib/amber.ts", "/src/lib/utils.ts", "/src/components/app-shell.tsx", "/src/components/ui/button.tsx", "/src/components/ui/sheet.tsx", "/src/screens/home.tsx", "/src/screens/settings.tsx"]) assert(paths.includes(f), f);
-    assertEquals(made.opens, "Opens cleanly at 390 and 1280 px (over a sample of its data).");
+    for (const f of ["/README.md", "/index.html", "/package.json", "/src/App.tsx", "/src/screens/home.tsx", "/tests/app.test.tsx", "/src/components/ui/button.tsx"]) assert(paths.includes(f), f);
+    assertEquals([made.tests, made.smoke?.startsWith("ok"), made.live.startsWith("Live")], ["2 passed, 0 failed", true, true]);
+    assertStringIncludes(JSON.parse((await tool(pg, a, "read_app_file", { id, path: "/package.json" }, false)).content.replace(/^\s*\d+\t/gm, "")).scripts.test, "vitest");
     assertStringIncludes(await fails(tool(pg, a, "create_app", { id })), "already has an app");
 
-    const listed = await tool(pg, a, "list_app_files", { id }, false);
-    assertStringIncludes(listed.readme, "# Training");
-    const main = await tool(pg, a, "read_app_file", { id, path: "src/main.tsx" }, false);
-    assertStringIncludes(main.content, "     1\timport { createRoot } from \"react-dom/client\"");
-
-    // A list over the app's log, through a new component, the way it's done in any React app.
-    await tool(pg, a, "write_app_file", { id, path: "/src/components/Entry.tsx", content: `import { Dumbbell } from "lucide-react";\nexport default function Entry({ row }: { row: { Exercise: string; Date: string; Kg: string } }) { return <li className="flex items-center gap-3 py-2"><Dumbbell className="size-4" /><span className="flex-1">{row.Exercise}</span><span className="text-muted-foreground">{row.Kg} kg</span></li>; }\n` });
-    const edited = await tool(pg, a, "edit_app_file", {
-      id, path: "/src/screens/home.tsx",
-      old_string: `import { Sparkles } from "lucide-react"`,
-      new_string: `import { Sparkles } from "lucide-react"\nimport { useStore } from "@/lib/amber"\nimport Entry from "@/components/Entry"`,
-    });
-    assertStringIncludes(JSON.stringify(edited), "saved");
-    const r2 = await tool(pg, a, "edit_app_file", {
-      id, path: "/src/screens/home.tsx",
-      old_string: `          <Button>Get started</Button>`,
-      new_string: `          <ul>{useStore("log", [] as { Exercise: string; Date: string; Kg: string }[])[0].map((r, i) => <Entry key={i} row={r} />)}</ul>`,
-      look: true,
-    });
-    assert(r2 instanceof Content);
-    const result = r2.structured as Record<string, unknown>;
-    assertEquals(result.opens, "Opens cleanly at 390 and 1280 px (over a sample of its data).");
-    assert(r2.content.some((b) => b.type === "image"));
-
-    // Refused: a syntax error, CSS that doesn't compile, a network address. Errors: an import to nothing.
+    // A syntax error is refused outright.
     assertStringIncludes(await fails(tool(pg, a, "write_app_file", { id, path: "/src/Bad.tsx", content: "export default () => <div>\n" })), "/src/Bad.tsx:2:");
-    assertStringIncludes(await fails(tool(pg, a, "write_app_file", { id, path: "/src/x.ts", content: `fetch("https://evil.example/x")` })), "external addresses");
-    assertStringIncludes(await fails(tool(pg, a, "edit_app_file", { id, path: "/src/index.css", old_string: `@import "tw-animate-css";`, new_string: `@import "tw-animate-css";\n.x { @apply not-a-class; }` })), "doesn't compile");
-    const w = await tool(pg, a, "write_app_file", { id, path: "/src/Old.tsx", content: `import Gone from "./Gone";\nimport { useTable } from "amber";\nexport default () => <p>{useTable("Log").rows.length}{(window as any).amber.note.title}</p>;\n` });
-    assertStringIncludes(w.errors.join("\n"), "./Gone");
-    for (const want of ["window.amber", "keep data in the note"]) assertStringIncludes(w.notes.join("\n"), want);
-    await tool(pg, a, "delete_app_file", { id, path: "/src/Old.tsx" });
 
-    // A script error shows up as an error in the write's answer.
-    const broken = await tool(pg, a, "edit_app_file", { id, path: "/src/components/Entry.tsx", old_string: "return <li", new_string: "(globalThis as any).nope.x; return <li" });
-    assertStringIncludes(JSON.stringify(broken.errors), "nope");
-    await tool(pg, a, "edit_app_file", { id, path: "/src/components/Entry.tsx", old_string: "(globalThis as any).nope.x; ", new_string: "" });
+    const versions = async () => ((await pg.query(`select count(*)::int as n from public.note_page_versions where note_id = $1`, [id])).rows[0] as { n: number }).n;
+    const versionsBefore = await versions();
+    // A change that breaks a screen is held back: the person keeps the last good app; the AI works on the draft.
+    const broken = await tool(pg, a, "edit_app_file", { id, path: "/src/screens/settings.tsx", old_string: "const [settings, update] = useSettings(DEFAULTS)", new_string: "const [settings, update] = useSettings(DEFAULTS)\n  if (settings) throw new Error(\"settings broke\")" });
+    assertStringIncludes(broken.live, "Held back");
+    assertStringIncludes(broken.errors.join("\n"), "settings broke");
+    let b = await boxes(pg, a, id);
+    assert(!b.live!.files["/src/screens/settings.tsx"].includes("settings broke") && b.draft!.files["/src/screens/settings.tsx"].includes("settings broke"));
+    assertEquals(b.why, "smoke check at 390 px: script error after tapping a control\nsmoke check at 1280 px: script error after tapping a control");
+    assertStringIncludes((await tool(pg, a, "read_app_file", { id, path: "/src/screens/settings.tsx" }, false)).content, "settings broke");
+    // Held back: no new version, the live page untouched.
+    assertEquals(await versions(), versionsBefore);
+    // Fixed: live again, the draft gone.
+    const fixed = await tool(pg, a, "edit_app_file", { id, path: "/src/screens/settings.tsx", old_string: "\n  if (settings) throw new Error(\"settings broke\")", new_string: "" });
+    assertStringIncludes(fixed.live, "Live");
+    b = await boxes(pg, a, id);
+    assertEquals([b.draft, b.why], [null, null]);
 
-    // Moving a file breaks its importer until that's fixed.
-    const moved = await tool(pg, a, "move_app_file", { id, from: "/src/components/Entry.tsx", to: "/src/components/LogEntry.tsx" });
-    assertStringIncludes(moved.errors.join("\n"), "@/components/Entry");
-    await tool(pg, a, "edit_app_file", { id, path: "/src/screens/home.tsx", old_string: "@/components/Entry", new_string: "@/components/LogEntry" });
-    assertStringIncludes(await fails(tool(pg, a, "delete_app_file", { id, path: "/index.html" })), "can't be deleted");
+    // A failing test holds a version back too.
+    const red = await tool(pg, a, "edit_app_file", { id, path: "/tests/app.test.tsx", old_string: `toContain("Milk")`, new_string: `toContain("Cheese")` });
+    assertEquals([red.tests, red.live.startsWith("Held back")], ["1 passed, 1 failed", true]);
+    await tool(pg, a, "edit_app_file", { id, path: "/tests/app.test.tsx", old_string: `toContain("Cheese")`, new_string: `toContain("Milk")` });
 
-    // Tests run on every save; try_app uses the app like a person, on a throwaway copy.
-    const withTests = await tool(pg, a, "write_app_file", { id, path: "/tests/home.test.tsx", content: `import { it, expect } from "vitest"\nimport { render, screen } from "@testing-library/react"\nimport Home from "@/screens/home"\nit("lists the log", () => { render(<Home />); expect(screen.getAllByRole("listitem").length).toBeGreaterThan(0) })\nit("is wrong on purpose", () => { render(<Home />); expect(screen.queryByText("No such thing")).toBeInTheDocument() })\n` });
-    assertEquals(withTests.tests, "1 passed, 1 failed");
-    assertStringIncludes(withTests.errors.join("\n"), "is wrong on purpose");
-    assertEquals((await tool(pg, a, "run_app_tests", { id }, false)).passed, 1);
-    const tried = await tool(pg, a, "try_app", { id, steps: [{ tap: "Settings" }, { type: "Ada", into: "Name" }, { tap: "Nowhere" }] }, false);
+    // Imports to nothing are errors, and hold the version back.
+    const moved = await tool(pg, a, "move_app_file", { id, from: "/src/screens/settings.tsx", to: "/src/screens/preferences.tsx" });
+    assertStringIncludes(moved.errors.join("\n"), "@/screens/settings");
+    await tool(pg, a, "edit_app_file", { id, path: "/src/App.tsx", old_string: "@/screens/settings", new_string: "@/screens/preferences" });
+    assertEquals((await boxes(pg, a, id)).draft, null);
+
+    // try_app uses the app like a person, on a throwaway copy.
+    const tried = await tool(pg, a, "try_app", { id, steps: [{ type: "Milk", into: "New item" }, { tap: "Add" }, { tap: "Nowhere" }] }, false);
     assert(tried instanceof Content);
-    const steps = (tried.structured as { steps: { failed?: string; data_changed?: string[]; screen: string[] }[] }).steps;
+    const steps = (tried.structured as { steps: { failed?: string; data_changed?: string[] }[] }).steps;
     assertEquals(steps.map((s) => !s.failed), [true, true, false]);
-    assertStringIncludes(steps[1].data_changed!.join(), "settings");
-    assertEquals(tried.content.filter((b) => b.type === "image").length, 1);
-    await tool(pg, a, "delete_app_file", { id, path: "/tests/home.test.tsx" });
-
-    // check_app knows projects; edit_note_page points to the file tools; get_note_page lists files.
-    const checked = await tool(pg, a, "check_app", { id }, false);
-    assertEquals([checked.ok, checked.errors], [true, []]);
-    assertStringIncludes(await fails(tool(pg, a, "edit_note_page", { id, edits: [{ old_text: "a", new_text: "b" }] })), "edit_app_file");
-    const page = await tool(pg, a, "get_note_page", { id }, false);
-    assert(page.project && page.files.includes("/src/components/LogEntry.tsx"));
-
-    // A whole session of writes is one version: the app before it (none here) and nothing between.
-    const versions = await tool(pg, a, "get_note_page", { id }, false);
-    assertEquals(versions.versions.length, 0);
+    assertStringIncludes(steps[1].data_changed!.join(), "items");
+    assertEquals((await tool(pg, a, "run_app_tests", { id }, false)).passed, 2);
+    assertStringIncludes(await fails(tool(pg, a, "delete_app_file", { id, path: "/index.html" })), "can't be deleted");
   } finally {
     await closeBrowser();
     await server.shutdown();

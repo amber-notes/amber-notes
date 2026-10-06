@@ -72,10 +72,12 @@ export const fileTools = [
   },
 ];
 
-export async function projectOf(tx: Tx, c: Call, id: string): Promise<{ project: Project; exists: boolean }> {
-  const [row] = await tx<{ page_ct: string | null }[]>`select page_ct from public.note_pages where note_id = ${id} for update`;
-  if (!row?.page_ct) return { project: parseStored(null), exists: false };
-  try { return { project: parseStored(await c.v.openPage(id, row.page_ct)), exists: true }; } catch { throw new ToolError("This note's app can't be opened with this connection's key."); }
+/** The app the AI is working on: its draft when the last save was held back, else the live one. */
+export async function projectOf(tx: Tx, c: Call, id: string): Promise<{ project: Project; exists: boolean; draft?: string | null }> {
+  const [row] = await tx<{ page_ct: string | null; draft_ct: string | null; draft_problems: string | null }[]>`select page_ct, draft_ct, draft_problems from public.note_pages where note_id = ${id} for update`;
+  const box = row?.draft_ct ?? row?.page_ct;
+  if (!box) return { project: parseStored(null), exists: false };
+  try { return { project: parseStored(await c.v.openPage(id, box)), exists: true, draft: row?.draft_ct ? row.draft_problems ?? "" : null }; } catch { throw new ToolError("This note's app can't be opened with this connection's key."); }
 }
 
 /** The app's own data (for a sample with its shape), or empty. */
@@ -89,6 +91,13 @@ const lines = (t: string) => t.split("\n").length;
 export const fileList = (p: Project) => Object.keys(p.files).sort().map((path) => ({ path, bytes: new TextEncoder().encode(p.files[path]).length, lines: lines(p.files[path]) }));
 
 /** Checks, stores and reports a project after one change. Refuses what the app couldn't run. */
+/**
+ * Checks a project and saves it. It goes live (devices run it) only when it passes the gate: its own
+ * tests and a smoke check (opens at phone and desktop sizes, each visible tab and button tapped
+ * once, on a throwaway copy of the data: no crash, no console errors, no blank screen, the data
+ * store working). A version that fails is kept as the app's draft, which the AI keeps working on;
+ * the last one that passed keeps running for the person (20261007100800_app_drafts.sql).
+ */
 export async function saveProject(tx: Tx, c: Call, n: Note, unlinked: Project, changed: string, a: Args) {
   const linked = await linkProject(unlinked);
   if (linked.error) throw new ToolError(`Not saved: the CSS doesn't compile.\n${linked.error}`);
@@ -97,35 +106,55 @@ export async function saveProject(tx: Tx, c: Call, n: Note, unlinked: Project, c
   const declared = declaredHosts(p.files["/index.html"] ?? "");
   const problems = [...projectProblems(p), ...sourceProblems(p, (h) => hostDeclared(declared, h))];
   if (problems.length) throw new ToolError(`Not saved:\n- ${problems.join("\n- ")}`);
-  // The file tools write often: within ten minutes, the same writer's earlier app isn't kept as
-  // another version (20261007100600_app_file_writes_coalesce.sql), so Previous App means "before".
-  await tx`select set_config('pane.coalesce', 'on', true)`;
-  await tx`insert into public.note_pages (note_id, page_ct) values (${n.id}, ${await c.v.sealPage(n.id, stored)})
-    on conflict (note_id) do update set page_ct = excluded.page_ct`;
-  await tx`select set_config('pane.coalesce', 'off', true)`;
   const broken = brokenImports(p);
   const warnings = styleWarnings(p);
   const body = await bodyOf(c.v, n);
   const t = new Date().toISOString().slice(0, 10);
-  const r = await render({
-    html: stored, markdown: sampleNote(body, t), data: sampleData(await dataOf(tx, c, n.id), t), today: t,
-    views: [{ width: 390, scheme: "light" }, { width: 1280, scheme: "light" }], capture: a.look === true, interact: false, probes: false,
-  });
+  const sample = { html: stored, markdown: sampleNote(body, t), data: sampleData(await dataOf(tx, c, n.id), t), today: t };
+  const r = await render({ ...sample, views: [{ width: 390, scheme: "light" }, { width: 1280, scheme: "light" }], capture: a.look === true, interact: false, probes: false });
   const found = typeof r === "string" ? null : renderedFindings(r);
-  // The project's own tests run on every save when it has them.
-  const tested = Deno.env.get("AMBER_NO_TRY") !== "1" && Object.keys(p.files).some(isTest) && typeof r !== "string"
-    ? await render({ html: stored, markdown: sampleNote(body, t), data: sampleData(await dataOf(tx, c, n.id), t), today: t, tests: true }) : null;
+  const gateOn = Deno.env.get("AMBER_NO_TRY") !== "1";
+  // The app's own tests, and the smoke check, on every save.
+  const tested = gateOn && Object.keys(p.files).some(isTest) && typeof r !== "string" ? await render({ ...sample, tests: true }) : null;
   const tests = tested && typeof tested !== "string" ? testSummary(tested) : null;
-  // Errors: the app is broken (an import to nothing, a script error, overflow…). Notes: information.
-  const errors = [...broken, ...(found?.errors ?? []), ...(tests?.failures.map((f) => `test failed: ${f}`) ?? [])];
+  const smoked = gateOn && typeof r !== "string" ? await render({ ...sample, smoke: true }) : null;
+  const smoke = smoked && typeof smoked !== "string" ? smoked.smoke : null;
+  const scriptErrors = (found?.errors ?? []).filter((e) => /script error|blank|tried to load/.test(e));
+  const failures = [...broken, ...scriptErrors, ...(smoke?.problems ?? []), ...(tests?.failures.map((f) => `test failed: ${f}`) ?? [])];
+  const live = failures.length === 0;
+  const sealed = await c.v.sealPage(n.id, stored);
+  if (live) {
+    // The file tools write often: within ten minutes, the same writer's earlier app isn't kept as
+    // another version (20261007100600_app_file_writes_coalesce.sql), so Previous App means "before".
+    await tx`select set_config('pane.coalesce', 'on', true)`;
+    await tx`insert into public.note_pages (note_id, page_ct) values (${n.id}, ${sealed})
+      on conflict (note_id) do update set page_ct = excluded.page_ct, draft_ct = null, draft_problems = null`;
+    await tx`select set_config('pane.coalesce', 'off', true)`;
+  } else {
+    // What failed, by name only (test and check names, never note content or data): the device
+    // shows it in App Info while the draft is held back.
+    const why = [
+      ...broken.map((b) => `import: ${b.split(" imports ")[0]}`),
+      ...scriptErrors.map((e) => `opens: ${e.split(":")[0]}`),
+      ...(smoke?.problems ?? []).map((m) => `smoke check at ${m.split(" px")[0]} px: ${/blank/.test(m) ? "blank screen" : /saving its data/.test(m) ? "saving data failed" : /pageerror|Error/.test(m) ? "script error" : "console error"}${/after tapping/.test(m) ? " after tapping a control" : ""}`),
+      ...(tested && typeof tested !== "string" ? [...(tested.tests ?? []).filter((x) => !x.ok).map((x) => `test: ${x.file ?? ""} › ${x.name}`), ...((tested.testErrors ?? []).map((e) => `test file: ${e.split(":")[0]}`))] : []),
+    ].filter((x, k, all) => all.indexOf(x) === k).join("\n").slice(0, 3900);
+    await tx`insert into public.note_pages (note_id, draft_ct, draft_problems) values (${n.id}, ${sealed}, ${why})
+      on conflict (note_id) do update set draft_ct = excluded.draft_ct, draft_problems = excluded.draft_problems`;
+  }
+  const [{ has_live }] = await tx<{ has_live: boolean }[]>`select page_ct is not null as has_live from public.note_pages where note_id = ${n.id}`;
+  const errors = [...broken, ...(found?.errors ?? []), ...(smoke?.problems ?? []), ...(tests?.failures.map((f) => `test failed: ${f}`) ?? [])];
   const notes = [...warnings, ...(found?.notes ?? [])].slice(0, 10);
   const result = {
     app: { id: n.id, title: n.title }, [changed.startsWith("deleted") ? "deleted" : "saved"]: changed.replace(/^deleted /, ""), files: Object.keys(p.files).length,
+    live: live ? "Live: the person's devices run this version." : has_live
+      ? "Held back: this version failed the checks below, so the person keeps the last version that passed. Fix them and save again; it goes live when it passes."
+      : "Held back: this version failed the checks below, so the app won't open for the person until a version passes.",
     ...(errors.length ? { errors } : found ? { opens: "Opens cleanly at 390 and 1280 px (over a sample of its data)." } : {}),
     ...(found === null ? { browser: r } : {}),
     ...(tests ? { tests: `${tests.passed} passed, ${tests.failed} failed` } : {}),
+    ...(smoke ? { smoke: smoke.ok ? `ok (${smoke.taps} taps)` : `failed (${smoke.taps} taps)` } : {}),
     ...(notes.length ? { notes } : {}),
-    next: errors.length ? "Fix the errors, then keep going." : "Keep going; run check_app (and preview_app) when the app is done.",
   };
   const shot = typeof r !== "string" && a.look === true ? r.views.find((v) => v.png)?.png : undefined;
   return shot ? new Content([{ type: "text", text: JSON.stringify(result, null, 2) }, { type: "image", data: shot, mimeType: "image/png" }], result) : result;

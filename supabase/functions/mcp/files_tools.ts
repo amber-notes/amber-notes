@@ -16,7 +16,7 @@ import { dataShape } from "./data_ops.ts";
 import { appHandlers } from "./app_tools.ts";
 import type { PageData } from "./page.ts";
 import {
-  bodyOf, clampInt, findFolder, folders, type FolderRow, handlers as classic, HEAD_COLUMNS, iso, listedNotes, MAX_READ_CHARS,
+  bodyOf, clampInt, Content, findFolder, folders, type FolderRow, handlers as classic, HEAD_COLUMNS, iso, listedNotes, MAX_READ_CHARS,
   type Note, type NoteRow, notesById, pathOf, quote, refuseLocked, runIn, save, Scan, searchAll, type Tool, type ToolContext, ToolError, type Tx, type Call, UUID,
   wholeNumber, withHead, checkSize,
 } from "./tools.ts";
@@ -363,8 +363,10 @@ export const fileHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
     }
     const p = await appProject(tx, c, r.note);
     if (r.kind === "app") {
+      const { draft } = await projectOf(tx, c, r.note.id);
       return { id: `${r.note.id}.app`, title: `${r.note.title} (app)`, text: [...fileList(p).map((f) => `${base}${f.path}  (${f.lines} lines)`), `${base}/data.json`].join("\n"), url: urlOf(r.note.id),
-        metadata: { path: `${base}/`, readme: p.files["/README.md"] ?? null } };
+        metadata: { path: `${base}/`, readme: p.files["/README.md"] ?? null, ...(await loadFailure(tx, r.note.id)),
+          ...(draft !== null && draft !== undefined ? { held_back: `These files are a version that failed its checks, so the person still has the last one that passed. What failed:\n${draft}` } : {}) } };
     }
     const file = cleanPath(r.path);
     if (p.files[file] === undefined) throw new ToolError(`No ${base}${file}. Files: ${Object.keys(p.files).sort().join(", ")}.`);
@@ -569,10 +571,20 @@ export const fileHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
   async see_app(tx, a, c) {
     const r = await resolve(tx, c, a.id);
     if (r.kind !== "note" && r.kind !== "app") throw new ToolError("see_app takes the app's note.");
-    if (Array.isArray(a.steps) && a.steps.length && tryOn()) return await appHandlers.try_app(tx, { id: r.note.id, steps: a.steps, data: a.data, screenshots: "last" }, c);
-    return await appHandlers.preview_app(tx, { id: r.note.id, widths: a.widths, themes: a.themes, data: a.data }, c);
+    const failure = await loadFailure(tx, r.note.id);
+    const seen = Array.isArray(a.steps) && a.steps.length && tryOn()
+      ? await appHandlers.try_app(tx, { id: r.note.id, steps: a.steps, data: a.data, screenshots: "last" }, c)
+      : await appHandlers.preview_app(tx, { id: r.note.id, widths: a.widths, themes: a.themes, data: a.data }, c);
+    if (!Object.keys(failure).length) return seen;
+    return seen instanceof Content ? new Content([{ type: "text", text: JSON.stringify(failure) }, ...seen.content], { ...seen.structured, ...failure }) : { ...(seen as object), ...failure };
   },
 };
+
+/** The newest time a device couldn't open the live app and went back to an earlier one. */
+async function loadFailure(tx: Tx, id: string): Promise<Record<string, unknown>> {
+  const [f] = await tx<{ message: string; device: string | null; at: Date }[]>`select message, device, at from public.app_load_failures where note_id = ${id} order by at desc limit 1`;
+  return f ? { load_failure: { message: f.message, device: f.device, at: iso(f.at), what_happened: "A device couldn't open the live version and went back to an earlier one, with the current data. Fix the cause and save." } } : {};
+}
 
 async function moveAppFile(tx: Tx, c: Call, n: Note, from: string, to: string, a: Args) {
   const p = await appProject(tx, c, n);

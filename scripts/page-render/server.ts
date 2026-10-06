@@ -31,7 +31,7 @@ export async function handle(req: Request): Promise<Response> {
   if (req.headers.get("authorization") !== `Bearer ${secret}`) return new Response("Unauthorized", { status: 401 });
   const text = await req.text();
   if (text.length > MAX_BODY) return new Response("Too big", { status: 413 });
-  let body: { html?: unknown; markdown?: unknown; data?: unknown; today?: unknown; views?: unknown; capture?: unknown; interact?: unknown; probes?: unknown; widget?: unknown; steps?: unknown; tests?: unknown };
+  let body: { html?: unknown; markdown?: unknown; data?: unknown; today?: unknown; views?: unknown; capture?: unknown; interact?: unknown; probes?: unknown; widget?: unknown; steps?: unknown; tests?: unknown; smoke?: unknown };
   try { body = JSON.parse(text); } catch { return new Response("Bad JSON", { status: 400 }); }
   if (typeof body.html !== "string" || typeof body.markdown !== "string") return new Response("html and markdown are required", { status: 400 });
   const views = Array.isArray(body.views) ? (body.views as { width: number; scheme: string }[])
@@ -46,11 +46,11 @@ export async function handle(req: Request): Promise<Response> {
   const r = await serial(() => renderPage(body.html as string, body.markdown as string, body.data ?? {}, {
     today: typeof body.today === "string" ? body.today : new Date().toISOString().slice(0, 10),
     views, capture: body.capture === true, interact: body.interact === true, probes: body.probes !== false, widget: body.widget === true,
-    ...(Array.isArray(body.steps) ? { steps: (body.steps as Step[]).slice(0, 30) } : {}), ...(body.tests === true ? { tests: true } : {}),
+    ...(Array.isArray(body.steps) ? { steps: (body.steps as Step[]).slice(0, 30) } : {}), ...(body.tests === true ? { tests: true } : {}), ...(body.smoke === true ? { smoke: true } : {}),
   }));
   const ms = Math.round(performance.now() - t0);
   console.log(JSON.stringify({ at: new Date().toISOString(), ms, views: r.views.length, bytes: text.length, memoryBytes: memory() }));
-  return Response.json({ views: r.views.map(({ screenshot: _, ...v }) => v), interaction: r.interaction, probes: r.probes, blocked: r.blocked, ms, memoryBytes: memory(), ...(r.trial ? { trial: r.trial, dataAfter: r.dataAfter } : {}), ...(r.tests ? { tests: r.tests, testErrors: r.testErrors } : {}) });
+  return Response.json({ views: r.views.map(({ screenshot: _, ...v }) => v), interaction: r.interaction, probes: r.probes, blocked: r.blocked, ms, memoryBytes: memory(), ...(r.trial ? { trial: r.trial, dataAfter: r.dataAfter } : {}), ...(r.tests ? { tests: r.tests, testErrors: r.testErrors } : {}), ...(r.smoke ? { smoke: r.smoke } : {}) });
 }
 
 if (import.meta.main) {

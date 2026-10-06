@@ -3,7 +3,7 @@
 import { assert, assertEquals, assertStringIncludes } from "jsr:@std/assert@1";
 import type { PGlite } from "npm:@electric-sql/pglite@0.2.17";
 import { schemaDB } from "./pglite.ts";
-import { type Account, account, note, opened, toolContext } from "./sealed.ts";
+import { type Account, account, app, note, opened, toolContext } from "./sealed.ts";
 import { ToolError } from "./tools.ts";
 import { FILE_TOOLS, runFileTool } from "./files_tools.ts";
 
@@ -99,4 +99,8 @@ Deno.test("an app: create, its files, and data.json edited like a file, one chan
   assert(row.data_ct);
   assertStringIncludes(await fails(tool(pg, a, "edit", { id: "Health/Habits.app/data.json", edits: [{ old_text: "\"values\": {", new_text: "\"values\": {{" }] })), "isn't valid JSON");
   assertEquals((await tool(pg, a, "see_app", { id: "Health/Habits.md" })).previews, "unavailable");
+  // A device that couldn't open the live app says so; the AI sees it when it looks.
+  await app(pg, a.id, `insert into public.app_load_failures (note_id, message, device) select note_id, 'TypeError: x is undefined', 'iPhone' from public.note_pages limit 1`);
+  assertEquals((await tool(pg, a, "fetch", { id: "Health/Habits.app" })).metadata.load_failure.message, "TypeError: x is undefined");
+  assertEquals((await tool(pg, a, "see_app", { id: "Health/Habits.md" })).load_failure.device, "iPhone");
 });

@@ -1,9 +1,0 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8">
-<meta name="amber-needs" content='{"keys":[{"name":"OpenWeather","hosts":["api.openweathermap.org"],"query":"appid={key}","help":"Make a free key at openweathermap.org, under My API keys."}]}'>
-<style>main{max-width:var(--amber-content-max);margin:0 auto;padding:20px var(--amber-gutter)}.card{background:var(--amber-surface);border-radius:var(--amber-radius);padding:16px}.muted{color:var(--amber-text-secondary)}</style></head>
-<body><main><h1 id="t"></h1><div class="card" id="w">Loading the weather…</div></main><script>
-const esc=(s)=>String(s??"").replace(/[&<>"']/g,(c)=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
-amber.onChange(async (note) => { t.textContent = note.title;
-  const r = await amber.fetch("https://api.openweathermap.org/data/2.5/weather?q=Porto&units=metric", { key: "OpenWeather" });
-  w.innerHTML = r.ok ? esc(JSON.parse(r.body).main.temp) + " °C" : '<span class="muted">' + esc(r.error || "No weather yet") + "</span>"; });
-</script></body></html>

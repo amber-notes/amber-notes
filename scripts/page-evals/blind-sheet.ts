@@ -1,13 +1,13 @@
 // A blind side-by-side of an experiment round: per task, every run's app at 390 px and 1280 px,
 // labelled A, B, C… in a shuffled order. Which label is which arm goes to a separate key file.
-//   deno run -A scripts/page-evals/blind-sheet.ts <round> <out dir>
+//   deno run -A scripts/page-evals/blind-sheet.ts <round> <out dir> [only runs whose name has this, e.g. claude]
 import { webkit } from "npm:playwright-core@1.63.0";
 import { closeBrowser, renderPage } from "../page-render/render.ts";
 
-const [round, outDir] = Deno.args;
+const [round, outDir, only] = Deno.args;
 const dir = new URL(`results/${round}/`, import.meta.url).pathname;
 await Deno.mkdir(outDir, { recursive: true });
-const runs = [...Deno.readDirSync(dir)].filter((e) => e.name.endsWith(".json")).map((e) => ({ stem: e.name.slice(0, -5), r: JSON.parse(Deno.readTextFileSync(`${dir}${e.name}`)) }));
+const runs = [...Deno.readDirSync(dir)].filter((e) => e.name.endsWith(".json")).map((e) => ({ stem: e.name.slice(0, -5), r: JSON.parse(Deno.readTextFileSync(`${dir}${e.name}`)) })).filter((x) => !only || x.stem.includes(only));
 const byTask = new Map<string, typeof runs>();
 for (const x of runs) byTask.set(x.r.task, [...(byTask.get(x.r.task) ?? []), x]);
 const key: Record<string, Record<string, string>> = {};
@@ -19,7 +19,7 @@ for (const [task, list] of byTask) {
   key[task] = {};
   for (const [i, { stem, r }] of shuffled.entries()) {
     const label = String.fromCharCode(65 + i);
-    key[task][label] = `${r.hidden?.length ? "without tools" : "with tools"} (${stem})`;
+    key[task][label] = `${r.hidden?.length || r.arm === "screens" ? "screens only" : "steps + tests"} (${stem})`;
     const page = Deno.readTextFileSync(`${dir}${stem}.page.html`);
     if (!page) { cells.push(`<section><h2>${label}</h2><p>no app</p></section>`); continue; }
     const prefix = `${outDir}/${task}-${label}`;
