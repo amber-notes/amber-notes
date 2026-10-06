@@ -9,64 +9,63 @@ const json = (r: unknown) => JSON.stringify(r, null, 2);
 
 function entries(list: R[] = []): string[] {
   const w = Math.min(60, Math.max(0, ...list.map((n) => String(n.path).length)) + 2);
-  return list.map((n) => `  ${pad(n.path, w)}${when(n.updated)}${n.pinned ? "  pinned" : ""}${n.locked ? "  locked" : ""}${n.app ? "  app" : ""}${n.deleted ? `  deleted ${when(n.deleted)}` : ""}`);
+  return list.map((n) => `  ${pad(n.path, w)}${when(n.updated)}${n.pinned ? "  pinned" : ""}${n.locked ? "  locked" : ""}${n.app ? "  app" : ""}${n.type === "file" ? `  ${n.kind ?? "file"}` : ""}${n.deleted ? `  deleted ${when(n.deleted)}` : ""}`);
 }
 
 export const formatters: Record<string, (r: R) => string> = {
   search(r) {
-    if (!r.results?.length) return "No notes match.";
-    const out = r.results.map((x: R) => `${x.path}\n  ${String(x.snippet ?? "").replace(/\s+/g, " ").trim()}`);
-    if (r.no_note_has_every_word) out.unshift("No note has every word; these have some.\n");
-    return out.join("\n");
+    if (Array.isArray(r.results)) {
+      if (!r.results.length) return "No notes match.";
+      const out = r.results.map((x: R) => `${x.id}\n  ${String(x.snippet ?? "").replace(/\s+/g, " ").trim()}`);
+      if (r.no_note_has_every_word) out.unshift("No note has every word; these have some.\n");
+      return [...out, ...(r.more ? [r.more] : []), ...(r.searched ? [`(searched ${r.searched})`] : [])].join("\n");
+    }
+    if (Array.isArray(r.lines)) return [...r.lines, ...(r.more ? [r.more] : [])].join("\n") || "No matches.";
+    if (Array.isArray(r.files)) return [...r.files, ...(r.more ? [r.more] : [])].join("\n") || "No matches.";
+    if (typeof r.matches === "number") return `${r.matches} matches${r.notes !== undefined ? ` in ${r.notes} notes` : ""}`;
+    return json(r);
   },
 
   list(r) {
-    if (typeof r.notes === "number") {
-      const out = [`${r.notes} notes${r.recently_deleted ? `, ${r.recently_deleted} in Recently Deleted` : ""}`];
-      if (r.folders?.length) out.push("", "Folders", ...r.folders.map((f: R) => `  ${pad(f.path, 30)}${f.notes}`));
-      if (r.pinned?.length) out.push("", "Pinned", ...entries(r.pinned));
-      if (r.recently_edited?.length) out.push("", "Recently edited", ...entries(r.recently_edited));
+    if (Array.isArray(r.entries) || Array.isArray(r.matches)) {
+      const list = (r.entries ?? r.matches) as R[];
+      const out = [r.path ?? r.pattern, ...entries(list)];
+      if (!list.length) out.push("  (empty)");
+      if (r.more) out.push(r.more);
+      if (r.recently_deleted) out.push(`(${r.recently_deleted})`);
       return out.join("\n");
     }
-    if (Array.isArray(r.files)) return r.files.map((f: R) => `  ${f.path}${f.what ? `  (${f.what})` : ""}`).join("\n");
-    if (r.sub_notes) return [r.path, ...entries(r.sub_notes), ...(r.app ? [`  ${r.app}`] : [])].join("\n");
-    const out = [r.path];
-    for (const f of r.folders ?? []) out.push(`  ${f}`);
-    out.push(...entries(r.notes));
-    if (out.length === 1) out.push("  (empty)");
-    return out.join("\n");
-  },
-
-  create: (r) => r.created ? `Created ${r.created}${r.next ? `\n${r.next}` : ""}${checks(r)}` : json(r),
-  edit: (r) => r.unchanged ? `No change to ${r.path}.` : r.edited ? `Edited ${r.edited} (version ${r.version})${checks(r)}` : r.saved ? `Saved ${r.app}: ${r.saved}` : json(r),
-  write: (r) => r.unchanged ? `No change to ${r.path}.` : r.written ? `Wrote ${r.written} (version ${r.version})${checks(r)}` : r.saved ? `Saved ${r.app}: ${r.saved}` : json(r),
-  move: (r) => r.moved ? `Moved to ${r.moved}` : json(r),
-  delete(r) {
-    const d = r.deleted;
-    if (d && typeof d === "object" && d.title) return `Moved "${d.title}" to Recently Deleted${d.sub_notes_moved ? ` with ${d.sub_notes_moved} sub-note${d.sub_notes_moved > 1 ? "s" : ""}` : ""}. Bring it back with: amber restore ${d.id}`;
-    if (d && typeof d === "object" && "notes_moved_to_recently_deleted" in d) return `Deleted the folder; ${d.notes_moved_to_recently_deleted} notes went to Recently Deleted.`;
-    return typeof d === "string" ? `Deleted ${d}` : json(r);
-  },
-  history(r) {
-    if (Array.isArray(r.revisions)) {
-      if (!r.revisions.length) return `"${r.title}" has no earlier versions.`;
-      return [`"${r.title}", now version ${r.current_version}. Earlier versions, newest first:`, ...r.revisions.map((v: R) =>
-        `  ${pad(String(v.version), 8)}${pad(when(v.replaced_at), 18)}${pad(String(v.replaced_by ?? ""), 18)}${v.locked ? "(locked)" : v.title}`), "", "Bring one back with: amber restore <note> <version>"].join("\n");
-    }
-    if (Array.isArray(r.versions)) return [`${r.app} (app)`, ...r.versions.map((v: R) => `  ${pad(String(v.version), 8)}${pad(v.what, 6)}${pad(when(v.made), 18)}${v.made_by ?? ""}`)].join("\n");
+    if (Array.isArray(r.files)) return [...r.files.map((f: R) => `  ${f.path}${f.what ? `  (${f.what})` : ""}`), ...(r.more ? [r.more] : [])].join("\n");
     return json(r);
   },
-  restore(r) {
-    const x = r.restored;
-    if (x && typeof x === "object") return `Restored "${x.title}"${x.restored_to ? ` to ${x.restored_to}/` : ""}${x.version ? ` (now version ${x.version})` : ""}.${x.already_restored ? " It wasn't deleted." : ""}`;
-    return typeof x === "string" ? `Restored ${x}.` : json(r);
+
+  create: (r) => r.created ? `Created ${r.created}${r.next ? `\n${r.next}` : ""}${checks(r)}` : r.app ? `Created ${r.app}${r.next ? `\n${r.next}` : ""}` : json(r),
+  edit: (r) => r.unchanged ? `No change to ${r.path}.` : r.edited ? `Edited ${r.edited}${checks(r)}` : r.saved ? `Saved ${r.saved}${r.live ? `\n${r.live}` : ""}` : json(r),
+  write: (r) => r.unchanged ? `No change to ${r.path}.` : r.written ? `Wrote ${r.written}${checks(r)}` : r.created ? `Created ${r.created}${checks(r)}` : r.saved ? `Saved ${r.saved}${r.live ? `\n${r.live}` : ""}` : json(r),
+  move: (r) => r.moved ? `Moved to ${r.moved}` : json(r),
+  delete(r) {
+    if (typeof r.deleted !== "string") return json(r);
+    if (r.now_at) return `Moved ${r.deleted} to ${r.now_at}${r.with_sub_notes ? ` with ${r.with_sub_notes} sub-note${r.with_sub_notes > 1 ? "s" : ""}` : ""}. Bring it back with: amber restore ${JSON.stringify(r.now_at)}`;
+    return `Deleted ${r.deleted}${r.notes_moved_to ? `; its notes went to ${r.notes_moved_to}` : ""}`;
   },
+  history(r) {
+    if (!Array.isArray(r.versions)) return json(r);
+    if (!r.versions.length) return `${r.path} has no earlier versions.`;
+    return [`${r.path}: earlier versions, newest first:`, ...r.versions.map((v: R) =>
+      v.what ? `  ${pad(String(v.version), 8)}${pad(v.what, 6)}${pad(when(v.made), 18)}${v.made_by ?? ""}`
+        : `  ${pad(String(v.version), 8)}${pad(when(v.replaced_at), 18)}${pad(String(v.replaced_by ?? ""), 18)}${v.locked ? "(locked)" : v.title}`),
+      "", "Bring one back with: amber restore <note> <version>"].join("\n");
+  },
+  restore: (r) => typeof r.restored === "string" ? `Restored ${r.restored}${r.version ? ` (version ${r.version})` : ""}.` : json(r),
   pin: (r) => `${r.pinned ? "Pinned" : "Unpinned"} ${r.path}`,
 };
 
+/** cat -n lines ("     3\tText") back to the text itself. */
+export const unnumbered = (text: string) => /^ *\d+\t/.test(text) ? text.split("\n").map((l) => l.replace(/^ *\d+\t/, "")).join("\n") : text;
+
 /** A note's text for `amber read`, exactly as stored; folders and other things fall back to their text. */
-export function readText(r: R): string {
-  return typeof r.text === "string" ? r.text : json(r);
+export function readText(r: R, numbers = false): string {
+  return typeof r.text === "string" ? (numbers ? r.text : unnumbered(r.text)) : json(r);
 }
 
 export function format(tool: string, r: unknown): string {

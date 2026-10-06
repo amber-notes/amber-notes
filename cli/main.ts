@@ -9,14 +9,16 @@ import { DEFAULT_SERVER, loadConfig, loadCredentials, saveConfig, saveCredential
 
 const HELP = `amber: your Amber Notes from the terminal
 
-Notes are paths like "Work/Acme.md"; folders end in "/". A note's id works too.
+Notes are paths like "Work/Acme.md"; folders end in "/". A note's sub-notes and files are in the
+folder with its name ("Work/Acme/Agenda.md"). Read a note before you edit or write it.
 
-  amber search <words>               find notes ("quoted phrase", OR, -word)
-  amber list [<folder>/]             overview, or a folder's notes
-  amber read <note> [--lines 40-90]  print a note's markdown
-  amber create <folder> [<text>]     new note; the first line is its title (text or stdin)
+  amber search <words>               find notes, best first ("quoted phrase", OR, -word)
+  amber grep <pattern> [<path>]      lines matching a regular expression (--files, --count, -C 2)
+  amber list [<folder>/] [--glob G]  a folder, newest first; --glob "**/*.md" over everything below
+  amber read <note> [--offset N]     print a note's markdown (--limit N lines; --numbers)
+  amber create <path> [<text>]       new note "Work/Acme.md" (text or stdin), or a folder "Work/"
   amber edit <note> <old> <new>      replace exact text, once (--all for every match)
-  amber write <note>                 replace the whole note with stdin
+  amber write <note>                 write the whole note from stdin
   amber move <note> <to>             to a folder ("Archive/") or a new name ("Work/New.md")
   amber delete <note>                to Recently Deleted
   amber history <note>               earlier versions
@@ -31,11 +33,12 @@ Add --json for the server's full answer (for scripts and agents).
 amber help <command> for more.`;
 
 const MORE: Record<string, string> = {
-  search: `amber search <words> [--limit 10]\n\nFinds notes by their words. "exact phrase", a OR b, -word. Locked notes are left out.\nPrints each note's path and a snippet.`,
-  list: `amber list               the overview: folders, pinned and recently edited notes\namber list Work/          a folder's notes and sub-folders\namber list "Recently Deleted/"`,
-  read: `amber read <note> [--lines 40-120]\n\nPrints the note's markdown exactly, nothing else, so it pipes.\nLong notes come in parts; amber read says on stderr how to get the next one.`,
-  create: `amber create Work "Standup\\n\\n- shipped the CLI"\namber create Work < note.md\namber create Work/Standup.md < body.md     (adds "Standup" as the first line if missing)\namber create Work/Clients/                 (a folder)\n\n  --inside <note>   make it a sub-note of that note\n  --pin             pin it`,
-  edit: `amber edit <note> <old text> <new text> [--all]\n\nExact search and replace. old text must occur exactly once (unless --all), or nothing changes.\nnew text "" deletes.\nPrints what the change broke, if anything (a damaged table, a checklist line that won't tick).`,
+  search: `amber search <words> [--limit 20] [--offset 20] [--path Work/]\n\nFinds notes by their words, best first. "exact phrase", a OR b, -word. Locked notes are left out.\nPrints each note's path and a snippet.`,
+  grep: `amber grep <pattern> [<path>] [--files | --count] [-C 2] [--case]\n\nLines matching a regular expression, as path:line: text. <path> narrows it: a folder, a note, a glob.\n  --files   only the matching notes' paths\n  --count   how many matches\n  -C N      N lines of context\n  --case    case-sensitive`,
+  list: `amber list                   the top level, newest first\namber list Work/              a folder\namber list Work/Acme/         a note's sub-notes and files\namber list --glob "**/*.md"   every path that matches\namber list "Recently Deleted/"`,
+  read: `amber read <note> [--offset 40] [--limit 80] [--numbers]\n\nPrints the note's markdown exactly, nothing else, so it pipes (--numbers: with line numbers).\nLong notes come in parts; amber read says on stderr how to get the next one.`,
+  create: `amber create Work/Standup.md "- shipped the CLI"   (its name is its title)\namber create Work/Standup.md < body.md\namber create Work/Acme/Agenda.md < agenda.md        (in a note's folder: a sub-note)\namber create Work/Clients/                          (a folder)\n\n  --pin             pin it`,
+  edit: `amber edit <note> <old text> <new text> [--all]\n\nExact search and replace, after amber read in this terminal. old text must occur exactly once\n(unless --all), or nothing changes. new text "" deletes.\nPrints what the change broke, if anything (a damaged table, a checklist line that won't tick).`,
   write: `amber write <note> < new.md\n\nReplaces the whole note with stdin. The old text stays in history. Prefer edit for small changes.`,
   move: `amber move <note> Archive/           to a folder (made if needed)\namber move <note> "Work/New name.md"  rename (rewrites the first line)\namber move Work/ Archive/Work/        a folder`,
   delete: `amber delete <note>     to Recently Deleted, with its sub-notes; amber restore brings it back for 30 days\namber delete Work/      a folder: its notes go to Recently Deleted`,
@@ -101,13 +104,6 @@ async function askLine(prompt: string): Promise<string | null> {
   return line.trim() || null;
 }
 
-/** "Work/Acme.md" with text: the folder, and the text with "Acme" as its first line. */
-function noteFor(path: string, text: string): { folder: string; content: string } {
-  const parts = path.split("/");
-  const stem = parts.pop()!.replace(/\.md$/i, "");
-  const first = text.split("\n").find((l) => l.trim())?.replace(/^\s*#{1,6}\s+/, "").trim();
-  return { folder: parts.join("/"), content: first === stem ? text : `${stem}\n\n${text}` };
-}
 
 async function main() {
   const args = parse(Deno.args);
@@ -142,8 +138,13 @@ async function main() {
       ? "Forgot the access token here. It keeps working until you delete it in Amber Notes › Settings › Connect an AI." : "This terminal wasn't connected.");
   }
 
-  const mcp = await connect(server, (force) => accessToken(server, force)).catch((e) =>
+  // One session across runs (for 12 hours), so what amber read read counts for amber edit.
+  const config = await loadConfig();
+  const kept = config.sessions?.[server];
+  const session = kept && Date.now() - kept.at < 12 * 3600_000 ? kept.id : undefined;
+  const mcp = await connect(server, (force) => accessToken(server, force), session).catch((e) =>
     fail(e instanceof Refused ? (Deno.env.get("AMBER_TOKEN") ? "The server refused AMBER_TOKEN." : "Amber Notes turned this terminal away. Run `amber login` to connect again.") : e.message));
+  if (mcp.session && mcp.session !== session) await saveConfig({ ...config, sessions: { ...(config.sessions ?? {}), [server]: { id: mcp.session, at: Date.now() } } }).catch(() => {});
   try {
     if (cmd === "status") {
       const c = Deno.env.get("AMBER_TOKEN") ? null : await loadCredentials(server);
@@ -157,45 +158,39 @@ async function main() {
     const need = (n: number, usage: string) => { if (rest.length < n) fail(`Usage: ${usage}\nMore: amber help ${cmd}`); };
     let tool: string, call: Record<string, unknown>;
     switch (cmd) {
-      case "search": need(1, "amber search <words>"); tool = "search"; call = { query: rest.join(" "), ...(args.limit ? { limit: Number(args.limit) } : {}) }; break;
-      case "list": case "ls": tool = "list"; call = rest[0] ? { path: rest[0] } : {}; break;
-      case "read": case "cat": need(1, "amber read <note>"); tool = "fetch"; call = { id: rest[0], ...(args.lines ? { lines: args.lines } : {}) }; break;
+      case "list": case "ls": tool = "list"; call = { ...(rest[0] ? { path: rest[0] } : {}), ...(args.glob ? { pattern: args.glob } : {}), ...(args.limit ? { limit: Number(args.limit) } : {}), ...(args.offset ? { offset: Number(args.offset) } : {}) }; break;
+      case "read": case "cat": need(1, "amber read <note>"); tool = "fetch"; call = { id: rest[0], ...(args.offset ? { offset: Number(args.offset) } : {}), ...(args.limit ? { limit: Number(args.limit) } : {}) }; break;
+      case "search": need(1, "amber search <words>"); tool = "search"; call = { query: rest.join(" "), ...(args.limit ? { limit: Number(args.limit) } : {}), ...(args.offset ? { offset: Number(args.offset) } : {}), ...(args.path ? { path: args.path } : {}) }; break;
+      case "grep": need(1, "amber grep <pattern> [<path>]"); tool = "search"; call = { pattern: rest[0], ...(rest[1] ? { path: rest[1] } : {}), output: args.files ? "files" : args.count ? "count" : "content", ...(args.C ? { context: Number(args.C) } : {}), ...(args.case ? { case_sensitive: true } : {}), ...(args.limit ? { limit: Number(args.limit) } : {}), ...(args.offset ? { offset: Number(args.offset) } : {}) }; break;
       case "create": {
-        need(1, "amber create <folder> [<text>]");
+        need(1, "amber create <path> [<text>]");
         const text = rest.length > 1 ? rest.slice(1).join(" ") : Deno.stdin.isTerminal() ? "" : await stdinText();
         tool = "create";
-        if (!text.trim()) {
-          if (!rest[0].endsWith("/")) fail("Give the note's text, as an argument or on stdin. (A folder ends in /.)");
-          call = { type: "folder", path: rest[0] };
-        } else if (/\.md$/i.test(rest[0])) {
-          const n = noteFor(rest[0], text);
-          call = { content: n.content, ...(n.folder ? { path: n.folder } : {}) };
-        } else call = { content: text, path: rest[0] };
-        if (args.inside) call = { content: call.content, inside: args.inside };
-        if (args.pin) call.pinned = true;
+        if (rest[0].endsWith("/") && !text.trim()) call = { type: "folder", path: rest[0] };
+        else call = { path: rest[0], content: text, ...(args.pin ? { pinned: true } : {}) };
         break;
       }
-      case "edit": need(3, "amber edit <note> <old text> <new text>"); tool = "edit"; call = { id: rest[0], edits: [{ old_text: rest[1], new_text: rest[2], ...(args.all ? { replace_all: true } : {}) }] }; break;
+      case "edit": need(3, "amber edit <note> <old text> <new text>"); tool = "edit"; call = { path: rest[0], old_string: rest[1], new_string: rest[2], ...(args.all ? { replace_all: true } : {}) }; break;
       case "write": {
         need(1, "amber write <note> < new.md");
         if (Deno.stdin.isTerminal()) fail("amber write reads the new text from stdin: amber write <note> < new.md");
-        tool = "write"; call = { id: rest[0], content: await stdinText() }; break;
+        tool = "write"; call = { path: rest[0], content: await stdinText() }; break;
       }
-      case "move": case "mv": need(2, "amber move <note> <to>"); tool = "move"; call = { id: rest[0], to: rest[1] }; break;
-      case "delete": case "rm": need(1, "amber delete <note>"); tool = "delete"; call = { id: rest[0] }; break;
-      case "history": need(1, "amber history <note>"); tool = "history"; call = { id: rest[0], ...(args.limit ? { limit: Number(args.limit) } : {}) }; break;
-      case "restore": need(1, "amber restore <note> [<version>]"); tool = "restore"; call = { id: rest[0], ...(rest[1] ? { version: Number(rest[1]) } : {}) }; break;
-      case "pin": need(1, "amber pin <note> [--off]"); tool = "pin"; call = { id: rest[0], pinned: !args.off }; break;
+      case "move": case "mv": need(2, "amber move <note> <to>"); tool = "move"; call = { path: rest[0], to: rest[1] }; break;
+      case "delete": case "rm": need(1, "amber delete <note>"); tool = "delete"; call = { path: rest[0] }; break;
+      case "history": need(1, "amber history <note>"); tool = "history"; call = { path: rest[0], ...(args.limit ? { limit: Number(args.limit) } : {}) }; break;
+      case "restore": need(1, "amber restore <note> [<version>]"); tool = "restore"; call = { path: rest[0], ...(rest[1] ? { version: Number(rest[1]) } : {}) }; break;
+      case "pin": need(1, "amber pin <note> [--off]"); tool = "pin"; call = { path: rest[0], pinned: !args.off }; break;
       default: return fail(`Unknown command "${cmd}".\n\n${HELP}`);
     }
     if (!mcp.tools.includes(tool)) fail(`This connection can only read notes. Run amber login (without --read-only) to edit.`);
     const r = await mcp.call(tool, call);
     if (args.json) return out(JSON.stringify(r, null, 2));
     if (tool === "fetch") {
-      const text = readText(r);
+      const text = readText(r, !!args.numbers);
       await Deno.stdout.write(new TextEncoder().encode(text.endsWith("\n") ? text : text + "\n"));
-      const next = String(r?.metadata?.next ?? "").match(/(\d+)-/);
-      if (next) console.error(`(more: amber read ${JSON.stringify(rest[0])} --lines ${next[1]}-)`);
+      const next = String(r?.metadata?.truncated ?? "").match(/offset (\d+)/);
+      if (next) console.error(`(more: amber read ${JSON.stringify(rest[0])} --offset ${next[1]})`);
       return;
     }
     out(format(tool, r));
@@ -204,7 +199,7 @@ async function main() {
     if (e instanceof Refused) fail("Amber Notes turned this terminal away. Run `amber login` to connect again.");
     throw e;
   } finally {
-    await mcp.close().catch(() => {});
+    // The session stays open for the next run (it ends on its own).
   }
 }
 

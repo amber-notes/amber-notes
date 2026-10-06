@@ -37,6 +37,7 @@ export const fileContext = (id: string) => `file:${id.toLowerCase()}`;
 export const pageContext = (id: string) => `page:${id.toLowerCase()}`;
 export const pageDataContext = (id: string) => `page-data:${id.toLowerCase()}`;
 export const apiKeyContext = (id: string) => `api-key:${id.toLowerCase()}`;
+export const titleIndexContext = (userId: string) => `title-index:${userId.toLowerCase()}`;
 export const wrapContext = (purpose: WrapPurpose, userId: string) => `wrap:${purpose}:${userId.toLowerCase()}`;
 
 /** What a note shows in lists, sealed next to its body. A locked note's head is its title only. */
@@ -542,7 +543,7 @@ export async function openFile(bytes: Bytes, key: CryptoKey, id: string): Promis
 
 /** An opened data key for one request. Nothing keeps it past the request. */
 export class Vault {
-  private constructor(readonly keyId: string, private readonly key: CryptoKey, readonly userId: string, private readonly shareKey: CryptoKey) {}
+  private constructor(readonly keyId: string, private readonly key: CryptoKey, readonly userId: string, private readonly shareKey: CryptoKey, private readonly tagKey: CryptoKey) {}
 
   /** Imports the key and wipes the raw bytes it was given. */
   static async from(raw: Bytes, userId: string): Promise<Vault> {
@@ -550,7 +551,11 @@ export class Vault {
     const shareKey = await crypto.subtle.deriveKey(
       { name: "HKDF", hash: "SHA-256", salt: SALT, info: enc.encode("share") },
       ikm, { name: "HMAC", hash: "SHA-256", length: 256 }, false, ["sign"]);
-    const v = new Vault(await keyIdOf(raw), await aesKey(raw), userId, shareKey);
+    // Tags for what an AI has read (mcp_reads): the server can't test a guess at the text without the key.
+    const tagKey = await crypto.subtle.deriveKey(
+      { name: "HKDF", hash: "SHA-256", salt: SALT, info: enc.encode("read-tag") },
+      ikm, { name: "HMAC", hash: "SHA-256", length: 256 }, false, ["sign"]);
+    const v = new Vault(await keyIdOf(raw), await aesKey(raw), userId, shareKey, tagKey);
     raw.fill(0);
     return v;
   }
@@ -563,6 +568,11 @@ export class Vault {
     let diff = 0;
     for (let i = 0; i < 64; i++) diff |= mine.charCodeAt(i) ^ tag.charCodeAt(i);
     return diff === 0;
+  }
+
+  /** A keyed tag of some text (24 hex digits), the same for the same text and account key. */
+  async tag(text: string): Promise<string> {
+    return hex(new Uint8Array(await crypto.subtle.sign("HMAC", this.tagKey, enc.encode(text)))).slice(0, 24);
   }
 
   sealBody(id: string, body: string) { return seal(body, this.key, this.keyId, bodyContext(id)); }
@@ -583,6 +593,9 @@ export class Vault {
   sealAPIKeyMeta(id: string, json: string) { return seal(json, this.key, this.keyId, apiKeyContext(id)); }
   openAPIKeyMeta(id: string, sealed: string) { return open(sealed, this.key, apiKeyContext(id)); }
   sealFolder(id: string, name: string) { return seal(name, this.key, this.keyId, folderContext(id)); }
+  /** The MCP file tools' index of titles and folder names (mcp_title_index). */
+  sealTitleIndex(json: string) { return seal(json, this.key, this.keyId, titleIndexContext(this.userId)); }
+  openTitleIndex(sealed: string) { return open(sealed, this.key, titleIndexContext(this.userId)); }
   openFolder(id: string, sealed: string) { return open(sealed, this.key, folderContext(id)); }
   sealFileMeta(id: string, meta: FileMeta) { return seal(JSON.stringify(meta), this.key, this.keyId, fileMetaContext(id)); }
   async openFileMeta(id: string, sealed: string): Promise<FileMeta> {

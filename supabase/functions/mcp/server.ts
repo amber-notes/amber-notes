@@ -42,7 +42,7 @@ const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, GET, OPTIONS, DELETE",
   "Access-Control-Allow-Headers": "authorization, content-type, accept, mcp-session-id, mcp-protocol-version, last-event-id",
-  "Access-Control-Expose-Headers": "mcp-session-id, mcp-protocol-version, www-authenticate",
+  "Access-Control-Expose-Headers": "mcp-session-id, mcp-protocol-version, www-authenticate, server-timing",
   "Access-Control-Max-Age": "86400",
 };
 
@@ -145,8 +145,16 @@ export async function handleRequest(req: Request, sql: Sql): Promise<Response> {
     return json({ jsonrpc: "2.0", id: null, error: { code: -32600, message: "Invalid Request: empty batch" } }, 400);
   }
 
+  // The client's session, for what it has read (the file tools' read-before-edit rule). A client
+  // that starts one without an Mcp-Session-Id is given one; one that never sends it is known by its token.
+  const given = req.headers.get("mcp-session-id");
+  const starts = (Array.isArray(payload) ? payload : [payload]).some((m) => (m as Rpc | null)?.method === "initialize");
+  const issued = !given && starts ? crypto.randomUUID() : null;
+  const session = given && /^[\x21-\x7e]{1,100}$/.test(given) ? given : issued ?? `t:${await tokenHash(presented!.token)}`;
   // One vault for the whole HTTP request; it goes out of scope with it.
-  const ctx: ToolContext = { sql, userId: who.user_id, client: who.name, canWrite: who.can_write, vault: who.vault };
+  const ctx: ToolContext = { sql, userId: who.user_id, client: who.name, canWrite: who.can_write, vault: who.vault, session, timing: {},
+    // Benchmarks on staging (AMBER_BENCH=1) may ask for a call without cached titles.
+    cold: Deno.env.get("AMBER_BENCH") === "1" && req.headers.get("x-amber-cold") === "1" };
   const batch = Array.isArray(payload);
   // Messages in a batch run one after another, so writes land in the order they were sent.
   const results: unknown[] = [];
@@ -154,8 +162,17 @@ export async function handleRequest(req: Request, sql: Sql): Promise<Response> {
     const r = await handle(m, ctx);
     if (r !== null) results.push(r);
   }
-  if (!results.length) return new Response(null, { status: 202, headers: cors });
-  return json(batch ? results : results[0]);
+  const headers: Record<string, string> = {
+    ...(issued ? { "mcp-session-id": issued } : {}),
+    ...(Object.keys(ctx.timing!).length ? { "server-timing": Object.entries(ctx.timing!).map(([k, v]) => `${k};dur=${Math.round(v)}`).join(", ") } : {}),
+  };
+  if (!results.length) return new Response(null, { status: 202, headers: { ...cors, ...headers } });
+  return json(batch ? results : results[0], 200, headers);
+}
+
+/** A token's stand-in as a session: the first 24 hex digits of its SHA-256. */
+async function tokenHash(token: string): Promise<string> {
+  return [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token)))].slice(0, 12).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 function unauthorized(base: string, error?: string) {
@@ -193,7 +210,8 @@ async function respond(msg: Rpc, id: string | number | null, ctx: ToolContext): 
           protocolVersion: PROTOCOL_VERSIONS.includes(asked) ? asked : PROTOCOL_VERSIONS[0],
           capabilities: { tools: { listChanged: false }, resources: { listChanged: false }, prompts: { listChanged: false } },
           serverInfo: SERVER_INFO,
-          instructions: fileSet() ? FILE_INSTRUCTIONS : INSTRUCTIONS,
+          // AMBER_MCP_INSTRUCTIONS=none: none at all, as clients that drop them see it (an eval arm).
+          ...(Deno.env.get("AMBER_MCP_INSTRUCTIONS") === "none" ? {} : { instructions: fileSet() ? FILE_INSTRUCTIONS : INSTRUCTIONS }),
         });
       }
       case "ping":
@@ -213,6 +231,7 @@ async function respond(msg: Rpc, id: string | number | null, ctx: ToolContext): 
         const started = performance.now();
         try {
           const result = fileSet() ? await runFileTool(name, args, ctx) : await runTool(name, args, ctx);
+          if (ctx.timing) ctx.timing.total = performance.now() - started;
           if (result instanceof Content) {
             return ok(id, { content: result.content, ...(result.structured ? { structuredContent: result.structured } : {}) });
           }

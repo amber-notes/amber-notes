@@ -375,7 +375,7 @@ export type Render = {
   /** try_app: what each step did. */
   trial?: TrialStep[];
   /** The save gate's smoke check. */
-  smoke?: { ok: boolean; problems: string[]; taps: number };
+  smoke?: { ok: boolean; problems: string[]; taps: number; slow?: { name: string; ms: number; width: number }[] };
   /** run_app_tests: each test's result. */
   tests?: { name: string; ok: boolean; error?: string; ms: number; file?: string }[];
   testErrors?: string[];
@@ -438,7 +438,7 @@ async function trial(open: (w: number, s: "light" | "dark") => Promise<{ page: P
     const dialog = page.locator("[role=dialog]:visible, dialog[open]").last();
     const scope = (await dialog.count().catch(() => 0)) ? dialog : page;
     const order = field
-      ? [scope.getByLabel(w, { exact: false }), scope.getByPlaceholder(w), scope.getByRole("textbox", { name: w }), scope.getByRole("spinbutton", { name: w }), scope.getByRole("combobox", { name: w })]
+      ? [scope.getByLabel(w, { exact: false }).and(scope.locator("input, textarea, select, [contenteditable=true], [role=textbox], [role=combobox], [role=spinbutton]")), scope.getByPlaceholder(w), scope.getByRole("textbox", { name: w }), scope.getByRole("spinbutton", { name: w }), scope.getByRole("combobox", { name: w })]
       : [scope.getByRole("button", { name: w }), scope.getByRole("link", { name: w }), scope.getByRole("tab", { name: w }), scope.getByRole("menuitem", { name: w }), scope.getByRole("option", { name: w }), scope.getByRole("checkbox", { name: w }), scope.getByRole("switch", { name: w }), scope.getByLabel(w, { exact: false }), scope.getByText(w, { exact: false })];
     // Visible and not covered by something else (a sheet over the page): what a tap would reach. If
     // nothing passes that (an animation still running), the first visible one.
@@ -647,6 +647,7 @@ async function renderOnce(html: string, markdown: string, data: unknown, opts: R
   if (opts.tests) { md = markdown; store = empty(data); return await runTests(open); }
   if (opts.smoke) {
     const problems: string[] = [];
+    const slow: { name: string; ms: number; width: number }[] = [];
     let taps = 0;
     for (const width of [390, 1280]) {
       md = markdown; store = empty(data);
@@ -668,13 +669,34 @@ async function renderOnce(html: string, markdown: string, data: unknown, opts: R
         }
         return out.slice(0, 20);
       }).catch(() => []);
+      // The check stays within the render service's answer time: 12 s of tapping per size.
+      const deadline = performance.now() + 12_000;
       for (const name of names) {
+        if (performance.now() > deadline) break;
         const before = errs().length, dataBefore = dataErrors.length;
         const el = page.getByRole("button", { name, exact: true }).or(page.getByRole("tab", { name, exact: true })).or(page.getByRole("link", { name, exact: true })).first();
         if (!(await el.isVisible().catch(() => false))) continue;
-        await el.click({ timeout: 2000 }).catch(() => {});
+        // A real tap at the control, timed until the screen stops changing: a tap that takes over a
+        // second to show its result is slow for the person (reported, never held back).
+        const box = await el.boundingBox().catch(() => null);
+        await page.evaluate(() => { const w = window as unknown as { __amberLast: number; __amberObs?: MutationObserver }; w.__amberLast = 0; w.__amberObs?.disconnect(); w.__amberObs = new MutationObserver(() => { w.__amberLast = performance.now(); }); w.__amberObs.observe(document.body, { subtree: true, childList: true, attributes: true, characterData: true }); }).catch(() => {});
+        const t0 = await page.evaluate(() => performance.now()).catch(() => 0);
+        if (box) await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2).catch(() => {});
+        else await el.click({ timeout: 2000 }).catch(() => {});
         taps++;
         await page.waitForTimeout(150);
+        // Settled: no change for 300 ms (at most 2.5 s).
+        const settled = await page.evaluate(async (start) => {
+          const w = window as unknown as { __amberLast: number; __amberObs?: MutationObserver };
+          const t = performance.now();
+          while (performance.now() - t < 2500) {
+            await new Promise((r) => setTimeout(r, 100));
+            if (performance.now() - Math.max(w.__amberLast, start) > 300) break;
+          }
+          w.__amberObs?.disconnect();
+          return w.__amberLast ? Math.round(w.__amberLast - start) : 0;
+        }, t0).catch(() => 0);
+        if (settled > 1000) slow.push({ name, ms: settled, width });
         if (errs().length > before) problems.push(...[...new Set(errs().slice(before))].slice(0, 2).map((e) => `${at(name)}: ${e}`));
         if (dataErrors.length > dataBefore) problems.push(`${at(name)}: saving its data failed: ${dataErrors[dataErrors.length - 1]}`);
         if (!(await page.evaluate(() => (document.body?.innerText ?? "").trim().length).catch(() => 0))) { problems.push(`${at(name)}: the screen went blank.`); break; }
@@ -682,7 +704,7 @@ async function renderOnce(html: string, markdown: string, data: unknown, opts: R
       }
       await page.context().close();
     }
-    return { views: [], blocked: [...new Set(blocked)], updates, setData, interaction: { tried: "none", ok: null }, probes: {}, markdownAfter: markdown, dataAfter: store, smoke: { ok: problems.length === 0, problems: [...new Set(problems)].slice(0, 8), taps } };
+    return { views: [], blocked: [...new Set(blocked)], updates, setData, interaction: { tried: "none", ok: null }, probes: {}, markdownAfter: markdown, dataAfter: store, smoke: { ok: problems.length === 0, problems: [...new Set(problems)].slice(0, 8), taps, ...(slow.length ? { slow: slow.slice(0, 5) } : {}) } };
   }
 
   const wanted: { width: number; scheme: "light" | "dark"; widget?: boolean }[] = opts.views ?? ([[390, "light"], [390, "dark"], [320, "light"], [1280, "light"], [1280, "dark"]] as const).map(([width, scheme]) => ({ width, scheme }));
