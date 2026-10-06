@@ -129,9 +129,13 @@ struct SidebarView: View {
     @Environment(Backend.self) private var backend: Backend?
     @Environment(SyncEngine.self) private var sync: SyncEngine?
 
-    /// All Notes and Recently Deleted, counted by the store (unsaved changes included).
     private var counts: (live: Int, trashed: Int) {
         _ = noteChanges
+        return Self.counts(in: context)
+    }
+
+    /// All Notes and Recently Deleted, counted by the store (unsaved changes included).
+    static func counts(in context: ModelContext) -> (live: Int, trashed: Int) {
         let live = (try? context.fetchCount(FetchDescriptor<Note>(predicate: #Predicate { $0.deletedAt == nil && $0.trashedAt == nil }))) ?? 0
         let trashed = (try? context.fetchCount(FetchDescriptor<Note>(predicate: #Predicate { $0.deletedAt == nil && $0.trashedAt != nil }))) ?? 0
         return (live, trashed)
