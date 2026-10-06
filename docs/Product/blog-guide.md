@@ -36,6 +36,11 @@ give more than they take.
     VM after. There's no honest way to capture a new iOS's Notes this way, so don't put a Mac
     capture in a phone frame; say the same option is in the iPhone menu, in Apple's words.
   - A real capture beats decoration: put the best one where the banner would go (`hero`).
+  - Captures look like product shots: capture at 2x, cut windows, dialogs and menus out along their
+    own rounded edges, show them big on the page with a soft shadow and no box behind them, and crop
+    at a natural edge, never mid-line. Use a whole window (traffic lights, toolbar, sidebar) where it
+    should read as "Apple Notes" at a glance, and a tighter `phone` crop where text would be too
+    small at 390 px.
   - Generated art is decoration only (`alt=""`), and never a picture of an app's screen.
 - **The Amber Notes section comes last, and stays honest and modest.**
   - It starts only once the reader has been helped.
@@ -83,7 +88,7 @@ is no dark version to check.
 | `Checklist` | `web/lib/PostParts.tsx` | A checklist to copy, drawn like a Notes checklist, copied as lines that become one with a tap |
 | `ResetChooser` | `web/lib/ResetChooser.tsx` | A question-by-question helper; copy its shape for other choosers |
 | `Loop` | `web/lib/Loop.tsx` | A short muted loop of the real app, from `web/public/blog/loops/` |
-| `Capture` | `web/lib/PostParts.tsx` | A real capture of Apple's apps from `web/public/blog/macos27/`, AVIF and WebP, captioned with its OS; `hero` puts one above the intro |
+| `Capture` | `web/lib/PostParts.tsx` | A real capture of Apple's apps from `web/public/blog/macos27/`, AVIF and WebP, captioned with its OS; `hero` puts one above the intro, `phone` gives narrow screens a tighter crop |
 | `Figure` | `web/lib/blog.tsx` | A real capture in a window or phone frame |
 | `PostCta` | `web/lib/PostCta.tsx` | The one call to action, at the end of the Amber Notes section |
 

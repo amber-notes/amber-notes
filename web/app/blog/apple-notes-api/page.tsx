@@ -97,7 +97,7 @@ export default function Page() {
         to summarize some text and append the result to a note.
       </p>
 
-      <Capture src="/blog/macos27/notes-export-to" width={1000} height={880} maxWidth={440}
+      <Capture src="/blog/macos27/notes-export-to" width={770} height={795} maxWidth={385}
         alt="The File menu of Apple Notes on macOS 27, open at Export To, with PDF and Markdown, and Import Markdown above it."
         caption="Export To and Import Markdown in Notes on macOS 27: one note at a time, a copy rather than a connection." />
 

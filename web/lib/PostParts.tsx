@@ -94,19 +94,26 @@ export function Checklist({ title, items, note }: { title: string; items: string
 }
 
 /// A real capture from Apple's own apps (public/blog/macos27, taken in a clean macOS 27 VM with no
-/// account), as AVIF with a WebP fallback. The caption says which OS it shows. Lazy unless it's the
-/// first thing on the page; the box has the capture's own shape, so nothing moves as it loads.
-export function Capture({ src, alt, width, height, caption, priority = false, maxWidth }: {
-  src: string; alt: string; width: number; height: number; caption: string; priority?: boolean; maxWidth?: number;
+/// account), as AVIF with a WebP fallback, captioned with its OS. Windows, dialogs and menus are cut
+/// out along their own rounded edges and sit straight on the page with a soft shadow, no box behind
+/// them. `phone` is a tighter crop of the same capture for narrow screens, so the text stays readable
+/// there; the browser picks one before loading, and each has its own size, so nothing moves. `width`
+/// and `height` are the file's pixels (2x); it shows at most at `maxWidth`, or half its width.
+type Img = { src: string; width: number; height: number };
+const PHONE = "(max-width: 600px)";
+
+export function Capture({ src, alt, width, height, caption, priority = false, maxWidth, phone }: Img & {
+  alt: string; caption: string; priority?: boolean; maxWidth?: number; phone?: Img;
 }) {
+  const style = { "--w": `${maxWidth ?? width / 2}px`, "--pw": phone ? `${phone.width / 2}px` : undefined } as React.CSSProperties;
   return (
-    <figure className={s.capture}>
-      <div className={s.captureStage}>
-        <picture style={{ "--w": `${maxWidth ?? width / 2}px` } as React.CSSProperties}>
-          <source type="image/avif" srcSet={`${src}.avif`} />
-          <img src={`${src}.webp`} alt={alt} width={width} height={height} loading={priority ? "eager" : "lazy"} decoding="async" fetchPriority={priority ? "high" : undefined} />
-        </picture>
-      </div>
+    <figure className={s.capture} style={style}>
+      <picture>
+        {phone && <source media={PHONE} type="image/avif" srcSet={`${phone.src}.avif`} width={phone.width} height={phone.height} />}
+        {phone && <source media={PHONE} type="image/webp" srcSet={`${phone.src}.webp`} width={phone.width} height={phone.height} />}
+        <source type="image/avif" srcSet={`${src}.avif`} />
+        <img src={`${src}.webp`} alt={alt} width={width} height={height} loading={priority ? "eager" : "lazy"} decoding="async" fetchPriority={priority ? "high" : undefined} />
+      </picture>
       <figcaption className={s.captureCaption}>{caption}</figcaption>
     </figure>
   );

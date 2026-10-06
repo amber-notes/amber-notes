@@ -45,8 +45,9 @@ export default function Page() {
           </p>
         </Answer>
       }
-      hero={<Capture priority src="/blog/macos27/notes-locked-hint" width={720} height={580} maxWidth={420}
-        alt="A locked note in Apple Notes on macOS 27: This note is locked. Enter your notes password to view this note. Below the password field: Hint: City and year of the trip."
+      hero={<Capture priority src="/blog/macos27/notes-locked-window" width={1520} height={984} maxWidth={760}
+        phone={{ src: "/blog/macos27/notes-locked-hint", width: 720, height: 580 }}
+        alt="The Apple Notes window on macOS 27 with a locked note selected: This note is locked. Enter your notes password to view this note. Below the password field: Hint: City and year of the trip."
         caption="A locked note in Notes on macOS 27, after a few wrong tries. The hint shows under the password field. iPhone shows it the same way." />}
       faq={FAQ}
     >
@@ -123,9 +124,6 @@ export default function Page() {
         <li>Choose your device passcode, or enter a new password and a hint, then tap Done.</li>
       </Steps>
       <p className="label" id="reset-on-a-mac"><strong>On a Mac</strong></p>
-      <Capture src="/blog/macos27/notes-locked-settings" width={1100} height={236} maxWidth={550}
-        alt="The Locked notes row in Notes Settings on macOS 27: Use Custom Password, with Change Password and Reset Password buttons below it."
-        caption="Notes, Settings on macOS 27: Change Password and Reset Password sit under Locked notes." />
       <Steps>
         <li>In Notes, choose Notes, Settings, then Reset Password, and click OK.</li>
         <li>For an iCloud account, enter your iCloud password.</li>
@@ -137,7 +135,7 @@ export default function Page() {
         notes</a> on Mac. If you still know the password and just want a new one, choose Change Password instead: that moves every locked
         note to the new password, so you don&apos;t end up with two.
       </p>
-      <Capture src="/blog/macos27/notes-reset-password" width={640} height={470} maxWidth={320}
+      <Capture src="/blog/macos27/notes-reset-password" width={522} height={366} maxWidth={300}
         alt="Apple Notes on macOS 27 asking Reset Notes Password? This allows you to create a new password for notes you lock from now on. Notes that already have a password aren't affected. Cancel and OK."
         caption="Apple says it plainly when you reset on macOS 27: notes that already have a password aren't affected." />
 
@@ -156,7 +154,7 @@ export default function Page() {
         <li>Unlock and <a href="/blog/export-apple-notes-to-markdown">export</a> anything you can&apos;t afford to lose, and keep a copy somewhere safe.</li>
         <li>If a note is missing rather than locked, see <a href="/blog/recover-deleted-apple-notes">how to recover deleted Apple Notes</a>.</li>
       </ul>
-      <Capture src="/blog/macos27/notes-create-password" width={1010} height={626} maxWidth={505}
+      <Capture src="/blog/macos27/notes-create-password" width={1006} height={622} maxWidth={503}
         alt="Creating a notes password in Apple Notes on macOS 27: Password, Verify and Password Hint fields, and the warning that if you forget this password, you won't be able to view your locked notes."
         caption="If you do set a separate password, fill in the hint. It's the one clue Notes will give you later." />
 

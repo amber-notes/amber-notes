@@ -51,9 +51,10 @@ export default function Page() {
           </p>
         </Answer>
       }
-      hero={<Capture priority src="/blog/macos27/notes-trip-note-light" width={1000} height={944} maxWidth={400}
-        alt="A Lisbon trip note in Apple Notes on macOS 27: a title, a link reading Jump to where to eat, a Day by day heading with a four-item checklist, a divider line, a Where to eat heading with a table of places and dishes, and a Pack list pasted as Markdown with Cash in bold."
-        caption="Apple Notes on macOS 27: a heading you can link to, a checklist, a divider line, a table and a list pasted as Markdown. The same options are in the iPhone edit menu." />}
+      hero={<Capture priority src="/blog/macos27/notes-trip-window" width={1520} height={984} maxWidth={760}
+        phone={{ src: "/blog/macos27/notes-trip-note", width: 840, height: 926 }}
+        alt="The Apple Notes window on macOS 27, On My Mac in the sidebar, showing a Lisbon trip note: a title, a link reading Jump to where to eat, a Day by day heading with a four-item checklist, a divider line, a Where to eat heading with a table of places and dishes, and a Pack list pasted as Markdown with Cash in bold."
+        caption="Apple Notes on macOS 27, with a link to a section, a checklist, a divider line, a table and a list pasted as Markdown. The same options are in the iPhone edit menu." />}
       faq={FAQ}
     >
       <Checklist title="Try these 5 things in Apple Notes today" items={TRY_TODAY}
@@ -90,7 +91,8 @@ export default function Page() {
         Tables aren&apos;t on this year&apos;s list. They still have no column widths and no formulas; <a href="/blog/apple-notes-tables">tables
         in Apple Notes</a> covers what they do and the workarounds.
       </p>
-      <Capture src="/blog/macos27/notes-edit-menu-dark" width={960} height={1216} maxWidth={400}
+      <Capture src="/blog/macos27/notes-edit-menu-screen" width={1520} height={1081} maxWidth={760}
+        phone={{ src: "/blog/macos27/notes-edit-menu", width: 532, height: 882 }}
         alt="The Edit menu of Apple Notes on macOS 27 in dark mode, with Copy as Markdown, Paste as Markdown, Add Link (Command-K) and Insert Divider Line (Command-L)."
         caption="The Edit menu in Notes on macOS 27, in dark mode: Insert Divider Line, Add Link, Copy as Markdown and Paste as Markdown all live here." />
 
@@ -104,7 +106,7 @@ export default function Page() {
         <li>Select the text for the link, or tap where it should go, then choose Add Link from the edit menu (on a Mac, Edit, Add Link).</li>
         <li>Choose Link to Section and pick a heading. Turn on Use Section Title to name the link after it, or type your own name.</li>
       </Steps>
-      <Capture src="/blog/macos27/notes-link-to-section" width={838} height={690} maxWidth={420}
+      <Capture src="/blog/macos27/notes-link-to-section" width={840} height={671} maxWidth={420}
         alt="The Add Link dialog in Apple Notes on macOS 27: Link To the note Lisbon, 4 days in May, Link to Section set to Where to eat, Use Section Title off, and the name Jump to where to eat."
         caption="Add Link on macOS 27, pointing the link at the Where to eat heading in the same note." />
       <p>
@@ -138,10 +140,10 @@ export default function Page() {
       </p>
       <Keep title="A prompt for ChatGPT, Claude or Gemini" text={PROMPT}
         note="Add it to the end of a question, then paste the answer into a note (on a Mac, with Edit, Paste as Markdown). It arrives formatted instead of full of asterisks." />
-      <Loop src="/blog/macos27/notes-paste-markdown.mp4" poster="/blog/macos27/notes-paste-markdown.webp" width={1088} height={886}
+      <Loop src="/blog/macos27/notes-paste-markdown.mp4" poster="/blog/macos27/notes-paste-markdown.webp" width={1088} height={886} bare
         label="Apple Notes on macOS 27. Edit, Paste as Markdown is chosen, and a Markdown packing list becomes a Pack heading and a bulleted list with Cash in bold."
         caption="Edit, Paste as Markdown in Notes on macOS 27: the ## becomes a heading and the ** becomes bold." />
-      <Capture src="/blog/macos27/notes-export-to" width={1000} height={880} maxWidth={440}
+      <Capture src="/blog/macos27/notes-export-to" width={770} height={795} maxWidth={385}
         alt="The File menu of Apple Notes on macOS 27, open at Export To, with PDF and Markdown in the submenu. Import Markdown is in the same menu."
         caption="File, Export To on macOS 27, with Markdown and PDF. Import Markdown sits just above it." />
 

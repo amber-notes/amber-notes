@@ -7,7 +7,8 @@ import s from "./post-parts.module.css";
 /// downloads until it's near the screen, and it plays only while it's on screen. With Reduce Motion
 /// on it shows its first frame and waits for Play. The poster has the video's own size, so nothing
 /// moves when it starts.
-export function Loop({ src, poster, width, height, label, caption }: { src: string; poster: string; width: number; height: number; label: string; caption?: string }) {
+/// `bare` drops the tinted ground, for a capture of Apple's apps that sits on the page like a Capture.
+export function Loop({ src, poster, width, height, label, caption, bare = false }: { src: string; poster: string; width: number; height: number; label: string; caption?: string; bare?: boolean }) {
   const ref = useRef<HTMLVideoElement>(null);
   const [playing, setPlaying] = useState(false);
 
@@ -35,7 +36,7 @@ export function Loop({ src, poster, width, height, label, caption }: { src: stri
 
   return (
     <figure className={s.loop}>
-      <div className={s.loopStage}>
+      <div className={bare ? s.loopBare : s.loopStage}>
         <div className={s.loopFrame} style={{ "--w": `${width / 2}px` } as React.CSSProperties}>
           <video ref={ref} src={src} poster={poster} width={width} height={height} muted loop playsInline preload="none"
             aria-label={label} onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} />
