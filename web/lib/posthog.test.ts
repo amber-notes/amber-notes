@@ -15,7 +15,7 @@ describe("website PostHog", () => {
   });
 
   it("never loads on shared notes, connect, universal-link, report or download-redirect pages", () => {
-    for (const path of ["/n", "/n/abc123", "/connect", "/connect/done", "/connect-ai", "/open/connect", "/open/template/x", "/report/abc123", "/download/mac", "/reset-password", "/reset-password/done", "/account/reset"]) {
+    for (const path of ["/n", "/n/abc123", "/connect", "/connect/done", "/connect-ai", "/open/connect", "/open/template/x", "/report/abc123", "/download/mac", "/reset-password", "/reset-password/done", "/account/reset", "/unsubscribe", "/unsubscribe/confirm"]) {
       expect(posthogAllowed(path), path).toBe(false);
     }
     expect(posthogAllowed(null)).toBe(false);
