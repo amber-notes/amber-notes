@@ -56,6 +56,10 @@ async function seed(pg: PGlite, me: string) {
     [note, me, await a.vault.sealPage(note, project("<p>1</p>")), await a.vault.sealPageData(note, "{}"), await a.vault.sealPage(note, project("<p>3</p>"))]);
   await pg.query(`update public.note_pages set page_ct = $2 where note_id = $1`, [note, await a.vault.sealPage(note, project("<p>2</p>"))]);
   await pg.query(`insert into public.app_load_failures (note_id, user_id, message, device) values ($1, $2, 'ReferenceError: x is not defined', 'iPhone')`, [note, me]);
+  // What an AI connection has read, and its sealed title and word indexes (the MCP file tools).
+  await pg.query(`insert into public.mcp_reads (user_id, session, item, stamp) values ($1, 's1', $2, '7')`, [me, `note:${note}`]);
+  await pg.query(`insert into public.mcp_title_index (user_id, index_ct) values ($1, $2)`, [me, await a.vault.sealTitleIndex("{}")]);
+  await pg.query(`insert into public.mcp_word_index (user_id, shard, shard_ct) values ($1, 3, $2)`, [me, await a.vault.sealWordShard(3, new Uint8Array([1, 2, 3]))]);
   const keyName = crypto.randomUUID();
   await pg.query(`insert into public.api_key_names (id, user_id, meta_ct) values ($1, $2, $3)`,
     [keyName, me, await a.vault.sealAPIKeyMeta(keyName, JSON.stringify({ name: "Weather", hosts: ["api.example.com"] }))]);

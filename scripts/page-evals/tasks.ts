@@ -484,6 +484,52 @@ export function bulkNotes(n: number): Seed[] {
 }
 const N_GROCERIES = "Groceries\n\n## Dairy\n- [ ] Milk\n- [ ] Butter\n\n## Fruit\n- [x] Apples\n- [ ] Bananas\n";
 const N_MOOD = "Mood\n\n<!-- pane-table: Date=date; Mood=scale 1-5; Walk=choice Yes|No -->\n| Date | Mood | Walk |\n| --- | --- | --- |\n| 2026-10-01 | 3 | Yes |\n| 2026-10-02 | 2 | No |\n| 2026-10-03 | 4 | Yes |\n";
+const O_RUNNING = `Running log
+
+Goal: half marathon on 2026-11-15, under 1:55.
+
+| Date | Distance (km) | Time | Type | Notes |
+| --- | --- | --- | --- | --- |
+| 2026-09-14 | 5 | 27:40 | Easy | legs heavy |
+| 2026-09-16 | 8 | 44:10 | Easy | |
+| 2026-09-19 | 12 | 1:08:30 | Long | hilly route |
+| 2026-09-21 | 6 | 30:05 | Tempo | 3 km at 4:50 |
+| 2026-09-24 | 5 | 27:15 | Easy | |
+| 2026-09-26 | 14 | 1:19:40 | Long | gel at 8 km |
+| 2026-09-29 | 7 | 35:20 | Intervals | 6x400 m |
+| 2026-10-01 | 6 | 32:50 | Easy | knee a bit sore |
+| 2026-10-03 | 16 | 1:31:10 | Long | best long run so far |
+
+Shoes: Pegasus 40 (bought June, ~420 km)
+`;
+const O_RECIPES = `Recipes
+
+## Shakshuka
+Serves 2. 25 min.
+- 1 onion, 1 red pepper, 2 garlic cloves
+- 1 can chopped tomatoes, 1 tsp cumin, 1 tsp paprika
+- 4 eggs, feta, parsley
+Fry onion and pepper 8 min, add garlic and spices, then tomatoes. Simmer 10 min, make wells, crack in eggs, cover 6 min. Feta and parsley on top.
+
+## Pasta e ceci
+Serves 4. 35 min.
+- 1 can chickpeas, 1 can chopped tomatoes, 250 g ditalini
+- 1 onion, 2 garlic cloves, rosemary, parmesan rind
+Soften onion, garlic, rosemary. Add tomatoes, chickpeas, rind and 1 l water, simmer 15 min. Blend a third, add pasta, cook until done.
+
+## Overnight oats
+Serves 1. 5 min + overnight.
+- 50 g oats, 150 ml milk, 2 tbsp yogurt, 1 tsp chia, berries
+Mix, leave in the fridge overnight, berries on top.
+
+## Chicken tray bake
+Serves 4. 50 min.
+- 8 chicken thighs, 600 g potatoes, 2 red onions, 1 lemon
+- olive oil, oregano, salt
+Everything on one tray, 200 °C for 45 min, squeeze the lemon over at the end.
+
+Want to try: dal, bibimbap, banana bread
+`;
 const N_TRIP = "Lisbon trip\n\nSpent in Lisbon with Ana.\n\n| Date | Item | Category | Amount |\n| --- | --- | --- | --- |\n| 2026-10-01 | Hotel Avenida | Stay | 1 450 |\n| 2026-10-02 | Pastéis | Food | 12,50 |\n";
 const N_INBOX = "Inbox\n\n- Renew passport\n- Book the car service\n";
 const N_WEEKLY = "Weekly\n\n## Goals\n- Ship v2\n- Run 3x\n- Read 2 books\n- Fix the bike\n- Call grandma\n\n## Notes\nQuiet week. Rain on Thursday.\n";
@@ -1352,6 +1398,22 @@ export const TASKS: Task[] = [
     features: [
       { name: "scaling", re: /servings/i }, { name: "units", re: /\b(g|ml|tbsp|tsp)\b/ }, { name: "meal_slots", re: /breakfast/i }, { name: "aggregated_list", re: /aisle/i },
       { name: "own_items", re: /custom|own item|add item/i }, { name: "tags", re: /tag/i }, { name: "cooking_mode", re: /cook(ing)? mode|step \{|next step|Step /i }, { name: "twelve_recipes", re: /(title|name)[\s\S]{0,4000}(title|name)/ },
+    ],
+  },
+  // MARK: Open-ended asks on a note with real content (traced to see how the AI reads the request).
+  {
+    id: "o-running-app",
+    prompt: "Turn my Running log note into an app.",
+    seed: { body: O_RUNNING, folder: "Health" }, page: true, interact: true,
+    checks: (f) => [pageChanged(f), rowsKept(f.before, f.after)],
+  },
+  {
+    id: "o-recipes-useful",
+    prompt: "Make something useful out of my Recipes note.",
+    seed: { body: O_RECIPES, folder: "Home" }, page: false,
+    checks: (f) => [
+      check("made_something", f.page !== f.pageBefore || f.after !== f.before || (f.notes?.filter((n) => !n.trashed).length ?? 1) > 1, "nothing changed"),
+      check("recipes_kept", ["Shakshuka", "Pasta e ceci", "Overnight oats", "Chicken tray bake"].every((r) => (f.after + (f.notes ?? []).map((n) => n.body).join("\n") + (f.page ?? "") + JSON.stringify(f.data ?? {})).includes(r)), "a recipe is gone"),
     ],
   },
   {

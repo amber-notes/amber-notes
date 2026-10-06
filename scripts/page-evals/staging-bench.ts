@@ -36,8 +36,10 @@ async function seed(secretsFile: string, n: number) {
   if (!auth.access_token) throw new Error("sign-in failed");
   const user = auth.user.id as string;
   const headers = { apikey: anon, authorization: `Bearer ${auth.access_token}`, "content-type": "application/json", "x-pane-device": "Mac", "x-amber-client": "lock-aware/1 e2ee/1" };
-  const rest = async (method: string, path: string, data?: unknown) => {
+  const rest = async (method: string, path: string, data?: unknown): Promise<unknown> => {
     const r = await fetch(`${url}/rest/v1/${path}`, { method, headers: { ...headers, prefer: "return=minimal" }, ...(data ? { body: JSON.stringify(data) } : {}) });
+    // The account's write bucket: wait for it to refill, then go on.
+    if (r.status === 429) { await r.body?.cancel(); await new Promise((ok) => setTimeout(ok, 10_000)); return await rest(method, path, data); }
     if (!r.ok) throw new Error(`${method} ${path.split("?")[0]}: ${r.status} ${(await r.text()).slice(0, 200)}`);
     return r.status === 204 || r.status === 201 ? null : await r.json();
   };
@@ -49,6 +51,8 @@ async function seed(secretsFile: string, n: number) {
   const have = await (await fetch(`${url}/rest/v1/notes?select=id&deleted_at=is.null`, { headers: { ...headers, prefer: "count=exact", range: "0-0" } })).headers.get("content-range");
   const count = Number(have?.split("/")[1] ?? 0);
   if (count >= n) return console.log(`already ${count} notes`);
+  // Tops up an account that has some already.
+  n -= count;
   const t0 = performance.now();
   // Folders: ~n/25, three deep.
   const nf = Math.max(4, Math.round(n / 25));
@@ -66,6 +70,8 @@ async function seed(secretsFile: string, n: number) {
     const b = body(i);
     rows.push({ id, body_ct: await v.sealBody(id, b), head_ct: await v.sealHead(id, { title: titleOf(b), preview: previewOf(b) }), folder_id: folders[i % nf].id, parent_id: null, is_pinned: i % 97 === 0 });
   }
+  // One note to find among them all.
+  { const id = crypto.randomUUID(); const b = "Apartment hunt\n\nLisbon apartment: the deposit is 2 months' rent.\n"; ids.push(id); rows.push({ id, body_ct: await v.sealBody(id, b), head_ct: await v.sealHead(id, { title: titleOf(b), preview: previewOf(b) }), folder_id: folders[nf - 1].id, parent_id: null, is_pinned: false }); }
   // Sub-notes: every 20th note under the one before it.
   for (let i = 19; i < n; i += 20) rows[i].parent_id = ids[i - 1];
   const parents = rows.filter((r) => !r.parent_id), children = rows.filter((r) => r.parent_id);
@@ -94,11 +100,15 @@ async function bench(url: string, tokenFile: string, repeat: number) {
     return { ...r, text, error: r.j.result?.isError === true || r.status !== 200 };
   };
   const parse = (t: string) => { try { return JSON.parse(t); } catch { return {}; } };
+  // The one note to find (accounts seeded before it existed get it here; "already exists" is fine).
+  await call("create", { path: "Archive/Apartment hunt.md", content: "Lisbon apartment: the deposit is 2 months' rent." });
   // The older tools have no glob: find the note by searching for it instead.
   const g = parse((await call("list", { pattern: "**/Note 3 *.md" })).text).matches?.[0]?.path
     ?? parse((await call("search", { query: "\"Note 3 " + pick(3, 0) + "\"" })).text).results?.find((x: { title: string }) => x.title.startsWith("Note 3 "))?.path ?? "Note 3.md";
   const app = parse((await call("list", { pattern: "**/*.app" })).text).matches?.[0]?.path ?? "";
   const top = g.split("/")[0] + "/";
+  // The indexes fill as they're used (a search indexes up to 2,000 notes): fill them first.
+  for (let i = 0; i < 30; i++) { const r = await call("search", { pattern: "zzzqqq" }); if (!/searched/.test(r.text) && !r.error) break; }
   const ops: [string, string, Record<string, unknown>][] = [
     ["list root", "list", {}],
     ["list deep folder", "list", { path: g.split("/").slice(0, -1).join("/") + "/" }],
@@ -108,6 +118,8 @@ async function bench(url: string, tokenFile: string, repeat: number) {
     ["search ranked", "search", { query: "lisbon deposit" }],
     ["search grep", "search", { pattern: "deposit", output: "files" }],
     ["search grep scoped", "search", { pattern: "todo", path: top, output: "count" }],
+    ["search grep rare", "search", { pattern: "months' rent", output: "content" }],
+    ["search ranked rare", "search", { query: "apartment hunt" }],
     ["edit note", "edit", { path: g, old_string: `## ${pick(3, 1)}\n`, new_string: `## ${pick(3, 1)}!\n` }],
   ];
   const rows = new Map<string, { cold: number[]; warm: number[]; coldTotal: number[]; warmTotal: number[]; parts: Record<string, number>; err?: string }>();

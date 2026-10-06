@@ -314,10 +314,12 @@ export async function runIn(list: Tool[], impl: Record<string, (tx: Tx, a: Args,
   const claims = JSON.stringify({ sub: ctx.userId, role: "authenticated" });
   // Every call costs one from the account's MCP bucket (600, then 5 a second). Taken in its
   // own transaction so a call that fails still counts: failures are no free way to hammer.
+  const tTake = performance.now();
   await ctx.sql.begin(async (tx) => {
     await tx`select set_config('request.jwt.claims', ${claims}, true)`;
     await tx`select public.pane_take('mcp')`;
   }).catch((e) => { throw new ToolError((e as Error).message); });
+  if (ctx.timing) ctx.timing.rate_take = performance.now() - tTake;
   const call: Call = { v: ctx.vault, ctx, scanMs: 0 };
   try {
     return await ctx.sql.begin(async (tx) => {

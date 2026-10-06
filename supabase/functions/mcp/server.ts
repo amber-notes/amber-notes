@@ -62,15 +62,17 @@ function tokenFrom(req: Request): Presented | null {
   return m ? { token: m[1], oauth: false } : null;
 }
 
-type Caller = { user_id: string; name: string; can_write: boolean; vault: Vault };
+type Caller = { user_id: string; name: string; can_write: boolean; vault: Vault; ms?: Record<string, number> };
 
 /** The token's owner, with the data key its wrap holds; undefined when either is missing. */
 async function authenticate(sql: Sql, p: Presented, req: Request): Promise<Caller | undefined> {
+  const t0 = performance.now();
   const who = p.oauth
     ? await resolveAccessToken(sql, p.token, req)
     : (await sql<{ user_id: string; name: string; can_write: boolean; dk_wrap: string | null }[]>`
         select * from public.resolve_mcp_token(${p.token})`)[0];
   if (!who?.dk_wrap) return undefined;
+  const t1 = performance.now();
   const purpose = p.oauth ? "access" : "pane";
   let dataKey;
   try {
@@ -79,7 +81,9 @@ async function authenticate(sql: Sql, p: Presented, req: Request): Promise<Calle
     return undefined;
   }
   // Vault.from wipes the raw key once it's imported.
-  return { user_id: who.user_id, name: who.name, can_write: who.can_write, vault: await Vault.from(dataKey, who.user_id) };
+  const t2 = performance.now();
+  const vault = await Vault.from(dataKey, who.user_id);
+  return { user_id: who.user_id, name: who.name, can_write: who.can_write, vault, ms: { auth_lookup: t1 - t0, auth_unwrap: t2 - t1, auth_vault: performance.now() - t2 } };
 }
 
 /** Only the MCP endpoint, the OAuth paths and the well-known files exist. Anything else is most
@@ -122,9 +126,11 @@ export async function handleRequest(req: Request, sql: Sql): Promise<Response> {
   if (req.method === "DELETE") return new Response(null, { status: 204, headers: cors });
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405, headers: cors });
 
+  const tAuth = performance.now();
   const who = presented
     ? await authenticate(sql, presented, req).catch((e) => { log("token_lookup_failed", errorKind(e)); return undefined; })
     : undefined;
+  const authMs = performance.now() - tAuth;
   // No connection, or one without a key that opens (made before encryption, or revoked): the
   // client is told to connect again.
   if (!who) return unauthorized(base, presented ? "invalid_token" : undefined);
@@ -152,7 +158,7 @@ export async function handleRequest(req: Request, sql: Sql): Promise<Response> {
   const issued = !given && starts ? crypto.randomUUID() : null;
   const session = given && /^[\x21-\x7e]{1,100}$/.test(given) ? given : issued ?? `t:${await tokenHash(presented!.token)}`;
   // One vault for the whole HTTP request; it goes out of scope with it.
-  const ctx: ToolContext = { sql, userId: who.user_id, client: who.name, canWrite: who.can_write, vault: who.vault, session, timing: {},
+  const ctx: ToolContext = { sql, userId: who.user_id, client: who.name, canWrite: who.can_write, vault: who.vault, session, timing: { auth: authMs, ...who.ms, isolate_age: tAuth },
     // Benchmarks on staging (AMBER_BENCH=1) may ask for a call without cached titles.
     cold: Deno.env.get("AMBER_BENCH") === "1" && req.headers.get("x-amber-cold") === "1" };
   const batch = Array.isArray(payload);
