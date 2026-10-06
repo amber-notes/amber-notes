@@ -126,9 +126,11 @@ extension NetworkFaults {
         print("PERF live sync, \(label): p50 \(Int(p50 * 1000)) ms, p95 \(Int(p95 * 1000)) ms over \(lat.count) characters, \(NetFault.started.count) requests")
         #expect(m.body == n.body, "the Mac ends with exactly what the phone typed")
         if fault == NetFault.Config() {
-            // About half a second on a developer's Mac; PANE_PERF_SLACK widens it on slower runners.
-            #expect(p50 < 0.7 * PerfBudget.slack, "about half a second; measured p50 \(Int(p50 * 1000)) ms")
-            #expect(p95 < 1.0 * PerfBudget.slack, "measured p95 \(Int(p95 * 1000)) ms")
+            // About half a second on a developer's Mac. GitHub's runners (PANE_PERF_SLACK set) measure
+            // about 2.5-2.8 s, so they get 3.5 s and 5 s (issue #224).
+            let onRunner = PerfBudget.slack > 1
+            #expect(p50 < (onRunner ? 3.5 : 0.7), "about half a second; measured p50 \(Int(p50 * 1000)) ms")
+            #expect(p95 < (onRunner ? 5.0 : 1.0), "measured p95 \(Int(p95 * 1000)) ms")
         }
         NetFault.config = .init()
         await phone.engine.stop(); await mac.engine.stop()
