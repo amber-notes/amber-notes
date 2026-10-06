@@ -5,7 +5,7 @@ import type { PGlite } from "npm:@electric-sql/pglite@0.2.17";
 import { schemaDB } from "./pglite.ts";
 import { type Account, account, app, edit, file, folder, note, opened, stubStorage, toolContext } from "./sealed.ts";
 import { ToolError } from "./tools.ts";
-import { FILE_TOOLS, runFileTool } from "./files_tools.ts";
+import { FILE_TOOLS, fileStore, runFileTool } from "./files_tools.ts";
 
 // deno-lint-ignore no-explicit-any
 const tool = async (pg: PGlite, a: Account, name: string, args: Record<string, unknown> = {}) => await runFileTool(name, args, await toolContext(pg, a, true)) as any;
@@ -201,4 +201,30 @@ Deno.test("an app: create, its files, and data.json edited like a file, one chan
   await app(pg, a.id, `insert into public.app_load_failures (note_id, message, device) select note_id, 'TypeError: x is undefined', 'iPhone' from public.note_pages limit 1`);
   assertEquals((await tool(pg, a, "fetch", { id: "Health/Habits.app" })).metadata.load_failure.message, "TypeError: x is undefined");
   assertEquals((await tool(pg, a, "see_app", { path: "Health/Habits.app" })).load_failure.device, "iPhone");
+});
+
+Deno.test("write makes and replaces binary files through the file store, after a read", async () => {
+  const pg = await schemaDB();
+  const a = await account(pg);
+  await note(pg, a, "Acme\n\nThe client.\n");
+  assertStringIncludes(await fails(tool(pg, a, "write", { path: "Scans/a.pdf", content_base64: "JVBERi0=", mime: "application/pdf" })), "can't be written here yet");
+  const made: { noteId?: string; folderId?: string | null; name: string; mime: string; bytes: number }[] = [];
+  fileStore.create = async (tx, c, f) => {
+    made.push({ ...f, bytes: f.bytes.length });
+    const id = crypto.randomUUID();
+    await tx`insert into public.attachments (id, meta_ct, size, storage_path) values (${id}, ${await c.v.sealFileMeta(id, { name: f.name, type: f.mime, size: f.bytes.length })}, ${f.bytes.length}, ${`${a.id}/${id}`})`;
+    return { id };
+  };
+  fileStore.replace = async () => {};
+  try {
+    assertEquals((await tool(pg, a, "write", { path: "Acme/scan.pdf", content_base64: "JVBERi0=", mime: "application/pdf" })).created, "Acme/scan.pdf");
+    assertEquals(made[0].name, "scan.pdf");
+    assertEquals(made[0].bytes, 5);
+    assert(made[0].noteId);
+    assertEquals((await tool(pg, a, "list", { path: "Acme/" })).entries[0].path, "Acme/scan.pdf");
+    assertEquals((await tool(pg, a, "write", { path: "Acme/scan.pdf", content_base64: "JVBERi0x", mime: "application/pdf" })).written, "Acme/scan.pdf");
+    assertStringIncludes(await fails(tool(pg, a, "write", { path: "Acme/scan.pdf", content_base64: "%%%", mime: "application/pdf" })), "valid base64");
+  } finally {
+    delete fileStore.create; delete fileStore.replace;
+  }
 });

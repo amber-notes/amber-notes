@@ -103,8 +103,8 @@ export const FILE_TOOLS: Tool[] = ([
   },
   {
     name: "write", title: "Write",
-    description: "Writes a whole note, app file or data.json: creates it, or replaces it (read it first). Prefer edit for changes; the old version stays in history. Answers with the same checks as edit. Notes are markdown: checklists \"- [ ] item\", links to notes [[Title]], and a tracker is a table with a line like <!-- pane-table: Date=date; Mood=scale 1-5; Walk=choice Yes|No --> above it (keep values in range).",
-    inputSchema: { type: "object", properties: { path: str(PATH), content: str("The whole text (data.json: JSON).") }, required: ["path", "content"] },
+    description: "Writes a whole note, app file, data.json or file: creates it, or replaces it (read it first). A binary file (image, PDF) goes as content_base64 with mime, in a folder (\"Work/scan.pdf\") or a note's folder (\"Work/Acme/scan.pdf\": the note shows it). Prefer edit for changes; the old version stays in history. Answers with the same checks as edit. Notes are markdown: checklists \"- [ ] item\", links to notes [[Title]], and a tracker is a table with a line like <!-- pane-table: Date=date; Mood=scale 1-5; Walk=choice Yes|No --> above it (keep values in range).",
+    inputSchema: { type: "object", properties: { path: str(PATH), content: str("The whole text (data.json: JSON)."), content_base64: str("A binary file (image, PDF…) as base64, instead of content: makes the file, or replaces it."), mime: str("The binary file's type, like image/png or application/pdf.") }, required: ["path"] },
     annotations: change,
   },
   {
@@ -168,6 +168,52 @@ export async function runFileTool(name: string, args: Args, ctx: ToolContext): P
   if (a.path === undefined && a.id !== undefined && name !== "fetch") a.path = a.id;
   if (name === "fetch" && a.id === undefined && a.path !== undefined) a.id = a.path;
   return await runIn(FILE_TOOLS, fileHandlers, name, a, ctx);
+}
+
+// MARK: Files' storage (folder_files.ts registers these; until then, binary writes are refused)
+
+export type FileStore = {
+  create(tx: Tx, c: Call, f: { folderId?: string | null; noteId?: string; name: string; mime: string; bytes: Uint8Array }): Promise<{ id: string; path?: string }>;
+  replace(tx: Tx, c: Call, fileId: string, f: { mime: string; bytes: Uint8Array }): Promise<void>;
+};
+export const fileStore: Partial<FileStore> = {};
+
+/** A binary file written at a path: made in its folder or its note's folder, or replaced. */
+async function writeBinary(tx: Tx, c: Call, raw: unknown, b64: string, mime: unknown): Promise<unknown> {
+  if (typeof mime !== "string" || !/^[\w.+-]+\/[\w.+-]+$/.test(mime)) throw new ToolError("mime is the file's type, like image/png or application/pdf.");
+  if (!fileStore.create || !fileStore.replace) throw new ToolError("Files can't be written here yet.");
+  let bytes: Uint8Array;
+  try { bytes = Uint8Array.from(atob(b64.replace(/^data:[^,]*,/, "").replace(/\s+/g, "")), (ch) => ch.charCodeAt(0)); } catch { throw new ToolError("content_base64 isn't valid base64."); }
+  const path = clean(raw);
+  let r: Ref | null = null;
+  try { r = await resolve(tx, c, path); } catch (e) { if (!/^Nothing at/.test((e as Error).message)) throw e; }
+  if (r?.kind === "file") {
+    await mustHaveRead(tx, c, `blob:${r.id}`, await fileStamp(tx, r.id), r.path);
+    await fileStore.replace(tx, c, r.id, { mime, bytes });
+    await markRead(tx, c, `blob:${r.id}`, await fileStamp(tx, r.id));
+    return { written: r.path, bytes: bytes.length };
+  }
+  if (r) throw new ToolError(`${path} is a ${r.kind === "dir" ? "folder" : "note or app"}, not a file.`);
+  const P = await pathsOf(tx, c);
+  const slash = path.lastIndexOf("/");
+  const dir = slash > 0 ? path.slice(0, slash) : "", name = path.slice(slash + 1);
+  if (!name || /\.(md|app)$/i.test(name)) throw new ToolError("A file's path ends in its name, like \"Work/scan.pdf\".");
+  const where = await placeFor(tx, c, P, dir);
+  const made = await fileStore.create(tx, c, where.parent ? { noteId: where.parent.id, name, mime, bytes } : { folderId: where.folder, name, mime, bytes });
+  if (where.parent) {
+    // A note's file is one its text shows.
+    const n = await full(tx, c, where.parent.id);
+    refuseLocked(n);
+    const before = await bodyOf(c.v, n);
+    await save(tx, c, n, before, appendText(before, `![${name.replace(/[\[\]]/g, "")}](pane-file:${made.id})`));
+  }
+  await markRead(tx, c, `blob:${made.id}`, await fileStamp(tx, made.id));
+  return { created: made.path ?? path, bytes: bytes.length };
+}
+/** A file's version for the read rule: when its row last changed. */
+async function fileStamp(tx: Tx, id: string): Promise<string> {
+  const [r] = await tx<{ at: Date }[]>`select updated_at as at from public.attachments where id = ${id}::uuid`;
+  return r ? String(+new Date(r.at)) : "gone";
 }
 
 // MARK: What this session has read
@@ -617,6 +663,7 @@ export const fileHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
     const r = await resolve(tx, c, a.id, { trashed: true });
     if (r.kind === "file") {
       const got = await classic.get_file(tx, { id: r.id }, c);
+      await markRead(tx, c, `blob:${r.id}`, await fileStamp(tx, r.id));
       // The file's own handle isn't shown: its path is.
       if (got instanceof Content) return new Content(got.content.map((b) => b.type === "text" ? { ...b, text: String(b.text).replace(/pane-file:[0-9a-f-]{36}/gi, r.path) } : b), undefined);
       return got;
@@ -749,7 +796,8 @@ export const fileHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
   },
 
   async write(tx, a, c) {
-    if (typeof a.content !== "string") throw new ToolError("content is the whole new text.");
+    if (typeof a.content_base64 === "string") return await writeBinary(tx, c, a.path, a.content_base64, a.mime);
+    if (typeof a.content !== "string") throw new ToolError("content is the whole new text (or content_base64 and mime for a binary file).");
     const content = a.content;
     let r: Ref;
     try { r = await resolve(tx, c, a.path); } catch (e) {
