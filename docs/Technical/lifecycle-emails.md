@@ -129,12 +129,11 @@ Real captures inside the note:
 | `connect.jpg` | connect (grocery list) | `web/public/blog/amber-notes-iphone-chatgpt-edited-checklist.webp` and the receipt `web/public/demo/720/pill-chatgpt-5-lines@2x.png` |
 | `receipt.png` | undo | the same receipt |
 | `tc-*.jpg` | templates | each template's paper-cut cover from `web/public/templates/covers/`, cropped like the site's cards |
-| `app-habits.jpg`, `app-budget.jpg` | apps | the app-notes prototype; not in this repository until app notes ship |
-| `share.jpg` | share | a frame of the collaboration prototype; not in this repository until sharing ships |
+| `app-habits.jpg`, `app-budget.jpg` | apps | the app-notes prototype's habit tracker and budget, generic data |
+| `share.jpg` | share | collab-design's still of a shared note: two avatars and a named cursor |
 
-The apps and share emails show features that haven't shipped, so their three captures are kept out
-of this public repository and out of the site. Add them to `web/public/email/` in the same change
-that turns `APPS_LIVE` or `SHARING_LIVE` on.
+`supabase/functions/lifecycle/assets.test.ts` fails if any email, in any variant, points at a picture that
+isn't in `web/public/email/`.
 
 The connect email has no capture of a ChatGPT conversation about groceries: none exists, and making
 one means a real ChatGPT account. The ask is in the words instead.
