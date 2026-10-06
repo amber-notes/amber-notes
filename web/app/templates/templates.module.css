@@ -38,9 +38,12 @@
 }
 .chip[aria-pressed="true"] { color: var(--ink); background: var(--soft); box-shadow: none; }
 .chip:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+/* Never a layer of the filter motion: the pick moves in the page at the click (lib/filter-transition.ts). */
+.filterRow, .chip { view-transition-name: none; }
 @media (hover: hover) { .chip:hover { color: var(--ink); } }
 @media (prefers-reduced-motion: no-preference) {
-  .chip { transition: background-color 0.15s ease-out, color 0.15s ease-out, transform 0.12s ease-out; }
+  /* The pick moves in one step (lib/filter-transition.ts); only the press animates. */
+  .chip { transition: transform 0.12s ease-out; }
   .chip:active { transform: scale(0.97); }
 }
 /* The name and its count sit on one baseline (the count is smaller, so centring it on its own
