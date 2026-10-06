@@ -517,6 +517,11 @@ async function runTask(task: Task, rep = 1) {
       return { held_back_saves: held, live_saves: live, ended_with_draft: !!row?.draft };
     })(),
     tests_written: (() => { try { const f = JSON.parse(after.page ?? "{}").files ?? {}; return Object.entries(f as Record<string, string>).filter(([p]) => /^\/tests?\//.test(p)).reduce((n, [, t]) => n + (t.match(/\b(it|test)\s*\(/g) ?? []).length, 0); } catch { return 0; } })(),
+    // The final app's tests: how many, how many assertions, and anything skipped (the starter has 2 tests, 6 assertions).
+    test_shape: (() => { try {
+      const t = Object.entries((JSON.parse(after.page ?? "{}").files ?? {}) as Record<string, string>).filter(([p]) => /^\/tests?\//.test(p)).map(([, x]) => x).join("\n");
+      return { tests: (t.match(/\b(it|test)\s*\(/g) ?? []).length, expects: (t.match(/\bexpect\s*\(/g) ?? []).length, skipped: (t.match(/\b(it|test|describe)\.(skip|todo)\b|\bx(it|describe)\s*\(/g) ?? []).length };
+    } catch { return null; } })(),
     used: { try_app: session.log.filter((l) => l.name.endsWith("try_app") || (l.name.endsWith("see_app") && Array.isArray((l.args as { steps?: unknown }).steps))).length, see_app: session.log.filter((l) => l.name.endsWith("see_app")).length, run_app_tests: session.log.filter((l) => l.name.endsWith("run_app_tests")).length,
       test_files: Object.keys(((): Record<string, string> => { try { return JSON.parse(after.page ?? "{}").files ?? {}; } catch { return {}; } })()).filter((p) => /^\/tests?\//.test(p)).length },
   };
