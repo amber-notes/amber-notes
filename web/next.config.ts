@@ -68,6 +68,11 @@ const config: NextConfig = {
       { source: "/blog/category/:category/page/1", destination: "/blog/category/:category", permanent: true },
       // A link with "&" where its "?" should be (ambernotes.app/&utm_source=…) lands on /&…, a 404.
       { source: "/:junk(&.*)", destination: "/", permanent: true },
+      // "Use template" and "Use this note" open Amber Notes from the template's or note's page
+      // (lib/open-in-app.ts). Their universal links reach the app directly where it's installed; a
+      // browser that visits one goes to that page, which tries the app as it loads.
+      { source: "/open/template/:slug", destination: "/templates/:slug?open=1", permanent: true },
+      { source: "/open/copy/:slug", destination: "/n/:slug?open=1", permanent: true },
       // A guessed address for the Obsidian MCP post (one visit on 5 October, no link of ours).
       { source: "/blog/obsidian-mcp-servers-compared", destination: "/blog/obsidian-mcp", permanent: true },
     ];

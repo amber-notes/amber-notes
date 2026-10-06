@@ -1,12 +1,6 @@
-/* The pages behind "Use template" and "Use this note" (/open/template, /open/copy) when the link
-   stays in the browser: one card (lib/ui) in the site's cream theme. It tries the app first; the way
-   to get Amber Notes appears only if the app didn't open (data-state on .page, set by OpenApp). */
-.or { display: flex; align-items: center; gap: 12px; width: 100%; margin-top: 6px; color: var(--muted); font-size: 13px; font-weight: 600; }
-.or::before, .or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
-.md { width: 100%; text-align: left; }
-.md summary { min-height: 44px; display: inline-flex; align-items: center; color: var(--muted); font-size: 14px; font-weight: 600; cursor: pointer; border-radius: 10px; }
-.md pre:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
-.md pre { margin: 6px 0 0; max-height: 260px; overflow: auto; padding: 12px 14px; border-radius: 12px; background: var(--soft); font: 12.5px/1.55 ui-monospace, "SF Mono", Menlo, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+/* The pages that open a place in Amber Notes (PlaceCard) when the link stays in the browser: one
+   card (lib/ui) in the site's cream theme. It tries the app first; the way to get Amber Notes
+   appears only if the app didn't open (data-state on .page, set by OpenApp). */
 
 /* The card's three states. Without JavaScript the page stays on "fallback". */
 .page[data-state="trying"] .whenOpened, .page[data-state="trying"] .whenFallback,
@@ -23,15 +17,6 @@
 @keyframes settle { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 .stack { display: grid; gap: 8px; width: 100%; justify-items: center; margin-top: 10px; }
 .soon { margin: 0; color: var(--muted); font-size: 14.5px; font-weight: 600; }
-/* The other way to use it: a group of its own, twice as far from the buttons as they are from each other. */
-.alt { width: 100%; margin-top: 6px; padding-top: 8px; box-shadow: inset 0 1px 0 var(--line); }
-.md[open] :global(button) { margin-top: 10px; }
-.md p { margin-top: 4px; }
-.alt .md summary { display: flex; justify-content: center; gap: 6px; width: 100%; min-height: 44px; color: var(--link); font-size: 15px; list-style: none; }
-.alt .md summary::-webkit-details-marker { display: none; }
-.alt .md summary::after { content: ""; width: 7px; height: 7px; margin-top: -3px; border: solid currentColor; border-width: 0 2px 2px 0; transform: rotate(45deg); align-self: center; }
-.alt .md[open] summary::after { margin-top: 3px; transform: rotate(-135deg); }
-@media (hover: hover) { .alt .md summary:hover { color: var(--ink); } }
 /* The quiet links under the card's buttons take a finger. */
 .again a, .back { display: inline-flex; align-items: center; min-height: 44px; }
 .again, .backRow { margin: -6px 0; }
