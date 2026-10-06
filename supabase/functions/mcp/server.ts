@@ -15,9 +15,9 @@
 import type { Sql } from "npm:postgres@3.4.5";
 import { tokenKey, unwrap, Vault } from "../_shared/e2ee.ts";
 import { errorKind, log } from "../_shared/log.ts";
-import { Content, runTool, ToolContext, ToolError, tools as classicTools } from "./tools.ts";
+import { Content, runTool, servedTools, ToolContext, ToolError } from "./tools.ts";
 import { FILE_INSTRUCTIONS, FILE_TOOLS, runFileTool } from "./files_tools.ts";
-// The file-like tool set (prototype) when AMBER_MCP_TOOLS=files; the classic one otherwise.
+// The file-like tool set (prototype) when AMBER_MCP_TOOLS=files; otherwise what servedTools() serves.
 const fileSet = () => Deno.env.get("AMBER_MCP_TOOLS") === "files";
 import { challenge, handleOAuth, isOAuthPath, publicBase, resolveAccessToken, subpath } from "./oauth.ts";
 import { SERVER_CARD_PATH, SERVER_INFO, serverCardResponse } from "./card.ts";
@@ -198,10 +198,10 @@ async function respond(msg: Rpc, id: string | number | null, ctx: ToolContext): 
       case "ping":
         return ok(id, {});
       case "tools/list":
-        return ok(id, { tools: (fileSet() ? FILE_TOOLS : classicTools).filter((t) => ctx.canWrite || t.annotations.readOnlyHint) });
+        return ok(id, { tools: (fileSet() ? FILE_TOOLS : servedTools()).filter((t) => ctx.canWrite || t.annotations.readOnlyHint) });
       case "tools/call": {
         const name = String(msg.params?.name ?? "");
-        if (!(fileSet() ? FILE_TOOLS : classicTools).some((t) => t.name === name)) {
+        if (!(fileSet() ? FILE_TOOLS : servedTools()).some((t) => t.name === name)) {
           return { jsonrpc: "2.0", id, error: { code: -32602, message: `Unknown tool: ${name || "(none)"}` } };
         }
         const given = msg.params?.arguments ?? {};

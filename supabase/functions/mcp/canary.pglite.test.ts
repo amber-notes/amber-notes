@@ -18,6 +18,9 @@ import { schemaDB, sqlFor } from "./pglite.ts";
 import { account, app, edit, file, lockedNote, note, notesPassword, folder, share, stubStorage } from "./sealed.ts";
 import { tools } from "./tools.ts";
 
+// The note-page tools are a prototype, served only with this setting.
+Deno.env.set("AMBER_MCP_TOOLS", "pages");
+
 const SUPA = "https://proj.supabase.co";
 const FUNCTION = `${SUPA}/functions/v1/mcp`;
 const CHATGPT = "https://chatgpt.com/connector_platform_oauth_redirect";

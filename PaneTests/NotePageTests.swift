@@ -2,8 +2,14 @@ import CryptoKit
 import Foundation
 import Network
 import SwiftData
+import SwiftUI
 import Testing
 import WebKit
+#if os(iOS)
+import UIKit
+#else
+import AppKit
+#endif
 @testable import Pane
 
 /// Note pages (prototype): what a page is given, the edits it can ask for, and the sandbox it runs in.
@@ -1097,6 +1103,75 @@ import WebKit
         try await run(sandbox.webView, until: "document.getElementById('s') !== null")
         #expect(try await sandbox.webView.evaluateJavaScript("JSON.stringify(window.__r)") as? String == #"{"same":true,"compiled":true}"#)
         #expect(try await sandbox.webView.evaluateJavaScript("document.getElementById('s').tagName") as? String == "BUTTON")
+    }
+
+    /// The version that runs: the newest that opens here. One that didn't is skipped (kept in
+    /// history), unless you ask for it; a newer one goes live.
+    @Test func theLastWorkingVersionRuns() {
+        let store = NotePageStore(file: nil)
+        let id = UUID()
+        let good = NotePageStore.Page(html: "<p>good</p>", by: "Claude", at: .now)
+        let crash = NotePageStore.Page(html: "<p>crash</p>", by: "Claude", at: .now)
+        let fixed = NotePageStore.Page(html: "<p>fixed</p>", by: "Claude", at: .now)
+        store[id] = good
+        store[id] = crash
+        #expect(store.live(id) == crash)
+        store.markBroken(id, crash)
+        #expect(store.live(id) == good, "didn't open here: the last working one runs")
+        #expect(store[id] == crash, "but it's kept")
+        store.force(id, crash)
+        #expect(store.live(id) == crash, "Undo: run it anyway")
+        store[id] = fixed
+        #expect(store.live(id) == fixed, "a fix goes live")
+        store.setDraft(id, problems: "today.test.tsx failed", by: "Claude")
+        #expect(store.drafts[id]?.by == "Claude" && store.live(id) == fixed, "a draft never runs")
+    }
+
+    /// An app template brings its app and first ask; the first-open moment shows once per person
+    /// for apps and once for notes, and later templates get a small line instead.
+    @Test func firstOpenShowsOncePerKind() throws {
+        let json = #"{"slug":"evening-tracker","title":"Evening tracker","note":"Evening tracker\n","app":"/templates/apps/evening-tracker.json","preview":"/templates/apps/evening-tracker.jpg","ask":"Add a sleep column."}"#
+        let t = try JSONDecoder().decode(NoteTemplate.self, from: Data(json.utf8))
+        #expect(t.app == "/templates/apps/evening-tracker.json" && t.ask == "Add a sleep column.")
+        var draft = NoteDraft(template: t, link: NoteSourceLink(kind: .template, slug: t.slug))
+        draft.appProject = #"{"amberApp":1,"files":{"/index.html":"<p>x</p>"}}"#
+        let defaults = UserDefaults(suiteName: "firstOpen-\(UUID())")!
+        let fo = FirstOpen(defaults: defaults)
+        let a = UUID(), b = UUID(), n = UUID()
+        fo.added(note: a, draft: draft)
+        #expect(fo.pending[a]?.full == true && fo.pending[a]?.isApp == true)
+        fo.start(fo.pending[a]!)
+        fo.added(note: b, draft: draft)
+        #expect(fo.pending[b]?.full == false, "the second app: just Added to your notes")
+        draft.appProject = nil
+        fo.added(note: n, draft: draft)
+        #expect(fo.pending[n]?.full == true && fo.pending[n]?.isApp == false, "a note template has its own first time")
+    }
+
+    /// The first-open sheet with the picture (A with C's look) fits on the smallest phones without
+    /// scrolling: an iPhone SE's 320 by 568 leaves about 538 points under the status bar for a sheet.
+    @Test func firstOpenSheetFitsASmallPhone() throws {
+        let preview = try Data(contentsOf: #require(Bundle.main.url(forResource: "firstopen-apps", withExtension: "jpg")))
+        let app = FirstOpen.Moment(note: UUID(), isApp: true, title: "Evening tracker", description: nil,
+                                   ask: "Add a sleep column to my Evening tracker.", slug: "evening-tracker", preview: preview, full: true)
+        let note = FirstOpen.Moment(note: UUID(), isApp: false, title: "Meal plan and groceries",
+                                    description: "A weekly meal plan with the grocery list that goes with it. Your AI plans the dinners and writes the list in Amber Notes.",
+                                    ask: "Plan dinners for this week. We're out on Friday, and no mushrooms.", slug: "meal-plan", preview: nil, full: true)
+        func height(_ m: FirstOpen.Moment, _ width: CGFloat) -> CGFloat {
+            let view = FirstOpenRichSheetContent(moment: m, small: FirstOpenRichSheet.small(width: width)) {}
+            #if os(iOS)
+            return UIHostingController(rootView: view).sizeThatFits(in: CGSize(width: width, height: .greatestFiniteMagnitude)).height
+            #else
+            return NSHostingController(rootView: view).sizeThatFits(in: CGSize(width: width, height: .greatestFiniteMagnitude)).height
+            #endif
+        }
+        for width: CGFloat in [320, 375, 402] {
+            print("firstOpen sheet at \(Int(width)): app \(Int(height(app, width))), note \(Int(height(note, width)))")
+        }
+        #if os(iOS)
+        #expect(height(app, 320) <= 538 && height(note, 320) <= 538)
+        #expect(height(app, 375) <= 600, "an SE (3rd generation), 375 by 667, keeps the app showing above it")
+        #endif
     }
 
     @Test func projectsHaveLimitsAndMustBeCompiled() throws {

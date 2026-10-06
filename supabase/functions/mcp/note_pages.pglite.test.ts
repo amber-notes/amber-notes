@@ -7,6 +7,9 @@ import { schemaDB } from "./pglite.ts";
 import { type Account, account, app, lockedNote, note, notesPassword, opened, toolContext } from "./sealed.ts";
 import { runTool, ToolError } from "./tools.ts";
 
+// The note-page tools are a prototype, served only with this setting.
+Deno.env.set("AMBER_MCP_TOOLS", "pages");
+
 // deno-lint-ignore no-explicit-any
 const tool = async (pg: PGlite, a: Account, name: string, args: Record<string, unknown> = {}, write = true) => await runTool(name, args, await toolContext(pg, a, write)) as any;
 const HABITS = "Habit tracker\n\n| Date | Walk | Read |\n| --- | --- | --- |\n| 2026-10-03 | ✓ | |\n| 2026-10-04 | | ✓ |\n";

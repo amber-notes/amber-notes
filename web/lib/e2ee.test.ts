@@ -21,7 +21,7 @@ async function browserPrivate(): Promise<CryptoKey> {
 describe("the page's e2ee code", () => {
   it("is the shared file, byte for byte", () => {
     const copy = readFileSync(new URL("./e2ee.ts", import.meta.url), "utf8").replace(/^(?:\/\/ web copy:.*\n)+\n/, "");
-    expect(copy === shared("e2ee.ts"), "web/lib/e2ee.ts differs from supabase/functions/_shared/e2ee.ts: copy it again").toBe(true);
+    expect(copy === shared("e2ee.ts"), "web/lib/e2ee.ts differs from supabase/functions/_shared/e2ee.ts: run pnpm -C web e2ee:copy").toBe(true);
   });
 
   it("reads a typed recovery key as the vectors do", async () => {

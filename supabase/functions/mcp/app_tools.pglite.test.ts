@@ -12,6 +12,9 @@ import { schemaDB } from "./pglite.ts";
 import { type Account, account, app, note, toolContext } from "./sealed.ts";
 import { Content, runTool } from "./tools.ts";
 
+// These tests use the prototype tools (servedTools serves them only with AMBER_MCP_TOOLS=pages).
+Deno.env.set("AMBER_MCP_TOOLS", "pages");
+
 // deno-lint-ignore no-explicit-any
 const tool = async (pg: PGlite, a: Account, name: string, args: Record<string, unknown> = {}, write = true) => await runTool(name, args, await toolContext(pg, a, write)) as any;
 const BODY = "Lisbon budget\n\nSpent in Lisbon with Ana.\n\n## Costs\n| Date | Item | Category | Amount |\n| --- | --- | --- | --- |\n| 2026-10-01 | Hotel Avenida | Stay | 1 450 |\n| 2026-10-02 | Pastéis | Food | 12,50 |\n| 2026-10-02 | Tram 28 | Transport | 3 |\n\n- [x] Book flights\n- [ ] Pay Ana back\n";

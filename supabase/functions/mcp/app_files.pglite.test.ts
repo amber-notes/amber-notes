@@ -10,6 +10,9 @@ import { type Account, account, note, toolContext } from "./sealed.ts";
 import { Content, runTool, ToolError } from "./tools.ts";
 import { parseStored } from "./app_project.ts";
 
+// These tests use the prototype tools (servedTools serves them only with AMBER_MCP_TOOLS=pages).
+Deno.env.set("AMBER_MCP_TOOLS", "pages");
+
 // deno-lint-ignore no-explicit-any
 const tool = async (pg: PGlite, a: Account, name: string, args: Record<string, unknown> = {}, write = true) => await runTool(name, args, await toolContext(pg, a, write)) as any;
 const fails = async (p: Promise<unknown>) => { try { await p; } catch (e) { assert(e instanceof ToolError, String(e)); return (e as Error).message; } throw new Error("expected a ToolError"); };

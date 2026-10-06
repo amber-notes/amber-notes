@@ -57,6 +57,7 @@ import WebKit
         try await toolbar(dir, want("toolbar"))
         try await libraries(dir, want("lib"))
         try await training(dir, want("training"))
+        try await firstOpen(dir, want("firstopen"))
         try await marks(dir, want("mark"))
         guard want("pages") else { return }
         let sizes: [(String, CGSize)] = [("narrow", CGSize(width: 1000, height: 760)), ("typical", CGSize(width: 1440, height: 900)), ("wide", CGSize(width: 1920, height: 1160))]
@@ -122,6 +123,57 @@ import WebKit
             defer { w.orderOut(nil); w.close() }
             try? await Task.sleep(for: .seconds(1))
             try await MacStoreShots.shoot(dir, "training-\(name)", [("main", w)])
+        }
+    }
+
+    /// The first-open moment on the Mac, the three designs, for the Evening tracker app template.
+    func firstOpen(_ dir: URL, _ on: Bool) async throws {
+        guard on else { return }
+        let onboarding = Self.demo.deletingLastPathComponent().appending(path: "onboarding/apps")
+        let project = try String(contentsOf: onboarding.appending(path: "evening-tracker.json"), encoding: .utf8)
+        let preview = try? Data(contentsOf: onboarding.appending(path: "evening-tracker.jpg"))
+        let json = #"{"slug":"evening-tracker","title":"Evening tracker","note":"Evening tracker\n\nA two-minute check-in at the end of the day.\n","description":"A small app for your evenings: how the day went, sleep and mood, with your week and trends. Your AI can change it.","ask":"Add a sleep column to my Evening tracker."}"#
+        let template = try JSONDecoder().decode(NoteTemplate.self, from: Data(json.utf8))
+        defer { FirstOpen.variant = .a }
+        let meals = #"{"slug":"meal-plan","title":"Meal plan and groceries","note":"Meal plan and groceries\n\nThis week's dinners and the shopping list that goes with them.\n","description":"A weekly meal plan with the grocery list that goes with it. Your AI plans the dinners and writes the list in Amber Notes.","ask":"Plan dinners for this week. We're out on Friday, and no mushrooms."}"#
+        let mealTemplate = try JSONDecoder().decode(NoteTemplate.self, from: Data(meals.utf8))
+        let runs: [(FirstOpen.Variant, Bool, Bool)] = [(.a, false, false), (.b, false, false), (.c, false, false), (.a, true, false),
+                                                       (.ac, false, false), (.ac, true, false), (.ac, false, true), (.ac, true, true)]
+        for (variant, dark, isNote) in runs {
+            FirstOpen.variant = variant
+            let c = try Self.library()
+            // (The demo library has a text note called "Evening tracker" already.)
+            let title = isNote ? "Weekly dinners" : "Evening check-in"
+            let note = c.mainContext.createNote(in: .all, body: isNote
+                ? "\(title)\n\nThis week's dinners and the shopping list that goes with them.\n\n- Monday: lentil soup\n- Tuesday: tacos\n"
+                : "\(title)\n\nA two-minute check-in at the end of the day.\n")
+            try c.mainContext.save()
+            var draft = NoteDraft(template: isNote ? mealTemplate : template,
+                                  link: NoteSourceLink(kind: .template, slug: isNote ? "meal-plan" : "evening-tracker"))
+            if !isNote {
+                NotePageStore.shared[note.id] = .init(html: project, by: FirstOpen.templateWriter, at: .now)
+                draft.appProject = project
+                draft.preview = preview
+            }
+            FirstOpen.shared.reset()
+            FirstOpen.shared.added(note: note.id, draft: draft)
+            let w = await AppSnapshotTests.withLastNote(c, title) {
+                let w = MacStoreShots.window(RootView().modelContainer(c).environment(SetupStore()), size: CGSize(width: 1280, height: 820), dark: dark)
+                try? await Task.sleep(for: .seconds(1))
+                if let split = AIEditSnapshots.splitView(in: w.contentView) {
+                    split.setPosition(0, ofDividerAt: 0)
+                    split.setPosition(300, ofDividerAt: 1)
+                }
+                return w
+            }
+            defer { w.orderOut(nil); w.close(); FirstOpen.shared.reset() }
+            try? await Task.sleep(for: .seconds(2))
+            // (The capture window follows its content's height; the app's own window doesn't.)
+            w.setContentSize(CGSize(width: 1280, height: 820))
+            try? await Task.sleep(for: .seconds(1))
+            var windows = [("main", w)]
+            if let sheet = w.attachedSheet { windows.append(("sheet", sheet)) }
+            try await MacStoreShots.shoot(dir, "firstopen-\(variant.rawValue)\(isNote ? "-note" : "")-\(dark ? "dark" : "light")", windows)
         }
     }
 

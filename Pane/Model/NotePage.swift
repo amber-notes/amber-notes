@@ -372,13 +372,30 @@ final class NotePageStore {
     private(set) var unpushed: [UUID: Date] = [:]
     @ObservationIgnored private let file: URL?
 
-    private struct Saved: Codable { var pages: [UUID: Page]; var history: [UUID: [Page]]; var unpushed: [UUID: Date]? }
+    /// Versions that didn't open on this device (a script error, nothing drawn, too slow), by their
+    /// text's hash: never shown again unless you ask (Undo on "Reverted…").
+    private(set) var broken: [UUID: Set<String>] = [:]
+    /// An AI's newer version that failed its checks, kept on the server as a draft (it never comes
+    /// here): who, and what failed. Shown in App Info.
+    struct Draft: Equatable { var by: String; var problems: String }
+    private(set) var drafts: [UUID: Draft] = [:]
+
+    func setDraft(_ id: UUID, problems: String?, by: String?) {
+        let next = problems.map { Draft(by: by ?? "Your AI", problems: $0) }
+        if drafts[id] != next { drafts[id] = next }
+    }
+
+    /// A version you asked for after it was reverted: shown even though it failed.
+    private(set) var forced: [UUID: String] = [:]
+
+    private struct Saved: Codable { var pages: [UUID: Page]; var history: [UUID: [Page]]; var unpushed: [UUID: Date]?; var broken: [UUID: Set<String>]? }
 
     init(file: URL?) {
         self.file = file
         if let file, let data = try? Data(contentsOf: file), let saved = try? JSONDecoder().decode(Saved.self, from: data) {
             pages = saved.pages
             history = saved.history
+            broken = saved.broken ?? [:]
             unpushed = saved.unpushed ?? [:]
         }
         for (id, p) in pages { NoteWidgets.update(id, html: p.html) }
@@ -394,11 +411,37 @@ final class NotePageStore {
         set {
             let old = pages[id]
             guard old != newValue else { return }
-            if let old, old.html != newValue?.html { remember(old, for: id) }
+            if let old, old.html != newValue?.html { remember(old, for: id); forced[id] = nil }
             pages[id] = newValue
             NoteWidgets.update(id, html: newValue?.html)
             save()
         }
+    }
+
+    /// The version to run: the newest one that opens on this device. (The server only ever sends
+    /// versions that passed their checks; a failing one waits there as a draft.) One that didn't
+    /// open here is skipped, unless you asked for it (Undo on "Reverted…").
+    func live(_ id: UUID) -> Page? {
+        guard let now = pages[id] else { return nil }
+        let candidates = [now] + (history[id] ?? []).reversed()
+        if let f = forced[id], let page = candidates.first(where: { Self.hash($0.html) == f }) { return page }
+        return candidates.first { !(broken[id]?.contains(Self.hash($0.html)) ?? false) } ?? now
+    }
+
+    static func hash(_ text: String) -> String { E2EE.sha256Hex(text) }
+
+    /// It didn't open here: the next one back runs instead.
+    func markBroken(_ id: UUID, _ page: Page) {
+        broken[id, default: []].insert(Self.hash(page.html))
+        if forced[id] == Self.hash(page.html) { forced[id] = nil }
+        save()
+    }
+
+    /// Undo on "Reverted…": run this version anyway.
+    func force(_ id: UUID, _ page: Page) {
+        forced[id] = Self.hash(page.html)
+        broken[id]?.remove(Self.hash(page.html))
+        save()
     }
 
     /// The page before this one, if any.
@@ -460,7 +503,7 @@ final class NotePageStore {
     }
 
     private func save() {
-        guard let file, let data = try? JSONEncoder().encode(Saved(pages: pages, history: history, unpushed: unpushed)) else { return }
+        guard let file, let data = try? JSONEncoder().encode(Saved(pages: pages, history: history, unpushed: unpushed, broken: broken)) else { return }
         try? FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
         try? data.write(to: file, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
     }

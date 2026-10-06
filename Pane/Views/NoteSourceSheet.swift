@@ -35,6 +35,13 @@ struct NoteSourceSheet: View {
         .frame(width: 520, height: 620)
         #endif
         .task { if model.phase == .loading { await model.load(context: context) } }
+        // Added: straight into the note (or app), where the first-open moment says the rest.
+        .onChange(of: model.phase) { _, phase in
+            if case .added(_, let note, _) = phase {
+                NoteOpener.shared.open(note)
+                dismiss()
+            }
+        }
         .alert("You already added this", isPresented: Binding(get: { model.duplicate != nil }, set: { if !$0 { model.duplicate = nil } })) {
             Button("Add another copy") { model.add(context: context, again: true) }
             Button("Open the one you have") {
@@ -88,6 +95,15 @@ struct NoteSourceSheet: View {
                     Text(d).font(.subheadline).foregroundStyle(Color.muted).fixedSize(horizontal: false, vertical: true)
                 }
             }
+            if let picture = FirstOpen.image(data: draft.preview) {
+                // An app: a picture of it, as it will open.
+                picture.resizable().scaledToFit()
+                    .clipShape(.rect(cornerRadius: 18, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Color.line, lineWidth: 1))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .accessibilityLabel("Picture of the \(draft.title) app")
+                    .accessibilityIdentifier("noteSource.preview")
+            } else {
             // The note as it will look, read-only: checklists, headings, lists and tables.
             NotePreview(markdown: draft.body)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -96,6 +112,7 @@ struct NoteSourceSheet: View {
                 .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(.separator, lineWidth: 0.5))
                 .accessibilityLabel("Preview of \(draft.title)")
                 .accessibilityIdentifier("noteSource.preview")
+            }
             if draft.leftOut > 0 {
                 Label(draft.leftOut == 1 ? "A photo or file in this note stays with its owner." : "\(draft.leftOut) photos and files in this note stay with their owner.",
                       systemImage: "photo.on.rectangle")

@@ -108,9 +108,11 @@ enum AIEdit {
         /// Note pages (prototype): an edit made on the note's page, or a page an AI made.
         var kind: Kind = .edit
 
-        enum Kind: Equatable { case edit, pageEdit, dataEdit, pageMade, pageChanged }
+        enum Kind: Equatable { case edit, pageEdit, dataEdit, pageMade, pageChanged, reverted, heldBack }
 
         var summary: String {
+            if kind == .reverted { return "Reverted to the last working version" }
+            if kind == .heldBack { return "\(by)'s new version didn't pass its checks: kept the working one" }
             if kind == .dataEdit, by != AIGlyph.page { return "\(by) changed this app's data" }
             if kind == .pageEdit || kind == .dataEdit { return "Changed in the app" }
             if kind == .pageMade { return "\(by) made this note an app" }
@@ -122,6 +124,8 @@ enum AIEdit {
         /// For the navigation bar over a note's app, where there's room for a word or two.
         var shortSummary: String {
             switch kind {
+            case .reverted: "Reverted"
+            case .heldBack: "Kept the working one"
             case .dataEdit where by != AIGlyph.page: "\(by) changed it"
             case .pageEdit, .dataEdit: "Changed"
             case .pageMade: "\(by) made it"

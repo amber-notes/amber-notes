@@ -586,6 +586,15 @@ struct NotePageView: View {
                 s.files = files
                 s.load(html: html, body: text, data: NotePageDataStore.shared.doc(noteID), restore: restore)
                 sandbox = s
+                // An app that hasn't drawn after 8 seconds didn't open (a module that never loads, an
+                // endless loop): the same as a script error.
+                if snapshotVariant == "full" {
+                    let loaded = html
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .seconds(8))
+                        if sandbox === s, !ready, current == loaded { onFailure(["It didn't open within 8 seconds."]) }
+                    }
+                }
             } catch {
                 failed = error.localizedDescription
             }

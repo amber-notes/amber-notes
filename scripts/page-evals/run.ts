@@ -19,7 +19,8 @@ import { scoreTask } from "./score.ts";
 const args = parseArgs(Deno.args, { string: ["round", "model", "tasks", "server", "concurrency", "budget", "repeat", "label", "hide", "cli-model", "max-turns", "minutes", "tools", "arm"], boolean: ["skill", "no-render", "allow-paid"] });
 // --tools files: the file-like tool set (files_tools.ts) instead of the classic one. --arm screens:
 // the try experiment's control (see_app screenshots only, no tests on save). Set before the server loads.
-if (args.tools === "files") Deno.env.set("AMBER_MCP_TOOLS", "files");
+// The classic set with every prototype tool otherwise (production serves only main's tools).
+Deno.env.set("AMBER_MCP_TOOLS", args.tools === "files" ? "files" : "pages");
 if (args.arm === "screens") Deno.env.set("AMBER_NO_TRY", "1");
 /** Tools taken out of tools/list for this run (an A/B on check_app and preview_app, say). */
 const hidden = new Set((args.hide ?? "").split(",").map((x) => x.trim()).filter(Boolean));

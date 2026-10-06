@@ -727,4 +727,98 @@ final class NotePagesUITests: XCTestCase {
         mark("aidata-end")
         pause(1)
     }
+
+    /// Apps always open: an AI's version that failed its checks waits on the server as a draft (the
+    /// working one keeps running), one that crashes here is reverted (with Undo), a fix goes live.
+    func testLastGoodVersion() {
+        let v = { (name: String) in "\(self.pages)/training-react-\(name).json" }
+        launch(["-seedNote", "\(pages)/training.md", "-open", "Training", "-seedPage", "Training=\(pages)/training-react.json",
+                "-aiDraft", "Training=today.test.tsx: expected 3 exercises, got 0", "-aiDraftAfter", "5",
+                "-aiPages", "Training=\(v("crash")),\(v("fixed"))", "-aiPageBy", "Claude", "-aiAfter", "12", "-aiEvery", "7"])
+        mark("lastgood-start")
+        let title = { self.app.webViews.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Today'")).firstMatch }
+        XCTAssertTrue(title().waitForExistence(timeout: 6))
+        shot("g1-working")
+        // 1. Failed its checks: a draft on the server; the working version keeps running.
+        let kept = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS[c] 'kept the working one'")).firstMatch
+        XCTAssertTrue(kept.waitForExistence(timeout: 8))
+        pause(0.8)
+        shot("g2-held-back")
+        XCTAssertTrue(title().waitForExistence(timeout: 3))
+        XCTAssertEqual(title().label, "Today", "the draft must not run")
+        // 2. A version that crashes here: reverted to the last working one, with Undo.
+        let reverted = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS 'Reverted'")).firstMatch
+        XCTAssertTrue(reverted.waitForExistence(timeout: 14))
+        pause(0.8)
+        shot("g3-reverted")
+        XCTAssertTrue(app.webViews.staticTexts["Today"].firstMatch.waitForExistence(timeout: 10), "the last working version runs")
+        // 3. The fix goes live.
+        let fixed = app.webViews.staticTexts["Today's workout"].firstMatch
+        XCTAssertTrue(fixed.waitForExistence(timeout: 12), "the fixed version runs")
+        pause(1)
+        shot("g4-fixed")
+        mark("lastgood-end")
+        pause(1)
+    }
+
+    /// An AI's failing version waits on the server as a draft; App Info says so.
+    func testDraftInAppInfo() {
+        launch(["-seedNote", "\(pages)/training.md", "-open", "Training", "-seedPage", "Training=\(pages)/training-react.json",
+                "-aiDraft", "Training=today.test.tsx: expected 3 exercises, got 0", "-aiPageBy", "Claude"])
+        pause(3.5)
+        app.buttons["editor.more"].firstMatch.tap()
+        pause(0.8)
+        app.buttons["editor.appInfo"].firstMatch.tap()
+        pause(1.2)
+        XCTAssertTrue(app.staticTexts["Claude is working on a new version"].waitForExistence(timeout: 3))
+        shot("h1-draft-app-info")
+    }
+
+    // MARK: First open, from the website
+
+    /// The website's template page in Safari, Use template, Amber Notes adds it, and the first-open
+    /// moment (FIRST_OPEN=a|b|c; TEMPLATE=evening-tracker or a note template like meal-plan).
+    /// Needs the website (web: pnpm dev) and demo/onboarding/site.py on port 5211.
+    func testFirstOpenFromWeb() {
+        let env = ProcessInfo.processInfo.environment
+        let variant = env["FIRST_OPEN"] ?? "a", slug = env["TEMPLATE"] ?? "evening-tracker"
+        launch(["-firstOpen", variant, "-resetFirstOpen", "-templateSite", "http://127.0.0.1:5211"])
+        pause(2)
+        mark("web-start")
+        XCUIDevice.shared.system.open(URL(string: "http://127.0.0.1:5211/templates/\(slug)")!)
+        let safari = XCUIApplication(bundleIdentifier: "com.apple.mobilesafari")
+        XCTAssertTrue(safari.wait(for: .runningForeground, timeout: 15))
+        pause(3)
+        // Safari's first-run tip, if it shows.
+        let tipClose = safari.buttons["Close"].firstMatch
+        if tipClose.waitForExistence(timeout: 2) { tipClose.tap(); pause(0.8) }
+        shot("w1-website")
+        let use = safari.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS 'Use template'")).firstMatch
+        XCTAssertTrue(use.waitForExistence(timeout: 10))
+        use.tap()
+        // Safari asks before it opens the app. On the site's open page, "Open Amber Notes" if the
+        // page's own attempt didn't reach Safari's question.
+        let open = safari.buttons["Open"].firstMatch
+        if !open.waitForExistence(timeout: 5) {
+            let link = safari.links.matching(NSPredicate(format: "label CONTAINS 'Open Amber Notes'")).firstMatch
+            if link.waitForExistence(timeout: 3) { shot("w2-open-page"); link.tap() }
+        }
+        if open.waitForExistence(timeout: 6) { pause(0.8); shot("w2-open-in-app"); open.tap() }
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 10))
+        let add = app.buttons["noteSource.add"].firstMatch
+        XCTAssertTrue(add.waitForExistence(timeout: 12))
+        pause(1)
+        shot("w3-add")
+        add.tap()
+        pause(2.5)
+        shot("w4-first-open")
+        let start = app.buttons["firstOpen.start"].firstMatch
+        XCTAssertTrue(start.waitForExistence(timeout: 8))
+        if !start.isHittable { app.swipeUp() }
+        start.tap()
+        pause(2)
+        shot("w5-app")
+        mark("web-end")
+        pause(1)
+    }
 }

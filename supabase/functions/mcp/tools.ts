@@ -280,12 +280,27 @@ export const tools: Tool[] = ([
   },
 ] satisfies Tool[]).map((t) => ({ ...t, annotations: { title: t.title, ...t.annotations }, securitySchemes: [{ type: "oauth2" as const, scopes: [t.annotations.readOnlyHint ? "notes:read" : "notes:write"] }] }));
 
+/** What production serves, by name: an allowlist, so a tool added here stays a prototype until it
+ *  is named. The site lists these (web/lib/mcp-tools.ts; site_tools.test.ts checks the two agree). */
+export const PRODUCTION_TOOL_NAMES: readonly string[] = [
+  "get_overview", "search_notes", "list_notes", "read_note", "create_note", "edit_note", "append_to_note",
+  "replace_note_body", "set_checklist_item", "move_note", "pin_note", "delete_note", "restore_note",
+  "list_folders", "create_folder", "rename_folder", "delete_folder", "note_history", "restore_revision",
+  "create_sub_note", "list_files", "get_file", "read_table", "log_table_row", "delete_table_row", "search", "fetch",
+];
+
+/** The tools this server offers, by the AMBER_MCP_TOOLS setting: "pages" serves every tool here,
+ *  prototypes included; unset or "" serves production's. */
+export function servedTools(set: string | undefined = Deno.env.get("AMBER_MCP_TOOLS")): typeof tools {
+  return set === "pages" ? tools : tools.filter((t) => PRODUCTION_TOOL_NAMES.includes(t.name));
+}
+
 
 /** One tool call: the vault, and how much scan time it spent (charged when it ends). */
 export type Call = { v: Vault; ctx: ToolContext; scanMs: number };
 
 export async function runTool(name: string, args: Args, ctx: ToolContext): Promise<unknown> {
-  return await runIn(tools, handlers, name, args, ctx);
+  return await runIn(servedTools(), handlers, name, args, ctx);
 }
 
 /** One call of a tool from a tool set (the classic one above, or the file-like one in files_tools.ts). */

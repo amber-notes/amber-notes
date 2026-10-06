@@ -196,6 +196,13 @@ struct AppInfoSheet: View {
     var body: some View {
         NavigationStack {
             Form {
+                if let draft = NotePageStore.shared.drafts[noteID] {
+                    Section {
+                        Label("\(draft.by) is working on a new version", systemImage: "hammer")
+                        Text("It didn't pass its checks yet, so this one keeps running. \(draft.problems)")
+                            .font(.footnote).foregroundStyle(.secondary)
+                    }
+                }
                 internet
                 Section {
                     if hasPrevious {
