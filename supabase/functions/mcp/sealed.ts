@@ -92,12 +92,13 @@ export async function folder(pg: PGlite, a: Account, name: string, parent: strin
   return id;
 }
 
-/** A file's row, and its bytes sealed as the app uploads them to Storage. */
-export async function file(pg: PGlite, a: Account, name: string, type: string, content: Uint8Array) {
+/** A file's row, and its bytes sealed as the app uploads them to Storage. With `folder`, a file
+ *  that sits in that folder on its own. */
+export async function file(pg: PGlite, a: Account, name: string, type: string, content: Uint8Array, o: { folder?: string | null } = {}) {
   const id = crypto.randomUUID();
   const path = `${a.id}/${id}`;
-  await app(pg, a.id, `insert into public.attachments (id, meta_ct, size, storage_path) values ($1, $2, $3, $4)`,
-    [id, await a.vault.sealFileMeta(id, { name, type, size: content.length }), content.length, path]);
+  await app(pg, a.id, `insert into public.attachments (id, meta_ct, size, storage_path, folder_id) values ($1, $2, $3, $4, $5)`,
+    [id, await a.vault.sealFileMeta(id, { name, type, size: content.length }), content.length, path, o.folder ?? null]);
   const sealed = await sealFile(new Uint8Array(content), await aesKey(a.dk.slice()), a.keyId, id);
   return { id, path, sealed };
 }
