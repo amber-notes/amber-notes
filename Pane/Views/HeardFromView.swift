@@ -1,37 +1,46 @@
 import SwiftUI
 
-/// "How did you hear about Amber Notes?" (see `HeardFrom`): a title, a quiet line, one row per
-/// answer and Skip. A row answers in one tap, shows a tick and the sheet goes. "Something else"
-/// opens a short field for your own words first (optional too).
-/// A solid sheet in the app's own colours: full height on iPhone, a small sheet on the Mac.
+/// "How did you hear about Amber Notes?" (see `HeardFrom`): a title, a quiet line, the answers
+/// as pills sized to their words, and Skip. A pill answers in one tap, fills with amber and the
+/// sheet goes. "Something else" opens a short field for your own words first (optional too).
+/// A solid sheet in the app's own colours, as tall as what it asks: a short sheet on the Mac, and
+/// on iPhone about half the screen (the whole screen while you type).
 struct HeardFromView: View {
     let store: HeardFromStore
-    @State private var style: HeardFromStyle
-    @State private var typingOther = false
+    @State private var typingOther: Bool
     @State private var contentHeight: CGFloat = 0
-    @Environment(\.displayScale) private var displayScale
     @State private var words = ""
     @FocusState private var fieldFocused: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    /// Dev: switch looks while the sheet is up (forced, and not in captures).
-    private let showsDevPicker: Bool
-
-    init(store: HeardFromStore, style: HeardFromStyle = .current, devPicker: Bool? = nil) {
+    /// `typing`: captures can open it with the "Something else" field showing.
+    init(store: HeardFromStore, typing: Bool = false) {
         self.store = store
-        _style = State(initialValue: style)
-        showsDevPicker = devPicker ?? (store.forced && !ProcessInfo.processInfo.arguments.contains("-heardFromStyle"))
+        _typingOther = State(initialValue: typing)
     }
 
     var body: some View {
         ScrollViewReader { scroller in
             ScrollView {
-                VStack(alignment: style == .tiles ? .center : .leading, spacing: Metrics.gap) {
-                    header
-                    choices
+                VStack(alignment: .leading, spacing: Metrics.gap) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("How did you hear about Amber Notes?")
+                            .font(Metrics.title)
+                            .tracking(-0.4)
+                            .foregroundStyle(Color.ink)
+                            .accessibilityAddTraits(.isHeader)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Text("Optional. It helps us see what's working.")
+                            .font(Metrics.line)
+                            .foregroundStyle(Color.muted)
+                    }
+                    Flow(spacing: Metrics.chipGap) {
+                        ForEach(HeardFrom.choices, id: \.self) { chip($0) }
+                    }
+                    if typingOther { other }
                 }
                 .padding(.horizontal, Metrics.padding)
-                .padding(.top, style == .today ? Metrics.top : Metrics.fittedTop)
+                .padding(.top, Metrics.top)
                 .padding(.bottom, 8)
                 .onGeometryChange(for: CGFloat.self, of: \.size.height) { contentHeight = $0 }
             }
@@ -49,25 +58,20 @@ struct HeardFromView: View {
             }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            VStack(spacing: 0) {
-                #if os(iOS)
-                if !typingOther { skip }
-                #else
-                skip
-                #endif
-                if showsDevPicker { devPicker }
-            }
+            #if os(iOS)
+            if !typingOther { skip }
+            #else
+            skip
+            #endif
         }
         .background(Color(Palette.sheetGround))
         #if os(macOS)
-        .frame(width: 420, height: style == .today ? (typingOther ? 570 : 520) : fittedHeight)
+        .frame(width: 420, height: fittedHeight)
         #else
-        // Today's look takes the whole screen; the others are as tall as what they ask, and
-        // the whole screen while you type your own words.
-        .presentationDetents(style == .today || typingOther || contentHeight == 0 ? [.large] : [.height(fittedHeight)])
+        .presentationDetents(typingOther || contentHeight == 0 ? [.large] : [.height(fittedHeight)])
         #endif
         .animation(reduceMotion ? nil : .smooth(duration: 0.25), value: typingOther)
-        // The tick shows for a moment, then the sheet goes.
+        // The amber pill shows for a moment, then the sheet goes.
         .task(id: store.chosen) {
             guard store.chosen != nil else { return }
             try? await Task.sleep(for: .seconds(0.6))
@@ -75,86 +79,32 @@ struct HeardFromView: View {
         }
     }
 
-    /// The sheet's height for the fitted looks: the question and its answers, then Skip.
+    /// The question and its answers, then Skip.
     private var fittedHeight: CGFloat {
-        max(contentHeight, 120) + Metrics.skipHeight + Metrics.bottom + (showsDevPicker ? 44 : 0)
+        max(contentHeight, 120) + Metrics.skipHeight + Metrics.bottom
     }
 
-    private var header: some View {
-        VStack(alignment: style == .tiles ? .center : .leading, spacing: 6) {
-            if style == .tiles { AppMark(size: Metrics.mark).padding(.bottom, 6) }
-            Text("How did you hear about Amber Notes?")
-                .font(Metrics.title)
-                .tracking(-0.4)
-                .foregroundStyle(Color.ink)
-                .accessibilityAddTraits(.isHeader)
-                .fixedSize(horizontal: false, vertical: true)
-            Text("Optional. It helps us see what's working.")
-                .font(Metrics.line)
-                .foregroundStyle(Color.muted)
-        }
-        .multilineTextAlignment(style == .tiles ? .center : .leading)
-    }
-
-    @ViewBuilder private var choices: some View {
-        switch style {
-        case .today:
-            VStack(spacing: Metrics.rowGap) {
-                ForEach(HeardFrom.choices, id: \.self) { source in
-                    row(source)
-                    if source == .other && typingOther { other }
-                }
-            }
-        case .chips:
-            VStack(alignment: .leading, spacing: Metrics.gap) {
-                Flow(spacing: Metrics.chipGap) {
-                    ForEach(HeardFrom.choices, id: \.self) { chip($0) }
-                }
-                if typingOther { other }
-            }
-        case .list:
-            VStack(spacing: Metrics.gap) {
-                group
-                if typingOther { other }
-            }
-        case .tiles:
-            VStack(spacing: Metrics.gap) {
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: Metrics.tileGap), count: 3), spacing: Metrics.tileGap) {
-                    ForEach(HeardFrom.choices, id: \.self) { tile($0) }
-                }
-                if typingOther { other }
-            }
-        }
-    }
-
-    /// Whether a choice shows as picked: just tapped, or "Something else" while you type.
-    private func picked(_ source: HeardFrom.Source) -> Bool {
-        store.chosen == source || (source == .other && typingOther && store.chosen == nil)
-    }
-
-    private func choose(_ source: HeardFrom.Source) {
-        if source == .other {
-            typingOther = true
-            fieldFocused = true
-        } else {
-            store.answer(source)
-        }
-    }
-
-    /// A: a pill as wide as its words. The one tapped fills with amber (its width never changes,
-    /// so nothing reflows before the sheet goes).
+    /// A pill as wide as its words. The one tapped fills with amber and keeps its width, so
+    /// nothing reflows before the sheet goes; "Something else" takes an amber ring while you type.
     private func chip(_ source: HeardFrom.Source) -> some View {
         let tapped = store.chosen == source
-        let on = picked(source)
-        let shape = RoundedRectangle(cornerRadius: Metrics.chipHeight / 2)
-        return Button { choose(source) } label: {
+        let typing = source == .other && typingOther && store.chosen == nil
+        let shape = Capsule()
+        return Button {
+            if source == .other {
+                typingOther = true
+                fieldFocused = true
+            } else {
+                store.answer(source)
+            }
+        } label: {
             Text(HeardFrom.title(source))
                 .font(Metrics.row)
                 .foregroundStyle(tapped ? Color(AmberProminentButtonStyle.label) : Color.ink)
                 .padding(.horizontal, Metrics.chipPadding)
                 .frame(minHeight: Metrics.chipHeight)
-                .background(tapped ? Color(AmberProminentButtonStyle.fill) : on ? Color.amberSoft : Color(Palette.field), in: shape)
-                .overlay(shape.strokeBorder(tapped ? .clear : on ? Color(Palette.amber) : Color(Palette.fieldHairline), lineWidth: on ? 1.5 : 1))
+                .background(tapped ? Color(AmberProminentButtonStyle.fill) : typing ? Color.amberSoft : Color(Palette.field), in: shape)
+                .overlay(shape.strokeBorder(tapped ? .clear : typing ? Color(Palette.amber) : Color(Palette.fieldHairline), lineWidth: typing ? 1.5 : 1))
                 .contentShape(shape)
         }
         .buttonStyle(PressScale())
@@ -162,121 +112,6 @@ struct HeardFromView: View {
         .animation(.snappy(duration: 0.2), value: store.chosen)
         .accessibilityAddTraits(tapped ? .isSelected : [])
         .accessibilityIdentifier("heardFrom.\(source.rawValue)")
-    }
-
-    /// B: one rounded group, like Settings: a symbol, the answer, and a tick once tapped.
-    private var group: some View {
-        let shape = RoundedRectangle(cornerRadius: Metrics.radius, style: .continuous)
-        return VStack(spacing: 0) {
-            ForEach(HeardFrom.choices, id: \.self) { source in
-                listRow(source)
-                if source != HeardFrom.choices.last {
-                    Rectangle()
-                        .fill(Color(Palette.fieldHairline).opacity(0.6))
-                        .frame(height: 1 / displayScale)
-                        .padding(.leading, Metrics.listInset)
-                }
-            }
-        }
-        .background(Color(Palette.field), in: shape)
-        .overlay(shape.strokeBorder(Color(Palette.fieldHairline), lineWidth: 1 / displayScale))
-        .clipShape(shape)
-    }
-
-    private func listRow(_ source: HeardFrom.Source) -> some View {
-        Button { choose(source) } label: {
-            HStack(spacing: 0) {
-                Image(systemName: Self.symbol(source))
-                    .font(Metrics.listSymbol)
-                    .foregroundStyle(Color(Palette.amber))
-                    .frame(width: Metrics.listInset, alignment: .center)
-                    .accessibilityHidden(true)
-                Text(HeardFrom.title(source)).foregroundStyle(Color.ink)
-                Spacer(minLength: 8)
-                if store.chosen == source {
-                    Image(systemName: "checkmark")
-                        .font(Metrics.row.weight(.semibold))
-                        .foregroundStyle(Color(Palette.amber))
-                        .transition(.scale.combined(with: .opacity))
-                        .accessibilityHidden(true)
-                } else if source == .other {
-                    Image(systemName: typingOther ? "chevron.down" : "chevron.right")
-                        .font(Metrics.line.weight(.semibold))
-                        .foregroundStyle(Color(Palette.placeholder))
-                        .accessibilityHidden(true)
-                }
-            }
-            .font(Metrics.row)
-            .padding(.trailing, 14)
-            .frame(maxWidth: .infinity, minHeight: Metrics.listHeight, alignment: .leading)
-            .background(picked(source) ? Color.amberSoft : .clear)
-            .contentShape(.rect)
-        }
-        .buttonStyle(RowPress())
-        .disabled(store.chosen != nil)
-        .animation(.snappy(duration: 0.2), value: store.chosen)
-        .accessibilityAddTraits(store.chosen == source ? .isSelected : [])
-        .accessibilityIdentifier("heardFrom.\(source.rawValue)")
-    }
-
-    /// C: a soft tile, a symbol over the answer; three by three.
-    private func tile(_ source: HeardFrom.Source) -> some View {
-        let on = picked(source)
-        let shape = RoundedRectangle(cornerRadius: Metrics.tileRadius, style: .continuous)
-        return Button { choose(source) } label: {
-            VStack(spacing: 6) {
-                Image(systemName: store.chosen == source ? "checkmark" : Self.symbol(source))
-                    .font(Metrics.tileSymbol)
-                    .foregroundStyle(Color(Palette.amber))
-                    .frame(height: Metrics.tileSymbolHeight)
-                    .contentTransition(.symbolEffect(.replace))
-                    .accessibilityHidden(true)
-                Text(HeardFrom.title(source))
-                    .font(Metrics.tileText)
-                    .foregroundStyle(Color.ink)
-                    .multilineTextAlignment(.center)
-                    .lineLimit(2, reservesSpace: true)
-                    .minimumScaleFactor(0.85)
-            }
-            .padding(.horizontal, 6)
-            .padding(.vertical, Metrics.tilePadding)
-            .frame(maxWidth: .infinity, minHeight: Metrics.tileHeight)
-            .background(on ? Color.amberSoft : Color(Palette.field), in: shape)
-            .overlay(shape.strokeBorder(on ? Color(Palette.amber) : Color(Palette.fieldHairline).opacity(0.7), lineWidth: on ? 1.5 : 1 / displayScale))
-            .contentShape(shape)
-        }
-        .buttonStyle(PressScale())
-        .disabled(store.chosen != nil)
-        .animation(.snappy(duration: 0.2), value: store.chosen)
-        .accessibilityAddTraits(store.chosen == source ? .isSelected : [])
-        .accessibilityIdentifier("heardFrom.\(source.rawValue)")
-    }
-
-    /// A plain symbol per answer (never a brand's logo).
-    static func symbol(_ source: HeardFrom.Source) -> String {
-        switch source {
-        case .google: "magnifyingglass"
-        case .blog: "doc.text"
-        case .aiAssistant: "sparkles"
-        case .tiktok: "music.note"
-        case .youtube: "play.rectangle"
-        case .instagram: "camera"
-        case .friend: "person.2"
-        case .productHuntHN: "arrowshape.up"
-        case .other: "ellipsis"
-        case .skipped: "xmark"
-        }
-    }
-
-    private var devPicker: some View {
-        Picker("Dev", selection: $style) {
-            ForEach(HeardFromStyle.allCases, id: \.self) { Text("Dev: \($0.rawValue)").tag($0) }
-        }
-        .pickerStyle(.segmented)
-        .labelsHidden()
-        .padding(.horizontal, Metrics.padding)
-        .padding(.bottom, 10)
-        .frame(height: 44)
     }
 
     private static let doneID = "heardFrom.otherDone"
@@ -294,43 +129,6 @@ struct HeardFromView: View {
         .padding(.horizontal, Metrics.padding)
         .padding(.bottom, Metrics.bottom)
         .background(Color(Palette.sheetGround))
-    }
-
-    private func row(_ source: HeardFrom.Source) -> some View {
-        let picked = store.chosen == source || (source == .other && typingOther && store.chosen == nil)
-        let shape = RoundedRectangle(cornerRadius: Metrics.radius, style: .continuous)
-        return Button {
-            if source == .other {
-                typingOther = true
-                fieldFocused = true
-            } else {
-                store.answer(source)
-            }
-        } label: {
-            HStack {
-                Text(HeardFrom.title(source))
-                    .foregroundStyle(Color.ink)
-                Spacer(minLength: 8)
-                if store.chosen == source {
-                    Image(systemName: "checkmark")
-                        .font(Metrics.row.weight(.semibold))
-                        .foregroundStyle(Color(Palette.amber))
-                        .transition(.scale.combined(with: .opacity))
-                        .accessibilityHidden(true)
-                }
-            }
-            .font(Metrics.row)
-            .padding(.horizontal, 14)
-            .frame(maxWidth: .infinity, minHeight: Metrics.rowHeight, alignment: .leading)
-            .background(Color(Palette.field), in: shape)
-            .overlay(shape.strokeBorder(picked ? Color(Palette.amber) : Color(Palette.fieldHairline), lineWidth: picked ? 2 : 1))
-            .contentShape(shape)
-        }
-        .buttonStyle(PressScale())
-        .disabled(store.chosen != nil)
-        .animation(.snappy(duration: 0.2), value: store.chosen)
-        .accessibilityAddTraits(store.chosen == source ? .isSelected : [])
-        .accessibilityIdentifier("heardFrom.\(source.rawValue)")
     }
 
     /// Your own words under "Something else", then Done (which works with the field empty too).
@@ -371,56 +169,32 @@ struct HeardFromView: View {
         static let row = Font.system(size: 13)
         static let skipFont = Font.system(size: 13, weight: .medium)
         static let padding: CGFloat = 28
-        static let top: CGFloat = 28
+        static let top: CGFloat = 24
         static let bottom: CGFloat = 16
         static let gap: CGFloat = 18
         static let rowGap: CGFloat = 6
         static let rowHeight: CGFloat = 32
         static let radius: CGFloat = 8
         static let skipHeight: CGFloat = 28
-        static let fittedTop: CGFloat = 24
         static let chipHeight: CGFloat = 30
         static let chipPadding: CGFloat = 12
         static let chipGap: CGFloat = 6
-        static let listHeight: CGFloat = 30
-        static let listInset: CGFloat = 34
-        static let listSymbol = Font.system(size: 13)
-        static let tileHeight: CGFloat = 70
-        static let tileGap: CGFloat = 8
-        static let tileRadius: CGFloat = 10
-        static let tilePadding: CGFloat = 10
-        static let tileSymbol = Font.system(size: 17)
-        static let tileSymbolHeight: CGFloat = 20
-        static let tileText = Font.system(size: 12)
-        static let mark: CGFloat = 40
         #else
         static let title = Font.title2.weight(.bold)
         static let line = Font.subheadline
         static let row = Font.body
         static let skipFont = Font.body.weight(.medium)
         static let padding: CGFloat = 24
-        static let top: CGFloat = 32
+        static let top: CGFloat = 28
         static let bottom: CGFloat = 8
         static let gap: CGFloat = 22
         static let rowGap: CGFloat = 8
         static let rowHeight: CGFloat = 48
         static let radius: CGFloat = 12
         static let skipHeight: CGFloat = 44
-        static let fittedTop: CGFloat = 28
         static let chipHeight: CGFloat = 44
         static let chipPadding: CGFloat = 16
         static let chipGap: CGFloat = 8
-        static let listHeight: CGFloat = 46
-        static let listInset: CGFloat = 46
-        static let listSymbol = Font.body
-        static let tileHeight: CGFloat = 92
-        static let tileGap: CGFloat = 10
-        static let tileRadius: CGFloat = 16
-        static let tilePadding: CGFloat = 14
-        static let tileSymbol = Font.title3
-        static let tileSymbolHeight: CGFloat = 26
-        static let tileText = Font.footnote.weight(.medium)
-        static let mark: CGFloat = 52
         #endif
     }
 }
@@ -442,23 +216,6 @@ struct HeardFromSheet: ViewModifier {
                 .presentationBackground(Color(Palette.sheetGround))
                 .tint(Color(PColor.paneAccent))
         }
-    }
-}
-
-/// Dev, for picking a look: `-heardFromStyle chips|list|tiles` (today's when unset).
-enum HeardFromStyle: String, CaseIterable {
-    case today, chips, list, tiles
-
-    static var current: HeardFromStyle {
-        UserDefaults.standard.string(forKey: "heardFromStyle").flatMap(Self.init(rawValue:)) ?? .today
-    }
-}
-
-/// A list row: dims a little while pressed, and stays at full strength once the sheet is done
-/// (the plain style fades every row when they're all disabled after a tap).
-private struct RowPress: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label.opacity(configuration.isPressed ? 0.6 : 1)
     }
 }
 
