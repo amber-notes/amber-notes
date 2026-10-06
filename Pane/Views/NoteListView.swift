@@ -13,7 +13,9 @@ struct NoteListView: View {
     @State private var editMode: EditMode = .inactive
     #endif
 
-    @Query(sort: \Note.updatedAt, order: .reverse) private var notes: [Note]
+    /// Unsorted: `newestFirst` sorts them. A sorted query sorts again in memory after every change,
+    /// comparing through key paths, and with 2,000 notes that took most of each write while typing.
+    @Query private var notes: [Note]
     /// Files kept in folders on their own, listed with the notes.
     @Query(filter: #Predicate<Attachment> { $0.folderID != nil && $0.deletedAt == nil }) private var folderFiles: [Attachment]
     @State private var search = ""
@@ -61,8 +63,13 @@ struct NoteListView: View {
         return settled && !whatsNew.held && !connecting && !sharingHowTo
     }
 
+    /// Every note, last edited first; each date read once.
+    private var newestFirst: [Note] {
+        notes.map { ($0, $0.updatedAt) }.sorted { $0.1 > $1.1 }.map(\.0)
+    }
+
     private var scoped: [Note] {
-        notes.filter { n in
+        newestFirst.filter { n in
             guard n.deletedAt == nil else { return false }
             // Sub-notes live inside their parent, not in the list. (Few notes have a
             // parent, so looking each one up is cheaper than indexing every note.)
@@ -111,7 +118,7 @@ struct NoteListView: View {
     private func filtered(from scoped: [Note]) -> [Note] {
         let q = search.trimmingCharacters(in: .whitespaces)
         guard !q.isEmpty else { return scoped }
-        let base = scope == .trash ? scoped : notes.filter { $0.deletedAt == nil && $0.trashedAt == nil }
+        let base = scope == .trash ? scoped : newestFirst.filter { $0.deletedAt == nil && $0.trashedAt == nil }
         return base.filter { $0.body.localizedStandardContains(q) }
     }
 
