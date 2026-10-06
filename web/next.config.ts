@@ -68,6 +68,8 @@ const config: NextConfig = {
       { source: "/blog/category/:category/page/1", destination: "/blog/category/:category", permanent: true },
       // A link with "&" where its "?" should be (ambernotes.app/&utm_source=…) lands on /&…, a 404.
       { source: "/:junk(&.*)", destination: "/", permanent: true },
+      // A guessed address for the Obsidian MCP post (one visit on 5 October, no link of ours).
+      { source: "/blog/obsidian-mcp-servers-compared", destination: "/blog/obsidian-mcp", permanent: true },
     ];
   },
   async rewrites() {

@@ -207,6 +207,11 @@ describe("blog pages", () => {
     const redirects = await nextConfig.redirects!();
     expect(redirects).toContainEqual({ source: "/blog/page/1", destination: "/blog", permanent: true });
   });
+
+  it("redirects a guessed post address that 404ed to the real post", async () => {
+    const redirects = await nextConfig.redirects!();
+    expect(redirects).toContainEqual({ source: "/blog/obsidian-mcp-servers-compared", destination: "/blog/obsidian-mcp", permanent: true });
+  });
 });
 
 describe("share images", () => {
