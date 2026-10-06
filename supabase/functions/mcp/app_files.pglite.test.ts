@@ -65,9 +65,9 @@ Deno.test("a project app: the starter and its tests, files, edits, the gate, see
     assertEquals([b.draft, b.why], [null, null]);
 
     // A failing test holds a version back too.
-    const red = await tool(pg, a, "edit_app_file", { id, path: "/tests/app.test.tsx", old_string: `toContain("Milk")`, new_string: `toContain("Cheese")` });
+    const red = await tool(pg, a, "edit_app_file", { id, path: "/tests/app.test.tsx", old_string: `expect(saved()).toEqual(["Milk"])`, new_string: `expect(saved()).toEqual(["Cheese"])` });
     assertEquals([red.tests, red.live.startsWith("Held back")], ["1 passed, 1 failed", true]);
-    await tool(pg, a, "edit_app_file", { id, path: "/tests/app.test.tsx", old_string: `toContain("Cheese")`, new_string: `toContain("Milk")` });
+    await tool(pg, a, "edit_app_file", { id, path: "/tests/app.test.tsx", old_string: `expect(saved()).toEqual(["Cheese"])`, new_string: `expect(saved()).toEqual(["Milk"])` });
 
     // Imports to nothing are errors, and hold the version back.
     const moved = await tool(pg, a, "move_app_file", { id, from: "/src/screens/settings.tsx", to: "/src/screens/preferences.tsx" });

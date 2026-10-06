@@ -465,6 +465,45 @@ const WEEK_LOG = ["2026-09-29", "2026-09-30", "2026-10-01", "2026-10-02", "2026-
 /** The text under a heading, up to the next heading. */
 const section = (body: string, heading: string) => body.match(new RegExp(`^#+\\s*${heading}\\s*\\n([\\s\\S]*?)(?=^#|$(?![\\s\\S]))`, "m"))?.[1] ?? "";
 
+// A second session on an app a first session built (round FOLLOWUP_FROM): does it read docs/ first,
+// and does it keep docs/ current? Seeded with that run's final app, data and note.
+const FOLLOWUP_ASKS: Record<string, { title: string; ask: string }> = {
+  "x-budget": { title: "Budget", ask: "In my Budget app, add a way to mark an expense as reimbursable, and show this month's reimbursable total." },
+  "x-kanban": { title: "Projects", ask: "In my Projects app, give cards a priority (low, medium, high) and let me sort a column by it." },
+  "x-recipes": { title: "Recipes", ask: "In my Recipes app, let me star favourite recipes and filter the library to favourites." },
+};
+const docsOf = (page: string | null) => { try { return (JSON.parse(page ?? "{}").files ?? {})["/docs/README.md"] ?? null; } catch { return null; } };
+const FOLLOWUPS: Task[] = (() => {
+  const from = Deno.env.get("FOLLOWUP_FROM");
+  if (!from) return [];
+  const dir = new URL(`./results/${from}/`, import.meta.url);
+  return Object.entries(FOLLOWUP_ASKS).flatMap(([id, f]) => {
+    const stem = `${id}-claude-cli-files`;
+    let page: string, body: string, data: Seed["data"];
+    try {
+      page = Deno.readTextFileSync(new URL(`${stem}.page.html`, dir));
+      body = Deno.readTextFileSync(new URL(`${stem}.note.md`, dir));
+      data = JSON.parse(Deno.readTextFileSync(new URL(`${stem}.json`, dir))).data ?? undefined;
+    } catch { return []; }
+    if (!page) return [];
+    const seededDocs = docsOf(page);
+    return [{
+      id: `f-${id.slice(2)}`, prompt: f.ask, seed: { body, page, data }, page: true, interact: true,
+      checks: (fin: Final) => {
+        const reads = fin.calls.map((c, i) => ({ i, c })).filter(({ c }) => c.name === "fetch" && /docs\//.test(String(c.args.id ?? "")));
+        const firstChange = fin.calls.findIndex((c) => (c.name === "edit" || c.name === "write") && /\.app\/(src|tests|index)/.test(String(c.args.id ?? "")));
+        return [
+          pageChanged(fin),
+          check("docs_existed", !!seededDocs, "the first session's app had no docs/README.md"),
+          check("read_docs", reads.length > 0, "never read docs/"),
+          check("read_docs_first", reads.length > 0 && (firstChange < 0 || reads[0].i < firstChange), `first docs read at call ${reads[0]?.i ?? "-"}, first code change at ${firstChange}`),
+          check("updated_docs", !!docsOf(fin.page) && docsOf(fin.page) !== seededDocs, "docs/README.md unchanged"),
+        ];
+      },
+    }];
+  });
+})();
+
 export const TASKS: Task[] = [
   {
     id: "habits-from-messy-notes",
@@ -1096,6 +1135,8 @@ export const TASKS: Task[] = [
       check("app_unchanged", f.page === f.pageBefore && JSON.stringify(f.data) === JSON.stringify(f.dataBefore), "something changed"),
     ],
   },
+  // MARK: Second sessions (FOLLOWUP_FROM=<round>): a new session changes an app the first one built.
+  ...FOLLOWUPS,
   // MARK: The try_app experiment: six real apps, each with a hidden walkthrough and feature list.
   {
     id: "x-lift",
