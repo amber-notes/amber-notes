@@ -239,6 +239,11 @@ export type Config = {
   from: string;
   replyTo: string;
   site: string;
+  /// Staging (docs/Technical/staging.md): the site its links open (LIFECYCLE_SITE, https only), a
+  /// prefix on every subject (LIFECYCLE_SUBJECT_PREFIX, "[Staging] "), and manual rounds that may send
+  /// outside the 9 o'clock hour (LIFECYCLE_MANUAL_ROUNDS, for scripts/staging.sh lifecycle-next).
+  subjectPrefix: string;
+  manualRounds: boolean;
 };
 
 export const FROM = "Emil at Amber Notes <emil@ambernotes.app>";
@@ -269,7 +274,9 @@ export function config(env: Env): { ok: true; config: Config } | { ok: false; re
       only: onlyRaw.length ? new Set(onlyRaw) : null,
       from: env.get("LIFECYCLE_FROM")?.trim() || FROM,
       replyTo: REPLY_TO,
-      site: SITE,
+      site: (env.get("LIFECYCLE_SITE") ?? "").trim().startsWith("https://") ? env.get("LIFECYCLE_SITE")!.trim().replace(/\/+$/, "") : SITE,
+      subjectPrefix: env.get("LIFECYCLE_SUBJECT_PREFIX") ?? "",
+      manualRounds: on("LIFECYCLE_MANUAL_ROUNDS"),
     },
   };
 }

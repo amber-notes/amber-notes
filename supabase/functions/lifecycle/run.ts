@@ -99,7 +99,7 @@ export async function run({ sql, send, cfg, now = new Date(), anyHour = false, p
     let result: SendResult;
     try {
       result = await send({
-        from: cfg.from, to: f.email, reply_to: cfg.replyTo, subject: email.subject, html: email.html, text: email.text,
+        from: cfg.from, to: f.email, reply_to: cfg.replyTo, subject: cfg.subjectPrefix + email.subject, html: email.html, text: email.text,
         headers: { "List-Unsubscribe": `<${links.oneClick}>, <mailto:${cfg.replyTo}?subject=Unsubscribe>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" },
         idempotencyKey: `lifecycle-${kind}-${f.user_id}`,
       });

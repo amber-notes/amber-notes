@@ -7,6 +7,7 @@ supabase/.temp/
 supabase/.branches/
 .shots/
 Config/Backend.local.xcconfig
+Config/Backend.staging.local.xcconfig
 supabase/functions/.env.local
 .secrets/
 

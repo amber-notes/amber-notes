@@ -46,7 +46,7 @@ final class MemoryDeviceIdentityStore: DeviceIdentityStore, @unchecked Sendable 
 /// A device-only Keychain item. Builds without the data protection keychain (ad-hoc and Developer
 /// ID Macs) keep it in the app's own protected file, where they keep the session.
 struct KeychainDeviceIdentityStore: DeviceIdentityStore {
-    static let service = "dev.emilwagman.pane.device-identity"
+    static let service = AppIdentity.keychainPrefix + ".device-identity"
     private static let fallback = SessionStorage()
 
     private var query: [String: Any] {
