@@ -77,7 +77,7 @@ struct NoteDetailView: View {
     var body: some View {
         chrome(editor)
             .quickLookPreview(previewBinding)
-            .fileImporter(isPresented: $importing, allowedContentTypes: [.item], allowsMultipleSelection: true, onCompletion: attach)
+            .fileImporter(isPresented: $importing, allowedContentTypes: FileKinds.contentTypes, allowsMultipleSelection: true, onCompletion: attach)
             #if DEBUG || QA
             .background {
                 Color.clear.fileImporter(isPresented: $importingApp, allowedContentTypes: [.json, .html, .plainText]) { result in

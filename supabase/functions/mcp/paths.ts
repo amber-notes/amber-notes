@@ -5,6 +5,7 @@
 //   its sub-notes "Work/Acme/Agenda.md"       (the folder with the note's name)
 //   its files     "Work/Acme/contract.pdf"    (files the note embeds; found when that folder is read)
 //   its app       "Work/Acme.app/src/App.tsx", "Work/Acme.app/data.json"
+//   a file kept in a folder on its own "To read/Paper.pdf" (folder_files.ts)
 //   deleted       "Recently Deleted/Acme.md"
 // Two things with one name in one place: the oldest (created first, then by id) keeps the name,
 // the next ones get " (2)", " (3)" before the extension. That stays stable until something older
@@ -16,19 +17,22 @@
 // and only the titles that changed since, not every note's head.
 
 import { type FolderRow, type Note, type NoteRow, type Tx, type Call, ToolError } from "./tools.ts";
+import { type FolderFile, folderFileRows, type FolderFileRow } from "./folder_files.ts";
 
 export const DELETED = "Recently Deleted/";
 
 export type Entry =
   | { kind: "folder"; path: string; folder: FolderRow }
-  | { kind: "note"; path: string; note: Note; app: boolean };
+  | { kind: "note"; path: string; note: Note; app: boolean }
+  | { kind: "file"; path: string; file: FolderFile };
 
 /** What one build cost, for the Server-Timing header and the performance notes. */
 export type PathTiming = { rows: number; opened: number; dbMs: number; openMs: number; buildMs: number; cached: boolean };
 
 type Light = Omit<NoteRow, "head_ct" | "body_ct"> & { locked: boolean };
-/** The sealed index: note id → [version, title]; folder id → [its sealed name, the name]. */
-type Index = { v: 1; notes: Record<string, [string, string]>; folders: Record<string, [string, string]> };
+/** The sealed index: note id → [version, title]; folder id → [its sealed name, the name]; a file
+ *  in a folder → [its sealed meta, its name, its type]. */
+type Index = { v: 1; notes: Record<string, [string, string]>; folders: Record<string, [string, string]>; files?: Record<string, [string, string, string, number?]> };
 
 const UNREADABLE = "(this note can't be opened here)";
 export const safeName = (t: string) => t.replace(/\//g, "∕").replace(/[\r\n]+/g, " ").trim() || "Untitled";
@@ -39,19 +43,21 @@ export class Paths {
   private byPath = new Map<string, Entry>();
   private notePaths = new Map<string, string>();
   private folderPaths = new Map<string, string>();
+  private filePaths = new Map<string, string>();
   /** directory (lowercase, "" for the top) → its entries. */
   private dirs = new Map<string, Entry[]>();
   private constructor(readonly timing: PathTiming) {}
 
   static async load(tx: Tx, c: Call): Promise<Paths> {
     const t0 = performance.now();
-    const [rows, frows, apps, stored] = await Promise.all([
+    const [rows, frows, apps, stored, fileRows] = await Promise.all([
       tx<Light[]>`select id, folder_id, parent_id, is_pinned, created_at, updated_at, trashed_at, version, locked_body is not null as locked
         from public.notes where deleted_at is null`,
       tx<{ id: string; name_ct: string; parent_id: string | null; sort_index: number; created_at: Date }[]>`
         select id, name_ct, parent_id, sort_index, created_at from public.folders where deleted_at is null`,
       tx<{ note_id: string }[]>`select note_id from public.note_pages where page_ct is not null or draft_ct is not null`,
       tx<{ index_ct: string }[]>`select index_ct from public.mcp_title_index`,
+      folderFileRows(tx),
     ]);
     const dbMs = performance.now() - t0;
     const t1 = performance.now();
@@ -81,6 +87,22 @@ export class Paths {
       }
       return { id: f.id, name, parent_id: f.parent_id, sort_index: Number(f.sort_index) };
     }));
+    // Files kept in folders: their names are sealed too.
+    const files: FolderFile[] = [];
+    index.files ??= {};
+    for (const f of fileRows) {
+      let known = index.files[f.id]?.[0] === f.meta_ct ? index.files[f.id] : null;
+      if (!known) {
+        const meta = await c.v.openFileMeta(f.id, f.meta_ct).catch(() => null);
+        known = [f.meta_ct, meta ? meta.name : "(this file can't be opened here)", meta?.type ?? "public.data", meta?.size];
+        index.files[f.id] = known;
+        opened++;
+        changed = true;
+      }
+      files.push(fileOf(f, known[1], known[2], known[3]));
+    }
+    const liveFiles = new Set(fileRows.map((f) => f.id));
+    for (const id of Object.keys(index.files)) if (!liveFiles.has(id)) { delete index.files[id]; changed = true; }
     // What's gone leaves the index too.
     const live = new Set(rows.map((r) => r.id)), liveFolders = new Set(frows.map((f) => f.id));
     for (const id of Object.keys(index.notes)) if (!live.has(id)) { delete index.notes[id]; changed = true; }
@@ -96,12 +118,12 @@ export class Paths {
     const notes: Note[] = rows.map(({ locked, ...r }) => ({ ...r, head_ct: "", locked_body: locked ? "locked" : null, version: String(r.version), title: index.notes[r.id]?.[1] ?? UNREADABLE }));
     const created = new Map(frows.map((f) => [f.id, +new Date(f.created_at)]));
     const p = new Paths({ rows: rows.length, opened, dbMs: Math.round(dbMs), openMs: Math.round(openMs), buildMs: 0, cached });
-    p.build(folders, notes, hasApp, created);
+    p.build(folders, notes, hasApp, created, files);
     p.timing.buildMs = Math.round(performance.now() - t2);
     return p;
   }
 
-  private build(folders: FolderRow[], notes: Note[], hasApp: Set<string>, folderCreated: Map<string, number>) {
+  private build(folders: FolderRow[], notes: Note[], hasApp: Set<string>, folderCreated: Map<string, number>, files: FolderFile[] = []) {
     const byId = new Map(notes.map((n) => [n.id, n]));
     const folderById = new Map(folders.map((f) => [f.id, f]));
     // Where each note lives: a live sub-note in its live parent's folder; everything else in its folder.
@@ -118,6 +140,12 @@ export class Paths {
       const p = parentOf(n);
       const k = p ? `n:${p.id}` : n.trashed_at ? "trash" : n.folder_id && folderById.has(n.folder_id) ? `f:${n.folder_id}` : "root";
       push(k, { kind: "note", n, created: +new Date(n.created_at) });
+    }
+    // Files kept in folders, by container, oldest first (who keeps the plain name).
+    const fileKids = new Map<string, FolderFile[]>();
+    for (const f of files) {
+      const k = f.trashed_at ? "trash" : f.folder_id && folderById.has(f.folder_id) ? `f:${f.folder_id}` : "root";
+      (fileKids.get(k) ?? fileKids.set(k, []).get(k)!).push(f);
     }
     const seen = new Set<string>();
     const walk = (containers: string[], dir: string, depth: number) => {
@@ -167,6 +195,20 @@ export class Paths {
         if (shared) shared.push(`n:${node.n.id}`);
         else if (kids.has(`n:${node.n.id}`)) order.push({ name: nm, containers: [`n:${node.n.id}`] });
       }
+      // Files share the folder's names with its notes: "Paper.pdf", then "Paper (2).pdf".
+      const here = containers.flatMap((k) => fileKids.get(k) ?? []).sort((a, b) => +new Date(a.created_at) - +new Date(b.created_at) || a.id.localeCompare(b.id));
+      for (const f of here) {
+        if (seen.has(`a:${f.id}`)) continue;
+        seen.add(`a:${f.id}`);
+        const full = safeName(f.name);
+        const dot = full.lastIndexOf(".");
+        const nm = dot > 0 ? name(full.slice(0, dot), full.slice(dot)) : name(full, "");
+        const path = `${dir}${nm}`;
+        const e: Entry = { kind: "file", path, file: f };
+        this.byPath.set(lower(path), e);
+        this.filePaths.set(f.id, path);
+        this.dirs.get(lower(dir))?.push(e) ?? this.dirs.set(lower(dir), [e]);
+      }
       for (const o of order) walk(o.containers, `${dir}${o.name}/`, depth + 1);
     };
     walk(["root"], "", 0);
@@ -183,6 +225,9 @@ export class Paths {
     return e?.kind === "note" ? e.note : undefined;
   }
   pathOf(noteId: string): string | undefined { return this.notePaths.get(noteId); }
+  /** A file kept in a folder: its path, by its id. */
+  filePathOf(fileId: string): string | undefined { return this.filePaths.get(fileId); }
+  fileAt(path: string): FolderFile | undefined { const e = this.at(path); return e?.kind === "file" ? e.file : undefined; }
   folderPathOf(folderId: string | null): string { return folderId ? this.folderPaths.get(folderId) ?? "" : ""; }
   note(noteId: string): Entry | undefined { const p = this.notePaths.get(noteId); return p ? this.byPath.get(lower(p)) : undefined; }
   hasApp(noteId: string): boolean { const e = this.note(noteId); return e?.kind === "note" && e.app; }
@@ -190,7 +235,7 @@ export class Paths {
   children(dir: string): Entry[] { return this.dirs.get(lower(dir.replace(/^\/+/, ""))) ?? []; }
   /** Whether a directory exists (a folder, or a note's folder with something in it). */
   isDir(dir: string): boolean { return dir === "" || this.dirs.has(lower(dir)) || this.at(dir)?.kind === "folder"; }
-  /** Every entry, folders and notes. */
+  /** Every entry: folders, notes and files kept in folders. */
   all(): Entry[] { return [...this.byPath.values()]; }
   /** The note whose folder this directory is ("Work/Acme/" → "Work/Acme.md"), if any. */
   noteOfDir(dir: string): Note | undefined { return this.noteAt(dir.replace(/\/+$/, "") + ".md"); }
@@ -208,4 +253,9 @@ export class Paths {
     const like = this.similar(path);
     throw new ToolError(`Nothing at "${path}".${like.length ? ` Did you mean ${like.map((p) => `"${p}"`).join(", ")}?` : " Use list or search to find it."}`);
   }
+}
+
+function fileOf(r: FolderFileRow, name: string, type: string, size?: number): FolderFile {
+  // Its own size, sealed with its name; else the stored (sealed) size less the box's overhead.
+  return { id: r.id, name, type, bytes: size ?? Math.max(Number(r.size) - 49, 0), folder_id: r.folder_id, trashed_at: r.trashed_at, created_at: r.created_at, updated_at: r.updated_at, content_version: r.content_version };
 }

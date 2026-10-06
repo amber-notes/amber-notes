@@ -75,24 +75,9 @@ private struct FileChip: View {
         .accessibilityIdentifier("file.\(name)")
     }
 
-    private func icon(_ f: Attachment?) -> String {
-        guard let t = f?.type else { return "doc" }
-        if t.conforms(to: .pdf) { return "doc.richtext" }
-        if t.conforms(to: .spreadsheet) || ["xlsx", "xls", "csv", "numbers"].contains((f!.filename as NSString).pathExtension.lowercased()) { return "tablecells" }
-        if t.conforms(to: .presentation) { return "rectangle.on.rectangle" }
-        if t.conforms(to: .audiovisualContent) { return "play.rectangle" }
-        if t.conforms(to: .archive) { return "archivebox" }
-        if t.conforms(to: .text) { return "doc.text" }
-        return "doc"
-    }
+    private func icon(_ f: Attachment?) -> String { f?.symbol ?? "doc" }
 
-    private func tint(_ f: Attachment?) -> Color {
-        guard let t = f?.type else { return .secondary }
-        if t.conforms(to: .pdf) { return .red }
-        if icon(f) == "tablecells" { return .green }
-        if t.conforms(to: .presentation) { return .orange }
-        return .blue
-    }
+    private func tint(_ f: Attachment?) -> Color { f?.tint ?? .secondary }
 }
 
 /// A link to a sub-note: its current title and first line; click to open it.

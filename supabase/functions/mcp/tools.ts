@@ -38,6 +38,8 @@ export type Tool = {
   annotations: { title?: string; readOnlyHint: boolean; destructiveHint: boolean; idempotentHint?: boolean; openWorldHint: boolean };
   // ChatGPT reads this per tool: which OAuth scope the call needs.
   securitySchemes?: { type: "oauth2"; scopes: string[] }[];
+  // Per-client extras, like ChatGPT's "openai/fileParams" (which arguments are files it hands over).
+  _meta?: Record<string, unknown>;
 };
 
 const str = (d: string) => ({ type: "string", description: d });
@@ -328,12 +330,32 @@ export async function runIn(list: Tool[], impl: Record<string, (tx: Tx, a: Args,
                       set_config('pane.client', ${ctx.client}, true)`;
       return await impl[name](tx, args, call);
     });
+  } catch (e) {
+    // The account is full (20261008100100): say how full, and what to delete.
+    if ((e as { hint?: string }).hint === "storage") throw await storageFull(ctx, claims);
+    throw e;
   } finally {
     // Scan time is charged on its own too, so a call that fails after scanning still pays.
     if (call.scanMs > 0) {
       await ctx.sql`select public.pane_scan_budget(${call.scanMs}::double precision) from (select set_config('request.jwt.claims', ${claims}, true)) as claims`
         .catch((e) => log("scan_charge_failed", { tool: name, ...errorKind(e) }));
     }
+  }
+}
+
+/** "Amber Notes is full", with what takes the room, for a write the storage limit refused. */
+async function storageFull(ctx: ToolContext, claims: string): Promise<ToolError> {
+  const mb = (n: number) => n >= 1073741824 ? `${(n / 1073741824).toFixed(2)} GB` : `${Math.round(n / 1048576)} MB`;
+  try {
+    const u = await ctx.sql.begin(async (tx) => {
+      await tx`select set_config('role', 'authenticated', true), set_config('request.jwt.claims', ${claims}, true)`;
+      const [r] = await tx<{ u: Record<string, number> }[]>`select public.storage_usage() as u`;
+      return r.u;
+    });
+    const parts = [["files", u.files], ["Recently Deleted", u.deleted], ["earlier versions", u.versions], ["notes", u.notes], ["apps", u.apps]] as [string, number][];
+    return new ToolError(`Amber Notes is full: ${mb(u.used)} of ${mb(u.limit)} used (${parts.filter(([, n]) => n > 0).map(([k, n]) => `${k} ${mb(n)}`).join(", ")}). Nothing was saved. The person can make room by emptying Recently Deleted or deleting large files in Amber Notes; you can delete files or notes they don't need, if they agree.`);
+  } catch {
+    return new ToolError("Amber Notes is full (2 GB). Nothing was saved. Empty Recently Deleted or delete large files, then try again.");
   }
 }
 
@@ -1061,14 +1083,17 @@ export const handlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<unkn
     const q = typeof a.query === "string" ? a.query.trim().toLowerCase() : "";
     const limit = clampInt(a.limit, 30, 200) || 30;
     const scan = await Scan.start(tx, c);
-    const rows = await tx<{ id: string; meta_ct: string; size: string; created_at: Date }[]>`
-      select id, meta_ct, size, created_at from public.attachments where deleted_at is null order by created_at desc`;
-    const files: { id: string; filename: string; type: string; bytes: number; added: string | null; in_notes: { id: string; title: string }[] }[] = [];
+    const rows = await tx<{ id: string; meta_ct: string; size: string; created_at: Date; folder_id: string | null }[]>`
+      select id, meta_ct, size, created_at, folder_id from public.attachments where deleted_at is null and trashed_at is null order by created_at desc`;
+    const all = rows.some((r) => r.folder_id) ? await folders(tx, c.v) : [];
+    const files: { id: string; filename: string; type: string; bytes: number; added: string | null; folder?: string; in_notes: { id: string; title: string }[] }[] = [];
     await scan.timed(async () => {
       for (const r of rows) {
         const meta = await c.v.openFileMeta(r.id, r.meta_ct).catch(() => null);
         if (!meta || (q && !meta.name.toLowerCase().includes(q))) continue;
-        files.push({ id: r.id, filename: meta.name, type: mimeOf(meta.type, meta.name), bytes: Number(r.size), added: iso(r.created_at), in_notes: [] });
+        // A file kept in a folder on its own, next to the folder's notes.
+        const folder = r.folder_id ? pathOf(r.folder_id, all) : "";
+        files.push({ id: r.id, filename: meta.name, type: mimeOf(meta.type, meta.name), bytes: Number(r.size), added: iso(r.created_at), ...(folder ? { folder } : {}), in_notes: [] });
         if (files.length >= limit) break;
       }
     });
@@ -1089,8 +1114,8 @@ export const handlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<unkn
   async get_file(tx, a, c) {
     const id = String(a.id ?? "").replace(/^pane-file:/, "");
     if (!UUID.test(id)) throw new ToolError(`No file with id ${id}. Use list_files.`);
-    const rows = await tx<{ id: string; meta_ct: string; size: string; storage_path: string }[]>`
-      select id, meta_ct, size, storage_path from public.attachments where id = ${id}::uuid and deleted_at is null`;
+    const rows = await tx<{ id: string; meta_ct: string; size: string; storage_path: string; folder_id: string | null }[]>`
+      select id, meta_ct, size, storage_path, folder_id from public.attachments where id = ${id}::uuid and deleted_at is null`;
     if (!rows.length) throw new ToolError(`No file with id ${id}. Use list_files.`);
     const f = rows[0];
     const meta = await c.v.openFileMeta(f.id, f.meta_ct).catch(() => { throw new ToolError("This file can't be opened here. The user can open it in Amber Notes."); });
@@ -1114,6 +1139,7 @@ export const handlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<unkn
     try { plain = await c.v.openFile(f.id, sealed); } catch { throw new ToolError("This file can't be opened here. The user can open it in Amber Notes."); }
     const type = mimeOf(meta.type, meta.name);
     const details: Record<string, unknown> = { id: f.id, filename: meta.name, type, bytes: plain.length };
+    if (f.folder_id) details.folder = pathOf(f.folder_id, await folders(tx, c.v));
     let block: Record<string, unknown>;
     if (isTextType(type)) {
       const text = new TextDecoder().decode(plain);

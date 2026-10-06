@@ -28,8 +28,18 @@ final class ShareModel {
     var loading = true
     var saved = false
     var error: String?
+    /// The folders the app left for us, and the one this goes into (the last one used).
+    var folders: [Inbox.FolderChoice] = Inbox.folders()
+    var folder: UUID? = Inbox.lastFolder
 
-    init(context: NSExtensionContext?) { self.context = context }
+    init(context: NSExtensionContext?) {
+        self.context = context
+        if let f = folder, !folders.contains(where: { $0.id == f }) { folder = nil }
+        if folder == nil { folder = (folders.first { $0.name == "Notes" } ?? folders.first)?.id }
+    }
+
+    /// Files shared without text are kept in the folder as files; anything with text is a note.
+    var asFiles: Bool { markdown.isEmpty && !files.isEmpty }
 
     var title: String { SharedItem.title(markdown: markdown, files: files) }
 
@@ -44,7 +54,8 @@ final class ShareModel {
 
     func save() {
         do {
-            try Inbox.add(markdown: markdown, files: files)
+            try Inbox.add(markdown: markdown, files: files, folder: folder)
+            Inbox.lastFolder = folder
             saved = true
             Task {
                 try? await Task.sleep(for: .milliseconds(650))
@@ -102,6 +113,29 @@ struct ShareSheet: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(14)
                     .background(.background, in: .rect(cornerRadius: 14, style: .continuous))
+                }
+            }
+            if !model.loading && !model.folders.isEmpty {
+                // Where it goes, as a row under the item, like Notes' own share sheet.
+                HStack {
+                    Text("Folder")
+                    Spacer()
+                    Picker("Folder", selection: $model.folder) {
+                        ForEach(model.folders) { f in
+                            Text(f.name).tag(UUID?.some(f.id))
+                        }
+                    }
+                    .labelsHidden()
+                    .accessibilityIdentifier("share.folder")
+                }
+                .padding(.leading, 14)
+                .padding(.vertical, 4)
+                .background(.background, in: .rect(cornerRadius: 14, style: .continuous))
+                if model.asFiles {
+                    Text(model.files.count == 1 ? "Kept in the folder as a file." : "Kept in the folder as files.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 14)
                 }
             }
             if let e = model.error {

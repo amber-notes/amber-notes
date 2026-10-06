@@ -81,6 +81,10 @@ struct SettingsView: View {
                     ConnectAISection(client: client)
                         .id(SettingsRoute.connectAI)
                     AppPreviewSection(client: client)
+                    StorageSection(client: client)
+                } else if ProcessInfo.processInfo.arguments.contains("-demoStorage") {
+                    // Captures without an account.
+                    StorageSectionBody(usage: StorageStore.shared.usage)
                 }
                 if case .signedIn = backend.state, AccountCrypto.shared.isReady {
                     let addDevice = backend.client.map { SupabaseAddDevice(client: $0) }

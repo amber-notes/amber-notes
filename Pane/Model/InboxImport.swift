@@ -3,11 +3,14 @@ import SwiftData
 
 @MainActor
 extension ModelContext {
-    /// Files everything shared into Amber Notes as notes. Returns the new notes.
+    /// Files everything shared into Amber Notes, in the folder picked in the share sheet: text
+    /// as a note (with its files in it), files alone as files in the folder. Returns the new notes.
     /// Evernote exports aren't filed: they wait in `EvernoteInbox` for the import sheet.
     @discardableResult
     func drainInbox() -> [Note] {
+        publishFolderChoices()
         var made: [Note] = []
+        var filed = false
         var exports: [URL] = []
         for (item, dir) in Inbox.pending() {
             let enex = item.files.filter { EvernoteInbox.isExport($0) }
@@ -15,16 +18,24 @@ extension ModelContext {
             let rest = item.files.filter { !EvernoteInbox.isExport($0) }
             var body = item.markdown.trimmingCharacters(in: .whitespacesAndNewlines)
             if !enex.isEmpty, rest.isEmpty, body.isEmpty { Inbox.remove(dir); continue }
+            let target = item.folder.flatMap { folder($0) }.flatMap { $0.deletedAt == nil ? $0 : nil }
+            if body.isEmpty, !rest.isEmpty {
+                // Only files (a PDF from Safari, photos): kept in the folder as they are.
+                let files = addFiles(rest.map { dir.appending(path: $0) }, to: target ?? defaultFolder())
+                for f in files { f.createdAt = item.createdAt }
+                filed = filed || !files.isEmpty
+                Inbox.remove(dir)
+                continue
+            }
             let files = rest.compactMap { try? FileStore.importFile(at: dir.appending(path: $0)) }
             files.forEach(insert)
-            if body.isEmpty, let f = files.first { body = (f.filename as NSString).deletingPathExtension }
             if !files.isEmpty { body += "\n\n" + files.map(\.markdown).joined(separator: "\n") }
-            let note = createNote(in: .all, body: body + "\n")
+            let note = createNote(in: target.map { .folder($0.id) } ?? .all, body: body + "\n")
             note.createdAt = item.createdAt
             made.append(note)
             Inbox.remove(dir)
         }
-        if !made.isEmpty {
+        if !made.isEmpty || filed {
             try? save()
             // Notes shared into the app count as bringing your notes (setup step 1).
             NotificationCenter.default.post(name: .paneNotesBrought, object: nil)
@@ -32,6 +43,21 @@ extension ModelContext {
         }
         if !exports.isEmpty { EvernoteInbox.offer(exports) }
         return made
+    }
+}
+
+@MainActor
+extension ModelContext {
+    /// Leaves the folder list where the share sheet reads it (names only, on this device).
+    func publishFolderChoices() {
+        let all = allFolders()
+        func path(_ f: Folder) -> String {
+            var parts = [f.name], cur = f.parent, hops = 0
+            while let p = cur, p.deletedAt == nil, hops < 32 { parts.insert(p.name, at: 0); cur = p.parent; hops += 1 }
+            return parts.joined(separator: "/")
+        }
+        Inbox.saveFolders(all.map { Inbox.FolderChoice(id: $0.id, name: path($0)) }
+            .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending })
     }
 }
 
