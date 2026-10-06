@@ -162,7 +162,7 @@ async function setup(task: Task) {
       const [d] = (await pg.query(`select data_ct from public.note_pages where note_id = $1`, [nid])).rows as { data_ct: string | null }[];
       data = d?.data_ct ? JSON.parse(await a.vault.openPageData(nid, d.data_ct)) : null;
     } catch { /* a server without page data */ }
-    return { body, page, data };
+    return { id: nid, body, page, data };
   };
   // The same server over HTTP on this Mac, for the CLIs.
   const http = Deno.serve({ hostname: "127.0.0.1", port: 0, onListen: () => {} }, (req) => {
@@ -181,7 +181,13 @@ async function setup(task: Task) {
     for (const r of rows) { const o = await opened(pg, a, r.id); out.push({ id: r.id, title: o.head?.title ?? "", body: o.body ?? "", folder: pathOf(r.folder_id), pinned: r.is_pinned, trashed: r.trashed_at !== null, parent: r.parent_id }); }
     return out;
   };
-  return { pg, id, others, rpc, call, init, state, fileIds, url, token, http, snapshot };
+  /** The newest earlier version of a note's app whose checks passed, or null. */
+  const livePage = async (nid: string): Promise<string | null> => {
+    const rows = (await pg.query(`select page_ct from public.note_page_versions where note_id = $1 and page_ct is not null order by id desc`, [nid])).rows as { page_ct: string }[];
+    for (const r of rows) { const t = await a.vault.openPage(nid, r.page_ct); try { if (JSON.parse(t).checks?.passed === false) continue; } catch { /* one-file */ } return t; }
+    return null;
+  };
+  return { pg, id, others, rpc, call, init, state, fileIds, url, token, http, snapshot, livePage };
 }
 
 // MARK: A model session
@@ -466,6 +472,10 @@ async function runTask(task: Task, rep = 1) {
     if (made[0]) after = await s.state(made[0].id);
   }
   const othersAfter = await Promise.all(s.others.map((o) => s.state(o)));
+  // What the person gets: the newest version whose checks passed (the app's rule). A held-back
+  // newest version is scored on the last one that passed, or not at all.
+  const newestFailed = (() => { try { return JSON.parse(after.page ?? "{}").checks?.passed === false; } catch { return false; } })();
+  if (newestFailed) after.page = await s.livePage(after.id);
   const notesAfter = await s.snapshot();
   const f: Final = {
     before: before.body, after: after.body, pageBefore: before.page, page: after.page, dataBefore: before.data, data: after.data,
@@ -511,9 +521,7 @@ async function runTask(task: Task, rep = 1) {
     gate: await (async () => {
       const held = session.log.filter((l) => /Held back/.test(String((l as { result?: string }).result ?? ""))).length;
       const live = session.log.filter((l) => /"live": "Live/.test(String((l as { result?: string }).result ?? ""))).length;
-      const [row] = (await s.pg.query(`select draft_ct is not null as draft from public.note_pages where note_id = (select note_id from public.note_pages order by updated_at desc limit 1)`).catch(() => ({ rows: [] }))).rows as { draft: boolean }[];
-      // Tests in the final app (live, else the draft the AI left), beyond the starter's two.
-      return { held_back_saves: held, live_saves: live, ended_with_draft: !!row?.draft };
+      return { held_back_saves: held, live_saves: live, ended_held_back: newestFailed, scored_version: newestFailed ? (after.page ? "the last version that passed" : "none passed") : "the newest" };
     })(),
     tests_written: (() => { try { const f = JSON.parse(after.page ?? "{}").files ?? {}; return Object.entries(f as Record<string, string>).filter(([p]) => /^\/tests?\//.test(p)).reduce((n, [, t]) => n + (t.match(/\b(it|test)\s*\(/g) ?? []).length, 0); } catch { return 0; } })(),
     used: { try_app: session.log.filter((l) => l.name.endsWith("try_app") || (l.name.endsWith("see_app") && Array.isArray((l.args as { steps?: unknown }).steps))).length, see_app: session.log.filter((l) => l.name.endsWith("see_app")).length, run_app_tests: session.log.filter((l) => l.name.endsWith("run_app_tests")).length,

@@ -363,10 +363,9 @@ export const fileHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
     }
     const p = await appProject(tx, c, r.note);
     if (r.kind === "app") {
-      const { draft } = await projectOf(tx, c, r.note.id);
       return { id: `${r.note.id}.app`, title: `${r.note.title} (app)`, text: [...fileList(p).map((f) => `${base}${f.path}  (${f.lines} lines)`), `${base}/data.json`].join("\n"), url: urlOf(r.note.id),
         metadata: { path: `${base}/`, readme: p.files["/README.md"] ?? null,
-          ...(draft !== null && draft !== undefined ? { held_back: `These files are a version that failed its checks, so the person still has the last one that passed. What failed:\n${draft}` } : {}) } };
+          ...(p.checks?.passed === false ? { held_back: `This version failed its checks, so the person still has the last one that passed. What failed:\n${p.checks.errors.join("\n")}` } : {}) } };
     }
     const file = cleanPath(r.path);
     if (p.files[file] === undefined) throw new ToolError(`No ${base}${file}. Files: ${Object.keys(p.files).sort().join(", ")}.`);
