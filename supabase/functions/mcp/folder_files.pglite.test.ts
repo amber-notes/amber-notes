@@ -199,6 +199,8 @@ Deno.test("write makes and replaces any file from base64, up to 10 MB, in a fold
     const acme = await note(pg, a, "Acme\n\nThe client.", { folder: toRead });
     assertEquals((await tool(pg, a, "write", { path: "To read/Acme/contract.txt", content: "terms" })).created, "To read/Acme/contract.txt");
     assertStringIncludes((await opened(pg, a, acme)).body!, "](pane-file:");
+    // Only kinds the app shows.
+    assertStringIncludes(await fails(tool(pg, a, "write", { path: "To read/song.mp3", content_base64: b64(PDF), mime_type: "audio/mpeg" })), "can't show .mp3 files");
     // Over 10 MB: refused, nothing stored.
     const big = new Uint8Array(10 * 1024 * 1024 + 1);
     const before = objects.size;

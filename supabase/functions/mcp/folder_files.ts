@@ -144,6 +144,9 @@ export async function readFile(tx: Tx, c: Call, id: string, path: string): Promi
 /** Writes a file's bytes: a new file in a folder (`folderId`), or a new version of an existing one
  *  (`id`), keeping the version it replaces (at most pane_limit 'file_versions'). */
 export async function writeFile(tx: Tx, c: Call, o: { id?: string; folderId?: string | null; name: string; type: string; bytes: Uint8Array; path: string }): Promise<{ id: string; version: number; replaced?: boolean }> {
+  if (!SUPPORTED.has(ending(o.name))) {
+    throw new ToolError(`${o.path}: Amber Notes can't show .${ending(o.name) || "(no ending)"} files, so they can't be added. It takes PDF; JPEG, PNG, HEIC, GIF, WebP; text, Markdown, CSV, TSV, JSON, XML, YAML, HTML and code; Word, Excel, PowerPoint, Pages, Numbers and Keynote. Audio, video and EPUB come later.`);
+  }
   if (o.bytes.length > AI_FILE_BYTES) throw new ToolError(`${o.path} would be ${MB(o.bytes.length)}. The AI can write files up to 10 MB; larger ones are added in Amber Notes (up to 100 MB).`);
   const sealedSize = o.bytes.length + SEALED_OVERHEAD;
   // Refused at the account's limit with how much is used (the error is the database's).
