@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ALLOW_HEADING, appleSignInURL, appLink, destination, fetchLabel, functionURL, parseLabel, pkcePair, problemText, qrConnectLive, returnURL, scanFragment, signInError, startsWithWrite, universalLink, validRequest } from "./connect";
+import { ALLOW_HEADING, appleSignInURL, oauthSignInURL, appLink, destination, fetchLabel, functionURL, parseLabel, pkcePair, problemText, qrConnectLive, returnURL, scanFragment, signInError, startsWithWrite, universalLink, validRequest } from "./connect";
 import { allowedPath, functionRegion, upstream, upstreamHeaders } from "./mcp-proxy";
 
 const ID = "5a0f6c1e-2b1d-4c36-9e0a-6b6f0c1a2b3c";
@@ -52,6 +52,18 @@ describe("the connect page", () => {
     expect(u.searchParams.get("redirect_to")).toBe(`https://ambernotes.app/connect?request=${ID}&recover=1`);
     expect(u.searchParams.get("code_challenge")).toBe("chal");
     expect(u.searchParams.get("code_challenge_method")).toBe("s256");
+  });
+
+  it("starts Sign in with Google the same way, with Google's account chooser and no Apple scopes", () => {
+    const u = new URL(oauthSignInURL("google", "https://ref.supabase.co", returnURL("https://ambernotes.app", ID), "chal"));
+    expect(u.origin + u.pathname).toBe("https://ref.supabase.co/auth/v1/authorize");
+    expect(u.searchParams.get("provider")).toBe("google");
+    expect(u.searchParams.get("redirect_to")).toBe(`https://ambernotes.app/connect?request=${ID}`);
+    expect(u.searchParams.get("prompt")).toBe("select_account");
+    expect(u.searchParams.has("scopes")).toBe(false);
+    expect(u.searchParams.get("code_challenge")).toBe("chal");
+    expect(u.searchParams.get("code_challenge_method")).toBe("s256");
+    expect(new URL(appleSignInURL("https://ref.supabase.co", "https://x", "c")).searchParams.get("scopes")).toBe("name email");
   });
 
   it("makes a PKCE pair whose challenge is the verifier's S256", async () => {
