@@ -1,3 +1,0 @@
-Weather
-
-Porto, mostly.
