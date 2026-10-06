@@ -274,7 +274,7 @@ It deletes the template at once (the page and its Use template link say it isn't
 
 ## Data model
 
-`supabase/migrations/20261007130000_collaboration.sql` (prototype, tested in `supabase/functions/mcp/collab.pglite.test.ts`):
+`supabase/migrations/20261007163000_collaboration.sql` (prototype, tested in `supabase/functions/mcp/collab.pglite.test.ts`):
 
 - `identity_keys`: public key, sealed private key.
 - `shared_notes`: owner, epoch, sealed head and page.
@@ -284,7 +284,7 @@ It deletes the template at once (the page and its Use template link say it isn't
 - Functions: `collab_publish_identity`, `collab_find_person`, `collab_members`, `collab_share`, `collab_invite` (kept for a later email invite), `collab_accept`, `collab_remove` (with no one removed it only renews the key), `collab_create_link`, `collab_stop_link`, `collab_open_link`, `collab_join_link`, `collab_role`.
 - Realtime: `note_updates` and `note_members` published; RLS policies for the private `note:<id>` channels.
 
-`supabase/migrations/20261007130100_sealed_links_and_templates.sql` (same tests):
+`supabase/migrations/20261007163100_sealed_links_and_templates.sql` (same tests):
 
 - `sealed_links`: the sealed copy per note; `publish_sealed_link` (also rotation), `stop_sealed_link`, and the public `sealed_link(id)`.
 - `shared_templates`: the template JSON per note; `publish_template` (refuses key values), `stop_template`, and the public `shared_template(id)`.

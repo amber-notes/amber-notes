@@ -96,7 +96,7 @@ export const fileList = (p: Project) => Object.keys(p.files).sort().map((path) =
  * tests and a smoke check (opens at phone and desktop sizes, each visible tab and button tapped
  * once, on a throwaway copy of the data: no crash, no console errors, no blank screen, the data
  * store working). A version that fails is kept as the app's draft, which the AI keeps working on;
- * the last one that passed keeps running for the person (20261007100800_app_drafts.sql).
+ * the last one that passed keeps running for the person (20261007160800_app_drafts.sql).
  */
 export async function saveProject(tx: Tx, c: Call, n: Note, unlinked: Project, changed: string, a: Args) {
   const linked = await linkProject(unlinked);
@@ -125,7 +125,7 @@ export async function saveProject(tx: Tx, c: Call, n: Note, unlinked: Project, c
   const sealed = await c.v.sealPage(n.id, stored);
   if (live) {
     // The file tools write often: within ten minutes, the same writer's earlier app isn't kept as
-    // another version (20261007100600_app_file_writes_coalesce.sql), so Previous App means "before".
+    // another version (20261007160600_app_file_writes_coalesce.sql), so Previous App means "before".
     await tx`select set_config('pane.coalesce', 'on', true)`;
     await tx`insert into public.note_pages (note_id, page_ct) values (${n.id}, ${sealed})
       on conflict (note_id) do update set page_ct = excluded.page_ct, draft_ct = null, draft_problems = null`;

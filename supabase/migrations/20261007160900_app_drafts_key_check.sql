@@ -1,4 +1,4 @@
--- Note apps: the touch trigger's key check covers an app's draft too (20261007100800_app_drafts.sql),
+-- Note apps: the touch trigger's key check covers an app's draft too (20261007160800_app_drafts.sql),
 -- so a draft sealed with an old key is refused like a page. The keep trigger is unchanged: it fires
 -- only on page_ct and data_ct, so a draft-only save never makes a version.
 create or replace function public.pane_note_page_touch() returns trigger

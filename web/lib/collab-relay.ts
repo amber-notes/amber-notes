@@ -1,5 +1,5 @@
 // Sealed links and shared templates (prototype): where the site reads them. In the product these are
-// the public RPCs `sealed_link` and `shared_template` on Supabase (20261007130100); the prototype
+// the public RPCs `sealed_link` and `shared_template` on Supabase (20261007163100); the prototype
 // reads the local relay (scripts/collab-relay.ts), which runs the same functions.
 export const RELAY = process.env.COLLAB_RELAY_URL ?? "http://127.0.0.1:56480";
 /** The separate origin note pages run on: never this site. ambernotes-usercontent.app in the product. */
