@@ -721,7 +721,7 @@ async function renderOnce(html: string, markdown: string, data: unknown, opts: R
         const fill = v.length >= 3 && (v[3] === undefined || v[3] > 0.5) && st.backgroundColor !== getComputedStyle(el.parentElement ?? document.body).backgroundColor;
         return !border || !fill;
       }).map((el) => (el.getAttribute("name") ?? el.id ?? el.tagName).slice(0, 30));
-      const under44 = controls.filter((el) => { const r = tapBox(el); return r.height < 40 || r.width < 40; }).map((el) => (el.textContent ?? el.getAttribute("aria-label") ?? el.tagName).trim().slice(0, 30));
+      const under44 = controls.filter((el) => { const r = tapBox(el); return r.height < 40 || r.width < 40; }).map((el) => (el.textContent?.trim() || el.getAttribute("aria-label") || el.tagName).trim().slice(0, 30));
       // How much of the window's width the content uses.
       let left = Infinity, right = -Infinity;
       for (const el of document.querySelectorAll("body *")) {
@@ -777,8 +777,24 @@ async function renderOnce(html: string, markdown: string, data: unknown, opts: R
       const svgShapes = [...document.querySelectorAll("svg path, svg rect, svg circle, svg line, svg polyline, svg polygon, svg ellipse")].filter(visible).length;
       const gridCols = Math.max(0, ...[...document.querySelectorAll("body *")].filter(visible).map((el) => { const s = getComputedStyle(el); return s.display.includes("grid") ? s.gridTemplateColumns.split(" ").filter(Boolean).length : 0; }));
       // Text that is small or faint against what's behind it.
-      const lumOf = (c: string) => { const m = c.match(/[\d.]+/g)?.map(Number) ?? [0, 0, 0]; const [r, g, b] = m.slice(0, 3).map((v) => { const x = v / 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
-      const behind = (el: Element | null): string => { for (let e = el; e; e = e.parentElement) { const b = getComputedStyle(e).backgroundColor; if (!/rgba\(0, 0, 0, 0\)|transparent/.test(b) && !/rgba\([^)]*, 0(\.0+)?\)$/.test(b)) return b; } return bg; };
+      // Any CSS color (rgb, oklab, color-mix: what Tailwind 4 writes) as sRGB and alpha, read back from a canvas.
+      const pen = document.createElement("canvas").getContext("2d", { willReadFrequently: true })!;
+      const rgbaOf = (c: string): number[] => { pen.clearRect(0, 0, 1, 1); pen.fillStyle = "#000"; pen.fillStyle = c; pen.fillRect(0, 0, 1, 1); const [r, g, b, a] = pen.getImageData(0, 0, 1, 1).data; return [r, g, b, a / 255]; };
+      const lumOf = (c: string) => { const m = /^rgba?\(/.test(c) ? c.match(/[\d.]+/g)!.map(Number) : rgbaOf(c); const [r, g, b] = m.slice(0, 3).map((v) => { const x = v / 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+      // What's behind an element: its own and its ancestors' backgrounds, translucent ones laid over the first solid one.
+      const behind = (el: Element | null): string => {
+        const layers: number[][] = [];
+        for (let e = el; e; e = e.parentElement) {
+          const v = rgbaOf(getComputedStyle(e).backgroundColor);
+          if (v[3] === 0) continue;
+          layers.push(v);
+          if (v[3] >= 0.99) break;
+        }
+        if (!layers.length || layers[layers.length - 1][3] < 0.99) layers.push(rgbaOf(bg));
+        let [r, g, b] = layers.pop()!;
+        for (const [r2, g2, b2, a] of layers.reverse()) { r = r2 * a + r * (1 - a); g = g2 * a + g * (1 - a); b = b2 * a + b * (1 - a); }
+        return `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`;
+      };
       const texts = [...document.querySelectorAll("body *")].filter((el) => visible(el) && [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent!.trim()));
       // Text cut off by its box (no ellipsis meant).
       const clipped = texts.filter((el) => { const s = getComputedStyle(el); return el.clientWidth > 2 && s.clip !== "rect(0px, 0px, 0px, 0px)" && !(s.position === "absolute" && el.clientWidth <= 2) && el.scrollWidth > el.clientWidth + 2 && s.overflowX !== "visible" && s.textOverflow !== "ellipsis" && s.overflowX !== "auto" && s.overflowX !== "scroll"; }).map((el) => (el.textContent ?? "").trim().slice(0, 40));
