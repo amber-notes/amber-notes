@@ -202,7 +202,7 @@ final class Backend {
 
     /// Where a web sign-in (Google, and Apple in the Mac download) returns to: the app's own URL
     /// scheme, caught by the ASWebAuthenticationSession (it never reaches the app's URL handler).
-    nonisolated static let webCallback = URL(string: "ambernotes://auth-callback")!
+    nonisolated static let webCallback = URL(string: "\(AppIdentity.scheme)://auth-callback")!
 
     /// Sign in with Google: Google's page in the system's secure browser sheet, through Supabase
     /// (PKCE: the app keeps the verifier, Supabase checks Google's state and nonce), then the
@@ -214,7 +214,7 @@ final class Backend {
     func signInWithGoogle(hint: String? = nil) async throws -> UUID? {
         guard let client else { return nil }
         let session = try await client.auth.signInWithOAuth(provider: .google, redirectTo: Self.webCallback, queryParams: Self.googleQuery(hint: hint)) { url in
-            try await WebAuthSession.run(url, callbackScheme: "ambernotes")
+            try await WebAuthSession.run(url, callbackScheme: AppIdentity.scheme)
         }
         return session.user.id
     }
@@ -265,7 +265,7 @@ final class Backend {
     func linkAppleOnTheWeb() async throws {
         guard let client else { return }
         let link = try await client.auth.getLinkIdentityURL(provider: .apple, scopes: "name email", redirectTo: Self.webCallback)
-        let result = try await WebAuthSession.run(link.url, callbackScheme: "ambernotes")
+        let result = try await WebAuthSession.run(link.url, callbackScheme: AppIdentity.scheme)
         let session = try await client.auth.session(from: result)
         apple = Self.appleIdentity(of: session.user) ?? AppleIdentity(email: nil)
     }

@@ -37,12 +37,14 @@ NOTES = [
 ]
 
 
-SECRETS = f"{MAIN}/.secrets/appreview.txt"
+# The staging test account (scripts/staging.sh seed) passes its own file and backend.
+SECRETS = os.environ.get("AMBER_REVIEW_SECRETS", f"{MAIN}/.secrets/appreview.txt")
+BACKEND = os.environ.get("AMBER_BACKEND_CONFIG", f"{MAIN}/Config/Backend.local.xcconfig")
 TOOL = os.path.join(os.path.dirname(os.path.abspath(__file__)), "e2ee-tool.ts")
 
 
 def config():
-    cfg = open(f"{MAIN}/Config/Backend.local.xcconfig").read()
+    cfg = open(BACKEND).read()
     val = lambda k: re.search(rf"^{k}\s*=\s*(.+)$", cfg, re.M).group(1).strip()
     sec = open(SECRETS).read()
     return (val("PANE_SUPABASE_URL").replace("https:/$()/", "https://"), val("PANE_SUPABASE_KEY"),

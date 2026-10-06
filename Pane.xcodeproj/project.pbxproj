@@ -128,6 +128,7 @@
 		38AA7C49BB9C58937D725CC8 /* Platform.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47C2F5BCCDFA4A6D60E39708 /* Platform.swift */; };
 		3A39A0973A7B840CA1B916CF /* ReorderSlide.swift in Sources */ = {isa = PBXBuildFile; fileRef = 641F847428D60D9F54899530 /* ReorderSlide.swift */; };
 		3A3DAEC48AF505CF975F0F86 /* FirstOpen.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE58FBFB7169CFFC6987E06D /* FirstOpen.swift */; };
+		3B7105221B24D815E7438BDD /* AppIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2916AFC1F3D0B78C58824A3 /* AppIdentity.swift */; };
 		3C09258A07518303314D8CB1 /* MenuBarPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72C1B655873A4CE5E1D4F0B3 /* MenuBarPanel.swift */; };
 		3C2F6E06C33232A72AE556C6 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F9EEA5AC460DA18550E8304 /* Models.swift */; };
 		3C70CD8C3CF6BE8100A2CC47 /* CollabStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 930FD737A522ABA46963C7E1 /* CollabStore.swift */; };
@@ -146,6 +147,7 @@
 		43B9DBB2E93E3DB56A9D447C /* SetupCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B76452F0DE4A17AB09AB580 /* SetupCard.swift */; };
 		43DDC9564543E17219D2D8C2 /* HeardFromSnapshots.swift in Sources */ = {isa = PBXBuildFile; fileRef = 449E501D19F7AB860CA38215 /* HeardFromSnapshots.swift */; };
 		4430BD8F09B8AF0C608223C2 /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDA33BB2FFE541AC66F2A224 /* SidebarView.swift */; };
+		44B3FAAC19C20D8B7D45688A /* AppIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2916AFC1F3D0B78C58824A3 /* AppIdentity.swift */; };
 		45154449ABF56E1C54327558 /* NoteLock.swift in Sources */ = {isa = PBXBuildFile; fileRef = F640AF3B161AEAD5FD260995 /* NoteLock.swift */; };
 		45A54F95009096AE8F8C1A51 /* ComposeFromFoldersUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFEE9EC2B9105EAE247A65C8 /* ComposeFromFoldersUITests.swift */; };
 		46BFEF129C92C8BA646178A5 /* WebAuthSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 622B499961F7BD5908B9A435 /* WebAuthSession.swift */; };
@@ -177,6 +179,7 @@
 		53FAB7BE6A0B731C0DCE88CD /* AppMark.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B255CC05106DC01C927C7CD /* AppMark.swift */; };
 		53FE9FE0EB63F016B9151CC9 /* ENEXReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65FB59D737154755BEABF6C8 /* ENEXReader.swift */; };
 		5412BD9D4BB407C05DA2D720 /* SharedItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F0CA0A157AFFD73FB9DEA75 /* SharedItem.swift */; };
+		5446CA44D271D1EDCD8B8FD2 /* AppIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2916AFC1F3D0B78C58824A3 /* AppIdentity.swift */; };
 		5464191780D6BA417D2ADA56 /* anime.js in Resources */ = {isa = PBXBuildFile; fileRef = CFFEC0432D36C47F49C28AEB /* anime.js */; };
 		553F154D89EA2D3D0072301A /* TableChart.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FDB2F2130F537884D8B99BB /* TableChart.swift */; };
 		5619E67CFC231B9156BA0844 /* three.js in Resources */ = {isa = PBXBuildFile; fileRef = DECBA8160361EDF621DEF177 /* three.js */; };
@@ -638,6 +641,7 @@
 		4CB90883FB5418E63A15FD23 /* AddDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddDevice.swift; sourceTree = "<group>"; };
 		4D2F57DF5286D7F9C5F954F1 /* TwoDeviceLiveSyncTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TwoDeviceLiveSyncTests.swift; sourceTree = "<group>"; };
 		4F33B74A850251D3F2D92C97 /* sample-habit-tracker.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = "sample-habit-tracker.html"; sourceTree = "<group>"; };
+		4F493C1739DD15B07E64BFE7 /* Pane-mac-beta.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Pane-mac-beta.entitlements"; sourceTree = "<group>"; };
 		4FDB2F2130F537884D8B99BB /* TableChart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TableChart.swift; sourceTree = "<group>"; };
 		508D7FDAAB7702C132913D85 /* SignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInView.swift; sourceTree = "<group>"; };
 		527730BB3E3E09A863D6895A /* NetFaultTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetFaultTests.swift; sourceTree = "<group>"; };
@@ -760,6 +764,7 @@
 		B0A3603BC7557BE3B17B39B6 /* 20260929230000_tip_events.sql */ = {isa = PBXFileReference; path = 20260929230000_tip_events.sql; sourceTree = "<group>"; };
 		B0F00B2175265FE9DFF9E83C /* NoteHistory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteHistory.swift; sourceTree = "<group>"; };
 		B0FD9CDD3DAFE1CEB8218DCB /* PrivacySecurity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivacySecurity.swift; sourceTree = "<group>"; };
+		B2916AFC1F3D0B78C58824A3 /* AppIdentity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIdentity.swift; sourceTree = "<group>"; };
 		B394F34406452615E3F6C32D /* automerge-swift */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "automerge-swift"; path = "Vendor/automerge-swift"; sourceTree = SOURCE_ROOT; };
 		B3C667730E3C8E3C905E7874 /* AIEditSnapshots.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIEditSnapshots.swift; sourceTree = "<group>"; };
 		BAC7D1ED7E22C1612C2680B3 /* SaveTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SaveTests.swift; sourceTree = "<group>"; };
@@ -957,6 +962,7 @@
 			children = (
 				4CB90883FB5418E63A15FD23 /* AddDevice.swift */,
 				25098E4C4EF554486AD7952E /* AIEdit.swift */,
+				B2916AFC1F3D0B78C58824A3 /* AppIdentity.swift */,
 				187BCDDD3155D5979CC60AC7 /* ApplePins.swift */,
 				D66F73D19D6FC8E877D5EDCA /* AppPlace.swift */,
 				27BC2BBC304C6026622F0BF6 /* ConnectScan.swift */,
@@ -1006,6 +1012,7 @@
 				37C6B4F675EF00B712CB8496 /* Info.plist */,
 				E37B37176F6CCA31F99951BE /* Pane-ios.entitlements */,
 				F197879E6AA9D80E74248F7D /* Pane-mac-appstore.entitlements */,
+				4F493C1739DD15B07E64BFE7 /* Pane-mac-beta.entitlements */,
 				915BDB4D777A6AAB79E4F4AA /* Pane-mac-direct.entitlements */,
 				981BAC3EFB574BCE93F3A6DD /* Pane-mac-signed.entitlements */,
 				84CD20246C83DA20F0BE392A /* Pane-mac.entitlements */,
@@ -1880,6 +1887,7 @@
 				CFFBA770277EDBF69A6E8E8C /* AddDeviceSync.swift in Sources */,
 				AF3EC843D0D9764524D62116 /* AddDeviceView.swift in Sources */,
 				65847CECE21D436E12E5A5A4 /* AmberButton.swift in Sources */,
+				44B3FAAC19C20D8B7D45688A /* AppIdentity.swift in Sources */,
 				5E153129A4B637873EE0F5A4 /* AppMark.swift in Sources */,
 				EBA52C007B952E15C5C98BED /* AppPlace.swift in Sources */,
 				039FA59088DF11BD28A3096C /* AppleNotesImport.swift in Sources */,
@@ -2007,6 +2015,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5446CA44D271D1EDCD8B8FD2 /* AppIdentity.swift in Sources */,
 				14AE7021BA248A59791620E8 /* AppMark.swift in Sources */,
 				3351028ED7A66AD203F9A841 /* Inbox.swift in Sources */,
 				91533D9CCF68D531C9CEC2CA /* OfflineHTML.swift in Sources */,
@@ -2062,6 +2071,7 @@
 				1CB56AA727694AFCF834FB2E /* AddDeviceSync.swift in Sources */,
 				41AEFCEF0953448414E0842C /* AddDeviceView.swift in Sources */,
 				9DBD5454DD9B221E059F12C7 /* AmberButton.swift in Sources */,
+				3B7105221B24D815E7438BDD /* AppIdentity.swift in Sources */,
 				53FAB7BE6A0B731C0DCE88CD /* AppMark.swift in Sources */,
 				ADE87078E8EB51FDBDB28D54 /* AppPlace.swift in Sources */,
 				7A098FE97DEFF91BC87CF24B /* AppleNotesImport.swift in Sources */,
@@ -2271,7 +2281,7 @@
 				);
 				PANE_MAC_ENTITLEMENTS = "Pane-mac-direct.entitlements";
 				PANE_PRODUCT_NAME = "Amber Notes";
-				PRODUCT_BUNDLE_IDENTIFIER = dev.emilwagman.pane;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(PANE_BUNDLE_ID)";
 				PRODUCT_MODULE_NAME = Pane;
 				PRODUCT_NAME = "$(PANE_PRODUCT_NAME)";
 				SDKROOT = macosx;
@@ -2293,7 +2303,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = dev.emilwagman.pane.share;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(PANE_BUNDLE_ID).share";
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -2312,7 +2322,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = dev.emilwagman.pane.share;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(PANE_BUNDLE_ID).share";
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -2399,6 +2409,12 @@
 				MARKETING_VERSION = 1.2;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
+				PANE_APPLINKS_HOST = ambernotes.app;
+				PANE_APP_GROUP = group.dev.emilwagman.pane;
+				PANE_BUNDLE_ID = dev.emilwagman.pane;
+				PANE_DISPLAY_NAME = "Amber Notes";
+				PANE_UPDATE_FEED = "https://ambernotes.app/updates/appcast.xml";
+				PANE_URL_SCHEME = ambernotes;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
@@ -2426,7 +2442,7 @@
 				);
 				PANE_MAC_ENTITLEMENTS = "Pane-mac.entitlements";
 				PANE_PRODUCT_NAME = Pane;
-				PRODUCT_BUNDLE_IDENTIFIER = dev.emilwagman.pane;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(PANE_BUNDLE_ID)";
 				PRODUCT_MODULE_NAME = Pane;
 				PRODUCT_NAME = "$(PANE_PRODUCT_NAME)";
 				SDKROOT = auto;
@@ -2480,7 +2496,7 @@
 				);
 				PANE_MAC_ENTITLEMENTS = "Pane-mac-direct.entitlements";
 				PANE_PRODUCT_NAME = "Amber Notes";
-				PRODUCT_BUNDLE_IDENTIFIER = dev.emilwagman.pane;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(PANE_BUNDLE_ID)";
 				PRODUCT_MODULE_NAME = Pane;
 				PRODUCT_NAME = "$(PANE_PRODUCT_NAME)";
 				SDKROOT = macosx;
@@ -2555,6 +2571,12 @@
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
+				PANE_APPLINKS_HOST = ambernotes.app;
+				PANE_APP_GROUP = group.dev.emilwagman.pane;
+				PANE_BUNDLE_ID = dev.emilwagman.pane;
+				PANE_DISPLAY_NAME = "Amber Notes";
+				PANE_UPDATE_FEED = "https://ambernotes.app/updates/appcast.xml";
+				PANE_URL_SCHEME = ambernotes;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -2582,7 +2604,7 @@
 				);
 				PANE_MAC_ENTITLEMENTS = "Pane-mac.entitlements";
 				PANE_PRODUCT_NAME = Pane;
-				PRODUCT_BUNDLE_IDENTIFIER = dev.emilwagman.pane;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(PANE_BUNDLE_ID)";
 				PRODUCT_MODULE_NAME = Pane;
 				PRODUCT_NAME = "$(PANE_PRODUCT_NAME)";
 				SDKROOT = auto;
