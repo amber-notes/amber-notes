@@ -171,6 +171,25 @@ export function clickEvent(el: { tagName: string; getAttribute(name: string): st
   return { event: match[0], properties: { path, destination: to.origin + to.pathname }, leaves: el.getAttribute("target") !== "_blank" };
 }
 
+/// A click on a blog post's call to action (lib/PostCta.tsx), named by the attributes the post puts
+/// on each of its links: which post, where in it, and which link. Sent as well as the click's own
+/// event, so a download from a post is a blog_cta_clicked and a download_mac_clicked with the post's
+/// path. Nothing is stored on the device for it.
+export function ctaEvent(el: { getAttribute(name: string): string | null }, here: URL): SiteEvent | null {
+  const slug = el.getAttribute("data-cta");
+  if (!slug) return null;
+  return {
+    event: "blog_cta_clicked",
+    properties: { path: here.pathname, slug, position: el.getAttribute("data-cta-position") ?? "", action: el.getAttribute("data-cta-action") ?? "" },
+    leaves: false,
+  };
+}
+
+/// Every named event for one click: the call to action's, then the link's own.
+export function clickEvents(el: { tagName: string; getAttribute(name: string): string | null }, here: URL): SiteEvent[] {
+  return [ctaEvent(el, here), clickEvent(el, here)].filter((e): e is SiteEvent => e !== null);
+}
+
 export const SCROLL_MARKS = [25, 50, 75, 100] as const;
 
 /// How far down the page the bottom of the window is, 0 to 100. A page that fits in the window
