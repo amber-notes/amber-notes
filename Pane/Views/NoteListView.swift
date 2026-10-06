@@ -14,7 +14,13 @@ struct NoteListView: View {
     #endif
 
     @Query(sort: \Note.updatedAt, order: .reverse) private var notes: [Note]
+    /// Files kept in folders on their own, listed with the notes.
+    @Query(filter: #Predicate<Attachment> { $0.folderID != nil && $0.deletedAt == nil }) private var folderFiles: [Attachment]
     @State private var search = ""
+    /// "Add File": the picker, and a file being renamed.
+    @State private var addingFiles = false
+    @State private var renamingFile: Attachment?
+    @State private var fileNameDraft = ""
     @State private var fileDropTargeted = false
     @State private var collapsed: Set<String> = []
     /// Notes waiting for "Delete Forever" to be confirmed.
@@ -69,6 +75,36 @@ struct NoteListView: View {
 
     private var filtered: [Note] { filtered(from: scoped) }
 
+    private var scopedFiles: [Attachment] {
+        folderFiles.filter { f in
+            switch scope {
+            case .all: return f.trashedAt == nil
+            case .trash: return f.trashedAt != nil
+            case .folder(let id): return f.trashedAt == nil && f.folderID == id
+            }
+        }
+    }
+
+    /// Files by name, as notes are found by their text.
+    private func filteredFiles(from scoped: [Attachment]) -> [Attachment] {
+        let q = search.trimmingCharacters(in: .whitespaces)
+        guard !q.isEmpty else { return scoped }
+        let base = scope == .trash ? scoped : folderFiles.filter { $0.trashedAt == nil }
+        return base.filter { $0.filename.localizedStandardContains(q) }
+    }
+
+    /// What the list shows, in its order: notes and files together, by date.
+    private var orderedItems: [ListItem] {
+        DateBucket.sections(filtered.map(ListItem.note) + filteredFiles(from: scopedFiles).map(ListItem.file)).flatMap(\.1)
+    }
+
+    /// "12 notes, 3 files", or just the notes when the folder has no files.
+    private func countText(notes: Int, files: Int, capitalized: Bool) -> String {
+        let n = notes == 1 ? "1 \(capitalized ? "Note" : "note")" : "\(notes) \(capitalized ? "Notes" : "notes")"
+        guard files > 0 else { return n }
+        return n + ", " + (files == 1 ? "1 \(capitalized ? "File" : "file")" : "\(files) \(capitalized ? "Files" : "files")")
+    }
+
     private func filtered(from scoped: [Note]) -> [Note] {
         let q = search.trimmingCharacters(in: .whitespaces)
         guard !q.isEmpty else { return scoped }
@@ -88,14 +124,16 @@ struct NoteListView: View {
         // Worked out once per update and handed down: the list asks many times.
         let scopedNotes = scoped
         let visible = filtered(from: scopedNotes)
+        let files = scopedFiles
+        let visibleFiles = filteredFiles(from: files)
         let folders = context.allFolders().sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
-        return list(scopedNotes, visible, folders)
+        return list(scopedNotes, visible, files, visibleFiles, folders)
             #if os(iOS)
             .task { await watchListTip() }
             #endif
     }
 
-    private func list(_ scopedNotes: [Note], _ visible: [Note], _ folders: [Folder]) -> some View {
+    private func list(_ scopedNotes: [Note], _ visible: [Note], _ scopedFiles: [Attachment], _ visibleFiles: [Attachment], _ folders: [Folder]) -> some View {
         List(selection: $selection) {
             // An ask to connect an AI whose sheet was closed without an answer: always a way back.
             if scope != .trash, search.isEmpty, let ask = connectCenter.waiting().first {
@@ -149,30 +187,39 @@ struct NoteListView: View {
                 listTip
             }
             #endif
-            if scope == .trash && !scopedNotes.isEmpty && search.isEmpty {
-                Text("Notes are deleted forever after 30 days.")
+            if scope == .trash && !(scopedNotes.isEmpty && scopedFiles.isEmpty) && search.isEmpty {
+                Text(scopedFiles.isEmpty ? "Notes are deleted forever after 30 days." : "Notes and files are deleted forever after 30 days.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .listRowSeparator(.hidden)
                     .selectionDisabled()
             }
-            ForEach(DateBucket.sections(visible), id: \.0) { section in
+            ForEach(DateBucket.sections(visible.map(ListItem.note) + visibleFiles.map(ListItem.file)), id: \.0) { section in
                 Section(isExpanded: Binding(
                     get: { !collapsed.contains(section.0) },
                     set: { open in withAnimation(.snappy(duration: 0.22)) { if open { collapsed.remove(section.0) } else { collapsed.insert(section.0) } } }
                 )) {
-                    ForEach(section.1) { note in
-                        // Its own equatable view: when one note changes, the others' rows (and their
-                        // drag and swipe setup) are left alone instead of rebuilt.
-                        ListRow(note: note, query: search, showFolder: scope == .all || !search.isEmpty,
-                                dragWith: dragOthers(for: note), selectedCount: selection.count,
-                                togglePin: { withAnimation(.snappy) { context.togglePin(note) } },
-                                remove: { remove(note) })
-                            .equatable()
-                            .tag(note.id)
-                            #if os(iOS)
-                            .listRowBackground(Color(Palette.row))
-                            #endif
+                    ForEach(section.1) { item in
+                        switch item {
+                        case .note(let note):
+                            // Its own equatable view: when one note changes, the others' rows (and their
+                            // drag and swipe setup) are left alone instead of rebuilt.
+                            ListRow(note: note, query: search, showFolder: scope == .all || !search.isEmpty,
+                                    dragWith: dragOthers(for: note), selectedCount: selection.count,
+                                    togglePin: { withAnimation(.snappy) { context.togglePin(note) } },
+                                    remove: { remove(note) })
+                                .equatable()
+                                .tag(note.id)
+                                #if os(iOS)
+                                .listRowBackground(Color(Palette.row))
+                                #endif
+                        case .file(let file):
+                            FileListRow(file: file, query: search, showFolder: scope == .all || !search.isEmpty, remove: { remove([file.id]) })
+                                .tag(file.id)
+                                #if os(iOS)
+                                .listRowBackground(Color(Palette.row))
+                                #endif
+                        }
                     }
                 } header: {
                     // One step lighter than the display type: bold, in the warm ink.
@@ -193,9 +240,9 @@ struct NoteListView: View {
             }
             #if os(iOS)
             // The count, quietly at the end of the list, as in Notes.
-            if !visible.isEmpty && search.isEmpty {
+            if !(visible.isEmpty && visibleFiles.isEmpty) && search.isEmpty {
                 Section {} footer: {
-                    Text(scopedNotes.count == 1 ? "1 Note" : "\(scopedNotes.count) Notes")
+                    Text(countText(notes: scopedNotes.count, files: scopedFiles.count, capitalized: true))
                         .font(.footnote)
                         .monospacedDigit()
                         .frame(maxWidth: .infinity)
@@ -217,7 +264,7 @@ struct NoteListView: View {
         .background(Color(Palette.listGround).ignoresSafeArea())
         .overlay {
             // The setup card is the empty state for a new account.
-            if visible.isEmpty && !showsSetup { emptyState }
+            if visible.isEmpty && visibleFiles.isEmpty && !showsSetup { emptyState }
         }
         .sheet(isPresented: $connecting, onDismiss: { Task { await setup?.refresh(force: true) } }) {
             if let client = backend?.client { ConnectAISheet(client: client) }
@@ -248,7 +295,7 @@ struct NoteListView: View {
         }
         .dropDestination(for: URL.self) { urls, _ in
             let made = context.importFiles(urls, into: scope == .trash ? .all : scope)
-            if let first = made.first { selection = [first.id] }
+            if let first = made.first { selection = [first] }
             return !made.isEmpty
         } isTargeted: { t in
             withAnimation(.easeOut(duration: 0.15)) { fileDropTargeted = t }
@@ -268,6 +315,18 @@ struct NoteListView: View {
         #if os(macOS)
         .navigationSubtitle("")
         #endif
+        .fileImporter(isPresented: $addingFiles, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
+            guard case .success(let urls) = result else { return }
+            let made = context.addFiles(urls, to: context.folderForFiles(scope))
+            if let first = made.first { selection = [first.id] }
+        }
+        .alert("Rename File", isPresented: Binding(get: { renamingFile != nil }, set: { if !$0 { renamingFile = nil } })) {
+            TextField("Name", text: $fileNameDraft)
+            Button("Cancel", role: .cancel) {}
+            Button("Rename") { if let f = renamingFile { context.rename(f, to: fileNameDraft) } }
+        } message: {
+            Text("The ending (.\(((renamingFile?.filename ?? "") as NSString).pathExtension)) stays.")
+        }
         .confirmationDialog(foreverTitle, isPresented: Binding(get: { pendingForever != nil }, set: { if !$0 { pendingForever = nil } }), titleVisibility: .visible) {
             Button("Delete Forever", role: .destructive) {
                 if let ids = pendingForever { performRemove(ids) }
@@ -290,8 +349,15 @@ struct NoteListView: View {
                     }
                 }
                 .fontWeight(editMode.isEditing ? .semibold : .regular)
-                .disabled(scopedNotes.isEmpty && !editMode.isEditing)
+                .disabled(scopedNotes.isEmpty && scopedFiles.isEmpty && !editMode.isEditing)
                 .accessibilityIdentifier("list.select")
+            }
+            if !editMode.isEditing && scope != .trash {
+                // Files kept in the folder on their own: PDFs to read, photos, spreadsheets.
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Add File", systemImage: "doc.badge.plus") { addingFiles = true }
+                        .accessibilityIdentifier("list.addFile")
+                }
             }
             if editMode.isEditing {
                 ToolbarItem(placement: .bottomBar) {
@@ -330,7 +396,7 @@ struct NoteListView: View {
             ToolbarItem(placement: .navigation) {
                 VStack(alignment: .leading, spacing: 0) {
                     Text(title).font(.system(size: 14, weight: .bold)).foregroundStyle(Color.ink).lineLimit(1)
-                    Text(scopedNotes.count == 1 ? "1 note" : "\(scopedNotes.count) notes")
+                    Text(countText(notes: scopedNotes.count, files: scopedFiles.count, capitalized: false))
                         .font(.system(size: 11))
                         .foregroundStyle(Color.muted)
                         .monospacedDigit()
@@ -343,6 +409,9 @@ struct NoteListView: View {
             ToolbarItem {
                 Menu {
                     Button("New Folder", systemImage: "folder.badge.plus") { NotificationCenter.default.post(name: .paneNewFolder, object: nil) }
+                    Button("Add Files…", systemImage: "doc.badge.plus") { addingFiles = true }
+                        .disabled(scope == .trash)
+                        .accessibilityIdentifier("list.addFile")
                     Divider()
                     Button("Import from Apple Notes…", systemImage: "square.and.arrow.down") { importNotes?() }
                     ForEach(ImportKind.allCases) { kind in
@@ -455,7 +524,7 @@ struct NoteListView: View {
         if !search.isEmpty {
             ContentUnavailableView.search(text: search)
         } else if scope == .trash {
-            ContentUnavailableView("No Deleted Notes", systemImage: "trash", description: Text("Notes you delete stay here for 30 days."))
+            ContentUnavailableView("No Deleted Notes", systemImage: "trash", description: Text("Notes and files you delete stay here for 30 days."))
         } else {
             ContentUnavailableView {
                 Label { Text("No Notes") } icon: { AppMark(size: 56) }
@@ -474,7 +543,14 @@ struct NoteListView: View {
     @ViewBuilder
     private func menu(for ids: Set<UUID>, folders: [Folder]) -> some View {
         let notes = ids.compactMap { context.note($0) }
-        if notes.count == 1, let note = notes.first {
+        let files = ids.compactMap { context.attachment($0) }.filter { $0.folderID != nil && $0.deletedAt == nil }
+        if !files.isEmpty {
+            if notes.isEmpty && files.count == 1, let file = files.first {
+                menu(for: file, folders: folders)
+            } else {
+                mixedMenu(ids: ids, notes: notes, files: files, folders: folders)
+            }
+        } else if notes.count == 1, let note = notes.first {
             menu(for: note, folders: folders)
         } else if notes.count > 1 {
             if notes.allSatisfy({ $0.trashedAt != nil }) {
@@ -522,6 +598,59 @@ struct NoteListView: View {
         }
     }
 
+    @ViewBuilder
+    private func menu(for file: Attachment, folders: [Folder]) -> some View {
+        if file.trashedAt != nil {
+            Button("Recover", systemImage: "arrow.uturn.backward") { withAnimation(.snappy) { context.restore(file) } }
+            Button("Delete Forever…", systemImage: "trash", role: .destructive) { remove([file.id]) }
+        } else {
+            Button("Rename…", systemImage: "pencil") {
+                fileNameDraft = FolderFileName.stem(file.filename)
+                renamingFile = file
+            }
+            Menu("Move to", systemImage: "folder") {
+                ForEach(folders) { f in
+                    Button(f.name) { withAnimation(.snappy) { context.move(file, to: f) } }
+                        .disabled(file.folderID == f.id)
+                }
+            }
+            if FileStore.exists(file) {
+                ShareLink(item: FileStore.url(for: file.id, filename: file.filename))
+            }
+            Divider()
+            Button("Delete", systemImage: "trash", role: .destructive) { remove([file.id]) }
+        }
+    }
+
+    /// Several items, files among them.
+    @ViewBuilder
+    private func mixedMenu(ids: Set<UUID>, notes: [Note], files: [Attachment], folders: [Folder]) -> some View {
+        let count = notes.count + files.count
+        if notes.allSatisfy({ $0.trashedAt != nil }) && files.allSatisfy({ $0.trashedAt != nil }) {
+            Button("Recover \(count) Items", systemImage: "arrow.uturn.backward") {
+                withAnimation(.snappy) {
+                    notes.forEach(context.restore)
+                    files.forEach(context.restore)
+                }
+            }
+            Button("Delete \(count) Items Forever…", systemImage: "trash", role: .destructive) { remove(ids) }
+        } else {
+            Menu("Move \(count) Items to", systemImage: "folder") {
+                ForEach(folders) { f in
+                    Button(f.name) { withAnimation(.snappy) { move(ids, to: f) } }
+                }
+            }
+            Divider()
+            Button("Delete \(count) Items", systemImage: "trash", role: .destructive) { remove(ids) }
+        }
+    }
+
+    /// Moves notes and files together.
+    private func move(_ ids: Set<UUID>, to folder: Folder) {
+        context.move(ids.compactMap { context.note($0) }, to: folder)
+        for f in ids.compactMap({ context.attachment($0) }) where f.folderID != nil { context.move(f, to: folder) }
+    }
+
     /// Dragging a selected note carries the whole selection; any other note goes alone (nil).
     private func dragOthers(for note: Note) -> [UUID]? {
         guard selection.count > 1, selection.contains(note.id) else { return nil }
@@ -529,8 +658,7 @@ struct NoteListView: View {
     }
 
     private func moveSelection(to folder: Folder) {
-        let notes = selection.compactMap { context.note($0) }
-        withAnimation(.snappy) { context.move(notes, to: folder) }
+        withAnimation(.snappy) { move(selection, to: folder) }
         #if os(iOS)
         withAnimation(.snappy(duration: 0.25)) { editMode = .inactive }
         #endif
@@ -544,21 +672,29 @@ struct NoteListView: View {
     /// to Recently Deleted straight away, which is its own undo.
     private func remove(_ ids: Set<UUID>) {
         let forever = ids.compactMap { context.note($0) }.contains { $0.trashedAt != nil }
+            || ids.compactMap { context.attachment($0) }.contains { $0.trashedAt != nil }
         if forever { pendingForever = ids } else { performRemove(ids) }
     }
 
     private var foreverTitle: String {
         let notes = (pendingForever ?? []).compactMap { context.note($0) }
-        return notes.count == 1 ? "Delete \u{201C}\(notes[0].title)\u{201D} forever?" : "Delete \(notes.count) notes forever?"
+        let files = (pendingForever ?? []).compactMap { context.attachment($0) }
+        if files.isEmpty {
+            return notes.count == 1 ? "Delete \u{201C}\(notes[0].title)\u{201D} forever?" : "Delete \(notes.count) notes forever?"
+        }
+        if notes.isEmpty && files.count == 1 { return "Delete \u{201C}\(files[0].filename)\u{201D} forever?" }
+        return "Delete \(notes.count + files.count) items forever?"
     }
 
     private func performRemove(_ ids: Set<UUID>) {
-        let ordered = filtered
+        let ordered = orderedItems
         let notes = ids.compactMap { context.note($0) }
+        let files = ids.compactMap { context.attachment($0) }.filter { $0.folderID != nil }
         let touchedSelection = !selection.isDisjoint(with: ids)
         let firstIndex = ordered.firstIndex { ids.contains($0.id) }
         withAnimation(.snappy(duration: 0.25)) {
             context.remove(notes)
+            context.remove(files: files)
             if touchedSelection {
                 let rest = ordered.filter { !ids.contains($0.id) }
                 if let i = firstIndex, !rest.isEmpty {
@@ -582,8 +718,11 @@ enum RowMetrics {
     static let dotOffset: CGFloat = -12
     /// The app mark's size: about the title's cap height.
     static let markSize: CGFloat = 13
+    /// A file's thumbnail on the trailing side, about the two lines' height.
+    static let thumbnail: CGFloat = 32
     #else
     static let markSize: CGFloat = 16
+    static let thumbnail: CGFloat = 42
     static let title = Font.headline
     static let detail = Font.subheadline
     static let spacing: CGFloat = 3

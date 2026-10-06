@@ -243,10 +243,14 @@ struct RootView: View {
                     selectedNote = target
                 }
                     .id(id)
+            } else if let id = selectedNote, let file = context.attachment(id), file.folderID != nil, file.deletedAt == nil {
+                // A file kept in the folder: its preview.
+                FileDetailView(file: file, onNewNote: newNote)
+                    .id(id)
             } else {
                 Group {
                     if selection.count > 1 {
-                        MultipleSelectionView(count: selection.count)
+                        MultipleSelectionView(count: selection.count, items: selection.contains { context.attachment($0) != nil })
                     } else {
                         EmptyDetailView()
                     }
@@ -302,7 +306,17 @@ struct RootView: View {
         #endif
         if title == "-new" { DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { newNote() }; return }
         let all = (try? context.fetch(FetchDescriptor<Note>())) ?? []
-        if let n = all.first(where: { $0.title == title && $0.deletedAt == nil }) { selectedNote = n.id }
+        if let n = all.first(where: { $0.title == title && $0.deletedAt == nil }) {
+            selectedNote = n.id
+        } else if let f = context.folderFiles().first(where: { $0.filename == title }), let folder = f.folderID {
+            // A file kept in a folder, by its name: its folder's list, with the file open.
+            scope = .folder(folder)
+            selectedNote = f.id
+        }
+        // `-folder "To read"`: that folder's list.
+        if let j = args.firstIndex(of: "-folder"), j + 1 < args.count, let f = context.allFolders().first(where: { $0.name == args[j + 1] }) {
+            scope = .folder(f.id)
+        }
     }
 
     /// Shows a note asked for from outside the window, switching to All Notes if it isn't in view.
@@ -316,6 +330,11 @@ struct RootView: View {
     /// Reopen the note you were on; otherwise the one you edited last.
     private func restoreNote() {
         guard selectedNote == nil, !ProcessInfo.processInfo.arguments.contains("-uitest") else { return }
+        // A file kept in a folder reopens like a note.
+        if let id = UUID(uuidString: lastNote), let f = context.attachment(id), f.folderID != nil, f.deletedAt == nil, f.trashedAt == nil {
+            selectedNote = id
+            return
+        }
         if let n = context.noteToReopen(last: UUID(uuidString: lastNote)) { selectedNote = n.id }
     }
 
@@ -337,9 +356,11 @@ struct RootView: View {
 /// What the note pane shows with several notes selected, as in Notes.
 struct MultipleSelectionView: View {
     let count: Int
+    /// Files are among them.
+    var items = false
 
     var body: some View {
-        Text("\(count) Notes Selected")
+        Text(items ? "\(count) Items Selected" : "\(count) Notes Selected")
             .font(.title3)
             .foregroundStyle(.secondary)
             .monospacedDigit()

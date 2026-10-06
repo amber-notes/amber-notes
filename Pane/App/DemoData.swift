@@ -1,4 +1,5 @@
 import Foundation
+import CoreText
 import ImageIO
 import SwiftData
 import UniformTypeIdentifiers
@@ -72,7 +73,61 @@ enum DemoData {
             n.createdAt = n.updatedAt
             n.isPinned = pinned
         }
+        // Captures of files kept in a folder (`-demoFiles`): a "To read" folder of papers, a photo
+        // and a spreadsheet next to a note.
+        if ProcessInfo.processInfo.arguments.contains("-demoFiles") { loadFolderFiles(into: context) }
         try? context.save()
+    }
+
+    static func loadFolderFiles(into context: ModelContext) {
+        let toRead = context.createFolder(named: "To read")
+        let plan = context.createNote(in: .folder(toRead.id), body: "Reading plan\n\nOne paper a week, notes in this folder.\n\n- [x] Attention is all you need\n- [ ] The bitter lesson\n- [ ] As we may think")
+        plan.updatedAt = .now.addingTimeInterval(-4 * 3600)
+        let files: [(Data, String, UTType, TimeInterval)] = [
+            (paperPDF(title: "Attention Is All You Need", lines: 34), "Attention is all you need.pdf", .pdf, -20 * 60),
+            (paperPDF(title: "The Bitter Lesson", lines: 22), "The bitter lesson.pdf", .pdf, -26 * 3600),
+            (samplePNG(), "Whiteboard.png", .png, -3 * 86400),
+            (Data("Paper,Pages,Read\nAttention is all you need,15,Yes\nThe bitter lesson,2,No\nAs we may think,12,No\n".utf8), "Reading log.csv", .commaSeparatedText, -9 * 86400),
+        ]
+        for (data, name, type, offset) in files {
+            guard let a = try? FileStore.importData(data, filename: name, type: type) else { continue }
+            a.folderID = toRead.id
+            a.createdAt = .now.addingTimeInterval(offset)
+            a.modifiedAt = a.createdAt
+            context.insert(a)
+        }
+    }
+
+    /// A one-page paper: a title and lines of text, so a preview reads as a document.
+    static func paperPDF(title: String, lines: Int) -> Data {
+        let data = NSMutableData()
+        var box = CGRect(x: 0, y: 0, width: 595, height: 842)
+        guard let consumer = CGDataConsumer(data: data), let ctx = CGContext(consumer: consumer, mediaBox: &box, nil) else { return Data() }
+        ctx.beginPDFPage(nil)
+        ctx.setFillColor(CGColor(gray: 1, alpha: 1))
+        ctx.fill(box)
+        func text(_ s: String, size: CGFloat, bold: Bool, at p: CGPoint) {
+            let font = CTFontCreateWithName((bold ? "Helvetica-Bold" : "Times-Roman") as CFString, size, nil)
+            let line = CTLineCreateWithAttributedString(NSAttributedString(string: s, attributes: [
+                NSAttributedString.Key(kCTFontAttributeName as String): font,
+                NSAttributedString.Key(kCTForegroundColorAttributeName as String): CGColor(gray: 0.1, alpha: 1),
+            ]))
+            ctx.textPosition = p
+            CTLineDraw(line, ctx)
+        }
+        text(title, size: 22, bold: true, at: CGPoint(x: 64, y: 760))
+        text("Abstract", size: 12, bold: true, at: CGPoint(x: 64, y: 718))
+        let words = "The dominant sequence models are based on complex recurrent or convolutional networks. We propose a simpler architecture that relies on attention alone, and it trains faster while reading better."
+        let filler = Array(repeating: words, count: 8).joined(separator: " ").split(separator: " ")
+        var i = 0
+        for row in 0 ..< lines {
+            var s = ""
+            while s.count < 86, i < filler.count { s += (s.isEmpty ? "" : " ") + filler[i]; i = (i + 1) % filler.count }
+            text(s, size: 10.5, bold: false, at: CGPoint(x: 64, y: 696 - CGFloat(row) * 16))
+        }
+        ctx.endPDFPage()
+        ctx.closePDF()
+        return data as Data
     }
 
     /// App Store captures: `-uitest -demo -importedLibrary` is a library just imported from Apple

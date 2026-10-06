@@ -91,10 +91,11 @@ struct SidebarIcon: View {
 extension View {
     /// One element per sidebar row, read as "Travel, 4 notes". Without it VoiceOver reads the
     /// folder symbol's own name ("Move") before the row's.
-    func rowAccessibility(_ name: String, count: Int) -> some View {
-        accessibilityElement(children: .ignore)
+    func rowAccessibility(_ name: String, count: Int, files: Int = 0) -> some View {
+        let notes = count == 1 ? "1 note" : "\(count) notes"
+        return accessibilityElement(children: .ignore)
             .accessibilityLabel(name)
-            .accessibilityValue(count == 1 ? "1 note" : "\(count) notes")
+            .accessibilityValue(files == 0 ? notes : notes + (files == 1 ? ", 1 file" : ", \(files) files"))
     }
 }
 
@@ -124,6 +125,13 @@ struct SidebarView: View {
 
     private var live: [Note] { notes.filter { $0.trashedAt == nil && $0.deletedAt == nil } }
     private var trashed: [Note] { notes.filter { $0.trashedAt != nil && $0.deletedAt == nil } }
+    /// Files kept in folders count with their folder's notes.
+    @Query(filter: #Predicate<Attachment> { $0.folderID != nil && $0.deletedAt == nil }) private var folderFiles: [Attachment]
+    private var fileCounts: [UUID: Int] {
+        var counts: [UUID: Int] = [:]
+        for f in folderFiles where f.trashedAt == nil { if let id = f.folderID { counts[id, default: 0] += 1 } }
+        return counts
+    }
     private var roots: [Folder] { folders.filter { $0.parent == nil || $0.parent?.deletedAt != nil } }
 
     var body: some View {
@@ -131,15 +139,16 @@ struct SidebarView: View {
             Section {
                 // "All Notes" only earns its row once there's more than one folder.
                 if folders.count > 1 {
-                    row("All Notes", icon: "tray.full", count: live.count)
+                    row("All Notes", icon: "tray.full", count: live.count, files: folderFiles.filter { $0.trashedAt == nil }.count)
                         .tag(Scope.all)
                         .accessibilityIdentifier("sidebar.all")
                 }
+                let files = fileCounts
                 ForEach(roots) { folder in
-                    FolderTree(folder: folder, dropTarget: $dropTarget, rename: startRename, newSub: startNewFolder, delete: deleteFolder)
+                    FolderTree(folder: folder, files: files, dropTarget: $dropTarget, rename: startRename, newSub: startNewFolder, delete: deleteFolder)
                 }
                 // Last in the same list, like Notes.
-                row("Recently Deleted", icon: "trash", count: trashed.count)
+                row("Recently Deleted", icon: "trash", count: trashed.count, files: folderFiles.filter { $0.trashedAt != nil }.count)
                     .tag(Scope.trash)
                     .accessibilityIdentifier("sidebar.trash")
             } header: {
@@ -236,7 +245,9 @@ struct SidebarView: View {
                 deletingFolder = nil
             }
         } message: {
-            Text("Its notes move to Recently Deleted, where you can recover them for 30 days.")
+            Text(deletingFolder.map { context.files(in: $0.id).isEmpty } ?? true
+                 ? "Its notes move to Recently Deleted, where you can recover them for 30 days."
+                 : "Its notes and files move to Recently Deleted, where you can recover them for 30 days.")
         }
         .alert(renaming == nil ? "New Folder" : "Rename Folder", isPresented: Binding(
             get: { renaming != nil || newFolderParent != nil },
@@ -252,19 +263,19 @@ struct SidebarView: View {
         }
     }
 
-    private func row(_ title: String, icon: String, count: Int) -> some View {
+    private func row(_ title: String, icon: String, count: Int, files: Int = 0) -> some View {
         Label {
             HStack {
                 Text(title)
                 Spacer()
-                Text(count, format: .number)
+                Text(count + files, format: .number)
                     .monospacedDigit()
                     .foregroundStyle(.secondary)
             }
         } icon: {
             SidebarIcon(name: icon)
         }
-        .rowAccessibility(title, count: count)
+        .rowAccessibility(title, count: count, files: files)
     }
 
     /// Keeps the selection on something that exists (see `Scope.settled`).
@@ -292,7 +303,7 @@ struct SidebarView: View {
 
     /// Asks first when the folder holds notes, like Notes: they move to Recently Deleted.
     private func deleteFolder(_ f: Folder) {
-        if f.liveNotes.isEmpty && f.liveChildren.isEmpty { performDelete(f) } else { deletingFolder = f }
+        if f.liveNotes.isEmpty && f.liveChildren.isEmpty && context.files(in: f.id).isEmpty { performDelete(f) } else { deletingFolder = f }
     }
 
     private func performDelete(_ f: Folder) {
@@ -305,6 +316,8 @@ struct SidebarView: View {
 private struct FolderTree: View {
     @Environment(\.modelContext) private var context
     let folder: Folder
+    /// Live files per folder, counted once for the whole tree.
+    let files: [UUID: Int]
     @Binding var dropTarget: UUID?
     let rename: (Folder) -> Void
     let newSub: (Folder) -> Void
@@ -317,7 +330,7 @@ private struct FolderTree: View {
         } else {
             DisclosureGroup(isExpanded: $expanded) {
                 ForEach(folder.liveChildren) { child in
-                    FolderTree(folder: child, dropTarget: $dropTarget, rename: rename, newSub: newSub, delete: delete)
+                    FolderTree(folder: child, files: files, dropTarget: $dropTarget, rename: rename, newSub: newSub, delete: delete)
                 }
             } label: { label }
         }
@@ -328,7 +341,7 @@ private struct FolderTree: View {
             HStack {
                 Text(folder.name)
                 Spacer()
-                Text(folder.liveNotes.count, format: .number)
+                Text(folder.liveNotes.count + (files[folder.id] ?? 0), format: .number)
                     .monospacedDigit()
                     .foregroundStyle(.secondary)
             }
@@ -336,7 +349,7 @@ private struct FolderTree: View {
             SidebarIcon(name: dropTarget == folder.id ? "folder.fill" : "folder")
                 .contentTransition(.symbolEffect(.replace))
         }
-        .rowAccessibility(folder.name, count: folder.liveNotes.count)
+        .rowAccessibility(folder.name, count: folder.liveNotes.count, files: files[folder.id] ?? 0)
         .tag(Scope.folder(folder.id))
         .accessibilityIdentifier("folder.\(folder.name)")
         .draggable(PaneDragItem(kind: .folder, id: folder.id)) {
@@ -353,6 +366,8 @@ private struct FolderTree: View {
                     }
                 case .folder:
                     if item.id != folder.id, let f = context.folder(item.id) { context.move(f, into: folder); moved = true }
+                case .file:
+                    if let f = context.attachment(item.id), f.folderID != nil { context.move(f, to: folder); moved = true }
                 }
             }
             if moved { expanded = true }

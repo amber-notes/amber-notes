@@ -22,6 +22,8 @@ import {
 } from "./tools.ts";
 import { DELETED, type Entry, Paths, safeName } from "./paths.ts";
 import { needles, WordIndex } from "./words.ts";
+import { toBase64, fromBase64 } from "../_shared/e2ee.ts";
+import { extract, fileOut, type FolderFile, fileVersions, isTextFile, moveFile, readFile, restoreFile, restoreFileVersion, trashFile, utiOf, writeFile } from "./folder_files.ts";
 
 type Args = Record<string, unknown>;
 const str = (d: string) => ({ type: "string", description: d });
@@ -29,7 +31,7 @@ const int = (d: string) => ({ type: "integer", description: d });
 const read = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false } as const;
 const change = { readOnlyHint: false, destructiveHint: true, openWorldHint: false } as const;
 const add = { readOnlyHint: false, destructiveHint: false, openWorldHint: false } as const;
-const PATH = "A path, as list and search show them: \"Work/Acme.md\", a folder \"Work/\", a sub-note \"Work/Acme/Agenda.md\", a note's file \"Work/Acme/contract.pdf\", an app's file \"Work/Habits.app/src/App.tsx\" or its data \"Work/Habits.app/data.json\".";
+const PATH = "A path, as list and search show them: \"Work/Acme.md\", a folder \"Work/\", a sub-note \"Work/Acme/Agenda.md\", a note's file \"Work/Acme/contract.pdf\", a file in a folder \"To read/Paper.pdf\", an app's file \"Work/Habits.app/src/App.tsx\" or its data \"Work/Habits.app/data.json\".";
 
 /** Trying an app (see_app steps) and its tests on save; off only in the experiment's control arm. */
 export const tryOn = () => Deno.env.get("AMBER_NO_TRY") !== "1";
@@ -68,8 +70,8 @@ export const FILE_TOOLS: Tool[] = ([
   },
   {
     name: "fetch", title: "Read",
-    description: "Reads a note, an app file, an app's data.json or a note's file (text, image or PDF), with line numbers (cat -n). Long text is read in parts: offset is the first line, limit how many (default 2000). A folder reads as its listing. Read something before you edit or write it.",
-    inputSchema: { type: "object", properties: { id: str(PATH), offset: int("First line (1-based)."), limit: int("How many lines.") }, required: ["id"] },
+    description: "Reads a note, an app file, an app's data.json or a file, with line numbers (cat -n). Long text is read in parts: offset is the first line, limit how many (default 2000). A folder reads as its listing. Files: text files (TXT, CSV, JSON, code) as text you can edit; PDFs, Word, Excel and PowerPoint as their text; pictures as images. raw: true returns the file itself (base64, up to 10 MB) to change with your own tools and write back. Read something before you edit or write it.",
+    inputSchema: { type: "object", properties: { id: str(PATH), offset: int("First line (1-based)."), limit: int("How many lines."), raw: { type: "boolean", description: "A file's own bytes, as a resource (base64). Up to 10 MB." } }, required: ["id"] },
     annotations: read,
   },
   {
@@ -89,7 +91,7 @@ export const FILE_TOOLS: Tool[] = ([
   },
   {
     name: "edit", title: "Edit",
-    description: "Replaces old_string with new_string in a note, an app file or an app's data.json, like a coding agent's Edit. Read it first with fetch; copy old_string exactly, without the line numbers. It must match once unless replace_all; an empty new_string deletes it. Answers with checks: what the change broke in a note (a table, a checklist line, a tracker value), or the app's compile, render and test results. Each edit is one change the person can undo.",
+    description: "Replaces old_string with new_string in a note, an app file, an app's data.json or a text file (TXT, CSV, JSON, code), like a coding agent's Edit. Read it first with fetch; copy old_string exactly, without the line numbers. It must match once unless replace_all; an empty new_string deletes it. Answers with checks: what the change broke in a note (a table, a checklist line, a tracker value), or the app's compile, render and test results. Each edit is one change the person can undo.",
     inputSchema: {
       type: "object",
       properties: {
@@ -110,25 +112,25 @@ export const FILE_TOOLS: Tool[] = ([
   },
   {
     name: "move", title: "Move or rename",
-    description: "Moves or renames a note, a folder or an app file: a note to a folder (\"Clients/\", made if needed), into a note's folder (\"Work/Acme/\": it becomes a sub-note), or to a new name (\"Work/New title.md\"); a folder to a new path (\"Archive/2025/\"); an app file within its app.",
+    description: "Moves or renames a note, a folder or an app file: a note to a folder (\"Clients/\", made if needed), into a note's folder (\"Work/Acme/\": it becomes a sub-note), or to a new name (\"Work/New title.md\"); a folder to a new path (\"Archive/2025/\"); an app file within its app; a file in a folder to another folder (\"Archive/\") or a new name (\"To read/Old paper.pdf\", same ending).",
     inputSchema: { type: "object", properties: { path: str(PATH), to: str("Where it goes.") }, required: ["path", "to"] },
     annotations: change,
   },
   {
     name: "delete", title: "Delete",
-    description: "Deletes a note (to Recently Deleted with its sub-notes, for 30 days), a folder (its notes go to Recently Deleted), an app file, or an app (\"Work/Habits.app\": the note stays; the app is kept in history).",
+    description: "Deletes a note (to Recently Deleted with its sub-notes, for 30 days), a folder (its notes and files go to Recently Deleted), a file in a folder (to Recently Deleted for 30 days), an app file, or an app (\"Work/Habits.app\": the note stays; the app is kept in history).",
     inputSchema: { type: "object", properties: { path: str(PATH) }, required: ["path"] },
     annotations: change,
   },
   {
     name: "history", title: "History",
-    description: "Earlier versions, newest first, with who made each (a device or an AI): of a note's text, or of an app (code and data).",
+    description: "Earlier versions, newest first, with who made each (a device or an AI): of a note's text, an app (code and data), or a file.",
     inputSchema: { type: "object", properties: { path: str(PATH), limit: int("Default 10.") }, required: ["path"] },
     annotations: read,
   },
   {
     name: "restore", title: "Restore",
-    description: "Brings back a note from Recently Deleted (no version), or an earlier version from history: of a note's text, or of an app (code and data as they were).",
+    description: "Brings back a note or file from Recently Deleted (no version), or an earlier version from history: of a note's text, an app (code and data as they were), or a file.",
     inputSchema: { type: "object", properties: { path: str(PATH), version: int("A version from history.") }, required: ["path"] },
     annotations: change,
   },
@@ -159,9 +161,9 @@ export const FILE_TOOLS: Tool[] = ([
 
 /** What the server tells every client when this tool set is on: how the files are laid out. The
  *  format rules live where they're needed (the tools' checks and descriptions, an app's README). */
-export const FILE_INSTRUCTIONS = `Amber Notes is the person's notes, as files: each note is a markdown file in folders ("Work/Acme.md"; its first line is its title). A note's sub-notes and files are in the folder with its name ("Work/Acme/Agenda.md", "Work/Acme/contract.pdf"). A folder ending in .app is the note's app, a small React project with its data in data.json; read its README.md first. Deleted notes are in "Recently Deleted/". Read before you edit; edit and write answer with checks: fix what they report.`;
+export const FILE_INSTRUCTIONS = `Amber Notes is the person's notes, as files: each note is a markdown file in folders ("Work/Acme.md"; its first line is its title). A note's sub-notes and files are in the folder with its name ("Work/Acme/Agenda.md", "Work/Acme/contract.pdf"); folders also hold files of their own ("To read/Paper.pdf"). A folder ending in .app is the note's app, a small React project with its data in data.json; read its README.md first. Deleted notes are in "Recently Deleted/". Read before you edit; edit and write answer with checks: fix what they report.`;
 
-const SWITCHES = new Set(["title_only", "case_sensitive", "pinned", "sub_notes", "deleted", "replace_all"]);
+const SWITCHES = new Set(["title_only", "case_sensitive", "pinned", "sub_notes", "deleted", "replace_all", "raw"]);
 export async function runFileTool(name: string, args: Args, ctx: ToolContext): Promise<unknown> {
   // Paths, not ids: "path" is the argument everywhere ("id" from older clients still works).
   // Switches sent as text ("true") count as what they say.
@@ -197,6 +199,8 @@ const hash = (c: Call, s: string) => c.v.tag(s);
 const noteItem = (id: string) => `note:${id}`;
 const fileItem = (id: string, path: string) => `file:${id}:${path}`;
 const dataItem = (id: string) => `data:${id}`;
+/** A file's bytes, read at a content version. */
+const blobItem = (id: string) => `blob:${id}`;
 
 // MARK: Paths
 
@@ -206,7 +210,8 @@ type Ref =
   | { kind: "app"; note: Note; base: string }
   | { kind: "appfile"; note: Note; base: string; file: string }
   | { kind: "data"; note: Note; base: string }
-  | { kind: "file"; id: string; path: string; note?: Note };
+  /** A file a note embeds (note), or one kept in a folder (folder). */
+  | { kind: "file"; id: string; path: string; note?: Note; folder?: FolderFile };
 
 const callPaths = new WeakMap<Call, Paths>();
 /** The account's paths for this call (built once, then kept until something moves). */
@@ -242,7 +247,11 @@ async function resolve(tx: Tx, c: Call, raw: unknown, opts: { trashed?: boolean 
   const P = await pathsOf(tx, c);
   if (!ref) return { kind: "dir", dir: "" };
   // Older clients' handles: an id, "<id>.app/…", "pane-file:<id>".
-  if (/^pane-file:/i.test(ref)) return { kind: "file", id: ref.slice(10), path: ref };
+  if (/^pane-file:/i.test(ref)) {
+    const id = ref.slice(10).toLowerCase();
+    const path = P.filePathOf(id);
+    return { kind: "file", id, path: path ?? ref, ...(path ? { folder: P.fileAt(path) } : {}) };
+  }
   if (UUID.test(ref.slice(0, 36))) {
     const path = P.pathOf(ref.slice(0, 36));
     if (!path) throw new ToolError("No such note.");
@@ -272,6 +281,10 @@ async function resolve(tx: Tx, c: Call, raw: unknown, opts: { trashed?: boolean 
     return { kind: "note", note: e.note, path: e.path };
   }
   if (e?.kind === "folder") return { kind: "dir", dir: e.path };
+  if (e?.kind === "file") {
+    if (e.file.trashed_at && !opts.trashed) throw new ToolError(`"${e.path}" is in Recently Deleted. Bring it back with restore first.`);
+    return { kind: "file", id: e.file.id, path: e.path, folder: e.file };
+  }
   // A file a note embeds: "Work/Acme/contract.pdf".
   const slash = ref.lastIndexOf("/");
   if (slash > 0 && !/\.md$/i.test(ref)) {
@@ -448,8 +461,10 @@ async function newNote(tx: Tx, c: Call, path: string, content: string, pinned = 
 
 const entryOut = (e: Entry, extra: Record<string, unknown> = {}) => e.kind === "folder"
   ? { path: e.path, type: "folder", ...extra }
+  : e.kind === "file" ? fileOut(e.path, e.file)
   : { path: e.path, type: e.app ? "note+app" : "note", updated: iso(e.note.updated_at), ...(e.note.is_pinned ? { pinned: true } : {}), ...(e.note.locked_body ? { locked: true } : {}), ...(e.note.trashed_at ? { deleted: iso(e.note.trashed_at) } : {}), ...extra };
-const newest = (a: Entry, b: Entry) => (a.kind === "folder" ? 0 : 1) - (b.kind === "folder" ? 0 : 1) || (b.kind === "note" ? +new Date(b.note.updated_at) : 0) - (a.kind === "note" ? +new Date(a.note.updated_at) : 0) || a.path.localeCompare(b.path);
+const updatedOf = (e: Entry) => e.kind === "note" ? +new Date(e.note.updated_at) : e.kind === "file" ? +new Date(e.file.updated_at) : 0;
+const newest = (a: Entry, b: Entry) => (a.kind === "folder" ? 0 : 1) - (b.kind === "folder" ? 0 : 1) || updatedOf(b) - updatedOf(a) || a.path.localeCompare(b.path);
 
 /** A glob ("**\/*.md", "Work/**", "*invoice*") as a regular expression over whole paths. */
 export function globRe(glob: string): RegExp {
@@ -501,6 +516,8 @@ export const fileHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
       // By name, from a glob over every file the notes show (list keeps the word index current).
       const listed = await fileHandlers.list(tx, { pattern: "**/*", limit: 1000 }, c) as { matches: { path: string; type: string }[] };
       const hits = listed.matches.filter((m) => m.type === "file" && inScope(m.path) && nameHit(m.path.split("/").pop()!)).map((m) => m.path);
+      // And files kept in folders.
+      for (const e of P.all()) if (e.kind === "file" && (a.deleted === true || !e.file.trashed_at) && inScope(e.path) && nameHit(e.path.split("/").pop()!) && !hits.includes(e.path)) hits.push(e.path);
       return { files: hits.slice(pg.offset, pg.offset + pg.limit), ...more(hits.length, pg.offset, Math.min(pg.limit, Math.max(0, hits.length - pg.offset))) };
     }
     if (a.type === "app" || /\.app(\/|$)/i.test(scope)) {
@@ -661,7 +678,7 @@ export const fileHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
     const owner = P.noteOfDir(dir);
     const files = owner ? await noteFiles(tx, c, P, owner).catch(() => []) : [];
     const entries = [
-      ...kids.map((e) => e.kind === "folder" ? entryOut(e, { items: P.children(e.path).length }) : entryOut(e, e.app ? { app: e.path.replace(/\.md$/, ".app/") } : {})),
+      ...kids.map((e) => e.kind === "folder" ? entryOut(e, { items: P.children(e.path).length }) : entryOut(e, e.kind === "note" && e.app ? { app: e.path.replace(/\.md$/, ".app/") } : {})),
       ...files.map((f) => ({ path: f.path, type: "file", kind: f.type, bytes: f.bytes })),
     ];
     const deleted = dir === "" ? P.children(DELETED).length : 0;
@@ -675,12 +692,7 @@ export const fileHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
   async fetch(tx, a, c) {
     const P = await pathsOf(tx, c);
     const r = await resolve(tx, c, a.id, { trashed: true });
-    if (r.kind === "file") {
-      const got = await classic.get_file(tx, { id: r.id }, c);
-      // The file's own handle isn't shown: its path is.
-      if (got instanceof Content) return new Content(got.content.map((b) => b.type === "text" ? { ...b, text: String(b.text).replace(/pane-file:[0-9a-f-]{36}/gi, r.path) } : b), undefined);
-      return got;
-    }
+    if (r.kind === "file") return await fetchFile(tx, a, c, r);
     if (r.kind === "dir") {
       const listing = await fileHandlers.list(tx, { path: r.dir }, c);
       return { id: r.dir || "/", title: r.dir || "Notes", text: JSON.stringify(listing, null, 2), url: "ambernotes://notes", metadata: { type: "folder" } };
@@ -806,10 +818,22 @@ export const fileHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
       await markRead(tx, c, fileItem(r.note.id, file), await hash(c, text));
       return appResult(out, `${r.base}${file}`);
     }
-    throw new ToolError("edit changes a note, an app file or an app's data.json.");
+    if (r.kind === "file") {
+      const { bytes, meta, version } = await readFile(tx, c, r.id, r.path);
+      if (!isTextFile(meta.name, meta.type)) throw new ToolError(`${r.path} isn't text: edit changes text files. To change it, fetch it with raw: true, change it with your own tools, and write it back with content_base64.`);
+      await mustHaveRead(tx, c, blobItem(r.id), String(version), r.path);
+      const before = new TextDecoder().decode(bytes);
+      const text = replaceIn(before, a.old_string, a.new_string, all, r.path);
+      if (text === before) return { path: r.path, unchanged: true };
+      const w = await writeFile(tx, c, { id: r.id, name: meta.name, type: meta.type, bytes: new TextEncoder().encode(text), path: r.path });
+      await markRead(tx, c, blobItem(r.id), String(w.version));
+      return { edited: r.path, kept: "The version before is in history; restore brings it back." };
+    }
+    throw new ToolError("edit changes a note, an app file, an app's data.json or a text file.");
   },
 
   async write(tx, a, c) {
+    if (typeof a.content_base64 === "string" || (typeof a.content === "string" && looksLikeFile(clean(a.path)))) return await writeFileTool(tx, a, c);
     if (typeof a.content !== "string") throw new ToolError("content is the whole new text (content_base64 with mime_type for a file's bytes).");
     const content = a.content;
     let r: Ref;
@@ -852,7 +876,8 @@ export const fileHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
       await markRead(tx, c, fileItem(r.note.id, file), await hash(c, content));
       return appResult(out, `${r.base}${file}`);
     }
-    throw new ToolError("write writes a note, an app file or an app's data.json.");
+    if (r.kind === "file") return await writeFileTool(tx, a, c);
+    throw new ToolError("write writes a note, an app file, an app's data.json or a file.");
   },
 
   async move(tx, a, c) {
@@ -917,6 +942,10 @@ export const fileHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
       const target = to.includes(".app/") ? to.slice(to.indexOf(".app/") + 4) : to;
       return await moveAppFile(tx, c, r.note, r.base, r.file, target, a);
     }
+    if (r.kind === "file" && r.folder) {
+      await moveFile(tx, c, r.folder, to);
+      return { moved: (await pathsOf(tx, c, true)).filePathOf(r.id) };
+    }
     if (r.kind === "file") throw new ToolError("A note's file moves with the note. To show it in another note, edit both notes' text (move its ![name](…) line).");
     throw new ToolError("move takes a note, a folder or an app file.");
   },
@@ -947,6 +976,10 @@ export const fileHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
       await tx`update public.note_pages set page_ct = null, draft_ct = null where note_id = ${r.note.id}`;
       return { deleted: `${r.base}/`, kept: "The note stays; the app is in its history (restore with a version)." };
     }
+    if (r.kind === "file" && r.folder) {
+      await trashFile(tx, r.folder);
+      return { deleted: r.path, now_at: (await pathsOf(tx, c, true)).filePathOf(r.id), restore_with: "restore" };
+    }
     if (r.kind === "file") throw new ToolError("To remove a file from a note, edit the note's text (remove its ![name](…) line).");
     throw new ToolError("delete takes a note, a folder, an app file or an app.");
   },
@@ -963,7 +996,8 @@ export const fileHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
         select id, client, made_at, replaced_at, reason from public.note_page_versions where note_id = ${r.note.id} order by id desc limit ${limit}`;
       return { path: `${r.base}/`, versions: rows.map((v) => ({ version: Number(v.id), what: v.reason === "data" ? "data" : "code", made_by: v.client, made: iso(v.made_at), replaced: iso(v.replaced_at) })) };
     }
-    throw new ToolError("history takes a note or an app.");
+    if (r.kind === "file") return { path: r.path, versions: await fileVersions(tx, c, r.id, limit) };
+    throw new ToolError("history takes a note, an app or a file.");
   },
 
   async restore(tx, a, c) {
@@ -984,7 +1018,16 @@ export const fileHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
       await tx`update public.note_pages set page_ct = coalesce(${v.page_ct}, page_ct), data_ct = coalesce(${v.data_ct}, data_ct), draft_ct = null, draft_problems = null where note_id = ${r.note.id}`;
       return { restored: `${r.base}/`, version: want, note: "What it replaced is kept in history." };
     }
-    throw new ToolError("restore takes a note (deleted, or with a version) or an app with a version.");
+    if (r.kind === "file") {
+      if (a.version !== undefined && a.version !== null) {
+        await restoreFileVersion(tx, c, r.id, wholeNumber(a.version, "version"), r.path);
+        return { restored: r.path, version: a.version, note: "What it replaced is kept in history too." };
+      }
+      if (!r.folder?.trashed_at) return { path: r.path, already_restored: true };
+      await restoreFile(tx, c, r.folder);
+      return { restored: (await pathsOf(tx, c, true)).filePathOf(r.id) };
+    }
+    throw new ToolError("restore takes a note (deleted, or with a version), a deleted file, a file with a version, or an app with a version.");
   },
 
   async pin(tx, a, c) {
@@ -1055,6 +1098,77 @@ function appResult(out: Record<string, unknown> | Content, path: string): unknow
 }
 
 /** The newest time a device couldn't open the live app and went back to an earlier one. */
+// MARK: Files
+
+const looksLikeFile = (path: string) => /\.[A-Za-z0-9]{1,10}$/.test(path) && !/\.md$/i.test(path) && !/\.app(\/|$)/i.test(path) && !path.includes(".app/");
+const IMAGE_BLOCKS = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
+
+/** A file as the AI reads it: text to edit, extracted text, a picture, or (raw) its bytes. */
+async function fetchFile(tx: Tx, a: Args, c: Call, r: Extract<Ref, { kind: "file" }>) {
+  const { bytes, meta, version } = await readFile(tx, c, r.id, r.path);
+  const kind = mimeOf(meta.type, meta.name);
+  const head = { path: r.path, kind, bytes: bytes.length, ...(r.folder?.trashed_at ? { deleted: "In Recently Deleted: restore brings it back." } : {}) };
+  await markRead(tx, c, blobItem(r.id), String(version));
+  try {
+    if (a.raw === true) {
+      return new Content([{ type: "text", text: JSON.stringify({ ...head, raw: "The file's bytes are the resource below (base64). Change them with your own tools and write them back with content_base64." }) },
+        { type: "resource", resource: { uri: `ambernotes://file/${encodeURIComponent(r.path)}`, mimeType: kind, blob: toBase64(bytes) } }], head);
+    }
+    if (IMAGE_BLOCKS.has(kind)) return new Content([{ type: "text", text: JSON.stringify(head) }, { type: "image", data: toBase64(bytes), mimeType: kind }], head);
+    if (isTextFile(meta.name, meta.type)) {
+      const shown = numberedLines(new TextDecoder().decode(bytes), a.offset, a.limit);
+      return { id: r.path, title: meta.name, text: shown.text, url: "ambernotes://notes", metadata: { ...head, lines: shown.lines, editable: "edit and write change it like a note.", ...(shown.truncated ? { truncated: shown.truncated } : {}) } };
+    }
+    const got = await extract(bytes, meta.name, meta.type);
+    if ("none" in got) return { id: r.path, title: meta.name, text: got.none, url: "ambernotes://notes", metadata: head };
+    const shown = numberedLines(got.text, a.offset, a.limit);
+    return { id: r.path, title: meta.name, text: shown.text, url: "ambernotes://notes", metadata: { ...head, ...(got.pages ? { pages: got.pages } : {}), lines: shown.lines, text_of: "the file's text, taken out of it; fetch with raw: true for the file itself.", ...(shown.truncated ? { truncated: shown.truncated } : {}) } };
+  } finally {
+    bytes.fill(0);
+  }
+}
+
+/** write for a file: a new file in a folder (or in a note's folder, embedded in that note), or
+ *  new bytes for an existing one, read first; the version it replaces stays in history. */
+async function writeFileTool(tx: Tx, a: Args, c: Call) {
+  const path = clean(a.path);
+  let bytes: Uint8Array;
+  if (typeof a.content_base64 === "string") {
+    try { bytes = fromBase64(a.content_base64.replace(/^data:[^,]*,/, "").replace(/\s+/g, "")); } catch { throw new ToolError("content_base64 isn't base64."); }
+  } else if (typeof a.content === "string") bytes = new TextEncoder().encode(a.content);
+  else throw new ToolError("A file takes content (text) or content_base64 with mime_type.");
+  let r: Ref | null = null;
+  try { r = await resolve(tx, c, path); } catch (e) { if (!/^Nothing at/.test((e as Error).message)) throw e; }
+  if (r && r.kind !== "file") throw new ToolError(`${path} isn't a file.`);
+  if (r?.kind === "file") {
+    const { meta, version } = await readFile(tx, c, r.id, r.path);
+    await mustHaveRead(tx, c, blobItem(r.id), String(version), r.path);
+    if (typeof a.content_base64 !== "string" && !isTextFile(meta.name, meta.type)) throw new ToolError(`${r.path} isn't text: write its bytes with content_base64.`);
+    const w = await writeFile(tx, c, { id: r.id, name: meta.name, type: meta.type, bytes, path: r.path });
+    await markRead(tx, c, blobItem(r.id), String(w.version));
+    return { written: r.path, bytes: bytes.length, kept: "The version before is in history; restore brings it back." };
+  }
+  if (!looksLikeFile(path)) throw new ToolError(`${path}: a file's path ends in its kind, like "To read/Summary.txt" or "To read/Paper.pdf".`);
+  const slash = path.lastIndexOf("/");
+  const name = safeName(path.slice(slash + 1));
+  const P = await pathsOf(tx, c);
+  const where = slash > 0 ? await placeFor(tx, c, P, path.slice(0, slash)) : { folder: (await findFolder(tx, c.v, "Notes", true)).id };
+  const type = utiOf(name, typeof a.mime_type === "string" ? a.mime_type : undefined);
+  const made = await writeFile(tx, c, { folderId: where.parent ? null : where.folder, name, type, bytes, path });
+  if (where.parent) {
+    // In a note's folder: the note shows it.
+    const n = await full(tx, c, where.parent.id);
+    refuseLocked(n);
+    const before = await bodyOf(c.v, n);
+    const image = /^image\//.test(mimeOf(type, name));
+    await save(tx, c, n, before, appendText(before, `${image ? "!" : ""}[${name.replace(/[\[\]]/g, "")}](pane-file:${made.id})`));
+  }
+  const now = await pathsOf(tx, c, true);
+  const at = now.filePathOf(made.id) ?? (where.parent ? (await noteFiles(tx, c, now, where.parent)).find((f) => f.id === made.id)?.path : path) ?? path;
+  await markRead(tx, c, blobItem(made.id), "0");
+  return { created: at, bytes: bytes.length };
+}
+
 async function loadFailure(tx: Tx, id: string): Promise<Record<string, unknown>> {
   const [f] = await tx<{ message: string; device: string | null; at: Date }[]>`select message, device, at from public.app_load_failures where note_id = ${id} order by at desc limit 1`;
   return f ? { load_failure: { message: f.message, device: f.device, at: iso(f.at), what_happened: "A device couldn't open the live version and went back to an earlier one, with the current data. Fix the cause and save." } } : {};
