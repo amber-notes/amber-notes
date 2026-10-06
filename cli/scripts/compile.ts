@@ -14,3 +14,10 @@ for (const [target, name] of targets) {
   }).output();
   if (!out.success) Deno.exit(out.code);
 }
+// SHA256SUMS, which install.sh and the Homebrew formula check against.
+const sums: string[] = [];
+for (const [, name] of targets) {
+  const d = new Uint8Array(await crypto.subtle.digest("SHA-256", await Deno.readFile(`${root}dist/${name}`)));
+  sums.push(`${Array.from(d, (b) => b.toString(16).padStart(2, "0")).join("")}  ${name}`);
+}
+await Deno.writeTextFile(`${root}dist/SHA256SUMS`, sums.join("\n") + "\n");

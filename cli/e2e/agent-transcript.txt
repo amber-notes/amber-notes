@@ -1,0 +1,80 @@
+# An agent using amber (2026-10-06T07:11Z)
+
+Signed in first with `amber login` (approved through the local consent page). Then:
+
+$ claude -p --allowedTools 'Bash(amber:*)' "My notes app is Amber Notes, and the `amber` command reads and edits my notes (start with `amber help`). Find my note about the Acme kickoff. Under Open questions, the rollout owner has been decided: replace the question about who owns the rollout with a line saying Lee owns the rollout (decided 2026-10-06). Use amber search and amber edit, then read the note back to confirm."
+
+[agent runs] amber help
+  amber: your Amber Notes from the terminal
+  
+  Notes are paths like "Work/Acme.md"; folders end in "/". A note's id works too.
+  
+    amber search <words>               find notes ("quoted phrase", OR, -word)
+    amber list [<folder>/]             overview, or a folder's notes
+    amber read <note> [--lines 40-90]  print a note's markdown
+    amber create <folder> [<text>]     new note; the first line is its title (text or stdin)
+    amber edit <note> <old> <new>      replace exact text, once (--all for every match)
+    amber write <note>                 replace the whole note with stdin
+    amber move <note> <to>             to a folder ("Archive/") or a new name ("Work/New.md")
+    amber delete <note>                to Recently Deleted
+    amber history <note>               earlier versions
+    amber restore <note> [<version>]   undelete, or bring back a version
+    amber pin <note> [--off]
+  
+    amber login                        connect: approve in Amber Notes on your iPhone or Mac
+    amber logout                       disconnect this terminal
+    amber status                       who and where
+  
+  Add --json for the server's full answer (for scripts and agents).
+  amber help <command> for more.
+
+[agent runs] amber search Acme kickoff
+  Work/Clients/Acme.md
+    «Acme» «Kickoff» Monday 10:00 with Dana and Lee. ## Open questions - Budget for Q1? - Who owns the rollout
+
+[agent runs] amber read Work/Clients/Acme.md
+  # Acme
+  
+  Kickoff Monday 10:00 with Dana and Lee.
+  
+  ## Open questions
+  - Budget for Q1?
+  - Who owns the rollout?
+
+[agent runs] amber edit Work/Clients/Acme.md "- Who owns the rollout?" "- Lee owns the rollout (decided 2026-10-06)" && amber read Work/Clients/Acme.md
+  Edited Work/Clients/Acme.md (version 2)
+  # Acme
+  
+  Kickoff Monday 10:00 with Dana and Lee.
+  
+  ## Open questions
+  - Budget for Q1?
+  - Lee owns the rollout (decided 2026-10-06)
+
+[agent says] I changed the rollout line in `Work/Clients/Acme.md` and read the note back to check it. It's now version 2 of the note. Under Open questions it reads:
+
+- Budget for Q1?
+- Lee owns the rollout (decided 2026-10-06)
+
+The rest of the note didn't change.
+
+(5 turns, 15 s)
+
+## Checked from the other side
+
+$ amber read Work/Clients/Acme.md
+# Acme
+
+Kickoff Monday 10:00 with Dana and Lee.
+
+## Open questions
+- Budget for Q1?
+- Lee owns the rollout (decided 2026-10-06)
+
+$ amber history Work/Clients/Acme.md
+"Acme", now version 2. Earlier versions, newest first:
+  1       2026-10-06 07:11  An app on this computer  Acme
+
+Bring one back with: amber restore <note> <version>
+
+PASS the agent changed only that line (4 amber commands)
