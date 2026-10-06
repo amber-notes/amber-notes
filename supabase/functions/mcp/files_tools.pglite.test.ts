@@ -100,3 +100,22 @@ Deno.test("an app: create, its files, and data.json edited like a file, one chan
   assertStringIncludes(await fails(tool(pg, a, "edit", { id: "Health/Habits.app/data.json", edits: [{ old_text: "\"values\": {", new_text: "\"values\": {{" }] })), "isn't valid JSON");
   assertEquals((await tool(pg, a, "see_app", { id: "Health/Habits.md" })).previews, "unavailable");
 });
+
+Deno.test("for sync tools: list all gives every note with its version; edit and write take expected_version", async () => {
+  const pg = await schemaDB();
+  const a = await account(pg);
+  const g = await note(pg, a, GROCERIES);
+  await tool(pg, a, "create", { content: "Trip\n\nLisbon in May.", path: "Travel" });
+  const sub = await tool(pg, a, "create", { content: "Packing\n- [ ] Passport", inside: "Travel/Trip.md" });
+  const listed = await tool(pg, a, "list", { all: true });
+  assertEquals(listed.notes.map((n: { path: string }) => n.path).sort(), ["Groceries.md", "Travel/Trip.md", "Travel/Trip/Packing.md"]);
+  assert(listed.folders.includes("Travel/"));
+  const v = listed.notes.find((n: { id: string }) => n.id === g).version;
+  const edited = await tool(pg, a, "edit", { id: g, expected_version: v, edits: [{ old_text: "- [ ] Milk", new_text: "- [x] Milk" }] });
+  assert(edited.version > v);
+  assertStringIncludes(await fails(tool(pg, a, "write", { id: g, expected_version: v, content: "Groceries\n\nstale" })), "changed since");
+  assertStringIncludes(await fails(tool(pg, a, "edit", { id: g, expected_version: v, edits: [{ old_text: "Butter", new_text: "Ghee" }] })), "changed since");
+  const after = (await tool(pg, a, "list", { all: true })).notes.find((n: { id: string }) => n.id === g);
+  assertEquals(after.version, edited.version);
+  assertEquals((await tool(pg, a, "list", { all: true })).notes.find((n: { id: string }) => n.id === sub.id).path, "Travel/Trip/Packing.md");
+});

@@ -41,7 +41,7 @@ export const FILE_TOOLS: Tool[] = ([
   {
     name: "list", title: "List",
     description: "What's in the notes, like a file listing. No path: the overview (folders with counts, pinned notes, the most recently edited notes, how many are in Recently Deleted). A folder (\"Work/\"): its notes and sub-folders. An app (\"Work/Habits.app\"): its files. \"Recently Deleted/\": deleted notes, which restore brings back.",
-    inputSchema: { type: "object", properties: { path: str("A folder, an app, or \"Recently Deleted/\". Default: the overview.") } },
+    inputSchema: { type: "object", properties: { path: str("A folder, an app, or \"Recently Deleted/\". Default: the overview."), all: { type: "boolean", description: "Every note and folder at once, each note with its version (for sync tools). Ignores path." } } },
     annotations: read,
   },
   {
@@ -73,6 +73,7 @@ export const FILE_TOOLS: Tool[] = ([
       properties: {
         id: str(PATH),
         edits: { type: "array", items: { type: "object", properties: { old_text: str("Exact existing text."), new_text: str("Replacement; empty deletes."), replace_all: { type: "boolean" } }, required: ["old_text", "new_text"] } },
+        expected_version: { type: "integer", description: "A note's version from fetch or list; the edit fails if the note changed since." },
       },
       required: ["id", "edits"],
     },
@@ -81,7 +82,7 @@ export const FILE_TOOLS: Tool[] = ([
   {
     name: "write", title: "Write",
     description: "Replaces a whole note, app file or data.json with content (a new app file is created). Prefer edit for changes; the old version stays in history. Answers with the same checks as edit.",
-    inputSchema: { type: "object", properties: { id: str(PATH), content: str("The whole new text (data.json: JSON).") }, required: ["id", "content"] },
+    inputSchema: { type: "object", properties: { id: str(PATH), content: str("The whole new text (data.json: JSON)."), expected_version: { type: "integer", description: "A note's version from fetch or list; the write fails if the note changed since." } }, required: ["id", "content"] },
     annotations: change,
   },
   {
@@ -285,6 +286,7 @@ export const fileHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
   },
 
   async list(tx, a, c) {
+    if (a.all === true) return await listAll(tx, c);
     const r = await resolve(tx, c, a.path);
     const all = await folders(tx, c.v);
     const entry = async (n: Note) => ({ path: await notePath(tx, c, n, all), id: n.id, ...(n.is_pinned ? { pinned: true } : {}), ...(n.locked_body ? { locked: true } : {}), updated: iso(n.updated_at), ...(await hasApp(tx, n.id) ? { app: true } : {}) });
@@ -426,7 +428,7 @@ export const fileHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
       const before = await bodyOf(c.v, r.note);
       const body = apply(before);
       if (body === before) return { path: a.id, unchanged: true };
-      const saved = await save(tx, c, r.note, before, body);
+      const saved = await save(tx, c, r.note, before, body, a.expected_version);
       const checks = noteChecks(before, body, today());
       return { edited: await notePath(tx, c, { ...r.note, title: saved.title }, await folders(tx, c.v)), version: saved.version, checks: checks.length ? checks : "ok" };
     }
@@ -453,7 +455,7 @@ export const fileHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
       if (!content.trim()) throw new ToolError("content is empty. To remove the note, use delete.");
       checkSize(content);
       const before = await bodyOf(c.v, r.note);
-      const saved = await save(tx, c, r.note, before, content);
+      const saved = await save(tx, c, r.note, before, content, a.expected_version);
       const checks = noteChecks(before, content, today());
       return { written: await notePath(tx, c, { ...r.note, title: saved.title }, await folders(tx, c.v)), version: saved.version, checks: checks.length ? checks : "ok" };
     }
@@ -573,6 +575,20 @@ export const fileHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
     return await appHandlers.preview_app(tx, { id: r.note.id, widths: a.widths, themes: a.themes, data: a.data }, c);
   },
 };
+
+/** Every live note (sub-notes too) and folder, for a sync tool: one call answers "what changed".
+ *  A note's version goes up with every change to it. */
+async function listAll(tx: Tx, c: Call) {
+  const all = await folders(tx, c.v);
+  const rows = await tx<NoteRow[]>`select ${HEAD_COLUMNS(tx)} from public.notes where deleted_at is null and trashed_at is null order by id`;
+  const notes = [];
+  for (const r of rows) {
+    const n = await withHead(c.v, r);
+    notes.push({ path: await notePath(tx, c, n, all), id: n.id, version: Number(n.version), updated: iso(n.updated_at),
+      ...(n.locked_body ? { locked: true } : {}), ...(await hasApp(tx, n.id) ? { app: true } : {}) });
+  }
+  return { folders: all.map((f) => pathOf(f.id, all) + "/"), notes };
+}
 
 async function moveAppFile(tx: Tx, c: Call, n: Note, from: string, to: string, a: Args) {
   const p = await appProject(tx, c, n);
