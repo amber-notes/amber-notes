@@ -16,6 +16,7 @@ import type { Sql } from "npm:postgres@3.4.5";
 import { tokenKey, unwrap, Vault } from "../_shared/e2ee.ts";
 import { errorKind, log } from "../_shared/log.ts";
 import { Content, runTool, ToolContext, ToolError, tools } from "./tools.ts";
+import { toolErrorKind } from "./tool_errors.ts";
 import { challenge, handleOAuth, isOAuthPath, publicBase, resolveAccessToken, subpath } from "./oauth.ts";
 import { SERVER_CARD_PATH, SERVER_INFO, serverCardResponse } from "./card.ts";
 
@@ -213,9 +214,11 @@ async function respond(msg: Rpc, id: string | number | null, ctx: ToolContext): 
             ...(typeof result === "object" && result !== null && !Array.isArray(result) ? { structuredContent: result } : {}),
           });
         } catch (e) {
-          // Tool errors go back to the model as results so it can correct itself. Anything else
-          // is logged by its class and code only: a message can quote a note.
-          if (!(e instanceof ToolError)) log("tool_failed", { tool: name, ms: performance.now() - started, ...errorKind(e) });
+          // Tool errors go back to the model as results so it can correct itself, and are logged
+          // by their kind. Anything else is logged by its class and code only: a message can
+          // quote a note.
+          if (e instanceof ToolError) log("tool_error", { tool: name, kind: toolErrorKind(e.message) });
+          else log("tool_failed", { tool: name, ms: performance.now() - started, ...errorKind(e) });
           const message = e instanceof ToolError || e instanceof Error ? e.message : String(e);
           return ok(id, { content: [{ type: "text", text: message }], isError: true });
         }
