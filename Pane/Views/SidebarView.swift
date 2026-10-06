@@ -117,21 +117,28 @@ struct SidebarView: View {
     @State private var dropTarget: UUID?
     @State private var deletingFolder: Folder?
     @State private var showSettings = false
-    @FocusedValue(\.importSheetAction) private var importSheet
-    @FocusedValue(\.importFromAction) private var importFrom
+    @Environment(\.importActions) private var imports
     @Environment(Backend.self) private var backend: Backend?
     @Environment(SyncEngine.self) private var sync: SyncEngine?
 
-    private var live: [Note] { notes.filter { $0.trashedAt == nil && $0.deletedAt == nil } }
-    private var trashed: [Note] { notes.filter { $0.trashedAt != nil && $0.deletedAt == nil } }
+    /// All Notes and Recently Deleted, counted in one pass: each property read on every note
+    /// costs, and the sidebar is worked out again on every save.
+    private var counts: (live: Int, trashed: Int) {
+        var live = 0, trashed = 0
+        for n in notes where n.deletedAt == nil {
+            if n.trashedAt == nil { live += 1 } else { trashed += 1 }
+        }
+        return (live, trashed)
+    }
     private var roots: [Folder] { folders.filter { $0.parent == nil || $0.parent?.deletedAt != nil } }
 
     var body: some View {
-        List(selection: $scope) {
+        let counts = self.counts
+        return List(selection: $scope) {
             Section {
                 // "All Notes" only earns its row once there's more than one folder.
                 if folders.count > 1 {
-                    row("All Notes", icon: "tray.full", count: live.count)
+                    row("All Notes", icon: "tray.full", count: counts.live)
                         .tag(Scope.all)
                         .accessibilityIdentifier("sidebar.all")
                 }
@@ -139,7 +146,7 @@ struct SidebarView: View {
                     FolderTree(folder: folder, dropTarget: $dropTarget, rename: startRename, newSub: startNewFolder, delete: deleteFolder)
                 }
                 // Last in the same list, like Notes.
-                row("Recently Deleted", icon: "trash", count: trashed.count)
+                row("Recently Deleted", icon: "trash", count: counts.trashed)
                     .tag(Scope.trash)
                     .accessibilityIdentifier("sidebar.trash")
             } header: {
@@ -185,9 +192,9 @@ struct SidebarView: View {
             ToolbarItem(placement: .bottomBar) {
                 Menu {
                     Button("New Folder", systemImage: "folder.badge.plus") { startNewFolder(nil) }
-                    Button("Import Spreadsheet as Table", systemImage: "tablecells.badge.ellipsis") { importSheet?() }
+                    Button("Import Spreadsheet as Table", systemImage: "tablecells.badge.ellipsis") { imports?.spreadsheet() }
                     ForEach(ImportKind.allCases) { kind in
-                        Button(kind.title, systemImage: kind.symbol) { importFrom?(kind) }
+                        Button(kind.title, systemImage: kind.symbol) { imports?.from(kind) }
                     }
                 } label: {
                     Label("New Folder", systemImage: "folder.badge.plus")

@@ -21,9 +21,7 @@ struct NoteListView: View {
     @State private var collapsed: Set<String> = []
     /// Notes waiting for "Delete Forever" to be confirmed.
     @State private var pendingForever: Set<UUID>?
-    @FocusedValue(\.importAction) private var importNotes
-    @FocusedValue(\.importSheetAction) private var importSheet
-    @FocusedValue(\.importFromAction) private var importFrom
+    @Environment(\.importActions) private var imports
     @Environment(SetupStore.self) private var setup: SetupStore?
     @Environment(Backend.self) private var backend: Backend?
     @Environment(SyncEngine.self) private var sync: SyncEngine?
@@ -351,11 +349,11 @@ struct NoteListView: View {
                 Menu {
                     Button("New Folder", systemImage: "folder.badge.plus") { NotificationCenter.default.post(name: .paneNewFolder, object: nil) }
                     Divider()
-                    Button("Import from Apple Notes…", systemImage: "square.and.arrow.down") { importNotes?() }
+                    Button("Import from Apple Notes…", systemImage: "square.and.arrow.down") { imports?.appleNotes() }
                     ForEach(ImportKind.allCases) { kind in
-                        Button(kind.menuTitle, systemImage: kind.symbol) { importFrom?(kind) }
+                        Button(kind.menuTitle, systemImage: kind.symbol) { imports?.from(kind) }
                     }
-                    Button("Import Spreadsheet as Table…", systemImage: "tablecells") { importSheet?() }
+                    Button("Import Spreadsheet as Table…", systemImage: "tablecells") { imports?.spreadsheet() }
                     Divider()
                     SettingsLink { Label("Settings…", systemImage: "gearshape") }
                 } label: {
@@ -391,7 +389,7 @@ struct NoteListView: View {
 
     private func setupCard(_ setup: SetupStore, _ progress: SetupProgress) -> some View {
         #if os(macOS)
-        let onImport: (() -> Void)? = { importNotes?() }
+        let onImport: (() -> Void)? = { imports?.appleNotes() }
         let onShareHowTo: (() -> Void)? = nil
         #else
         let onImport: (() -> Void)? = nil
@@ -401,7 +399,7 @@ struct NoteListView: View {
             progress: progress,
             celebrating: setup.showingCelebration,
             onImport: onImport,
-            onImportFrom: { kind in importFrom?(kind) },
+            onImportFrom: { kind in imports?.from(kind) },
             onStartFresh: { Task { await setup.mark("imported") } },
             onConnect: { connecting = true },
             onShareHowTo: onShareHowTo,

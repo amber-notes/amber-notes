@@ -78,6 +78,8 @@ struct RootView: View {
                 #endif
         }
         .environment(editor)
+        .environment(\.importActions, ImportActions(appleNotes: { showImport = true }, spreadsheet: { importingSheet = true },
+                                                     from: { kind in importFiles = []; importing = kind }))
         #if os(macOS)
         // The list column shows its own title; no window title in the bar.
         .toolbar(removing: .title)
@@ -358,6 +360,19 @@ struct EmptyDetailView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
+}
+
+/// The import actions, for the folders and the note list. They come through the environment, not
+/// the scene's focused values: those change whenever a view that publishes one updates (the open
+/// note does on every save while you type), and each change rebuilt the folders and the list again.
+struct ImportActions {
+    var appleNotes: () -> Void
+    var spreadsheet: () -> Void
+    var from: (ImportKind) -> Void
+}
+
+extension EnvironmentValues {
+    @Entry var importActions: ImportActions? = nil
 }
 
 // MARK: Focused actions for menus and shortcuts
