@@ -5,6 +5,39 @@ assistants. Newest first. Research behind it: [seo-aeo-research-2026-09-30.md](s
 
 `docs/` had no README naming a folder for evidence, so this and the research live in `docs/Evidence/`.
 
+## 5 October 2026: status, "Apple Notes not syncing between iPhone and Mac", and the /& redirect
+
+### Measured
+
+- **Google Search Console: not reached.** The Chrome extension this loop uses wasn't connected, so whether hello@ambernotes.app or emil@incredible.one has been given access couldn't be checked. Nothing below comes from Search Console.
+- **PostHog (EU project 291184), page views on ambernotes.app, UTC days:** 39 on 3 October, 53 on 4 October, 33 on 5 October by about 09:00 UTC. 71 of the 86 views on 4 and 5 October came from macOS, which includes our own checks.
+- **Where views came from (4 and 5 October):** direct 77, google.com 7, github.com 2.
+- **Search landings:** Google sent /blog/apple-notes-ios-27 (3), / (2), /blog/apple-notes-api (1) and /blog/best-notes-app-for-ai-agents (1, a first). Bing sent none.
+- **Top pages:** / 49, /templates 11, /blog 6, /help 4, /changelog 4, /blog/apple-notes-ios-27 3, /templates/trip-plan 2.
+- **Named clicks:** `use_template_clicked` 3 (grocery-list, trip-plan, meeting-notes), `copy_prompt_clicked` 1 (grocery-list), `outbound_github_clicked` 5, `outbound_claude_clicked` 1 (the Claude directory listing). `download_mac_clicked`: 0.
+- **/&:** two views at 22:41 and 22:42 UTC on 3 October, direct, from Linux and Windows, both on the 404 page. The likely source is a link with "&" where its "?" should be.
+
+Reading: the iOS 27 post is still the only post with repeat Google clicks, and the first template clicks arrived. Search Console access remains the most useful missing piece.
+
+### Picked
+
+- Autocomplete on 5 October: "apple notes not syncing" suggests *across devices*, *between iphone and mac*, *on mac*, *when shared*, *with collaborator*; "apple notes not syncing after update" suggests *force apple notes to sync*, *why are my notes not syncing between devices*; "iphone notes not syncing to mac" and "icloud notes not syncing" have eight to ten suggestions each. "apple notes ios 27" suggests *new features*, *markdown*, *section links*, which the iOS 27 post already covers. No existing post covers sync failures.
+
+### Changed (branch `site/apple-notes-not-syncing`)
+
+- New post `/blog/apple-notes-not-syncing`, in Apple Notes. Search title "Apple Notes not syncing between iPhone and Mac? Fixes". Six checks in order (iCloud for Notes on each device, the same Apple Account, which account the note is in, icloud.com/notes and System Status, iCloud storage, a Mac behind the iPhone after iOS 27), shared notes that won't update, notes gone from every device, and four FAQ answers. Checked on 5 October:
+  - Apple Support 121669 (If you don't see your iCloud notes, March 2025): Sync this iPhone, then restart.
+  - Apple Support 108922 (Manage your iCloud storage, 14 September 2026): with full storage, iCloud apps don't stay up to date across devices.
+  - Apple Support 102462 (If you can't collaborate in the Notes app, 23 September 2026) and the iPhone guide's Share notes and collaborate (iOS 27): Share a Link or Send a Copy, People you choose can edit, no collaborating on locked notes.
+  - iCloud User Guide, Set up iCloud for Notes (macOS 15 or later: Saved to iCloud, Notes, Sync this Mac), and the Notes User Guide for Mac, About using iCloud Notes (upgraded notes and OS X 10.11 or iOS 9).
+  - iCloud Notes is its own row on Apple's System Status page (read from its status data).
+  - Notes' Localizable.loctable on macOS 26.5: "This note uses unsupported features", a shared note's changes waiting while the owner's storage is full, and the account security upgrade for real-time edits.
+  - Amber Notes: the Sync row in Settings with its status and Sync Now (`SettingsView.swift`), and conflicted copies (`SyncEngine.swift`). The iPhone line follows `APP_STORE_LIVE`.
+- Left out because I couldn't check them: per-app cellular data for Notes, Low Power Mode, and whether a specific iOS 27 feature (divider lines, section links) is what triggers the unsupported-features message on macOS 26.
+- The first picture reuses the Notes Settings capture (Default account: iCloud). The card is a new crop of the same capture, the Default account row alone, on a new lagoon ground.
+- `/blog/move-apple-notes-to-icloud` links the new post.
+- `/&`, and any path that starts with "&", now redirects to / with a 308 (`next.config.ts`, tested in `seo.test.ts` with the matcher Next.js compiles redirects with). Checked with `next start`: /&, /&amp; and /&utm_source=x answer 308 to /.
+
 ## 4 October 2026: "Tables in Apple Notes: what you can and can't do"
 
 ### Why
