@@ -78,8 +78,12 @@ struct NoteTemplate: Decodable, Equatable, Sendable {
     var instructions: [Instruction]
     var example: String?
     var url: URL?
+    /// A note app: where its project is, a picture of it, and the first thing to ask your AI.
+    var app: String?
+    var preview: String?
+    var ask: String?
 
-    private enum Keys: String, CodingKey { case version, slug, title, category, audience, description, folder, note, instructions, example, url }
+    private enum Keys: String, CodingKey { case version, slug, title, category, audience, description, folder, note, instructions, example, url, app, preview, ask }
 
     /// One instruction that doesn't read is left out, not the whole template.
     private struct Lossy: Decodable {
@@ -101,6 +105,9 @@ struct NoteTemplate: Decodable, Equatable, Sendable {
         instructions = ((try? c.decodeIfPresent([Lossy].self, forKey: .instructions)) ?? []).compactMap(\.value)
         example = try? c.decodeIfPresent(String.self, forKey: .example)
         url = try? c.decodeIfPresent(URL.self, forKey: .url)
+        app = try? c.decodeIfPresent(String.self, forKey: .app)
+        preview = try? c.decodeIfPresent(String.self, forKey: .preview)
+        ask = try? c.decodeIfPresent(String.self, forKey: .ask)
     }
 }
 
@@ -115,6 +122,10 @@ struct NoteDraft: Equatable, Sendable {
     var instructions: [NoteTemplate.Instruction] = []
     /// Photos and files in a shared page: they belong to its owner and don't come along.
     var leftOut = 0
+    /// A note app (from an app template): its project, a picture of it, and a first ask.
+    var appProject: String?
+    var preview: Data?
+    var ask: String?
 
     init(template t: NoteTemplate, link: NoteSourceLink) {
         self.link = link
@@ -123,6 +134,7 @@ struct NoteDraft: Equatable, Sendable {
         description = t.description
         folder = t.folder
         instructions = t.instructions
+        ask = t.ask
     }
 
     init(link: NoteSourceLink, title: String, body: String, leftOut: Int) {
@@ -214,7 +226,13 @@ protocol NoteSourceFetching: Sendable {
 
 /// Templates from the website, shared pages from the public share RPC (as the website reads them).
 struct WebNoteSource: NoteSourceFetching {
-    var site = URL(string: "https://ambernotes.app")!
+    var site: URL = {
+        #if DEBUG || QA
+        // Captures and the local template flow (demo/onboarding/site.py).
+        if let s = Capture.argument("-templateSite") ?? ProcessInfo.processInfo.environment["AMBER_TEMPLATE_SITE"], let u = URL(string: s) { return u }
+        #endif
+        return URL(string: "https://ambernotes.app")!
+    }()
     var supabaseURL: URL? = BackendConfig.url
     var anonKey: String? = BackendConfig.key
     var session: URLSession = .shared
@@ -240,7 +258,18 @@ struct WebNoteSource: NoteSourceFetching {
         if status == 404 { throw NoteSourceError.notFound(.template) }
         guard (200..<300).contains(status), let t = try? JSONDecoder().decode(NoteTemplate.self, from: data),
               !t.note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw NoteSourceError.unavailable }
-        return NoteDraft(template: t, link: link)
+        var draft = NoteDraft(template: t, link: link)
+        // An app template brings the app (a project, checked like any other) and its picture.
+        if let path = t.app, path.hasPrefix("/"), let url = URL(string: path, relativeTo: site) {
+            let (project, r) = try await session.data(for: URLRequest(url: url, timeoutInterval: timeout))
+            guard (r as? HTTPURLResponse)?.statusCode == 200, let text = String(data: project, encoding: .utf8),
+                  NotePageProject.parse(text) != nil else { throw NoteSourceError.unavailable }
+            draft.appProject = text
+            if let p = t.preview, p.hasPrefix("/"), let u = URL(string: p, relativeTo: site) {
+                draft.preview = try? await session.data(for: URLRequest(url: u, timeoutInterval: timeout)).0
+            }
+        }
+        return draft
     }
 
     private struct Shared: Decodable { let title: String?; let body: String }
@@ -399,6 +428,11 @@ final class NoteSourceModel {
         duplicate = nil
         let note = context.addNote(from: d, to: folder ?? context.suggestedFolder(for: d))
         ledger.record(link, note: note.id)
+        // An app template: the note is the app from the start. Then the first-open moment.
+        if let project = d.appProject {
+            NotePageStore.shared.setHere(note.id, .init(html: project, by: FirstOpen.templateWriter, at: .now))
+        }
+        FirstOpen.shared.added(note: note.id, draft: d)
         phase = .added(d, note: note.id, folder: note.folder.map(context.folderPath) ?? "Notes")
     }
 }

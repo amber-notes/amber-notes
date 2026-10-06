@@ -165,6 +165,9 @@ final class SyncEngine {
         if pulling { status = .syncing }
         do {
             let slowedDown = try await push(client, sealer: sealer)
+            await pushPages(client, sealer: sealer)
+            await pushPageData(client, sealer: sealer)
+            await pushAPIKeyNames(client, sealer: sealer)
             if pulling { try await pull(client); hasSynced = true }
             if slowedDown {
                 // The server asked us to slow down: the rest goes up in a little while.
@@ -199,6 +202,8 @@ final class SyncEngine {
         let notes = ch.postgresChange(AnyAction.self, schema: "public", table: "notes")
         let folders = ch.postgresChange(AnyAction.self, schema: "public", table: "folders")
         let files = ch.postgresChange(AnyAction.self, schema: "public", table: "attachments")
+        // Note apps (prototype): an app or its data changed elsewhere (an AI's update_page_data).
+        let pages = ch.postgresChange(AnyAction.self, schema: "public", table: "note_pages")
         let joins = ch.statusChange
         try? await ch.subscribeWithError()
         channel = ch
@@ -207,7 +212,7 @@ final class SyncEngine {
         realtimeTasks.append(Task { [weak self] in
             for await action in notes { await self?.received(action) }
         })
-        for stream in [folders, files] {
+        for stream in [folders, files, pages] {
             realtimeTasks.append(Task { [weak self] in
                 for await _ in stream { self?.schedule(after: 0.25) }
             })
@@ -230,6 +235,23 @@ final class SyncEngine {
                 self?.schedule(after: 0)
             }
         })
+    }
+
+    /// The live version didn't open on this device and an earlier one runs: tell the server, so the
+    /// AI's next look at the app reports it. The error message only.
+    func reportLoadFailure(note id: UUID, message: String) {
+        guard let client = backend.client, case .signedIn = backend.state else { return }
+        struct Row: Encodable { var note_id: UUID; var message: String; var device: String }
+        let row = Row(note_id: id, message: String(message.prefix(1000)), device: Backend.device)
+        Task { _ = try? await client.from("app_load_failures").insert(row).execute().status }
+    }
+
+    /// Who wrote a note app's row, for its receipt: an AI's name (the MCP tools set pane.client), or
+    /// nil for one of your devices (they send x-pane-device: iPhone, iPad or Mac).
+    nonisolated static func writer(_ client: String?) -> String? {
+        guard let c = client?.trimmingCharacters(in: .whitespaces), !c.isEmpty else { return nil }
+        if ["iPhone", "iPad", "Mac"].contains(c) || UUID(uuidString: c) != nil { return nil }
+        return c
     }
 
     /// Another device (or an AI) changed a note: apply the row it carries, or fetch it.
@@ -805,6 +827,84 @@ final class SyncEngine {
         return lines.joined(separator: "\n")
     }
 
+    // MARK: Page data (prototype)
+
+    /// Pushes the apps changed here (Remove App, Previous App, a fallback), so the other devices
+    /// follow. The server keeps the one replaced among the last 10.
+    private func pushPages(_ client: SupabaseClient, sealer: Sealer) async {
+        struct Upsert: Encodable { var note_id: UUID; var page_ct: String? }
+        let store = NotePageStore.shared
+        for (id, at) in store.unpushed {
+            let box = store[id].flatMap { sealer.seal($0.html, context: E2EE.page(id)) }
+            if store[id] != nil, box == nil { continue }
+            do {
+                try await client.from("note_pages").upsert(Upsert(note_id: id, page_ct: box), onConflict: "note_id").execute()
+                store.pushed(id, at: at)
+            } catch {
+                log.error("page push failed: \(String(describing: error), privacy: .public)")
+            }
+        }
+    }
+
+    /// Pushes each app's own data that changed here. The server's copy is read first and merged
+    /// with this device's changes (NotePageData.merge), and the write only lands if nothing else
+    /// wrote in between; otherwise it merges again on the next run. A backend without the column
+    /// leaves the data here, unchanged.
+    private func pushPageData(_ client: SupabaseClient, sealer: Sealer) async {
+        struct Row: Decodable { var data_ct: String?; var server_updated_at: Date? }
+        struct Upsert: Encodable { var note_id: UUID; var data_ct: String }
+        let store = NotePageDataStore.shared
+        for id in store.dirty {
+            do {
+                let rows: [Row] = try await client.from("note_pages").select("data_ct,server_updated_at").eq("note_id", value: id).execute().value
+                let server = rows.first?.data_ct.flatMap { sealer.open($0, context: E2EE.pageData(id)) }.map { Data($0.utf8) }
+                if rows.first?.data_ct != nil, server == nil { continue }   // sealed with another key: leave it
+                store.take(id, server: server)
+                guard store.dirty.contains(id), let doc = store.docs[id], let json = String(data: doc, encoding: .utf8),
+                      let box = sealer.seal(json, context: E2EE.pageData(id)) else { continue }
+                if let stamp = rows.first?.server_updated_at {
+                    let at = stamp.formatted(Date.ISO8601FormatStyle(includingFractionalSeconds: true))
+                    let done: [Row] = try await client.from("note_pages").update(["data_ct": box]).eq("note_id", value: id)
+                        .eq("server_updated_at", value: at).select("data_ct,server_updated_at").execute().value
+                    if !done.isEmpty { store.pushed(id, doc) }
+                } else {
+                    try await client.from("note_pages").upsert(Upsert(note_id: id, data_ct: box), onConflict: "note_id").execute()
+                    store.pushed(id, doc)
+                }
+            } catch {
+                log.error("page data push failed: \(String(describing: error), privacy: .public)")
+            }
+        }
+    }
+
+    /// The names of the API keys set up here (never their values), so an AI can say which key an
+    /// app needs. Sent when they change; the values stay in the Keychain.
+    private func pushAPIKeyNames(_ client: SupabaseClient, sealer: Sealer) async {
+        struct Row: Encodable { var id: UUID; var meta_ct: String }
+        let keys = APIKeyStore.shared.keys
+        let stamp = keys.map { "\($0.name)|\($0.hosts.joined(separator: ","))" }.joined(separator: ";")
+        guard stamp != lastKeyNames else { return }
+        // Nothing set up here, and nothing sent yet: nothing to say.
+        if keys.isEmpty, lastKeyNames == nil { lastKeyNames = stamp; return }
+        do {
+            let rows: [Row] = keys.compactMap { k in
+                let id = APIKeyStore.rowID(k.name)
+                let meta = (try? JSONSerialization.data(withJSONObject: ["name": k.name, "hosts": k.hosts, "set": true])).flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
+                return sealer.seal(meta, context: "api-key:" + id.uuidString.lowercased()).map { Row(id: id, meta_ct: $0) }
+            }
+            if !rows.isEmpty { try await client.from("api_key_names").upsert(rows).execute() }
+            let keep = rows.map { $0.id.uuidString.lowercased() }
+            if keep.isEmpty {
+                try await client.from("api_key_names").delete().neq("id", value: UUID().uuidString).execute()
+            } else {
+                try await client.from("api_key_names").delete().not("id", operator: .in, value: "(\(keep.joined(separator: ",")))").execute()
+            }
+            lastKeyNames = stamp
+        } catch {
+            log.error("api key names push failed: \(String(describing: error), privacy: .public)")
+        }
+    }
+
     // MARK: Pull
 
     private func pull(_ client: SupabaseClient) async throws {
@@ -882,6 +982,20 @@ final class SyncEngine {
             offset += 500
         }
         if changed { try? context.save() }
+        // Note pages (prototype): a backend without the table leaves this out; it never stops a sync.
+        if let pages: [NotePageDTO] = try? await client.from("note_pages").select("note_id,page_ct,data_ct,client,updated_at,server_updated_at,draft_problems")
+            .gt("server_updated_at", value: stamp).order("server_updated_at").execute().value {
+            for r in pages {
+                NotePageStore.shared.take(r)
+                NotePageStore.shared.setDraft(r.note_id, problems: r.draft_problems, by: Self.writer(r.client))
+                if let box = r.data_ct, let json = Wire.sealer?.open(box, context: E2EE.pageData(r.note_id)) {
+                    NotePageDataStore.shared.take(r.note_id, server: Data(json.utf8), by: Self.writer(r.client))
+                } else if r.data_ct == nil {
+                    NotePageDataStore.shared.take(r.note_id, server: nil, by: Self.writer(r.client))
+                }
+                if let s = r.server_updated_at, s > newest { newest = s }
+            }
+        }
         cursor = newest
         await refreshShares(client)
         // Only devices publish shared pages (the server can't read them): a note that changed
@@ -947,6 +1061,8 @@ final class SyncEngine {
     /// The text of each note at the server version this device last had: the common starting
     /// point when both sides typed at once. Kept for this run of the app only.
     private var synced: [UUID: (version: Int64, body: String)] = [:]
+    /// What was last sent of the API key names (pushAPIKeyNames).
+    private var lastKeyNames: String?
 
     private func remember(_ r: NoteDTO) {
         if let v = r.version { synced[r.id] = (v, r.body) }
@@ -1069,6 +1185,19 @@ struct FolderDTO: Codable {
         try c.encode(updated_at, forKey: .updated_at)
         try c.encode(deleted_at, forKey: .deleted_at)
     }
+}
+
+/// A note's page as the server keeps it (prototype, NotePage): sealed, or nil once removed.
+struct NotePageDTO: Decodable {
+    var note_id: UUID
+    var page_ct: String?
+    var data_ct: String?
+    var client: String?
+    var updated_at: Date
+    var server_updated_at: Date?
+    /// What failed in an AI's newer version, kept as a draft (it never runs here). Test and check
+    /// names only.
+    var draft_problems: String? = nil
 }
 
 struct NoteDTO: Codable {

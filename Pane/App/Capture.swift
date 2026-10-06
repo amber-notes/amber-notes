@@ -1,3 +1,5 @@
+import EventKit
+import QuartzCore
 import SwiftData
 import SwiftUI
 
@@ -398,3 +400,260 @@ extension Capture {
     }
 }
 #endif
+
+/// Note pages (prototype, NotePage), for recordings: a habit tracker and a budget as plain
+/// markdown tables, and pages arriving as a sync would bring them.
+///   `-pageDemo`                                   seeds the two notes
+///   `-seedPage "Budget=/path/budget.html"`        a page already there (made by Claude)
+///   `-aiPage "Habit tracker=/path/page.html" -aiPageBy Claude -aiAfter 3`   one arriving later
+///   `-seedData "Habit tracker=/path/data.json"`   the app's own data for that note
+///   `-seedNote /path/note.md` (repeatable)       a note from a file, before the pages above
+extension Capture {
+    /// Fourteen days of habits, ending yesterday with gaps, and today's row half done.
+    static func habitNote(today: Date = .now) -> String {
+        let marks = ["✓✓·✓", "✓✓✓✓", "·✓✓·", "✓✓✓✓", "✓·✓✓", "✓✓✓·", "··✓✓", "✓✓✓✓", "✓✓·✓", "✓✓✓✓", "✓·✓✓", "✓✓✓✓", "✓✓✓·", "✓✓✓✓", "✓···"]
+        var rows: [String] = []
+        for (i, m) in marks.enumerated() {
+            let d = Calendar.current.date(byAdding: .day, value: i - (marks.count - 1), to: today)!
+            rows.append("| \(TypedTable.day(d)) | " + m.map { $0 == "✓" ? "✓" : " " }.joined(separator: " | ") + " |")
+        }
+        return "Habit tracker\n\nSmall things, most days. A ✓ means done.\n\n| Date | Walk | Read | Stretch | No phone in bed |\n| --- | --- | --- | --- | --- |\n"
+            + rows.joined(separator: "\n") + "\n"
+    }
+
+    static let budgetNote = """
+    October budget
+
+    Spending for the month. Amounts in kronor.
+
+    | Date | Item | Category | Amount |
+    | --- | --- | --- | --- |
+    | 2026-10-01 | Rent | Home | 9200 |
+    | 2026-10-01 | Groceries | Food | 640 |
+    | 2026-10-02 | Train card | Travel | 970 |
+    | 2026-10-02 | Lunch with Sara | Food | 185 |
+    | 2026-10-03 | Groceries | Food | 410 |
+    | 2026-10-03 | Phone | Home | 299 |
+    | 2026-10-04 | Cinema | Fun | 290 |
+
+    - [ ] Cancel the old gym membership
+    - [x] Move savings on payday
+    """
+
+    @MainActor static func notePagesFromArguments(_ context: ModelContext) {
+        let args = ProcessInfo.processInfo.arguments
+        guard args.contains("-uitest") else { return }
+        // `-seedNote /path/note.md`, as often as needed: notes from files (the first line is the title).
+        for (i, a) in args.enumerated() where a == "-seedNote" && i + 1 < args.count {
+            if let body = try? String(contentsOfFile: args[i + 1], encoding: .utf8) { _ = context.createNote(in: .all, body: body) }
+        }
+        if args.contains("-pageDemo") {
+            let budget = context.createNote(in: .all, body: budgetNote)
+            budget.updatedAt = .now.addingTimeInterval(-90)
+            let habits = context.createNote(in: .all, body: habitNote())
+            habits.isPinned = true
+            try? context.save()
+        }
+        // `-showcase <dir>`: the habit tracker with reminders, meeting prep, a trip log and a weather app.
+        if let dir = argument("-showcase") {
+            showcase(context, pages: URL(fileURLWithPath: dir))
+        }
+        // `-widgetDemo <dir>`: "Budget 2026" with three sub-notes that are apps, shown as widgets.
+        if let dir = argument("-widgetDemo") {
+            budgetWithWidgets(context, pages: URL(fileURLWithPath: dir))
+        }
+        func note(_ title: String) -> Note? {
+            ((try? context.fetch(FetchDescriptor<Note>())) ?? []).first { $0.title == title && $0.deletedAt == nil }
+        }
+        func split(_ arg: String) -> (Note, String)? {
+            guard let eq = arg.firstIndex(of: "=") else { return nil }
+            let path = String(arg[arg.index(after: eq)...])
+            guard let n = note(String(arg[..<eq])), let html = try? String(contentsOfFile: path, encoding: .utf8) else { return nil }
+            return (n, html)
+        }
+        // `-seedData "Title=/path/data.json"`: the app's own data ({values, collections}) for that note.
+        if let arg = argument("-seedData"), let eq = arg.firstIndex(of: "="), let n = note(String(arg[..<eq])),
+           let json = try? Data(contentsOf: URL(fileURLWithPath: String(arg[arg.index(after: eq)...]))) {
+            NotePageDataStore.shared.set(n.id, NotePageData.decode(json))
+        }
+        let by = argument("-aiPageBy") ?? "Claude"
+        if let arg = argument("-seedPage"), let (n, html) = split(arg) {
+            NotePageStore.shared[n.id] = .init(html: html, by: by, at: .now.addingTimeInterval(-3600))
+        }
+        // `-aiDraft "Title=today.test.tsx failed"`: the server holds an AI's failing version as a draft.
+        if let arg = argument("-aiDraft"), let eq = arg.firstIndex(of: "=") {
+            let delay = argument("-aiDraftAfter").flatMap(Double.init) ?? 0
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                if let n = note(String(arg[..<eq])) { NotePageStore.shared.setDraft(n.id, problems: String(arg[arg.index(after: eq)...]), by: by) }
+            }
+        }
+        // `-aiPages "Title=/a.json,/b.json" -aiEvery 6`: an AI saves several versions in a row.
+        if let arg = argument("-aiPages"), let eq = arg.firstIndex(of: "=") {
+            let title = String(arg[..<eq]), paths = arg[arg.index(after: eq)...].split(separator: ",").map(String.init)
+            let first = argument("-aiAfter").flatMap(Double.init) ?? 4, every = argument("-aiEvery").flatMap(Double.init) ?? 6
+            for (i, path) in paths.enumerated() {
+                DispatchQueue.main.asyncAfter(deadline: .now() + first + every * Double(i)) {
+                    if let n = note(title), let html = try? String(contentsOfFile: path, encoding: .utf8) {
+                        NotePageStore.shared[n.id] = .init(html: html, by: by, at: .now)
+                    }
+                }
+            }
+        }
+        if let arg = argument("-aiPage") {
+            let delay = argument("-aiAfter").flatMap(Double.init) ?? 2.5
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                if let (n, html) = split(arg) { NotePageStore.shared[n.id] = .init(html: html, by: by, at: .now) }
+            }
+        }
+        // `-aiDataRemove "Title=log:3"`: an AI removes the last 3 records of that collection
+        // through MCP while the app is open. Arrives as the server's copy would after a pull (what
+        // was here counts as synced first, as it would be after a push).
+        if let arg = argument("-aiDataRemove"), let eq = arg.firstIndex(of: "="), let colon = arg.lastIndex(of: ":") {
+            let title = String(arg[..<eq]), name = String(arg[arg.index(after: eq)..<colon]), count = Int(arg[arg.index(after: colon)...]) ?? 1
+            let delay = argument("-aiAfter").flatMap(Double.init) ?? 6
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                guard let n = note(title) else { return }
+                let store = NotePageDataStore.shared
+                var doc = store.doc(n.id)
+                store.pushed(n.id, NotePageData.encode(doc))
+                var collections = doc["collections"] as? NotePageData.Doc ?? [:]
+                var list = collections[name] as? [NotePageData.Doc] ?? []
+                list.removeLast(min(count, list.count))
+                collections[name] = list
+                doc["collections"] = collections
+                store.take(n.id, server: NotePageData.encode(doc), by: argument("-aiPageBy") ?? "Claude")
+            }
+        }
+    }
+}
+
+extension Capture {
+    /// A budget note with prose and three apps inside it: spending by month, adding an expense, and
+    /// a savings goal kept in the app's own data.
+    @MainActor static func budgetWithWidgets(_ context: ModelContext, pages: URL) {
+        let parent = context.createNote(in: .all, body: "Budget 2026")
+        parent.isPinned = true
+        func app(_ body: String, _ file: String) -> Note {
+            let n = context.createSubNote(of: parent, body: body)
+            if !ProcessInfo.processInfo.arguments.contains("-widgetLinksOnly"), let html = try? String(contentsOf: pages.appending(path: file), encoding: .utf8) {
+                NotePageStore.shared[n.id] = .init(html: html, by: "Claude", at: .now.addingTimeInterval(-3600))
+            }
+            return n
+        }
+        let months = ["January", "February", "March", "April", "May", "June", "July", "August", "September"]
+        let spend = [(9200, 3100, 900, 600), (9200, 2900, 1400, 450), (9200, 3300, 700, 800), (9200, 2700, 2100, 500), (9200, 3000, 4800, 900),
+                     (9200, 2600, 1200, 1500), (9200, 3400, 3900, 700), (9200, 2800, 800, 400), (9200, 2950, 1100, 650)]
+        let chart = app("Spending by month\n\n| Month | Home | Food | Travel | Fun |\n| --- | --- | --- | --- | --- |\n"
+            + zip(months, spend).map { "| \($0) | \($1.0) | \($1.1) | \($1.2) | \($1.3) |" }.joined(separator: "\n") + "\n", "spending-chart.html")
+        let today = TypedTable.day(.now)
+        let form = app("Add an expense\n\n| Date | Item | Category | Amount |\n| --- | --- | --- | --- |\n"
+            + "| \(today) | Groceries | Food | 640 |\n| \(today) | Train card | Travel | 970 |\n| \(today) | Cinema | Fun | 290 |\n", "expense-form.html")
+        let savings = app("Savings: Lisbon trip\n\nMoney put aside for Lisbon in May. The deposits are kept in the app.", "savings-goal.html")
+        var data = NotePageData.empty()
+        data["values"] = ["goal": 15000]
+        let stamp = ISO8601DateFormatter()
+        data["collections"] = ["deposits": [(1000, 40), (2500, 30), (1500, 21), (2000, 9), (1400, 2)].enumerated().map { i, d in
+            ["id": "d\(i)", "amount": d.0, "created": stamp.string(from: .now.addingTimeInterval(-86400 * Double(d.1))), "updated": stamp.string(from: .now)] as [String: Any]
+        }]
+        NotePageDataStore.shared.set(savings.id, data)
+        func link(_ n: Note) -> String { "[\(n.title)](pane-note:\(n.id.uuidString.lowercased()))" }
+        parent.body = """
+        Budget 2026
+
+        The plan for the year: spend less on eating out, and save for Lisbon in May.
+
+        ## Spending
+        Rent is the same all year. Food is down from last year; travel spiked in May.
+        \(link(chart))
+
+        ## This month
+        \(link(form))
+
+        ## Saving
+        \(link(savings))
+
+        ## Notes
+        - Rent goes up in January, check the new contract
+        - Cancel the old gym membership
+        """
+        parent.touch()
+        try? context.save()
+    }
+}
+
+#if os(iOS)
+/// Measurements only (`-uitest -frameProbe`): frame times from 5 s after launch, written each second
+/// to Documents/frame-probe.txt as "frames hitches longest_ms" (a hitch: a frame over 1.5x the
+/// display's interval).
+@MainActor
+final class FrameProbe: NSObject {
+    static var shared: FrameProbe?
+    private var link: CADisplayLink?
+    private var last: CFTimeInterval = 0
+    private var frames = 0, hitches = 0
+    private var longest: CFTimeInterval = 0
+    private let start = CACurrentMediaTime()
+    private var written: CFTimeInterval = 0
+
+    static func startFromArguments() {
+        guard ProcessInfo.processInfo.arguments.contains("-frameProbe") else { return }
+        let p = FrameProbe()
+        p.link = CADisplayLink(target: p, selector: #selector(tick(_:)))
+        p.link?.add(to: .main, forMode: .common)
+        shared = p
+    }
+
+    @objc private func tick(_ l: CADisplayLink) {
+        let now = l.timestamp
+        defer { last = now }
+        guard now - start > 5, last > 0 else { return }
+        let dt = now - last, target = l.targetTimestamp - l.timestamp
+        frames += 1
+        longest = max(longest, dt)
+        if dt > max(target, 1.0 / 120) * 1.5 { hitches += 1 }
+        if now - written > 1 {
+            written = now
+            let url = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appending(path: "frame-probe.txt")
+            try? "\(frames) \(hitches) \(String(format: "%.1f", longest * 1000))".write(to: url, atomically: true, encoding: .utf8)
+        }
+    }
+}
+#endif
+
+extension Capture {
+    /// Four notes that are apps, for the showcase recordings, and today's meetings in Calendar
+    /// (`-seedCalendar`; demo events made by the app, for the simulator, which has none).
+    @MainActor static func showcase(_ context: ModelContext, pages: URL) {
+        func app(_ body: String, _ file: String, pinned: Bool = false) {
+            let n = context.createNote(in: .all, body: body)
+            n.isPinned = pinned
+            if let html = try? String(contentsOf: pages.appending(path: file), encoding: .utf8) {
+                NotePageStore.shared[n.id] = .init(html: html, by: "Claude", at: .now.addingTimeInterval(-3600))
+            }
+        }
+        app(habitNote(), "habit-reminders.html", pinned: true)
+        app("Meeting prep\n\nToday's meetings, from Calendar. Prep notes stay in the app until I save them.\n\n## Today\n", "meeting-prep.html")
+        app("Lisbon trip log\n\nFour days in May. Places, photos and the weather are kept in the app.", "trip-log.html")
+        app("Weather\n\nLisbon\n", "weather-key.html")
+        try? context.save()
+        if ProcessInfo.processInfo.arguments.contains("-seedCalendar") {
+            Task { @MainActor in
+                let store = EKEventStore()
+                guard (try? await store.requestFullAccessToEvents()) == true, let cal = store.defaultCalendarForNewEvents else { return }
+                let day = Calendar.current.startOfDay(for: .now)
+                let existing = store.events(matching: store.predicateForEvents(withStart: day, end: day.addingTimeInterval(86400), calendars: nil))
+                guard existing.isEmpty else { return }
+                for (title, h, m, len, place) in [("Design review: new onboarding", 9, 30, 45, "Room 4"), ("1:1 with Sara", 11, 0, 30, "Video call"),
+                                                  ("Lunch with Jonas", 12, 30, 60, "Time Out Market"), ("Q4 planning", 15, 0, 60, "Room 2")] {
+                    let e = EKEvent(eventStore: store)
+                    e.title = title
+                    e.location = place
+                    e.startDate = Calendar.current.date(bySettingHour: h, minute: m, second: 0, of: day)!
+                    e.endDate = e.startDate.addingTimeInterval(Double(len) * 60)
+                    e.calendar = cal
+                    try? store.save(e, span: .thisEvent)
+                }
+            }
+        }
+    }
+}

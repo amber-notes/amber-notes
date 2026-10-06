@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="amber-widget-height" content="230">
+<title>Savings</title>
+<style>
+  main { max-width: var(--amber-content-max); margin: 0 auto; padding: 14px var(--amber-gutter) 16px; display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 18px; align-items: center; }
+  .ring { position: relative; width: 120px; height: 120px; }
+  .ring svg { width: 120px; height: 120px; transform: rotate(-90deg); }
+  .ring .pct { position: absolute; inset: 0; display: grid; place-items: center; font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .big { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+  .muted { color: var(--amber-text-secondary); font-size: 14px; }
+  .quick { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .quick button { font: inherit; font-weight: 600; font-size: 15px; border: 0; border-radius: 999px; padding: 7px 13px; background: var(--amber-accent-soft); color: var(--amber-accent-text); }
+  .last { font-size: 13px; color: var(--amber-text-secondary); margin-top: 8px; }
+</style></head>
+<body><main id="app"></main>
+<script>
+  // Deposits and the goal live in the app's own data (amber.store), not in the note's text.
+  const kr = (n) => Math.round(n).toLocaleString("sv-SE") + " kr";
+  const deposits = amber.store.collection("deposits");
+  function render(note, data) {
+    const goal = data.values.goal || 15000;
+    const list = data.collections.deposits || [];
+    const saved = list.reduce((s, d) => s + (d.amount || 0), 0);
+    const p = Math.min(1, saved / goal), C = 2 * Math.PI * 52;
+    const last = list[list.length - 1];
+    document.getElementById("app").innerHTML = `
+      <div class="ring"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="52" fill="none" stroke="var(--amber-fill)" stroke-width="12"/>
+        <circle cx="60" cy="60" r="52" fill="none" stroke="var(--amber-accent)" stroke-width="12" stroke-linecap="round" stroke-dasharray="${C * p} ${C}"/></svg>
+        <div class="pct">${Math.round(p * 100)}%</div></div>
+      <div><div class="big">${kr(saved)}</div><div class="muted">of ${kr(goal)} for Lisbon in May</div>
+        <div class="quick">${[200, 500, 1000].map((n) => `<button data-n="${n}">+${n}</button>`).join("")}</div>
+        <div class="last">${last ? `Last: ${kr(last.amount)}, ${new Date(last.created).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}` : "Nothing saved yet"}</div></div>`;
+    document.querySelectorAll(".quick button").forEach((b) => b.addEventListener("click", () => deposits.add({ amount: +b.dataset.n })));
+  }
+  amber.onChange(render);
+</script></body></html>

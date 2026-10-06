@@ -17,7 +17,11 @@ struct EmbedView: View {
         case .link(let url):
             LinkCard(url: url, remove: remove)
         case .note(let id, let name):
-            SubNoteChip(id: id, name: name, controller: controller, remove: remove)
+            if NoteWidgets.isApp(id) {
+                SubNoteWidget(id: id, name: name, controller: controller, remove: remove)
+            } else {
+                SubNoteChip(id: id, name: name, controller: controller, remove: remove)
+            }
         }
     }
 }

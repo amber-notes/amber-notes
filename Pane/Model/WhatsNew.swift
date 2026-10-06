@@ -75,7 +75,7 @@ enum WhatsNew {
         if defaults.string(forKey: AccountLibrary.ownerKey) != nil { return true }
         if defaults.dictionaryRepresentation().keys.contains(where: { $0.hasPrefix("syncCursor.") }) { return true }
         let notes = (try? context.fetch(FetchDescriptor<Note>())) ?? []
-        return notes.contains { $0.deletedAt == nil && $0.body != Seed.welcome }
+        return notes.contains { $0.deletedAt == nil && $0.body != Seed.welcome && !$0.body.contains(Seed.sampleAppLine) }
     }
 
     /// The card's quiet button.

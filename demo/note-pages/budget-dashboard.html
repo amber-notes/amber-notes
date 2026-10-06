@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="amber-libs" content="chart">
+<title>October budget</title>
+<style>
+  main { max-width: var(--amber-content-max); margin: 0 auto; padding: 18px var(--amber-gutter) 28px; display: grid; gap: 14px; }
+  h1 { font-size: 1.6rem; margin: 0; letter-spacing: -0.02em; }
+  .total { font-size: 2.2rem; font-weight: 700; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+  .muted { color: var(--amber-text-secondary); font-size: 0.9rem; }
+  .card { background: var(--amber-surface); border: 1px solid var(--amber-separator); border-radius: var(--amber-radius); padding: 14px; }
+  .card h2 { font-size: 0.95rem; margin: 0 0 8px; }
+  .grid { display: grid; gap: 14px; }
+  @media (min-width: 700px) { .grid { grid-template-columns: 1fr 1.4fr; } }
+  canvas { width: 100% !important; }
+</style></head>
+<body><main>
+  <div><h1 id="title"></h1><div class="total" id="total"></div><div class="muted" id="sub"></div></div>
+  <div class="grid">
+    <section class="card"><h2>By category</h2><canvas id="cats" height="220"></canvas></section>
+    <section class="card"><h2>Day by day</h2><canvas id="days" height="220"></canvas></section>
+  </div>
+</main>
+<script>
+  const S = () => Object.assign({ budget: 15000, currency: "SEK", categories: ["Home", "Food", "Travel", "Fun"] }, ((amber.data && amber.data.values) || {}).settings || {});
+  const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  const kr = (n) => Math.round(n).toLocaleString("sv-SE") + " kr";
+  const palette = () => [css("--amber-accent"), "#3f8f6b", "#4b74c9", "#b5579a", "#8a6d3b", "#5aa0a8"];
+  let cats, days;
+  function render(note) {
+    document.getElementById("title").textContent = note.title;
+    const t = note.tables.find((t) => t.columns.some((c) => /amount/i.test(c.name)));
+    if (!t) { document.getElementById("sub").textContent = "Add a table with Date, Category and Amount."; return; }
+    const col = (re) => t.columns.findIndex((c) => re.test(c.name));
+    const a = col(/amount/i), c = col(/categ/i), d = col(/date/i);
+    const rows = t.rows.map((r) => ({ amount: parseFloat(String(r[a]).replace(/\s/g, "")) || 0, cat: r[c] || "Other", day: r[d] || "" }));
+    const total = rows.reduce((s, r) => s + r.amount, 0);
+    const budget = Number(S().budget) || 0;
+    document.getElementById("total").textContent = kr(total);
+    document.getElementById("sub").textContent = budget ? `${Math.round(total / budget * 100)} % of ${kr(budget)}, ${rows.length} items` : `${rows.length} items`;
+    const byCat = {}; for (const r of rows) byCat[r.cat] = (byCat[r.cat] || 0) + r.amount;
+    const byDay = {}; for (const r of rows) byDay[r.day] = (byDay[r.day] || 0) + r.amount;
+    const dayKeys = Object.keys(byDay).sort();
+    let run = 0; const cumulative = dayKeys.map((k) => (run += byDay[k]));
+    Chart.defaults.color = css("--amber-text-secondary");
+    Chart.defaults.font.family = css("--amber-font");
+    Chart.defaults.borderColor = css("--amber-separator");
+    cats?.destroy(); days?.destroy();
+    cats = new Chart(document.getElementById("cats"), {
+      type: "doughnut",
+      data: { labels: Object.keys(byCat), datasets: [{ data: Object.values(byCat), backgroundColor: palette(), borderColor: css("--amber-surface"), borderWidth: 2 }] },
+      options: { cutout: "62%", plugins: { legend: { position: "bottom", labels: { boxWidth: 10 } }, tooltip: { callbacks: { label: (x) => `${x.label}: ${kr(x.raw)}` } } }, animation: { duration: 500 } },
+    });
+    days = new Chart(document.getElementById("days"), {
+      data: { labels: dayKeys.map((k) => k.slice(5)), datasets: [
+        { type: "bar", label: "Spent that day", data: dayKeys.map((k) => byDay[k]), backgroundColor: css("--amber-accent"), borderRadius: 6 },
+        { type: "line", label: "Running total", data: cumulative, borderColor: css("--amber-text"), pointRadius: 2, tension: 0.3, yAxisID: "y1" },
+      ] },
+      options: { plugins: { legend: { position: "bottom", labels: { boxWidth: 10 } } }, scales: { y: { beginAtZero: true }, y1: { position: "right", beginAtZero: true, grid: { display: false } } }, animation: { duration: 500 } },
+    });
+  }
+  amber.onChange(render);
+</script></body></html>

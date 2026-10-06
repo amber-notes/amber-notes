@@ -44,6 +44,15 @@ async function seed(pg: PGlite, me: string) {
   await app(pg, me, `update public.notes set trashed_at = now() where id = $1`, [trashed]);
   const locked = await sealed.lockedNote(pg, a, lockKey, "Bank");
   await sealed.file(pg, a, "plan.pdf", "com.adobe.pdf", new TextEncoder().encode("%PDF"));
+  // The note's app: a project, its data and a held-back draft; a second save keeps the first as a version.
+  const project = (html: string) => JSON.stringify({ amberApp: 1, files: { "/index.html": html } });
+  await pg.query(`insert into public.note_pages (note_id, user_id, page_ct, data_ct, draft_ct, draft_problems, client) values ($1, $2, $3, $4, $5, 'today.test.tsx failed', 'Claude')`,
+    [note, me, await a.vault.sealPage(note, project("<p>1</p>")), await a.vault.sealPageData(note, "{}"), await a.vault.sealPage(note, project("<p>3</p>"))]);
+  await pg.query(`update public.note_pages set page_ct = $2 where note_id = $1`, [note, await a.vault.sealPage(note, project("<p>2</p>"))]);
+  await pg.query(`insert into public.app_load_failures (note_id, user_id, message, device) values ($1, $2, 'ReferenceError: x is not defined', 'iPhone')`, [note, me]);
+  const keyName = crypto.randomUUID();
+  await pg.query(`insert into public.api_key_names (id, user_id, meta_ct) values ($1, $2, $3)`,
+    [keyName, me, await a.vault.sealAPIKeyMeta(keyName, JSON.stringify({ name: "Weather", hosts: ["api.example.com"] }))]);
   await sealed.app(pg, me, `insert into public.profiles (user_id, display_name) values ($1, 'Sara Lind')`, [me]);
   const tokenHash = [...crypto.getRandomValues(new Uint8Array(32))].map((b) => b.toString(16).padStart(2, "0")).join("");
   await pg.query(`insert into public.mcp_tokens (user_id, name, token_hash, can_write) values ($1, 'Claude', $2, true)`, [me, tokenHash]);
@@ -154,6 +163,8 @@ Deno.test("the export has everything the server can read, no note text or names,
   assertEquals(data.folders.length, 2);
   assertEquals(data.notes.length, 3);
   assertEquals(data.versions.length, 1, "the version the AI edit kept");
+  assertEquals([data.apps.apps.length, data.apps.versions.length, data.apps.load_failures.length, data.apps.api_keys.length], [1, 1, 1, 1], "the note's app, without its project");
+  assertEquals(data.apps.apps[0].has_draft, true);
   assertEquals(data.files.length, 1);
   assertEquals(data.ai_connections[0].name, "Claude");
   assertEquals(data.share_links[0].slug, as.slug);

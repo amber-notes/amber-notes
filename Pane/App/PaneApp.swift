@@ -20,6 +20,9 @@ struct PaneApp: App {
         ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil && !ProcessInfo.processInfo.arguments.contains("-uitest")
     }
 
+    /// The library, for Shortcuts (NoteIntents), which run without a window.
+    @MainActor static var sharedContainer: ModelContainer?
+
     init() {
         #if os(macOS)
         if Self.isUnitTestHost { NSApplication.shared.setActivationPolicy(.accessory) }
@@ -31,6 +34,7 @@ struct PaneApp: App {
         if inMemory { UserDefaults.standard.removeObject(forKey: "lastScope") }
         let config = ModelConfiguration("Pane", isStoredInMemoryOnly: inMemory)
         container = try! ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: config)
+        Self.sharedContainer = container
         let backend = Backend()
         let context = container.mainContext
         backend.willSignIn = { user in AccountLibrary.adopt(user, context: context) }
@@ -65,6 +69,12 @@ struct PaneApp: App {
         PaneTips.configure()
         Capture.scheduleFromArguments(container.mainContext)
         Capture.importVaultFromArguments(container.mainContext)
+        Capture.notePagesFromArguments(container.mainContext)
+        #if os(iOS)
+        FrameProbe.startFromArguments()
+        #endif
+        // Note pages: compile the sandbox's rules and start a web view now, not when a page opens.
+        if !PaneApp.isUnitTestHost, !ProcessInfo.processInfo.arguments.contains("-noPagePrewarm") { NotePageSandbox.prewarm() }
         #if os(macOS)
         Capture.demoSequenceFromArguments(container.mainContext)
         Capture.importSequenceFromArguments()
@@ -623,7 +633,20 @@ enum Seed {
         // The imported-library capture shows exactly the imported counts, with no welcome note.
         if (welcome || demo) && !DemoData.importedLibrary { context.createNote(in: .folder(notes.id), body: Self.welcome) }
         if demo { DemoData.load(into: context, main: notes) }
+        // A note that is already an app, next to the welcome note, so the first day shows what
+        // your AI can make of a note.
+        if welcome, !demo, !DemoData.importedLibrary, let url = Bundle.main.url(forResource: "sample-habit-tracker", withExtension: "html"),
+           let html = try? String(contentsOf: url, encoding: .utf8) {
+            let habits = context.createNote(in: .folder(notes.id), body: Capture.habitNote().replacingOccurrences(
+                of: "Small things, most days. A ✓ means done.",
+                with: "Small things, most days. A ✓ means done. " + Self.sampleAppLine))
+            habits.updatedAt = .now.addingTimeInterval(-60)
+            NotePageStore.shared.setHere(habits.id, .init(html: html, by: "Amber Notes", at: .now))
+        }
     }
+
+    /// The line that marks the sample app note (it counts as seeded, like the welcome note).
+    static let sampleAppLine = "This note is also an app, made by AI: switch between App and Text at the top."
 
     static let welcome = """
     Welcome to Amber Notes

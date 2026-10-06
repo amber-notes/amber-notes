@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<title>October budget</title>
+<style>
+  /* This app restyles everything amber-base.css gives it: its own paper, type, fields and buttons.
+     Plain rules, no !important: the base sits in a lower cascade layer. */
+  :root { --paper: #FBF6E9; --ink: #1E2A3A; --rule: #C9D7E8; --red: #B3261E; --margin: #E7A9A3; }
+  @media (prefers-color-scheme: dark) { :root { --paper: #15181D; --ink: #E7E2D6; --rule: #2A3340; --red: #FF8A80; --margin: #5A2E2B; } }
+  html { font: 16px/1.5 "Courier New", ui-monospace, monospace; }
+  body { background: var(--paper); color: var(--ink); font-family: inherit;
+         background-image: repeating-linear-gradient(to bottom, transparent 0 31px, var(--rule) 31px 32px); }
+  main { max-width: 640px; margin: 0 auto; padding: 24px 20px 40px 56px; border-left: 2px solid var(--margin); min-height: 100vh; box-sizing: border-box; }
+  h1 { font: 700 1.6rem/32px Georgia, "Times New Roman", serif; margin: 0 0 32px; letter-spacing: 0.01em; }
+  table { width: 100%; border-collapse: collapse; }
+  td { height: 32px; padding: 0 4px; vertical-align: bottom; white-space: nowrap; }
+  td.n { text-align: right; font-variant-numeric: tabular-nums; }
+  tr.total td { font-weight: 700; border-top: 2px solid var(--ink); }
+  .over { color: var(--red); }
+  form { display: grid; grid-template-columns: 1fr 6.5rem auto; gap: 12px; margin-top: 32px; align-items: end; }
+  input { background: var(--paper); border: 0; border-bottom: 2px solid var(--ink); border-radius: 0; padding: 4px 2px; font: inherit; color: var(--ink); width: 100%; box-sizing: border-box; }
+  input:focus-visible { outline: none; border-bottom-color: var(--red); }
+  button { background: var(--ink); color: var(--paper); border: 0; border-radius: 0; padding: 8px 14px; font: 700 0.85rem/1 inherit; text-transform: uppercase; letter-spacing: 0.12em; cursor: pointer; }
+  .stamp { display: inline-block; margin-top: 28px; border: 2px solid var(--red); color: var(--red); padding: 2px 10px; transform: rotate(-3deg); font-weight: 700; letter-spacing: 0.1em; }
+</style></head>
+<body><main id="app"></main>
+<script>
+  const kr = (n) => Math.round(n).toLocaleString("sv-SE") + " kr";
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+  function render(note) {
+    const t = note.tables.find((t) => t.columns.some((c) => /amount/i.test(c.name)));
+    const app = document.getElementById("app");
+    if (!t) { app.textContent = "Add a table with Date, Item and Amount."; return; }
+    const col = (re) => t.columns.findIndex((c) => re.test(c.name));
+    const d = col(/date/i), it = col(/item/i), a = col(/amount/i);
+    const rows = t.rows.map((r) => ({ date: r[d], item: r[it], amt: parseFloat(String(r[a]).replace(/\s/g, "")) || 0 }));
+    const total = rows.reduce((s, r) => s + r.amt, 0), budget = 15000;
+    app.innerHTML = `<h1>${esc(note.title)}</h1>
+      <table>${rows.map((r) => `<tr><td>${esc(r.date.slice(5))}</td><td>${esc(r.item)}</td><td class="n">${kr(r.amt)}</td></tr>`).join("")}
+      <tr class="total"><td></td><td>Total</td><td class="n ${total > budget ? "over" : ""}">${kr(total)}</td></tr></table>
+      <form id="f"><input name="item" placeholder="Item" aria-label="Item" required><input name="kr" placeholder="kr" aria-label="Amount" inputmode="decimal" required><button>Enter</button></form>
+      <div class="stamp">${kr(Math.max(0, budget - total))} LEFT</div>`;
+    document.getElementById("f").onsubmit = async (e) => {
+      e.preventDefault();
+      const f = new FormData(e.target);
+      await amber.update({ op: "append_row", table: t.index, values: { [t.columns[d].name]: note.today, [t.columns[it].name]: f.get("item"), [t.columns[a].name]: f.get("kr") } });
+    };
+  }
+  amber.onChange(render);
+</script></body></html>

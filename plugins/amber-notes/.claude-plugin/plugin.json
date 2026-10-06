@@ -1,8 +1,8 @@
 {
   "name": "amber-notes",
   "displayName": "Amber Notes",
-  "version": "1.0.0",
-  "description": "Search, read and edit your Amber Notes (ambernotes.app) from Claude Code: folders, checklists, tables and trackers. Every change shows in the app with Undo.",
+  "version": "1.1.0",
+  "description": "Search, read and edit your Amber Notes (ambernotes.app) from Claude Code: folders, checklists, tables and trackers, and note pages (small apps over a note's data). Every change shows in the app with Undo.",
   "author": {
     "name": "Emil Wagman",
     "url": "https://ambernotes.app"
@@ -10,5 +10,13 @@
   "homepage": "https://ambernotes.app/blog/mcp-server",
   "repository": "https://github.com/amber-notes/amber-notes",
   "license": "MIT",
-  "keywords": ["notes", "apple-notes", "markdown", "checklists", "work-log", "mcp"]
+  "keywords": [
+    "notes",
+    "apple-notes",
+    "markdown",
+    "checklists",
+    "work-log",
+    "mcp",
+    "note-pages"
+  ]
 }

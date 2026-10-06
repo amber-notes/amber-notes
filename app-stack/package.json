@@ -1,0 +1,30 @@
+{
+  "name": "amber-app-stack",
+  "private": true,
+  "description": "The libraries every note app can import (React through preact/compat, Radix, shadcn's helpers, lucide, recharts, ...), bundled once into Pane/Resources/AppLibraries/stack.json by build.mjs.",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "dependencies": {
+    "preact": "10.24.3",
+    "radix-ui": "1.4.3",
+    "class-variance-authority": "0.7.1",
+    "clsx": "2.1.1",
+    "tailwind-merge": "3.3.1",
+    "lucide-react": "0.544.0",
+    "recharts": "2.15.4",
+    "date-fns": "4.1.0",
+    "zod": "3.25.76",
+    "framer-motion": "11.18.2",
+    "motion": "11.18.2",
+    "sonner": "2.0.7",
+    "react-day-picker": "9.11.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.24.0",
+    "tailwindcss": "4.1.13",
+    "@tailwindcss/cli": "4.1.13",
+    "tw-animate-css": "1.3.8"
+  }
+}

@@ -140,6 +140,8 @@ export function publicTemplate(t: Template) {
     instructions: instructions(t),
     example: t.example,
     url: `${SITE_URL}${templatePath(t.slug)}`,
+    // The first thing to ask your AI, shown when the note first opens in the app.
+    ask: t.asks[0],
   };
 }
 

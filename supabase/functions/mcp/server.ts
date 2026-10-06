@@ -15,9 +15,15 @@
 import type { Sql } from "npm:postgres@3.4.5";
 import { tokenKey, unwrap, Vault } from "../_shared/e2ee.ts";
 import { errorKind, log } from "../_shared/log.ts";
-import { Content, runTool, ToolContext, ToolError, tools } from "./tools.ts";
+import { Content, runTool, servedTools, ToolContext, ToolError } from "./tools.ts";
+import { FILE_INSTRUCTIONS, FILE_TOOLS, runFileTool } from "./files_tools.ts";
+// The file-like tool set (prototype) when AMBER_MCP_TOOLS=files; otherwise what servedTools() serves.
+const fileSet = () => Deno.env.get("AMBER_MCP_TOOLS") === "files";
 import { challenge, handleOAuth, isOAuthPath, publicBase, resolveAccessToken, subpath } from "./oauth.ts";
 import { SERVER_CARD_PATH, SERVER_INFO, serverCardResponse } from "./card.ts";
+import { BASE_CSS_URI, GUIDE_URI, PAGE_GUIDE, PAGE_INSTRUCTIONS, PAGE_PROMPTS } from "./page_guide.ts";
+import { AMBER_BASE_CSS } from "./amber-base.ts";
+import { APP_EXAMPLES } from "./app_examples.gen.ts";
 
 const PROTOCOL_VERSIONS = ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"];
 export const INSTRUCTIONS = `Amber Notes is the user's personal notes app. Notes are markdown; the first line is the title.
@@ -28,6 +34,7 @@ Checklists are "- [ ] item" lines; use set_checklist_item to tick them. Link to 
 [[Title]], [[Title|shown text]] or [[Title#Heading]]; the app shows it as a link and follows it by title. A line like [Title](pane-note:<id>) links a sub-note: a whole note that lives inside
 its parent. Use create_sub_note to make one; read it with read_note(id). Deleted notes go to Recently Deleted
 and can be restored; every edit keeps the previous version (note_history / restore_revision).
+${PAGE_INSTRUCTIONS}
 A note marked locked: true is locked by the user with a separate password: its title is visible here, and nothing else.
 It can't be read, searched or changed here; only the user can open it, in Amber Notes.`;
 
@@ -184,18 +191,18 @@ async function respond(msg: Rpc, id: string | number | null, ctx: ToolContext): 
         const asked = String(msg.params?.protocolVersion ?? "");
         return ok(id, {
           protocolVersion: PROTOCOL_VERSIONS.includes(asked) ? asked : PROTOCOL_VERSIONS[0],
-          capabilities: { tools: { listChanged: false } },
+          capabilities: { tools: { listChanged: false }, resources: { listChanged: false }, prompts: { listChanged: false } },
           serverInfo: SERVER_INFO,
-          instructions: INSTRUCTIONS,
+          instructions: fileSet() ? FILE_INSTRUCTIONS : INSTRUCTIONS,
         });
       }
       case "ping":
         return ok(id, {});
       case "tools/list":
-        return ok(id, { tools: tools.filter((t) => ctx.canWrite || t.annotations.readOnlyHint) });
+        return ok(id, { tools: (fileSet() ? FILE_TOOLS : servedTools()).filter((t) => ctx.canWrite || t.annotations.readOnlyHint) });
       case "tools/call": {
         const name = String(msg.params?.name ?? "");
-        if (!tools.some((t) => t.name === name)) {
+        if (!(fileSet() ? FILE_TOOLS : servedTools()).some((t) => t.name === name)) {
           return { jsonrpc: "2.0", id, error: { code: -32602, message: `Unknown tool: ${name || "(none)"}` } };
         }
         const given = msg.params?.arguments ?? {};
@@ -205,7 +212,7 @@ async function respond(msg: Rpc, id: string | number | null, ctx: ToolContext): 
         const args = given as Record<string, unknown>;
         const started = performance.now();
         try {
-          const result = await runTool(name, args, ctx);
+          const result = fileSet() ? await runFileTool(name, args, ctx) : await runTool(name, args, ctx);
           if (result instanceof Content) {
             return ok(id, { content: result.content, ...(result.structured ? { structuredContent: result.structured } : {}) });
           }
@@ -222,9 +229,25 @@ async function respond(msg: Rpc, id: string | number | null, ctx: ToolContext): 
         }
       }
       case "resources/list":
-        return ok(id, { resources: [] });
+        return ok(id, { resources: fileSet() ? [] : RESOURCES.map(({ text: _, ...r }) => r) });
+      case "resources/templates/list":
+        return ok(id, { resourceTemplates: [] });
+      case "resources/read": {
+        const uri = String(msg.params?.uri ?? "");
+        const r = RESOURCES.find((x) => x.uri === uri);
+        if (!r) return { jsonrpc: "2.0", id, error: { code: -32002, message: `Resource not found: ${uri}` } };
+        return ok(id, { contents: [{ uri: r.uri, mimeType: r.mimeType, text: r.text }] });
+      }
       case "prompts/list":
-        return ok(id, { prompts: [] });
+        return ok(id, { prompts: fileSet() ? [] : PAGE_PROMPTS.map(({ text: _, ...p }) => p) });
+      case "prompts/get": {
+        const p = PAGE_PROMPTS.find((x) => x.name === msg.params?.name);
+        if (!p) return { jsonrpc: "2.0", id, error: { code: -32602, message: `Unknown prompt: ${String(msg.params?.name ?? "")}` } };
+        const args = (msg.params?.arguments ?? {}) as Record<string, string>;
+        const missing = p.arguments.filter((x) => x.required && !String(args[x.name] ?? "").trim()).map((x) => x.name);
+        if (missing.length) return { jsonrpc: "2.0", id, error: { code: -32602, message: `Missing argument${missing.length > 1 ? "s" : ""}: ${missing.join(", ")}` } };
+        return ok(id, { description: p.description, messages: [{ role: "user", content: { type: "text", text: p.text(args) } }] });
+      }
       default:
         return { jsonrpc: "2.0", id, error: { code: -32601, message: `Method not found: ${msg.method}` } };
     }
@@ -233,6 +256,13 @@ async function respond(msg: Rpc, id: string | number | null, ctx: ToolContext): 
     return { jsonrpc: "2.0", id, error: { code: -32603, message: e instanceof Error ? e.message : String(e) } };
   }
 }
+
+/** Read-only documents a client can attach: the guide, the default stylesheet and an example app project. */
+const RESOURCES = [
+  { uri: GUIDE_URI, name: "note-pages-guide", title: "Building note pages", description: "How to build and edit Amber Notes pages: the window.amber API, data model, design rules and a starter page.", mimeType: "text/markdown", text: PAGE_GUIDE },
+  { uri: BASE_CSS_URI, name: "amber-base-css", title: "amber-base.css", description: "The default stylesheet every note's app gets, before its own styles and in a cascade layer: override any rule, or opt out with <meta name=\"amber-base\" content=\"none\">.", mimeType: "text/css", text: AMBER_BASE_CSS },
+  ...Object.entries(APP_EXAMPLES).flatMap(([name, ex]) => Object.entries(ex.files).map(([path, text]) => ({ uri: `amber://examples/${name}${path}`, name: `example-${name}${path.replace(/[/.]/g, "-")}`, title: `Example app ${name}: ${path}`, description: `A file of the ${name} example project.`, mimeType: path.endsWith(".md") ? "text/markdown" : path.endsWith(".css") ? "text/css" : path.endsWith(".html") ? "text/html" : "text/javascript", text }))),
+];
 
 function ok(id: unknown, result: unknown) {
   return { jsonrpc: "2.0", id, result };

@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Trip log</title>
+<meta name="amber-needs" content='{"hosts":["api.open-meteo.com"]}'>
+<style>
+  main { max-width: var(--amber-content-max); margin: 0 auto; padding: 8px var(--amber-gutter) 60px; }
+  h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; margin: 6px 0 2px; }
+  .sub { color: var(--amber-text-secondary); margin-bottom: 16px; }
+  .hero { position: relative; border-radius: var(--amber-radius); overflow: hidden; background: var(--amber-surface); aspect-ratio: 2 / 1; max-width: 100%; }
+  .hero img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .weather { position: absolute; right: 10px; top: 10px; background: var(--amber-bg); border-radius: 14px; padding: 8px 12px; font-weight: 700; font-size: 20px; box-shadow: 0 2px 10px rgba(0,0,0,.12); }
+  .weather small { display: block; font-size: 12px; font-weight: 500; color: var(--amber-text-secondary); }
+  .btns { display: flex; gap: 8px; margin: 14px 0; flex-wrap: wrap; }
+  button { font: inherit; font-weight: 600; font-size: 15px; border: 0; border-radius: var(--amber-radius-small); padding: 9px 14px; background: var(--amber-fill); color: var(--amber-text); }
+  button.primary { background: var(--amber-accent); color: var(--amber-on-accent); }
+  .entries { display: grid; gap: 14px; }
+  @media (min-width: 900px) { .entries { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .entry { background: var(--amber-surface); border-radius: var(--amber-radius); padding: 12px; }
+  .entry .when { font-size: 13px; color: var(--amber-text-secondary); }
+  .entry .where { font-weight: 600; margin: 2px 0 8px; }
+  .photos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .photos img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; display: block; }
+  .status { color: var(--amber-text-secondary); font-size: 14px; min-height: 20px; }
+</style></head>
+<body><main id="app"></main>
+<script>
+  // Where you are and the photos you add are kept in the app's own data (photos as encrypted files);
+  // the weather comes from api.open-meteo.com through Amber Notes, which you approve once.
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  const entries = amber.store.collection("entries");
+  let map = "", weather = null, status = "";
+
+  async function here() {
+    status = "Finding where you are…"; render();
+    const loc = await amber.device.location.once();
+    if (!loc.ok) { status = loc.error; render(); return null; }
+    const [m, w] = await Promise.all([
+      amber.device.maps.snapshot({ lat: loc.lat, lon: loc.lon, km: 3, width: 800, height: 400, dark: matchMedia("(prefers-color-scheme: dark)").matches }),
+      amber.fetch(`https://api.open-meteo.com/v1/forecast?latitude=${loc.lat.toFixed(2)}&longitude=${loc.lon.toFixed(2)}&current=temperature_2m,weather_code`),
+    ]);
+    if (m.ok) map = m.dataURL;
+    if (w.ok && w.status === 200) { const c = JSON.parse(w.body).current; weather = { t: Math.round(c.temperature_2m), code: c.weather_code }; } else status = w.error || "No weather right now.";
+    status = "";
+    await amber.store.set("last", { lat: loc.lat, lon: loc.lon, place: loc.place || "" });
+    render();
+    return loc;
+  }
+
+  async function addPhotos() {
+    const r = await amber.device.photos.pick({ limit: 3 });
+    if (!r.ok || !r.files.length) { if (!r.ok) { status = r.error; render(); } return; }
+    const last = amber.data.values.last || {};
+    await entries.add({ place: last.place || "Somewhere", photos: r.files.map((f) => ({ $file: f.$file, thumb: f.thumb })) });
+    render();
+  }
+
+  const sky = (c) => c === 0 ? "Clear" : c < 4 ? "Partly cloudy" : c < 50 ? "Foggy" : c < 70 ? "Rain" : c < 80 ? "Snow" : "Showers";
+
+  function render() {
+    const list = (amber.data.collections.entries || []).slice().reverse();
+    const last = amber.data.values.last;
+    document.getElementById("app").innerHTML = `
+      <h1>Trip log</h1><div class="sub">${esc(last?.place || "Lisbon, in May")} · ${list.length} ${list.length === 1 ? "entry" : "entries"}</div>
+      <div class="hero">${map ? `<img src="${map}" alt="Map around ${esc(last?.place)}">` : ""}
+        ${weather ? `<div class="weather">${weather.t}°<small>${sky(weather.code)}</small></div>` : ""}</div>
+      <div class="btns"><button class="primary" id="here">Where am I?</button><button id="photos">Add photos</button></div>
+      <div class="status">${esc(status)}</div>
+      <div class="entries">${list.map((e) => `<div class="entry"><div class="when">${new Date(e.created).toLocaleString("en-GB", { weekday: "short", hour: "2-digit", minute: "2-digit" })}</div>
+        <div class="where">${esc(e.place)}</div><div class="photos">${(e.photos || []).map((p) => `<img src="${p.thumb}" alt="">`).join("")}</div></div>`).join("")}</div>`;
+    document.getElementById("here").addEventListener("click", here);
+    document.getElementById("photos").addEventListener("click", addPhotos);
+  }
+  amber.onChange(render);
+</script></body></html>

@@ -580,7 +580,10 @@ enum RowMetrics {
     static let vertical: CGFloat = 5
     static let leading: CGFloat = 12
     static let dotOffset: CGFloat = -12
+    /// The app mark's size: about the title's cap height.
+    static let markSize: CGFloat = 13
     #else
+    static let markSize: CGFloat = 16
     static let title = Font.headline
     static let detail = Font.subheadline
     static let spacing: CGFloat = 3
@@ -642,19 +645,26 @@ struct NoteRow: View {
         let large = typeSize.isAccessibilitySize
         let detail = large ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2)) : AnyLayout(HStackLayout(spacing: 8))
         let ai = AIEdit.isUnseen(note) ? note.aiEditor : nil
+        let app = NoteAppMark.has(note)
         return VStack(alignment: .leading, spacing: RowMetrics.spacing) {
-            Text(title)
-                .font(RowMetrics.title)
-                .foregroundStyle(Color.ink)
-                .lineLimit(large ? 3 : 1)
-                // An AI changed this note and you haven't opened it since, like Mail's unread dot.
-                .overlay(alignment: .leading) {
-                    if ai != nil {
-                        Circle().fill(.tint).frame(width: 8, height: 8)
-                            .offset(x: RowMetrics.dotOffset)
-                            .transition(.scale.combined(with: .opacity))
-                    }
+            HStack(spacing: 5) {
+                Text(title)
+                    .font(RowMetrics.title)
+                    .foregroundStyle(Color.ink)
+                    .lineLimit(large ? 3 : 1)
+                if app {
+                    AppMarkView(size: RowMetrics.markSize)
+                        .accessibilityIdentifier("note.app")
                 }
+            }
+            // An AI changed this note and you haven't opened it since, like Mail's unread dot.
+            .overlay(alignment: .leading) {
+                if ai != nil {
+                    Circle().fill(.tint).frame(width: 8, height: 8)
+                        .offset(x: RowMetrics.dotOffset)
+                        .transition(.scale.combined(with: .opacity))
+                }
+            }
             detail {
                 HStack(spacing: 4) {
                     if shared {
@@ -700,7 +710,7 @@ struct NoteRow: View {
         .padding(.vertical, RowMetrics.vertical)
         .padding(.leading, RowMetrics.leading)
         .accessibilityElement(children: .combine)
-        .accessibilityValue([note.isPinned ? "Pinned" : nil, shared ? "Shared" : nil, note.isLocked ? "Locked" : nil, ai.map { "Edited by \($0)" }].compactMap { $0 }.joined(separator: ", "))
+        .accessibilityValue([note.isPinned ? "Pinned" : nil, app ? "App" : nil, shared ? "Shared" : nil, note.isLocked ? "Locked" : nil, ai.map { "Edited by \($0)" }].compactMap { $0 }.joined(separator: ", "))
         .accessibilityIdentifier("note.\(title)")
     }
 

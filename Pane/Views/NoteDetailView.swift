@@ -9,12 +9,40 @@ struct NoteDetailView: View {
     @Environment(SyncEngine.self) private var sync: SyncEngine?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var importing = false
+    /// Dev: an app built outside (scripts/build-app.ts), from a file, into this note.
+    @State private var importingApp = false
     @State private var saver = DebouncedSave()
     @State private var shareLinks = ShareLinkStore()
     @State private var showHistory = HistoryLaunch.open
     /// "ChatGPT changed 5 lines · Undo", while an AI's edit that just landed is on show.
     @State private var receipt: AIEdit.Receipt?
+    /// The version that didn't open, for Undo on "Reverted to the last working version".
+    @State private var revertedFrom: NotePageStore.Page?
+    /// A text field in the note's app has focus: no receipt is drawn over it.
+    @State private var pageFieldFocused = false
+    /// A receipt waiting for the field to let go.
+    @State private var heldReceipt: AIEdit.Receipt?
     @State private var undoFailed: String?
+    /// For Undo of a page an AI made: the page before it (nil: none).
+    @State private var undoPage: NotePageStore.Page?
+    /// For Undo of a change to the app's own data: the data before it.
+    @State private var undoData: NotePageData.Doc?
+    /// The app asks to reach a host: shown as a question, answered once per host.
+    @State private var hostAsk: HostAsk?
+    /// The app needs an API key that isn't set up: the card that offers to add it.
+    @State private var keyNeeded: NotePageNetwork.KeyNeed?
+    @State private var addingKey: APIKeyForm.Draft?
+    @State private var showNetLog = false
+    @State private var showMakeApp = false
+    @State private var showAppInfo = false
+    /// "Make this an app", once per note, on notes that look like one.
+    @State private var showChip = false
+
+    struct HostAsk: Identifiable {
+        let host: String
+        let answer: (Bool) -> Void
+        var id: String { host }
+    }
     /// Lock Note: setting the password up, asking for it, or confirming.
     @State private var lockSheet: LockSheet?
     @State private var confirmLock = false
@@ -25,6 +53,16 @@ struct NoteDetailView: View {
     @State private var titleAtOpen: String?
     /// Notes that link here.
     @State private var backlinks: [Note] = []
+    /// Note pages (prototype): Page or Text, when the note has a page.
+    @State private var mode: NoteMode = NoteDetailView.startMode
+    /// Which side a note with an app opens on (Mac shots photograph both).
+    nonisolated(unsafe) static var startMode: NoteMode = .page
+    /// The text before edits made on the page, tinted once Text shows again.
+    @State private var pageTint: String?
+    /// The page as last shown, to tell an AI's new page from one already seen.
+    @State private var shownPage: NotePageStore.Page?
+    /// Pages that failed to load here: never fallen back to twice.
+    @State private var failedPages: Set<String> = []
     @Bindable var note: Note
     let controller: EditorController
     var autofocus = false
@@ -36,6 +74,18 @@ struct NoteDetailView: View {
         chrome(editor)
             .quickLookPreview(previewBinding)
             .fileImporter(isPresented: $importing, allowedContentTypes: [.item], allowsMultipleSelection: true, onCompletion: attach)
+            #if DEBUG || QA
+            .background {
+                Color.clear.fileImporter(isPresented: $importingApp, allowedContentTypes: [.json, .html, .plainText]) { result in
+                    guard case .success(let url) = result else { return }
+                    let access = url.startAccessingSecurityScopedResource()
+                    defer { if access { url.stopAccessingSecurityScopedResource() } }
+                    guard let text = try? String(contentsOf: url, encoding: .utf8), NotePageProject.parse(text) != nil else { return }
+                    NotePageStore.shared.setHere(note.id, .init(html: text, by: "File", at: .now))
+                    pageArrived(NotePageStore.shared.live(note.id))
+                }
+            }
+            #endif
             .onAppear(perform: wireController)
             .onDisappear {
                 saver.flush()
@@ -79,11 +129,79 @@ struct NoteDetailView: View {
                 if let history = NoteHistory.shared { VersionHistorySheet(note: note, history: history) }
             }
             #if os(iOS)
-            .safeAreaInset(edge: .bottom, spacing: 0) { phoneTips }
+            .safeAreaInset(edge: .bottom, spacing: 0) { if !showingPage { phoneTips } }
             #endif
             .overlay(alignment: .bottom) { aiReceipt }
             .overlay(alignment: .bottom) { undoProblem }
+            .overlay(alignment: .bottom) { keyCard }
+            .alert("This app wants to reach \(hostAsk?.host ?? "")", isPresented: Binding(get: { hostAsk != nil }, set: { if !$0, let a = hostAsk { a.answer(false); hostAsk = nil } })) {
+                Button("Don't Allow", role: .cancel) { hostAsk?.answer(false); hostAsk = nil }
+                Button("Allow") { hostAsk?.answer(true); hostAsk = nil }
+            } message: {
+                Text("Everything it sends there is listed in App Info › Internet.")
+            }
+            .sheet(item: $addingKey) { d in APIKeyForm(draft: d) }
+            .sheet(isPresented: $showNetLog) { NotePageNetLogView(noteID: note.id) }
+            .sheet(isPresented: $showMakeApp) { MakeAppSheet(title: note.title, body_: note.body) }
+            .sheet(item: firstOpenSheet) { m in
+                if FirstOpen.variant == .ac {
+                    FirstOpenRichSheet(moment: m) { startFirstOpen(m) }
+                } else {
+                    FirstOpenSheet(moment: m) { startFirstOpen(m) }
+                }
+            }
+            #if os(iOS)
+            .fullScreenCover(item: firstOpenWelcome) { m in FirstOpenWelcome(moment: m) { startFirstOpen(m) } }
+            #else
+            .sheet(item: firstOpenWelcome) { m in FirstOpenWelcome(moment: m) { startFirstOpen(m) } }
+            #endif
+            // Later templates: just a line.
+            .task(id: firstOpen?.note) {
+                guard let m = firstOpen, !m.full else { return }
+                try? await Task.sleep(for: .seconds(0.6))
+                notice("Added to your notes")
+                FirstOpen.shared.start(m)
+            }
+            .sheet(isPresented: $showAppInfo) {
+                if let p = notePage {
+                    AppInfoSheet(noteID: note.id, html: p.html,
+                                     hasPrevious: NotePageStore.shared.previous(note.id) != nil,
+                                     previous: { restorePreviousPage() },
+                                     remove: {
+                                         // The note's text stays as it is, and the app is kept: Previous App brings it back.
+                                         NotePageStore.shared.setHere(note.id, nil)
+                                         shownPage = nil
+                                         mode = .text
+                                     })
+                }
+            }
+            .overlay(alignment: .bottom) {
+                if showChip, notePage == nil, receipt == nil {
+                    MakeAppChip(open: { showChip = false; showMakeApp = true }, dismiss: { withAnimation(.smooth) { showChip = false } })
+                        #if os(macOS)
+                        .padding(.bottom, 20)
+                        #else
+                        .padding(.bottom, 64)
+                        #endif
+                        .transition(AIReceipt.transition(reduceMotion: reduceMotion))
+                }
+            }
             .onChange(of: note.aiEditedAt) { _, _ in showAIEdit() }
+            .onChange(of: NotePageStore.shared[note.id]) { _, _ in pageArrived(NotePageStore.shared.live(note.id)) }
+            // An AI's new version failed its checks on the server and waits there as a draft: the
+            // working one keeps running; say so once.
+            .onChange(of: NotePageStore.shared.drafts[note.id]) { _, draft in
+                guard let draft, showingPage else { return }
+                showPageReceipt(AIEdit.Receipt(noteID: note.id, by: draft.by, at: .now, previous: note.body, lines: 0, kind: .heldBack))
+            }
+            .onChange(of: mode) { _, now in if now == .text { tintPageEdits() } }
+            // An AI (or MCP tool) changed the app's data while it's open: the app already shows it;
+            // say who, and offer Undo back to before.
+            .onChange(of: NotePageDataStore.shared.arrivals[note.id]) { _, a in
+                guard let a, showingPage else { return }
+                undoData = NotePageData.decode(a.before)
+                showPageReceipt(AIEdit.Receipt(noteID: note.id, by: a.by, at: a.at, previous: note.body, lines: 0, kind: .dataEdit))
+            }
             // Captures: `-lockCapture setup` or `confirm` (see Capture).
             .onReceive(NotificationCenter.default.publisher(for: Capture.lockCapture)) { n in
                 switch n.object as? String {
@@ -101,12 +219,25 @@ struct NoteDetailView: View {
                 titleAtOpen = note.body.isEmpty || note.isLocked ? nil : note.title
                 refreshLinks()
                 receipt = nil
+                shownPage = NotePageStore.shared[note.id]
+                // A note with an app is the app: what its text held goes into the app's data once.
+                if shownPage != nil { NotePageActions.importIfNeeded(note) }
+                if shownPage != nil { NotePageTiming.open(note.id) }
+                showChip = false
+                pageTint = nil
+                mode = Self.startMode
                 showAIEdit()
                 #if os(macOS)
                 PaneTips.menuBarShown = MenuBarSettings.allowed && UserDefaults.standard.object(forKey: MenuBarSettings.key) as? Bool ?? true
                 #endif
                 PaneTips.noteOpened(note.body)
                 ShareAsk.noteUsed()
+                // "Make this an app", once per note, a moment after it opens (last: it waits).
+                if shownPage == nil, !note.isLocked, !MakeAnApp.chipShown(note.id), MakeAnApp.looksLikeAnApp(note.body) {
+                    MakeAnApp.markChipShown(note.id)
+                    try? await Task.sleep(for: .seconds(1.2))
+                    if !Task.isCancelled { withAnimation(.spring(duration: 0.45, bounce: 0.25)) { showChip = true } }
+                }
             }
             .onChange(of: showHistory) { _, open in if open { FeatureUse.mark(.versionHistory) } }
             // "See your note's history" from an email opened this note to show its history.
@@ -135,11 +266,18 @@ struct NoteDetailView: View {
     @ViewBuilder
     private var undoProblem: some View {
         if let undoFailed {
+            // Room for two lines: a notice is never squeezed into one.
             Text(undoFailed)
                 .font(.system(size: AIReceipt.text, weight: .semibold))
-                .padding(.horizontal, 14)
-                .frame(height: AIReceipt.height)
-                .background(.regularMaterial, in: .capsule)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .frame(minHeight: AIReceipt.height)
+                // Solid, never see-through.
+                .background(Color(PColor.panePanel), in: .rect(cornerRadius: AIReceipt.height / 2))
+                .overlay(RoundedRectangle(cornerRadius: AIReceipt.height / 2).strokeBorder(Color.line, lineWidth: 1))
+                .padding(.horizontal, 24)
                 #if os(macOS)
                 .padding(.bottom, 20)
                 #else
@@ -147,19 +285,29 @@ struct NoteDetailView: View {
                 #endif
                 .transition(.opacity)
                 .accessibilityAddTraits(.isStaticText)
+                .accessibilityIdentifier("note.notice")
         }
     }
 
     @ViewBuilder
     private var aiReceipt: some View {
         if let receipt {
-            AIReceipt(receipt: receipt) { undo(receipt) }
-            #if os(macOS)
-            .padding(.bottom, 20)
+            #if os(iOS)
+            // Over a note's app it sits in the navigation bar instead (see toolbar): an app's own
+            // tab bar, sheets and the keyboard live at the bottom, its title at the top.
+            let inBar = showingPage
             #else
-            .padding(.bottom, 64)
+            let inBar = false
             #endif
-            .transition(AIReceipt.transition(reduceMotion: reduceMotion))
+            if !inBar {
+                AIReceipt(receipt: receipt) { undo(receipt) }
+                #if os(macOS)
+                .padding(.bottom, 20)
+                #else
+                .padding(.bottom, 64)
+                #endif
+                .transition(AIReceipt.transition(reduceMotion: reduceMotion))
+            }
         }
     }
 
@@ -185,6 +333,27 @@ struct NoteDetailView: View {
 
     private func undo(_ r: AIEdit.Receipt) {
         withAnimation(.smooth(duration: 0.25)) { receipt = nil }
+        if r.kind == .pageMade || r.kind == .pageChanged {
+            // The note's text never changed: the page goes back to what it was (the new one is kept).
+            if undoPage != nil { restorePreviousPage() } else {
+                NotePageStore.shared.setHere(note.id, nil)
+                shownPage = nil
+                mode = .text
+            }
+            return
+        }
+        if r.kind == .reverted {
+            if let page = revertedFrom { NotePageStore.shared.force(note.id, page); shownPage = page }
+            revertedFrom = nil
+            return
+        }
+        if r.kind == .pageEdit { pageTint = nil }
+        if r.kind == .dataEdit {
+            // Back to the data before this run of changes; the note's text is untouched.
+            if let undoData { NotePageDataStore.shared.set(note.id, undoData) }
+            undoData = nil
+            return
+        }
         // The editor takes the old text as an outside change, which also clears the tint.
         let note = self.note
         Task { @MainActor in
@@ -205,15 +374,275 @@ struct NoteDetailView: View {
     @ViewBuilder
     private var editor: some View {
         if let text = vault.text(of: note) {
-            MarkdownEditor(initialText: text, header: DateBucket.header(note.updatedAt), controller: controller, autofocus: autofocus, onChange: save)
-                .onAppear { if note.isLocked { vault.touch() } }
+            // Both stay alive, so switching is instant and the editor can tint what the page changed.
+            ZStack {
+                MarkdownEditor(initialText: text, header: DateBucket.header(note.updatedAt), controller: controller, autofocus: autofocus, onChange: save)
+                    .onAppear { if note.isLocked { vault.touch() } }
+                    .opacity(showingPage ? 0 : 1)
+                    .allowsHitTesting(!showingPage)
+                    .accessibilityHidden(showingPage)
+                if let page = notePage {
+                    NotePageView(noteID: note.id, html: page.html, text: text, onUpdate: applyPageEdit, onFailure: pageFailed, onData: pageData,
+                                 files: { [context] id in NotePageActions.file(id, note: note, context: context) },
+                                 onFocus: { focused in
+                                     pageFieldFocused = focused
+                                     // Typing in the app: a receipt steps out of the way (Undo stays in Edit and ⌘Z).
+                                     if focused, receipt != nil { withAnimation(.easeIn(duration: 0.15)) { receipt = nil } }
+                                     if !focused, let held = heldReceipt {
+                                         heldReceipt = nil
+                                         if held.at.timeIntervalSinceNow > -3 { showPageReceipt(held) }
+                                     }
+                                 },
+                                 insetBottom: pageInsetBottom)
+                        .id(note.id)
+                        .opacity(showingPage ? 1 : 0)
+                        .allowsHitTesting(showingPage)
+                        .accessibilityHidden(!showingPage)
+                        // B: the first-open card inside the app, at its top, until Start.
+                        .safeAreaInset(edge: .top, spacing: 0) {
+                            if showingPage, let m = firstOpen, m.full, m.isApp, FirstOpen.variant == .b {
+                                FirstOpenCard(moment: m) { startFirstOpen(m) }
+                                    .transition(.move(edge: .top).combined(with: .opacity))
+                            }
+                        }
+                }
+            }
         } else {
             LockedNoteView(note: note)
         }
     }
 
-    /// A locked note that isn't open: nothing on screen to edit.
-    private var hidden: Bool { vault.text(of: note) == nil }
+    /// A locked note that isn't open: nothing on screen to edit. The page has no caret either.
+    private var hidden: Bool { vault.text(of: note) == nil || showingPage }
+
+    // MARK: Note pages (prototype)
+
+    enum NoteMode: String { case page, text }
+
+    /// The note's page, unless the note is locked (a locked note never shows one).
+    /// The version that runs: the newest that passed its checks and opens here (NotePageStore.live).
+    private var notePage: NotePageStore.Page? { note.isLocked ? nil : NotePageStore.shared.live(note.id) }
+    private var showingPage: Bool { notePage != nil && mode == .page }
+
+    /// A template just added from the website, opening for the first time.
+    private var firstOpen: FirstOpen.Moment? { FirstOpen.shared.pending[note.id] }
+
+    private func startFirstOpen(_ m: FirstOpen.Moment) {
+        withAnimation(.smooth(duration: 0.3)) { FirstOpen.shared.start(m) }
+    }
+
+    /// A: a sheet over the app (and, for a note template, its lighter version, whatever the design).
+    private var firstOpenSheet: Binding<FirstOpen.Moment?> {
+        Binding(get: {
+            guard let m = firstOpen, m.full else { return nil }
+            return !m.isApp || FirstOpen.variant == .a || FirstOpen.variant == .ac ? m : nil
+        }, set: { if $0 == nil, let m = firstOpen { FirstOpen.shared.start(m) } })
+    }
+
+    /// C: a short welcome before the app.
+    private var firstOpenWelcome: Binding<FirstOpen.Moment?> {
+        Binding(get: {
+            guard let m = firstOpen, m.full, m.isApp, FirstOpen.variant == .c else { return nil }
+            return m
+        }, set: { if $0 == nil, let m = firstOpen { FirstOpen.shared.start(m) } })
+    }
+
+    /// What of the app's bottom edge Amber covers: on the Mac the receipt (its height, its margin and
+    /// a gap); on iPhone nothing (the receipt goes in the navigation bar, and the App side has no
+    /// bottom toolbar).
+    private var pageInsetBottom: CGFloat {
+        #if os(macOS)
+        receipt != nil && showingPage ? AIReceipt.height + 20 + 8 : 0
+        #else
+        0
+        #endif
+    }
+
+    /// An edit the page asked for, applied to the markdown as an edit of yours: it syncs, keeps a
+    /// version, and the receipt offers Undo. The page re-renders from the new text.
+    private func applyPageEdit(_ op: NotePage.Op) throws {
+        let before = note.body
+        let after = try NotePage.apply(op, to: before)
+        guard after != before else { return }
+        note.body = after
+        note.touch()
+        try? context.save()
+        if pageTint == nil { pageTint = before }
+        let r = AIEdit.Receipt(noteID: note.id, by: AIGlyph.page, at: .now, previous: before, after: after,
+                               lines: ChangeTint.changedLines(from: before, to: after).count, kind: .pageEdit)
+        showPageReceipt(r)
+    }
+
+    /// Never over a field you're typing in, or under a sheet. A change made while a field has
+    /// focus (a button pressed as the field lets go) shows once the focus has gone, if that's soon.
+    private func showPageReceipt(_ r: AIEdit.Receipt) {
+        guard !showAppInfo else { return }
+        guard !pageFieldFocused else { heldReceipt = r; return }
+        heldReceipt = nil
+        withAnimation(.spring(duration: 0.45, bounce: 0.25)) { receipt = r }
+        Task { @MainActor in
+            // Longer than an AI's: you may switch to Text to see the change before you undo it.
+            try? await Task.sleep(for: .seconds(10 * ChangeTint.slowMotion))
+            while ChangeTint.holdForCapture, receipt == r { try? await Task.sleep(for: .seconds(0.1)) }
+            if receipt == r { withAnimation(.easeIn(duration: 0.2)) { receipt = nil } }
+        }
+    }
+
+    /// The app's own data and files (amber.store, amber.files). Data changes are kept next to the
+    /// page, never in the note's text, and get a receipt with Undo like any other change.
+    /// The app's own data, files, the device and the network. Data changes are the app's own
+    /// state (a ticked set, a rating): kept quietly, versioned on the server, without a receipt;
+    /// receipts are for changes to the note's text.
+    private func pageData(_ message: Any) async throws -> [String: Any] {
+        let (reply, before) = try await NotePageActions.data(message, note: note, context: context, sync: sync, html: notePage?.html ?? "",
+                                                             ask: askHost, needKey: { need in withAnimation(.smooth) { keyNeeded = need } })
+        // A change you made gets a receipt; the app saving on its own is quiet (Undo still reaches it
+        // through version history).
+        if let before, (message as? [String: Any])?["_user"] as? Bool == true { dataChanged(before: before) }
+        return reply
+    }
+
+    /// The app's data is the app's content now: a change gets "Changed · Undo" like any edit. A run
+    /// of changes (typing, a game, a batch) is one receipt, and Undo goes back to before the run.
+    private func dataChanged(before: NotePageData.Doc) {
+        if let r = receipt ?? heldReceipt, r.kind == .dataEdit, r.at.timeIntervalSinceNow > -10, undoData != nil {
+            // Same run: the Undo point stays where the run began.
+        } else {
+            undoData = before
+        }
+        let r = AIEdit.Receipt(noteID: note.id, by: AIGlyph.page, at: .now, previous: note.body, lines: 0, kind: .dataEdit)
+        showPageReceipt(r)
+    }
+
+    private func askHost(_ host: String) async -> Bool {
+        await withCheckedContinuation { c in
+            // Answered once, whichever way the alert goes away.
+            final class Once { var done = false }
+            let once = Once()
+            hostAsk = HostAsk(host: host) { ok in
+                guard !once.done else { return }
+                once.done = true
+                c.resume(returning: ok)
+            }
+        }
+    }
+
+    /// "This app needs an OpenWeather API key", with Add Key and how to get one.
+    @ViewBuilder
+    private var keyCard: some View {
+        if let need = keyNeeded, showingPage {
+            VStack(alignment: .leading, spacing: 10) {
+                Label("This app needs \(need.name.first.map { "AEIOU".contains($0) } == true ? "an" : "a") \(need.name) API key", systemImage: "key.fill")
+                    .font(.headline)
+                if let help = need.help { Text(help).font(.subheadline).foregroundStyle(.secondary) }
+                Text("It's sent only to \(need.hosts.joined(separator: ", ")). The app never sees it.")
+                    .font(.footnote).foregroundStyle(.secondary)
+                HStack {
+                    Button("Not Now") { withAnimation(.smooth) { keyNeeded = nil } }
+                    Spacer()
+                    Button("Add Key") { addingKey = APIKeyForm.Draft(need); keyNeeded = nil }
+                        .buttonStyle(.amberProminent)
+                        .accessibilityIdentifier("keycard.add")
+                }
+            }
+            .padding(16)
+            .background(.regularMaterial, in: .rect(cornerRadius: 20, style: .continuous))
+            .padding(.horizontal, 16)
+            #if os(macOS)
+            .frame(maxWidth: 460)
+            .padding(.bottom, 20)
+            #else
+            .padding(.bottom, 24)
+            #endif
+            .transition(.move(edge: .bottom).combined(with: .opacity))
+        }
+    }
+
+    /// Back in Text: what the page changed is tinted, as an AI's edit is.
+    private func tintPageEdits() {
+        guard let before = pageTint else { return }
+        pageTint = nil
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(0.15 * ChangeTint.slowMotion))
+            controller.tintChanges(from: before)
+        }
+    }
+
+    /// A page an AI made or changed while the note is open: show it, say who, offer Undo.
+    private func pageArrived(_ now: NotePageStore.Page?) {
+        let before = shownPage
+        shownPage = now
+        if now != nil { NotePageActions.importIfNeeded(note) }
+        guard let now, now != before, now.by != AIGlyph.page, now.by != FirstOpen.templateWriter else { return }
+        withAnimation(.smooth(duration: 0.3)) { mode = .page }
+        let r = AIEdit.Receipt(noteID: note.id, by: now.by, at: now.at, previous: note.body, lines: 0, kind: before == nil ? .pageMade : .pageChanged)
+        undoPage = before
+        guard !pageFieldFocused else { return }
+        withAnimation(.spring(duration: 0.45, bounce: 0.25)) { receipt = r }
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(5.5 * ChangeTint.slowMotion))
+            while ChangeTint.holdForCapture, receipt == r { try? await Task.sleep(for: .seconds(0.1)) }
+            if receipt == r { withAnimation(.easeIn(duration: 0.2)) { receipt = nil } }
+        }
+    }
+
+    /// The app's items in More: Make It an App, or App Info.
+    @ViewBuilder
+    private var pageMenuItems: some View {
+        if notePage == nil, !note.isLocked, note.trashedAt == nil {
+            Button("Make It an App…", systemImage: NoteAppMark.symbol) { showMakeApp = true }
+                .accessibilityIdentifier("editor.makeApp")
+        }
+        if notePage != nil {
+            // Everything about the app in one place: its settings, the internet, Previous App, Remove App.
+            Button("App Info…", systemImage: "info.circle") { showAppInfo = true }
+                .accessibilityIdentifier("editor.appInfo")
+        }
+        #if DEBUG || QA
+        if !note.isLocked, note.trashedAt == nil {
+            // An app built outside the AI tools (scripts/build-app.ts output, or one HTML file).
+            Button("Dev: Import App File…", systemImage: "square.and.arrow.down") { importingApp = true }
+                .accessibilityIdentifier("editor.devImportApp")
+        }
+        #endif
+    }
+
+    private func restorePreviousPage() {
+        guard let back = NotePageStore.shared.restorePrevious(note.id) else { return }
+        shownPage = back
+        withAnimation(.smooth(duration: 0.25)) { mode = .page }
+    }
+
+    /// The page threw while loading or drew nothing: the one before it comes back, and the note
+    /// says so. With no page before it, the note shows its text. The failed page is kept.
+    private func pageFailed(_ reasons: [String]) {
+        guard let page = notePage else { return }
+        failedPages.insert(page.html)
+        let store = NotePageStore.shared
+        store.markBroken(note.id, page)
+        // The new page's receipt goes: the revert says what happened instead.
+        withAnimation(.smooth(duration: 0.2)) { receipt = nil }
+        sync?.reportLoadFailure(note: note.id, message: reasons.first ?? "It didn't open.")
+        if let good = store.live(note.id), good != page {
+            // The last working version runs, with the app's data as it is now. Undo runs the broken
+            // one again, if you want to see it.
+            shownPage = good
+            revertedFrom = page
+            showPageReceipt(AIEdit.Receipt(noteID: note.id, by: page.by, at: .now, previous: note.body, lines: 0, kind: .reverted))
+        } else {
+            withAnimation(.smooth(duration: 0.25)) { mode = .text }
+            notice("This app didn't open, and there's no earlier version that works.")
+        }
+    }
+
+    private func notice(_ text: String) {
+        withAnimation(.smooth(duration: 0.25)) { undoFailed = text }
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(5 * ChangeTint.slowMotion))
+            while ChangeTint.holdForCapture, undoFailed == text { try? await Task.sleep(for: .seconds(0.1)) }
+            if undoFailed == text { withAnimation(.smooth(duration: 0.25)) { undoFailed = nil } }
+        }
+    }
 
     enum LockSheet: String, Identifiable {
         case setUp, password
@@ -264,7 +693,8 @@ struct NoteDetailView: View {
             .navigationTitle("")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar(controller.isEditing ? .hidden : .automatic, for: .bottomBar)
+            // A page shows nothing of the text editor: no writing tools over it.
+            .toolbar(controller.isEditing || showingPage ? .hidden : .automatic, for: .bottomBar)
             .animation(.snappy(duration: 0.2), value: controller.isEditing)
             #endif
             .toolbar { toolbar }
@@ -391,6 +821,7 @@ struct NoteDetailView: View {
         let sync = self.sync
         controller.resolveAttachment = { id in context.attachment(id) }
         controller.resolveNote = { id in context.note(id).map { ($0.title, $0.preview) } }
+        controller.resolveNoteModel = { id in context.note(id) }
         controller.openNote = { id in onOpenNote(id, false) }
         controller.openWiki = { target in followWikiLink(target) }
         controller.suggestTitles = { [id = note.id] typed in WikiDirectory.suggestions(typed, excluding: id, in: context) }
@@ -433,12 +864,20 @@ struct NoteDetailView: View {
             Button("Table", systemImage: "tablecells", action: controller.insertTable).disabled(hidden)
         }
         ToolbarItem(placement: .bottomBar) {
-            Button("Attach", systemImage: "paperclip") { importing = true }.disabled(note.isLocked)
+            Button("Attach", systemImage: "paperclip") { importing = true }.disabled(note.isLocked || showingPage)
         }
         ToolbarSpacer(.flexible, placement: .bottomBar)
         ToolbarItem(placement: .bottomBar) {
             Button("New Note", systemImage: "square.and.pencil", action: onNewNote)
         }
+        if showingPage, let receipt {
+            ToolbarItem(placement: .principal) {
+                AIReceipt(receipt: receipt, compact: true) { undo(receipt) }
+                    .transition(.opacity)
+            }
+            .sharedBackgroundVisibility(.hidden)
+        }
+
         ToolbarItem(placement: .primaryAction) { moreMenu }
         #else
         // Like Notes: compose first (just right of the divider), the writing tools together, then share and more.
@@ -453,6 +892,8 @@ struct NoteDetailView: View {
                 .accessibilityIdentifier("list.newNote")
         }
         ToolbarSpacer(.flexible)
+        // A note with an app is just the app: no writing tools.
+        if notePage == nil {
         ToolbarItemGroup {
             formatMenu.disabled(hidden)
             Button("Checklist", systemImage: "checklist", action: controller.checklist)
@@ -463,7 +904,8 @@ struct NoteDetailView: View {
                 .disabled(hidden)
             Button("Attach", systemImage: "paperclip") { importing = true }
                 .help("Attach File (⇧⌘A)")
-                .disabled(note.isLocked)
+                .disabled(note.isLocked || showingPage)
+        }
         }
         ToolbarSpacer(.fixed)
         ToolbarItemGroup {
@@ -558,6 +1000,7 @@ struct NoteDetailView: View {
                 Button("Show Version History…", systemImage: "clock.arrow.circlepath") { showHistory = true }
                 #endif
             }
+            pageMenuItems
             Divider()
             if note.isLocked {
                 if vault.isUnlocked {

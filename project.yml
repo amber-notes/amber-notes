@@ -98,7 +98,11 @@ targets:
           NSAllowsLocalNetworking: true
         NSAppleEventsUsageDescription: Amber Notes reads the Apple Notes you choose to import. It never changes them.
         NSFaceIDUsageDescription: Amber Notes uses Face ID to open your locked notes, show your recovery key, approve AI connections and add a device.
-        NSCameraUsageDescription: Amber Notes uses the camera to scan the code on a device you add.
+        NSCameraUsageDescription: Amber Notes uses the camera to scan the code on a device you add, and to take photos for a note that is an app.
+        NSRemindersFullAccessUsageDescription: A note that is an app can add reminders for you, such as a daily nudge for a habit. It asks each time it wants to.
+        NSCalendarsFullAccessUsageDescription: A note that is an app can show today's events, such as a meeting prep note. Nothing from your calendar leaves this device.
+        NSLocationWhenInUseUsageDescription: A note that is an app can use your location once, such as a trip log noting where you are.
+        NSPhotoLibraryAddUsageDescription: A note that is an app can save photos you take with it.
         UTExportedTypeDeclarations:
           - UTTypeIdentifier: dev.emilwagman.pane.item
             UTTypeDescription: Pane item

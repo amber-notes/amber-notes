@@ -16,7 +16,8 @@ const README = `Your Amber Notes data
 
 data.json holds everything our server keeps about your account that isn't encrypted: your
 profile, the list of your notes, folders, earlier versions and files (ids and dates only), AI
-connections, share links, locked-note settings, the usage counts the app keeps, which
+connections, share links, locked-note settings, which notes have an app (dates and the errors
+your devices reported, not the apps themselves), the usage counts the app keeps, which
 onboarding emails we sent you, and your current sign-ins.
 
 Your notes, folder names, file names and files are end-to-end encrypted with a key only your
@@ -74,6 +75,16 @@ export async function collect(sql: Sql, uid: string, now = new Date()): Promise<
   const emails = await sql<Row[]>`select s.kind, s.status, s.created_at, s.sent_at, (select count(*)::int from public.email_clicks c where c.send_id = s.id) as clicks
     from public.email_sends s where s.user_id = ${uid} order by s.created_at`;
   const [unsubscribed] = await sql<Row[]>`select source, at from public.email_unsubscribes where user_id = ${uid}`;
+  // Notes' apps (prototype): which notes have one and when they changed, without the encrypted
+  // project; the errors devices reported when an app didn't open; API key entries by id only.
+  const apps = await sql<Row[]>`
+    select note_id, client, created_at, updated_at, draft_ct is not null as has_draft, draft_problems
+    from public.note_pages where user_id = ${uid} order by created_at`;
+  const app_versions = await sql<Row[]>`
+    select note_id, client, made_at, replaced_at from public.note_page_versions where user_id = ${uid} order by replaced_at`;
+  const app_load_failures = await sql<Row[]>`
+    select note_id, message, device, at from public.app_load_failures where user_id = ${uid} order by at`;
+  const api_keys = await sql<Row[]>`select id, updated_at from public.api_key_names where user_id = ${uid} order by updated_at`;
   const sessions = await sql<Row[]>`
     select created_at, refreshed_at, user_agent, host(ip) as ip from auth.sessions where user_id = ${uid} order by created_at`;
 
@@ -88,6 +99,7 @@ export async function collect(sql: Sql, uid: string, now = new Date()): Promise<
     files,
     ai_connections: connections,
     share_links: shares,
+    apps: { apps, versions: app_versions, load_failures: app_load_failures, api_keys },
     locked_notes: lock ?? null,
     usage: { totals: totals ?? null, setup: setup ?? null, ai_edits_per_day: ai_edits, tips, active_days: days.map((d) => d.day), devices, key_devices, share_ask: share_ask ?? null, features_used: features, heard_from: heard_from ?? null },
     onboarding_emails: { sent: emails, unsubscribed: unsubscribed ?? null },

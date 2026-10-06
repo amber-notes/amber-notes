@@ -108,6 +108,8 @@ final class EditorController {
 
     /// A sub-note's current title and first line (set by the note screen).
     @ObservationIgnored var resolveNote: (UUID) -> (title: String, preview: String)? = { _ in nil }
+    /// A sub-note itself, for one shown as a widget (set by the note screen).
+    @ObservationIgnored var resolveNoteModel: (UUID) -> Note? = { _ in nil }
     /// Opens a note by id (set by the note screen).
     @ObservationIgnored var openNote: (UUID) -> Void = { _ in }
     /// Which wiki links lead to a note, for the editor's colours (set by the note screen).

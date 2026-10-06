@@ -1,0 +1,129 @@
+<!doctype html>
+<!-- template: workout-log | Weekly distance and time for the last eight weeks, this week's totals against a weekly goal (set in the app), the latest sessions and a log form. | A table with Date (yyyy-mm-dd), optionally Type (Run, Bike...), a distance column (Km, Distance) and a time column (Minutes, Time). -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root { --bg: var(--amber-bg); --card: var(--amber-surface); --ink: var(--amber-text); --muted: var(--amber-text-secondary); --line: var(--amber-separator); --accent: var(--amber-accent); --accent-ink: var(--amber-on-accent); --field: var(--amber-fill); --soft: var(--amber-accent-soft); }
+  * { box-sizing: border-box; }
+  body { padding: 20px 18px 96px; max-width: 680px; margin: 0 auto; }
+  h1 { font-size: 28px; letter-spacing: -.02em; margin: 4px 0 12px; }
+  h2 { font-size: 13px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin: 22px 4px 8px; }
+  .hero { display: flex; gap: 16px; align-items: end; flex-wrap: wrap; }
+  .big { font-size: 42px; font-weight: 700; letter-spacing: -.03em; font-variant-numeric: tabular-nums; line-height: 1.05; }
+  .muted { color: var(--muted); font-size: 14px; }
+  .meter { height: 10px; border-radius: 5px; background: var(--soft); overflow: hidden; margin: 12px 0 4px; }
+  .meter div { height: 100%; background: var(--accent); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--amber-radius); overflow: hidden; }
+  .chart { display: flex; align-items: end; gap: 6px; height: 120px; padding: 12px 14px 0; }
+  .wk { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
+  .wk .b { width: 100%; border-radius: 4px 4px 0 0; background: var(--accent); min-height: 2px; }
+  .wk.cur .b { background: var(--ink); }
+  .wk .l { font-size: 11px; color: var(--muted); padding-bottom: 8px; font-variant-numeric: tabular-nums; }
+  .row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-top: 1px solid var(--line); min-height: 52px; }
+  .row:first-child { border-top: 0; }
+  .badge { font-size: 13px; font-weight: 600; padding: 3px 10px; border-radius: 99px; background: var(--soft); flex: none; }
+  .grow { flex: 1; min-width: 0; }
+  .num { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+  form { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px; }
+  label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); min-width: 0; }
+  input, select { font: inherit; font-size: 16px; color: var(--ink); background: var(--amber-field); border: 1px solid var(--amber-field-border); border-radius: 10px; padding: 10px 12px; min-height: 44px; width: 100%; }
+  button { grid-column: 1 / -1; font: inherit; font-weight: 600; min-height: 44px; border: 0; border-radius: 10px; background: var(--accent); color: var(--accent-ink); }
+  .err { color: var(--amber-danger); padding: 0 16px 12px; min-height: 1em; }
+  .empty { padding: 24px 16px; text-align: center; color: var(--muted); }
+  select { -webkit-appearance: none; appearance: none; padding-right: 28px; background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%); background-position: right 14px center, right 9px center; background-size: 5px 5px; background-repeat: no-repeat; }
+  /* This app's own look (track teal); Amber's tokens fill in the rest. */
+  :root { --accent: #0f766e; --accent-ink: #ffffff; --soft: #d5f0ec; --card: #eef6f5; --field: #e2efed; }
+  @media (prefers-color-scheme: dark) { :root { --accent: #2dd4bf; --accent-ink: #05201d; --soft: #123331; --card: #16201f; --field: #1f2b2a; } }
+  .settings { margin-top: 28px; }
+  .settings summary { cursor: pointer; color: var(--muted); min-height: 44px; padding: 11px 4px; }
+  .settings .card { display: grid; gap: 14px; padding: 14px 16px; }
+  .settings label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); min-width: 0; }
+  .settings input, .settings select { font: inherit; font-size: 16px; color: var(--ink); background: var(--amber-field); border: 1px solid var(--amber-field-border); border-radius: 10px; padding: 10px 12px; min-height: 44px; width: 100%; }
+</style>
+</head>
+<body>
+<main id="app" aria-live="polite"></main>
+<script>
+  // Settings live inside the app: a section at the end, saved in values.settings (an AI sets them with update_page_data).
+  const SETTINGS = [{"key": "weeklyKm", "label": "Weekly goal (km)", "type": "number", "default": 20, "help": "0 for no goal"}];
+  const settings = () => Object.assign(Object.fromEntries(SETTINGS.map((s) => [s.key, s.default])), (amber.data.values || {}).settings || {});
+  let settingsOpen = false;
+  function settingsHTML() {
+    const v = settings();
+    const field = (s) => s.type === "choice" ? `<select data-setting="${s.key}">${s.options.map((o) => `<option ${o === v[s.key] ? "selected" : ""}>${esc(o)}</option>`).join("")}</select>`
+      : `<input data-setting="${s.key}" ${s.type === "number" ? 'inputmode="decimal"' : ""} value="${esc(s.type === "list" ? (v[s.key] || []).join(", ") : v[s.key])}">`;
+    return `<details class="settings" id="settings" ${settingsOpen ? "open" : ""}><summary>Settings</summary><div class="card">${SETTINGS.map((s) => `<label>${esc(s.label)}${field(s)}${s.help ? `<span>${esc(s.help)}</span>` : ""}</label>`).join("")}</div></details>`;
+  }
+  function wireSettings() {
+    const box = document.getElementById("settings");
+    box.ontoggle = () => { settingsOpen = box.open; };
+    box.querySelectorAll("[data-setting]").forEach((el) => { el.onchange = () => {
+      const s = SETTINGS.find((x) => x.key === el.dataset.setting), raw = el.value.trim();
+      const value = s.type === "number" ? Number(raw.replace(",", ".")) || 0 : s.type === "list" ? raw.split(",").map((x) => x.trim()).filter(Boolean) : raw;
+      amber.setData({ values: { settings: { [s.key]: value } } }).then((r) => { if (!r.ok) { el.setCustomValidity(r.error); el.reportValidity(); } });
+    }; });
+  }
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  const num = (s) => { const n = parseFloat(String(s ?? "").replace(/\s/g, "").replace(",", ".")); return Number.isFinite(n) ? n : 0; };
+  const col = (t, re) => t.columns.findIndex((c) => re.test(c.name));
+  const addDays = (iso, n) => { const d = new Date(iso + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+  const monday = (iso) => { const d = new Date(iso + "T12:00:00Z"); return addDays(iso, -((d.getUTCDay() + 6) % 7)); };
+  let error = "";
+
+  function render(note, data) {
+    const app = document.getElementById("app");
+    const t = note.tables.find((t) => col(t, /^date$/i) >= 0);
+    if (!t) { app.innerHTML = `<h1>${esc(note.title)}</h1><div class="card empty">Add a table with Date, Type, Km and Minutes columns to the note.</div>`; return; }
+    const d = col(t, /^date$/i), ty = col(t, /type|sport|activity|kind/i), km = col(t, /km|dist/i), mi = col(t, /min|time|duration/i);
+    const typeCol = ty >= 0 ? t.columns[ty] : null;
+    const options = typeCol && /^choice /.test(typeCol.type) ? typeCol.type.slice(7).split("|") : [...new Set(t.rows.map((r) => (ty >= 0 ? r[ty] : "")).filter(Boolean))];
+    const weeks = Array.from({ length: 8 }, (_, k) => addDays(monday(note.today), (k - 7) * 7));
+    const inWeek = (w) => t.rows.filter((r) => r[d] >= w && r[d] < addDays(w, 7));
+    const kmOf = (rows) => rows.reduce((s, r) => s + (km >= 0 ? num(r[km]) : 0), 0);
+    const minOf = (rows) => rows.reduce((s, r) => s + (mi >= 0 ? num(r[mi]) : 0), 0);
+    const perWeek = weeks.map((w) => (km >= 0 ? kmOf(inWeek(w)) : minOf(inWeek(w))));
+    const top = Math.max(1, ...perWeek);
+    const now = inWeek(weeks[7]);
+    const goal = Number(settings().weeklyKm) || 0;
+    const unit = km >= 0 ? "km" : "min";
+    app.innerHTML = `
+      <h1>${esc(note.title)}</h1>
+      <div class="hero"><div><div class="big">${(km >= 0 ? kmOf(now) : minOf(now)).toFixed(km >= 0 ? 1 : 0)} ${unit}</div><div class="muted">this week · ${now.length} session${now.length === 1 ? "" : "s"}${mi >= 0 && km >= 0 ? ` · ${minOf(now)} min` : ""}</div></div></div>
+      ${goal ? `<div class="meter" role="img" aria-label="${kmOf(now).toFixed(1)} of ${goal} km this week"><div style="width:${Math.min(100, (100 * kmOf(now)) / goal)}%"></div></div><div class="muted">Goal ${goal} km a week</div>` : ""}
+      <h2>Last eight weeks</h2>
+      <div class="card chart" role="img" aria-label="${unit} per week: ${perWeek.map((v) => v.toFixed(0)).join(", ")}">${weeks.map((w, k) => `<div class="wk${k === 7 ? " cur" : ""}"><div class="b" style="height:${(90 * perWeek[k]) / top}px"></div><div class="l">${w.slice(8)}/${Number(w.slice(5, 7))}</div></div>`).join("")}</div>
+      <h2>Latest</h2>
+      <div class="card">${t.rows.slice().sort((a, b) => (a[d] < b[d] ? 1 : -1)).slice(0, 8).map((r) => `<div class="row">${ty >= 0 ? `<span class="badge">${esc(r[ty] || "–")}</span>` : ""}<span class="grow muted">${esc(r[d])}</span>${km >= 0 && r[km] ? `<span class="num">${esc(r[km])} km</span>` : ""}${mi >= 0 && r[mi] ? `<span class="num">${esc(r[mi])} min</span>` : ""}</div>`).join("") || `<div class="empty">No sessions yet.</div>`}</div>
+      <h2>Log a session</h2>
+      <div class="card">
+        <form id="add">
+          ${ty >= 0 ? `<label>Type<select name="type">${options.map((o) => `<option>${esc(o)}</option>`).join("")}</select></label>` : ""}
+          <label>Date<input name="date" type="date" value="${note.today}" required></label>
+          ${km >= 0 ? `<label>${esc(t.columns[km].name)}<input name="km" inputmode="decimal"></label>` : ""}
+          ${mi >= 0 ? `<label>${esc(t.columns[mi].name)}<input name="min" inputmode="numeric"></label>` : ""}
+          <button>Log it</button>
+        </form>
+        <div class="err" role="alert">${esc(error)}</div>
+      </div>
+      ${settingsHTML()}`;
+    wireSettings();
+
+    const f = document.getElementById("add");
+    f.onsubmit = async (e) => {
+      e.preventDefault();
+      const fd = new FormData(f);
+      const values = { [t.columns[d].name]: String(fd.get("date") || amber.note.today) };
+      if (ty >= 0) values[t.columns[ty].name] = String(fd.get("type") ?? "");
+      if (km >= 0) values[t.columns[km].name] = String(fd.get("km") ?? "").replace(",", ".").trim();
+      if (mi >= 0) values[t.columns[mi].name] = String(fd.get("min") ?? "").trim();
+      const r = await amber.update({ op: "append_row", table: t.index, values });
+      error = r.ok ? "" : r.error;
+      render(amber.note, amber.data);
+    };
+  }
+  amber.onChange(render);
+</script>
+</body>
+</html>
