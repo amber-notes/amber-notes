@@ -144,7 +144,9 @@ export async function saveProject(tx: Tx, c: Call, n: Note, unlinked: Project, c
   }
   const [{ has_live }] = await tx<{ has_live: boolean }[]>`select page_ct is not null as has_live from public.note_pages where note_id = ${n.id}`;
   const errors = [...broken, ...(found?.errors ?? []), ...(smoke?.problems ?? []), ...(tests?.failures.map((f) => `test failed: ${f}`) ?? [])];
-  const notes = [...warnings, ...(found?.notes ?? [])].slice(0, 10);
+  // Slow taps: a warning, never a held-back save.
+  const slow = (smoke?.slow ?? []).map((x) => `Tapping "${x.name}" took ${(x.ms / 1000).toFixed(1)} s to show its result at ${x.width} px: find what that screen computes or draws on open (long lists, work on every render) and make it fast.`);
+  const notes = [...slow, ...warnings, ...(found?.notes ?? [])].slice(0, 10);
   const result = {
     app: { id: n.id, title: n.title }, [changed.startsWith("deleted") ? "deleted" : "saved"]: changed.replace(/^deleted /, ""), files: Object.keys(p.files).length,
     live: live ? "Live: the person's devices run this version." : has_live
@@ -188,7 +190,7 @@ export const fileHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
     const n = await findNote(tx, c, a);
     const { exists } = await projectOf(tx, c, n.id);
     if (exists && a.replace !== true) throw new ToolError(`"${n.title}" already has an app. Read it with list_app_files, or pass replace: true to start over (the current app stays in its versions).`);
-    const p = await withFiles({ amberApp: 1, files: {}, compiled: {} }, scaffold(n.title));
+    const p = await withFiles({ amberApp: 1, files: {}, compiled: {} }, await scaffold(n.title));
     const r = await saveProject(tx, c, n, p, "a new project", a) as Record<string, unknown>;
     return { ...r, files: fileList(p), next: "Read /README.md, then make Home do the app's main job: edit src/screens/Home.jsx, add screens and components, and keep README.md current." };
   },
@@ -215,7 +217,7 @@ export const fileHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
     const path = pathArg(a.path), content = text(a.content, "content");
     let { project: p, exists } = await projectOf(tx, c, n.id);
     // The first file written to a note without an app starts from the project scaffold.
-    if (!exists && path !== "/index.html") for (const [f, t] of Object.entries(scaffold(n.title))) p = await withFile(p, f, t);
+    if (!exists && path !== "/index.html") for (const [f, t] of Object.entries(await scaffold(n.title))) p = await withFile(p, f, t);
     const was = p.files[path];
     if (was === content) return { app: { id: n.id, title: n.title }, saved: `${path} (unchanged)` };
     p = await withFile(p, path, content);

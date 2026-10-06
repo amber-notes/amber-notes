@@ -10,6 +10,12 @@ const ready = readiness(sql);
 
 // Wherever a request lands, the work happens in the home region (_shared/region.ts).
 Deno.serve(atHome("mcp", async (req) => {
+  const t = performance.now();
   if (needsDatabase(req)) await ready();
-  return handleRequest(req, sql);
+  const waited = performance.now() - t;
+  const res = await handleRequest(req, sql);
+  // How long the database check took (a new connection's first query), for Server-Timing.
+  const timing = res.headers.get("server-timing");
+  if (timing) res.headers.set("server-timing", `${timing}, db_ready;dur=${Math.round(waited)}`);
+  return res;
 }));

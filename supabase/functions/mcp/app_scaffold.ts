@@ -4,8 +4,7 @@
 // React on preact/compat. shadcn's components, the app shell, index.css and lib/ come from the
 // stack's own starter (app_stack.gen.ts).
 
-import { STACK_FILES } from "./app_stack.gen.ts";
-import { SHADCN_UI } from "./shadcn-ui.ts";
+// The starter's files are big: loaded when a project is made, not when the server starts.
 
 /** How an app runs in Amber Notes: part of every app's README, so any AI working on it reads it. */
 export const appGuide = () => `## How this app runs in Amber Notes
@@ -17,7 +16,8 @@ export const appGuide = () => `## How this app runs in Amber Notes
 - No network except hosts the person allows: declare them in index.html with <meta name="amber-needs" content='{"hosts": ["api.open-meteo.com"]}'> and call fetch(url) from "@/lib/amber"; API keys live in Amber Notes › Settings › API Keys (declare { "keys": [{ "name", "hosts", "query" or "header" }] } and pass { key: name }).
 - The device, through its own prompts: device.reminders, calendar, notify, photos, camera, contacts, location, maps, weather; on-device AI with ai.respond.`;
 
-export function scaffold(title: string, lang = "en"): Record<string, string> {
+export async function scaffold(title: string, lang = "en"): Promise<Record<string, string>> {
+  const [{ STACK_FILES }, { SHADCN_UI }] = await Promise.all([import("./app_stack.gen.ts"), import("./shadcn-ui.ts")]);
   const safe = title.replace(/[<>&"`$\\{}]/g, "").trim() || "App";
   return {
     ...STACK_FILES,

@@ -17,7 +17,9 @@ import { parseStored } from "./app_project.ts";
 const isProject = (stored: string) => { const p = parseStored(stored); return Object.keys(p.files).length > 1 || Object.keys(p.compiled).length > 0; };
 import { appendText, applyEdits, coerce, findTables, fitLines, isTextType, mimeOf, outline, previewOf, replaceTable, searchFilter, searchInMemory, setChecklistItem, sliceLines, titleOf, typeSpec, wikiLinks, type Edit, type Table } from "./notes.ts";
 
-export type ToolContext = { sql: Sql; userId: string; client: string; canWrite: boolean; vault: Vault };
+/** session: the client's MCP session (its Mcp-Session-Id, or a hash of its token), for what it has read.
+ *  timing: where a call's time went, sent back in the Server-Timing header. */
+export type ToolContext = { sql: Sql; userId: string; client: string; canWrite: boolean; vault: Vault; session?: string; timing?: Record<string, number>; cold?: boolean };
 export class ToolError extends Error {}
 
 /** A result that is MCP content blocks (a file's text, an image, a PDF), sent as they are. */
@@ -310,10 +312,12 @@ export async function runIn(list: Tool[], impl: Record<string, (tx: Tx, a: Args,
   const claims = JSON.stringify({ sub: ctx.userId, role: "authenticated" });
   // Every call costs one from the account's MCP bucket (600, then 5 a second). Taken in its
   // own transaction so a call that fails still counts: failures are no free way to hammer.
-  await ctx.sql.begin(async (tx) => {
-    await tx`select set_config('request.jwt.claims', ${claims}, true)`;
-    await tx`select public.pane_take('mcp')`;
-  }).catch((e) => { throw new ToolError((e as Error).message); });
+  // One statement, one round trip, in its own transaction: the claims are set (from the subquery,
+  // which runs first) for the take in the same statement.
+  const tTake = performance.now();
+  await ctx.sql`select public.pane_take('mcp') from (select set_config('request.jwt.claims', ${claims}, true)) as claims`
+    .catch((e) => { throw new ToolError((e as Error).message); });
+  if (ctx.timing) ctx.timing.rate_take = performance.now() - tTake;
   const call: Call = { v: ctx.vault, ctx, scanMs: 0 };
   try {
     return await ctx.sql.begin(async (tx) => {
@@ -327,10 +331,8 @@ export async function runIn(list: Tool[], impl: Record<string, (tx: Tx, a: Args,
   } finally {
     // Scan time is charged on its own too, so a call that fails after scanning still pays.
     if (call.scanMs > 0) {
-      await ctx.sql.begin(async (tx) => {
-        await tx`select set_config('request.jwt.claims', ${claims}, true)`;
-        await tx`select public.pane_scan_budget(${call.scanMs}::double precision)`;
-      }).catch((e) => log("scan_charge_failed", { tool: name, ...errorKind(e) }));
+      await ctx.sql`select public.pane_scan_budget(${call.scanMs}::double precision) from (select set_config('request.jwt.claims', ${claims}, true)) as claims`
+        .catch((e) => log("scan_charge_failed", { tool: name, ...errorKind(e) }));
     }
   }
 }

@@ -8,16 +8,12 @@
 
 import { addChecklistItems, addRows, aggregate, atPath, closeStored, dataShape, openStored, recordsAt, changeStore, DataError, fileRefs, newFiles, placeFiles, queryRecords, recordsFromCsv, deleteRows, hasTable, newTable, parseDelimited, editColumns, pastedRows, updateChecklistItems, updateRows, type ChecklistChange, type ColumnChange, type RowInput } from "./data_ops.ts";
 import { findTables, mimeOf, typeSpec } from "./notes.ts";
-import { PAGE_GUIDE } from "./page_guide.ts";
+import { pageGuide } from "./page_guide.ts";
 import { noteForPage } from "./page_input.ts";
 import { appHandlers, appTools } from "./app_tools.ts";
 import { parseStored } from "./app_project.ts";
-import { APP_EXAMPLES } from "./app_examples.gen.ts";
-import { AMBER_UI } from "./amber-ui.ts";
-const KIT_COMPONENTS = Object.keys(AMBER_UI.src).filter((f) => f.endsWith(".jsx") && f !== "index.jsx").map((f) => f.replace(".jsx", ""));
 import { fileHandlers, fileTools } from "./app_files.ts";
 import { pageDataProblems, type PageData } from "./page.ts";
-import { PAGE_TEMPLATES } from "./page_templates.gen.ts";
 import { bodyOf, findNote, save, ToolError, type Call, type Tx } from "./tools.ts";
 
 type Args = Record<string, unknown>;
@@ -399,11 +395,14 @@ export const dataHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
   // deno-lint-ignore require-await
   async get_page_guide(_tx, a) {
     if (typeof a.example === "string" && a.example) {
-      const ex = APP_EXAMPLES[a.example];
+      const { APP_EXAMPLES } = await import("./app_examples.gen.ts");
+      const ex = APP_EXAMPLES[a.example as keyof typeof APP_EXAMPLES];
       if (!ex) throw new ToolError(`No example "${a.example}". Examples: ${Object.keys(APP_EXAMPLES).join(", ")}.`);
       return { example: a.example, files: ex.files };
     }
     if (typeof a.kit === "string" && a.kit) {
+      const { AMBER_UI } = await import("./amber-ui.ts");
+      const KIT_COMPONENTS = Object.keys(AMBER_UI.src).filter((f) => f.endsWith(".jsx") && f !== "index.jsx").map((f) => f.replace(".jsx", ""));
       const file = Object.keys(AMBER_UI.src).find((f) => f.replace(/\.jsx?$/, "").toLowerCase() === String(a.kit).toLowerCase() || (AMBER_UI.src[f as keyof typeof AMBER_UI.src] as string).includes(`export function ${a.kit}(`));
       if (!file) throw new ToolError(`No amber-ui component "${a.kit}". Files: ${KIT_COMPONENTS.join(", ")}.`);
       return { kit: a.kit, file, source: AMBER_UI.src[file as keyof typeof AMBER_UI.src],
@@ -411,12 +410,14 @@ export const dataHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<
     }
     // One-file templates (the older style), kept for apps that were made from them.
     if (typeof a.template === "string" && a.template) {
+      const { PAGE_TEMPLATES } = await import("./page_templates.gen.ts");
       const t = PAGE_TEMPLATES.find((x) => x.name === a.template);
       if (!t) throw new ToolError(`No template "${a.template}". Templates: ${PAGE_TEMPLATES.map((x) => x.name).join(", ")}.`);
       return { template: t.name, description: t.description, expects: t.expects, html: t.html };
     }
     // The evals' control arm (no try_app or run_app_tests): the guide doesn't mention them.
-    return { guide: Deno.env.get("AMBER_GUIDE_WITHOUT_TRY") ? PAGE_GUIDE.split("\n").filter((l) => !/try_app|run_app_tests/.test(l)).join("\n") : PAGE_GUIDE };
+    const guide = await pageGuide();
+    return { guide: Deno.env.get("AMBER_GUIDE_WITHOUT_TRY") ? guide.split("\n").filter((l) => !/try_app|run_app_tests/.test(l)).join("\n") : guide };
   },
 };
 

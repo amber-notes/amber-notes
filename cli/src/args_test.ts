@@ -8,6 +8,7 @@ Deno.test("note text that looks like a flag stays an argument", () => {
 });
 
 Deno.test("options take a value, inline or next", () => {
-  assertEquals(parse(["read", "a.md", "--lines", "40-90", "--server=http://x"]), { _: ["read", "a.md"], lines: "40-90", server: "http://x" });
+  assertEquals(parse(["read", "a.md", "--offset", "40", "--server=http://x"]), { _: ["read", "a.md"], offset: "40", server: "http://x" });
+  assertEquals(parse(["grep", "x", "-C", "2"]), { _: ["grep", "x"], C: "2" });
   assertEquals(parse(["-h"]), { _: [], help: true });
 });
