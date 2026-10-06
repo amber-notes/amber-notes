@@ -45,8 +45,10 @@ json.dump(d,open(p,'w'))
 PY
 echo '(access token expiry set in the past)'
 set -x
-for i in 1 2 3 4 5; do amber list Work/ > /tmp/par.$i 2>&1 & done; wait
-grep -L "Work/" /tmp/par.* || true
+pids=""; for i in 1 2 3 4 5; do amber list Work/ > /tmp/par.$i 2>&1 & pids="$pids $!"; done
+codes=""; for p in $pids; do wait $p && codes="$codes 0" || codes="$codes $?"; done
+echo "exit codes:$codes"
+grep -c "Work/Weekly review.md" /tmp/par.*
 amber read Groceries.md --json | grep -c '"version"'
 amber logout
 amber list || true
