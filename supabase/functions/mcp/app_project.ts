@@ -242,7 +242,8 @@ export function sourceProblems(p: Project, declared: (host: string) => boolean):
 export function styleWarnings(p: Project): string[] {
   const out: string[] = [];
   const code = Object.entries(p.files).filter(([path]) => isCode(path));
-  const globals = code.filter(([, t]) => /\bwindow\b[^;\n]{0,20}\.amber\b|(?<![\w.])amber\s*\.\s*(note|update|onChange|setData|store|data)\b/.test(t)).map(([path]) => path);
+  // Tests may read the bridge to see what was saved (the starter's test does).
+  const globals = code.filter(([path]) => !isTest(path)).filter(([, t]) => /\bwindow\b[^;\n]{0,20}\.amber\b|(?<![\w.])amber\s*\.\s*(note|update|onChange|setData|store|data)\b/.test(t)).map(([path]) => path);
   if (globals.length) out.push(`${globals.slice(0, 3).join(", ")} use window.amber directly. In a project, import what you need from "@/lib/amber" (useStore, useCollection, useSettings, batch, fetch, device…).`);
   // The app's data is JSON in its own store; the note's text is only read once, to convert an old note.
   const noteData = code.filter(([, t]) => /\buse(Table|Checklist)\s*\(|\.tables\s*\[|\bop\s*:\s*["'](append_row|set_cell|toggle_checklist|add_checklist_item|delete_row)/.test(t)).map(([path]) => path);

@@ -2,9 +2,15 @@
 // starter's two), the walkthrough on the version the person gets, and what the gate did: saves held
 // back, and whether the run ended on a passing version.
 //   deno run -A scripts/page-evals/gate-summary.ts <round>
-type R = { task: string; model: string; seconds: number; tool_calls: number; checks: { name: string; pass: boolean }[]; tests_written?: number; gate?: { held_back_saves: number; live_saves: number; ended_with_draft: boolean } };
+type R = { task: string; model: string; seconds: number; tool_calls: number; checks: { name: string; pass: boolean }[]; tests_written?: number; gate?: { held_back_saves: number; live_saves: number; ended_with_draft: boolean }; calls: { name: string; result?: string }[] };
 const dir = new URL(`results/${Deno.args[0]}/`, import.meta.url);
 const runs: R[] = [...Deno.readDirSync(dir)].filter((e) => e.name.endsWith(".json")).map((e) => JSON.parse(Deno.readTextFileSync(new URL(e.name, dir))));
+// Counted from each save's answer (the "live" field), compact or spaced JSON.
+for (const r of runs) {
+  const held = r.calls.filter((c) => /"live":\s*"Held back/.test(c.result ?? "")).length;
+  const live = r.calls.filter((c) => /"live":\s*"Live/.test(c.result ?? "")).length;
+  r.gate = { held_back_saves: held, live_saves: live, ended_with_draft: r.gate?.ended_with_draft ?? false };
+}
 const by = new Map<string, R[]>();
 for (const r of runs) by.set(r.model.split(":")[0], [...(by.get(r.model.split(":")[0]) ?? []), r]);
 const walk = (r: R) => { const c = r.checks.filter((x) => x.name.startsWith("walk_")); return c.length ? c.filter((x) => x.pass).length / c.length : NaN; };
