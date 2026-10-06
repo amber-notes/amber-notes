@@ -58,8 +58,8 @@ struct NoteListView: View {
         notes.map { ($0, $0.updatedAt) }.sorted { $0.1 > $1.1 }.map(\.0)
     }
 
-    private var scoped: [Note] {
-        newestFirst.filter { n in
+    private func scoped(from all: [Note]) -> [Note] {
+        all.filter { n in
             guard n.deletedAt == nil else { return false }
             // Sub-notes live inside their parent, not in the list. (Few notes have a
             // parent, so looking each one up is cheaper than indexing every note.)
@@ -72,12 +72,16 @@ struct NoteListView: View {
         }
     }
 
-    private var filtered: [Note] { filtered(from: scoped) }
+    private var filtered: [Note] {
+        let all = newestFirst
+        return filtered(from: scoped(from: all), all: all)
+    }
 
-    private func filtered(from scoped: [Note]) -> [Note] {
+    /// `all` is every note, newest first: sorted once and shared with `scoped`.
+    private func filtered(from scoped: [Note], all: [Note]) -> [Note] {
         let q = search.trimmingCharacters(in: .whitespaces)
         guard !q.isEmpty else { return scoped }
-        let base = scope == .trash ? scoped : newestFirst.filter { $0.deletedAt == nil && $0.trashedAt == nil }
+        let base = scope == .trash ? scoped : all.filter { $0.deletedAt == nil && $0.trashedAt == nil }
         return base.filter { $0.body.localizedStandardContains(q) }
     }
 
@@ -91,8 +95,9 @@ struct NoteListView: View {
 
     var body: some View {
         // Worked out once per update and handed down: the list asks many times.
-        let scopedNotes = scoped
-        let visible = filtered(from: scopedNotes)
+        let all = newestFirst
+        let scopedNotes = scoped(from: all)
+        let visible = filtered(from: scopedNotes, all: all)
         let folders = context.allFolders().sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
         return list(scopedNotes, visible, folders)
             #if os(iOS)
