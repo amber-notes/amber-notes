@@ -57,6 +57,13 @@ CHANNEL=beta scripts/testflight.sh ios       # TestFlight, the "Amber Notes Beta
 Both build the current checkout. They need `Config/Backend.staging.local.xcconfig`
 (`scripts/staging.sh app-config`).
 
+TestFlight: the App Store Connect app "Amber Notes Beta" (6819855588) has an internal group,
+Staging, that gets every build. The beta App ID needs the App Group `group.dev.emilwagman.pane.beta`
+selected under App Groups in the developer portal; command-line signing can't do that. On the first
+iPhone archive the API key couldn't create the share extension's profile ("Authentication failed");
+archiving with the Apple ID signed into Xcode (the same `xcodebuild archive` without the
+`-authenticationKey…` flags) and exporting with the key worked.
+
 ## What staging leaves out
 
 - Push for AI connection asks (no APNs key). Connect with the QR code or the number instead.
