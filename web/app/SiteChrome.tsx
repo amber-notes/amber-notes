@@ -10,6 +10,7 @@ import { themeFor } from "@/lib/theme";
 
 const GITHUB = "https://github.com/amber-notes/amber-notes";
 const X_URL = "https://x.com/EmilWagman";
+const LINKEDIN_URL = "https://www.linkedin.com/in/emil-wagman-52a907287/";
 const MAKER_URL = "https://emilwagman.com";
 
 export default function SiteChrome({ version, stars, children }: { version: string | null; stars: number | null; children: React.ReactNode }) {
@@ -95,6 +96,7 @@ export default function SiteChrome({ version, stars, children }: { version: stri
           <div className="site-social">
             <a href={GITHUB} target="_blank" rel="noopener noreferrer" aria-label="Amber Notes on GitHub"><GitHubGlyph /></a>
             <a href={X_URL} target="_blank" rel="me noopener noreferrer" aria-label="Emil Wagman on X"><XGlyph /></a>
+            <a href={LINKEDIN_URL} target="_blank" rel="me noopener noreferrer" aria-label="Emil Wagman on LinkedIn"><LinkedInGlyph /></a>
           </div>
         </div>
         <p className="site-credit">Made by <a className="site-maker" href={MAKER_URL} target="_blank" rel="me noopener">Emil Wagman</a> at <a className="site-maker" href="https://incredible.one" target="_blank" rel="noopener">Incredible</a>. Works with ChatGPT and Claude; not affiliated with Apple, OpenAI or Anthropic.</p>
@@ -110,6 +112,14 @@ export function AppleGlyph() {
   return (
     <svg width="14" height="17" viewBox="0 0 15 18" aria-hidden="true" fill="currentColor">
       <path d="M12.3 9.6c0-2.2 1.8-3.3 1.9-3.4-1-1.5-2.6-1.7-3.2-1.7-1.4-.1-2.7.8-3.4.8-.7 0-1.8-.8-2.9-.8C3.2 4.6 1.8 5.4 1 6.8c-1.6 2.8-.4 6.9 1.1 9.1.8 1.1 1.7 2.3 2.8 2.3 1.1 0 1.6-.7 2.9-.7 1.4 0 1.7.7 2.9.7 1.2 0 2-1.1 2.7-2.2.9-1.3 1.2-2.5 1.2-2.6 0 0-2.3-.9-2.3-3.8zM10.1 3c.6-.7 1-1.7.9-2.7-.9 0-1.9.6-2.5 1.3-.6.6-1.1 1.6-.9 2.6.9.1 1.9-.5 2.5-1.2z" />
+    </svg>
+  );
+}
+
+function LinkedInGlyph() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor">
+      <path d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28ZM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13ZM7.12 20.45H3.56V9h3.56v11.45ZM22.22 0H1.77C.79 0 0 .77 0 1.73v20.54C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.73V1.73C24 .77 23.2 0 22.22 0Z" />
     </svg>
   );
 }
