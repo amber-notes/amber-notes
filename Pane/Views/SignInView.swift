@@ -2,20 +2,32 @@ import SwiftUI
 
 /// Sign in: Sign in with Apple, or email first. Type your email, Continue, and the screen asks
 /// for your password or for a new one, depending on whether the email has an account.
-/// On the Mac this is the whole window; on iPhone it's a glass card over a warm backdrop.
+/// Signed out, it sits beside the welcome's picture (WelcomeFlow); on its own (captures and
+/// snapshots) it's the old card: the whole window on the Mac, a glass card on iPhone.
 struct SignInView: View {
     let backend: Backend
+    let heading: Heading
+    /// Captures: start with the cursor in the email field, to show its focused state.
+    var focusEmail = false
     @State private var flow: EmailSignInFlow
     @State private var working = false
     @State private var error: String?
     @FocusState private var focus: Field?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.displayScale) private var displayScale
 
     enum Field { case email, password }
 
-    init(backend: Backend, flow: EmailSignInFlow = EmailSignInFlow()) {
+    /// The words above the form: the card's own (icon, title and promise, centred), or a title
+    /// and a line from the welcome flow, which sets the form beside its picture.
+    enum Heading: Equatable {
+        case card
+        case beside(title: String, line: String)
+    }
+
+    init(backend: Backend, flow: EmailSignInFlow = EmailSignInFlow(), heading: Heading = .card, focusEmail: Bool = false) {
         self.backend = backend
+        self.heading = heading
+        self.focusEmail = focusEmail
         _flow = State(initialValue: flow)
     }
 
@@ -36,6 +48,15 @@ struct SignInView: View {
     }
 
     var body: some View {
+        if case .beside = heading {
+            // The welcome flow places it.
+            card
+        } else {
+            cardScreen
+        }
+    }
+
+    private var cardScreen: some View {
         #if os(macOS)
         card
             .padding(.horizontal, 36)
@@ -61,15 +82,32 @@ struct SignInView: View {
 
     private var card: some View {
         VStack(spacing: 24) {
-            VStack(spacing: 14) {
-                AppMark(size: 72)
-                // The website's display type: heavy and tight.
-                Text("Sign in to Amber Notes")
-                    .font(.title2.weight(.heavy))
-                    .tracking(-0.6)
-                    .foregroundStyle(Color.ink)
-                    .multilineTextAlignment(.center)
-                promise
+            switch heading {
+            case .card:
+                VStack(spacing: 14) {
+                    AppMark(size: 72)
+                    // The website's display type: heavy and tight.
+                    Text("Sign in to Amber Notes")
+                        .font(.title2.weight(.heavy))
+                        .tracking(-0.6)
+                        .foregroundStyle(Color.ink)
+                        .multilineTextAlignment(.center)
+                    promise
+                }
+            case .beside(let title, let line):
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(title)
+                        .font(.title2.weight(.heavy))
+                        .tracking(-0.6)
+                        .foregroundStyle(Color.ink)
+                        .accessibilityAddTraits(.isHeader)
+                        .accessibilityIdentifier("signin.title")
+                    Text(line)
+                        .font(.subheadline)
+                        .foregroundStyle(Color.muted)
+                }
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
 
             VStack(spacing: 12) {
@@ -77,7 +115,7 @@ struct SignInView: View {
                 // so the main button keeps its place and the whole form fits above the keyboard.
                 if flow.showsApple {
                     VStack(spacing: 12) {
-                        AppleAuthButton(label: .signIn, height: Row.height, title: "Sign in with Apple", web: webSignIn) { result in
+                        AppleAuthButton(label: .signIn, height: Row.height, cornerRadius: Row.radius, title: "Sign in with Apple", web: webSignIn) { result in
                             switch result {
                             case .success(let credential): signIn(credential)
                             case .failure(let failure): error = AppleSignIn.message(for: failure)
@@ -114,6 +152,7 @@ struct SignInView: View {
         // Once the password field is there (focusing it in the same update as it appears is
         // lost, and a paste then lands on the email row).
         .onChange(of: flow.showsPassword) { _, shows in if shows { focus = .password } }
+        .task { if focusEmail { focus = .email } }
     }
 
     /// The website's one-line promise, with its low amber marker under "your AI".
@@ -139,10 +178,11 @@ struct SignInView: View {
             // stay in place and swap at once (no cross-fade of two texts), so the row itself can
             // ease up when Sign in with Apple folds away, and the keyboard goes straight on to
             // the password field.
-            field {
+            field(focused: focus == .email && flow.showsEmailField) {
                 ZStack(alignment: .leading) {
                     // Edits while it's being checked are ignored, so the answer matches the email.
-                    TextField("Email", text: Binding(get: { flow.email }, set: { if !flow.emailLocked { flow.email = $0 } }))
+                    TextField("Email", text: Binding(get: { flow.email }, set: { if !flow.emailLocked { flow.email = $0 } }),
+                              prompt: Text("Email").foregroundStyle(Color(Palette.placeholder)))
                         .textContentType(.username)
                         #if os(iOS)
                         .keyboardType(.emailAddress)
@@ -185,8 +225,9 @@ struct SignInView: View {
             }
 
             if flow.showsPassword {
-                field {
-                    SecureField(flow.step == .create ? "Create a password (12+ characters)" : "Password", text: $flow.password)
+                field(focused: focus == .password) {
+                    let prompt = flow.step == .create ? "Create a password (12+ characters)" : "Password"
+                    SecureField(prompt, text: $flow.password, prompt: Text(prompt).foregroundStyle(Color(Palette.placeholder)))
                         .textContentType(flow.step == .create ? .newPassword : .password)
                         .focused($focus, equals: .password)
                         .submitLabel(.go)
@@ -289,15 +330,17 @@ struct SignInView: View {
         .padding(.top, 2)
     }
 
-    /// One input, the same height and corners as the buttons.
-    private func field(@ViewBuilder _ content: () -> some View) -> some View {
+    /// One input, the same height and corners as the buttons: a white field with a warm border,
+    /// and an amber ring while you type in it.
+    private func field(focused: Bool = false, @ViewBuilder _ content: () -> some View) -> some View {
         let shape = RoundedRectangle(cornerRadius: Row.radius, style: .continuous)
         return content()
             .font(.system(size: Row.text))
             .padding(.horizontal, 12)
             .frame(height: Row.height)
             .background(Color(Palette.field), in: shape)
-            .overlay(shape.strokeBorder(Color(Palette.fieldHairline), lineWidth: 1 / displayScale))
+            .overlay(shape.strokeBorder(focused ? Color(Palette.amber) : Color(Palette.fieldHairline), lineWidth: focused ? 2 : 1))
+            .animation(.easeOut(duration: 0.12), value: focused)
     }
 
     /// "or" between the two ways in.
@@ -411,7 +454,10 @@ struct Backdrop: View {
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
-        (scheme == .dark ? Color(red: 0.105, green: 0.1, blue: 0.11) : Color(red: 0.975, green: 0.968, blue: 0.955))
-            .ignoresSafeArea()
+        Self.color(scheme).ignoresSafeArea()
+    }
+
+    static func color(_ scheme: ColorScheme) -> Color {
+        scheme == .dark ? Color(red: 0.105, green: 0.1, blue: 0.11) : Color(red: 0.975, green: 0.968, blue: 0.955)
     }
 }

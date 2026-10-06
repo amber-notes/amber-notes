@@ -68,6 +68,8 @@ export async function collect(sql: Sql, uid: string, now = new Date()): Promise<
     select device_id, platform, how, backed_up, added_at, seen_at, removed_at from public.key_devices where user_id = ${uid} order by added_at`;
   const [share_ask] = await sql<Row[]>`select choice, decided_at from public.pane_share_ask where user_id = ${uid}`;
   const features = await sql<Row[]>`select feature, first_at from public.pane_feature_use where user_id = ${uid}`;
+  // "How did you hear about Amber Notes?", if it was answered.
+  const [heard_from] = await sql<Row[]>`select source, detail, answered_at from public.pane_heard_from where user_id = ${uid}`;
   // The onboarding emails (supabase/functions/lifecycle): which went out, and whether you said stop.
   const emails = await sql<Row[]>`select s.kind, s.status, s.created_at, s.sent_at, (select count(*)::int from public.email_clicks c where c.send_id = s.id) as clicks
     from public.email_sends s where s.user_id = ${uid} order by s.created_at`;
@@ -87,7 +89,7 @@ export async function collect(sql: Sql, uid: string, now = new Date()): Promise<
     ai_connections: connections,
     share_links: shares,
     locked_notes: lock ?? null,
-    usage: { totals: totals ?? null, setup: setup ?? null, ai_edits_per_day: ai_edits, tips, active_days: days.map((d) => d.day), devices, key_devices, share_ask: share_ask ?? null, features_used: features },
+    usage: { totals: totals ?? null, setup: setup ?? null, ai_edits_per_day: ai_edits, tips, active_days: days.map((d) => d.day), devices, key_devices, share_ask: share_ask ?? null, features_used: features, heard_from: heard_from ?? null },
     onboarding_emails: { sent: emails, unsubscribed: unsubscribed ?? null },
     sign_ins: sessions,
   };

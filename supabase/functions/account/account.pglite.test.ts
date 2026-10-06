@@ -76,6 +76,7 @@ async function seed(pg: PGlite, me: string) {
   await pg.query(`insert into public.pane_active_days (user_id, day) values ($1, current_date)`, [me]);
   await pg.query(`insert into public.pane_devices (user_id, device_id, platform) values ($1, gen_random_uuid(), 'ios')`, [me]);
   await pg.query(`insert into public.pane_share_ask (user_id, choice) values ($1, 'dismissed')`, [me]);
+  await pg.query(`insert into public.pane_heard_from (user_id, source, detail) values ($1, 'other', 'a podcast')`, [me]);
   await pg.query(`insert into public.pane_feature_use (user_id, feature) values ($1, 'shareLink')`, [me]);
   await pg.query(`insert into public.pane_rate (user_id, bucket, tokens) values ($1, 'write', 10) on conflict do nothing`, [me]);
   await pg.query(`insert into public.signup_allowlist (email) select lower(email) from auth.users where id = $1`, [me]);
@@ -159,6 +160,8 @@ Deno.test("the export has everything the server can read, no note text or names,
   assertEquals(data.share_links[0].title, "Acme kickoff", "a shared page's published copy is readable, so it's included");
   assertEquals(data.locked_notes.hint, "Blue");
   assertEquals(data.usage.ai_edits_per_day.length, 1);
+  assertEquals(data.usage.heard_from.source, "other");
+  assertEquals(data.usage.heard_from.detail, "a podcast");
   assertEquals(data.usage.devices.length, 1);
   assertEquals([data.usage.key_devices.length, data.usage.key_devices[0].how, data.usage.key_devices[0].name_ct], [1, "added", undefined], "the devices that hold the key, without their sealed names");
   assertEquals([data.onboarding_emails.sent.length, data.onboarding_emails.sent[0].kind, data.onboarding_emails.unsubscribed.source], [1, "connect", "link"]);

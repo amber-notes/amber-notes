@@ -6,7 +6,7 @@ final class ProdSignInTests: XCTestCase {
         let env = ProcessInfo.processInfo.environment
         guard let email = env["PANE_EMAIL"], let password = env["PANE_PASSWORD"] else { throw XCTSkip("no credentials") }
         let app = XCUIApplication()
-        app.launchArguments = ["-synctest", "-signout"]
+        app.launchArguments = ["-synctest", "-signout", "-skipWelcome"]
         app.launch()
         // Email first: type it, Continue, and the password field appears for an existing account.
         let field = app.textFields["signin.email"]

@@ -343,7 +343,7 @@ struct KeyGateView: View {
             .fixedSize(horizontal: false, vertical: true)
             .accessibilityIdentifier("e2ee.signInAgain")
         if backend.apple != nil {
-            AppleAuthButton(label: .signIn, height: Row.height, title: "Sign in with Apple", web: webSignIn) { result in
+            AppleAuthButton(label: .signIn, height: Row.height, cornerRadius: Row.radius, title: "Sign in with Apple", web: webSignIn) { result in
                 switch result {
                 case .success(let credential):
                     run {

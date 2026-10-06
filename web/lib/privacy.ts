@@ -94,6 +94,7 @@ export const COUNTS: string[] = [
   "which days you used the app, to ask once, after a week, whether you'd like to share it",
   "which tips were shown and whether the feature was then used",
   "which first-run setup steps you've done",
+  "how you heard about Amber Notes, if you answer that one question after sign-up",
   "a random id for each installation and whether it's an iPhone or a Mac, to count devices",
 ];
 
