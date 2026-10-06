@@ -5,6 +5,7 @@ const nav = vi.hoisted(() => ({ path: "/" }));
 vi.mock("next/navigation", () => ({ usePathname: () => nav.path }));
 vi.mock("@vercel/analytics/next", () => ({ Analytics: () => <i data-vercel="" /> }));
 vi.mock("./PostHogAnalytics", () => ({ default: ({ host, path }: { host: string; path: string }) => <i data-posthog={`${host} ${path}`} /> }));
+vi.mock("./ConsentBanner", () => ({ default: () => <i data-consent="" /> }));
 
 import SiteAnalytics from "./SiteAnalytics";
 
@@ -30,11 +31,20 @@ describe("the layout's analytics", () => {
     expect(render("/download")).toContain('data-posthog="https://ph.example.com /download"');
   });
 
-  it("never loads PostHog on shared notes, connect, universal-link, report or download-redirect pages", () => {
+  it("never loads PostHog or its cookie banner on shared notes, connect, universal-link, report or download-redirect pages", () => {
     vi.stubEnv("NEXT_PUBLIC_POSTHOG_KEY", "phc_test");
     for (const path of ["/n/abc123", "/connect", "/open/connect", "/open/template/standup", "/report/abc123", "/download/mac"]) {
       expect(render(path), path).not.toContain("data-posthog");
+      expect(render(path), path).not.toContain("data-consent");
     }
+  });
+
+  it("asks about cookies on public pages, and only in a build with PostHog", () => {
+    vi.stubEnv("NEXT_PUBLIC_POSTHOG_KEY", "phc_test");
+    expect(render("/")).toContain("data-consent");
+    expect(render("/blog/apple-notes-mcp")).toContain("data-consent");
+    vi.stubEnv("NEXT_PUBLIC_POSTHOG_KEY", "");
+    expect(render("/")).not.toContain("data-consent");
   });
 
   it("loads Vercel Web Analytics on public pages", () => {

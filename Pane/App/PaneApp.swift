@@ -317,6 +317,8 @@ struct AppGate: View {
     @State private var setup = SetupStore()
     /// "Enjoying Amber Notes?", once, after a week of use.
     @State private var shareAsk = ShareAskStore()
+    /// "How did you hear about Amber Notes?", once, for a new account.
+    @State private var heardFrom = HeardFromStore()
     /// Asks to approve an AI connection from a browser, while signed in with the key here.
     @State private var connectAsks: ConnectAsks?
     /// "Connected ChatGPT", "Your notes were deleted…": said once on each device.
@@ -397,9 +399,11 @@ struct AppGate: View {
                     .environment(sync)
                     .environment(setup)
                     .shareAskSheet(shareAsk)
+                    .heardFromSheet(heardFrom)
                     .task {
                         try? await Task.sleep(for: .seconds(1.2))
                         shareAsk.showIfForced()
+                        heardFrom.showIfForced()
                     }
                     .modifier(NoticeAlerts(notices: notices, crypto: crypto, problem: $noticeProblem))
                     .transition(.opacity)
@@ -423,6 +427,7 @@ struct AppGate: View {
             guard case .signedIn = backend.state, let client = backend.client else {
                 setup.attach(account: nil, service: nil)
                 shareAsk.attach(account: nil, service: nil)
+                heardFrom.attach(account: nil, service: nil)
                 if backend.state == .disabled { NoteVault.shared.attach(account: nil, remote: nil) } else { NoteVault.shared.lockNow() }
                 AccountCrypto.shared.signedOut()
                 KeyDevices.shared.attach(account: nil, server: nil)
@@ -439,6 +444,7 @@ struct AppGate: View {
             }
             setup.attach(account: backend.userID, service: SupabaseSetup(client: client))
             shareAsk.attach(account: backend.userID, service: SupabaseShareAsk(client: client))
+            heardFrom.attach(account: backend.userID, service: SupabaseHeardFrom(client: client))
             NoteVault.shared.attach(account: backend.userID, remote: SupabaseLockRemote(client: client))
             KeyDevices.shared.attach(account: backend.userID, server: SupabaseKeyDevices(client: client))
             KeyDevices.shared.removedHere = { await removedFromDevices() }
@@ -531,7 +537,7 @@ struct AppGate: View {
 
     /// The share ask, a notice or the recovery key alert is on screen.
     private var somethingAsking: Bool {
-        shareAsk.visible || notices?.current != nil || crypto.recoveryKeyChangeNeedsSaying
+        shareAsk.visible || heardFrom.visible || notices?.current != nil || crypto.recoveryKeyChangeNeedsSaying
     }
 
     /// Another device with the key removed this one: its copy of the notes and of the key go,
@@ -591,6 +597,8 @@ struct AppGate: View {
         // Tips wait for this: never a tip for something this account has used anywhere.
         await FeatureUse.refresh()
         await shareAsk.refresh()
+        // A new account is asked how it heard of us, once the notes are open.
+        await heardFrom.refresh()
         await InstallID.report(client)
     }
 
@@ -599,7 +607,7 @@ struct AppGate: View {
         guard backend.state != .signedOut else { return }
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(1.5))
-            guard backend.state != .signedOut, phase == .active else { return }
+            guard backend.state != .signedOut, phase == .active, !heardFrom.visible else { return }
             shareAsk.moment(setupVisible: setup.visible || WhatsNewStore.shared.card != nil, tipShowing: PaneTips.all.contains { $0.shouldDisplay })
         }
     }

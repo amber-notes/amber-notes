@@ -1,5 +1,5 @@
 import { GITHUB_URL } from "./github";
-import { APP_STORE_LIVE, APP_STORE_URL, INCREDIBLE_URL, MAKER_GITHUB, MAKER_URL, SITE_NAME, SITE_URL, X_URL } from "./site";
+import { APP_STORE_LIVE, APP_STORE_URL, INCREDIBLE_URL, MAKER_GITHUB, MAKER_URL, LINKEDIN_URL, SITE_NAME, SITE_URL, X_URL } from "./site";
 import { MAC_DMG } from "./downloads";
 
 /// schema.org JSON-LD for search engines. Only facts the site states elsewhere: the app is free,
@@ -28,7 +28,7 @@ export const maker: Thing = {
   name: "Emil Wagman",
   url: MAKER_URL,
   image: `${SITE_URL}/emil-wagman.jpg`,
-  sameAs: [MAKER_URL, X_URL, MAKER_GITHUB],
+  sameAs: [MAKER_URL, X_URL, LINKEDIN_URL, MAKER_GITHUB],
   worksFor: { "@id": incredible["@id"] },
 };
 
