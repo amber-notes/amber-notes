@@ -1,32 +1,32 @@
-# amber end-to-end run, 2026-10-06T06:40Z
-binary: cli/dist/amber-macos-arm64 (darwin aarch64); server: http://127.0.0.1:56637/mcp, the real MCP request handler with the files tools
+# amber end-to-end run, 2026-10-06T06:43Z
+binary: cli/dist/amber-macos-arm64 (darwin aarch64); server: http://127.0.0.1:56934/mcp, the real MCP request handler with the files tools
 on a fresh database with every migration, and a seeded end-to-end encrypted test account. Paths are relative to a temporary folder.
 
 ## Sign in
 
 $ amber --version
 0.1.0
-$ amber login --server http://127.0.0.1:56637/mcp < token.txt
-Signed in to http://127.0.0.1:56637/mcp (files tools). Token saved in config/amber/config.json, readable only by you.
+$ amber login --server http://127.0.0.1:56934/mcp < token.txt
+Signed in to http://127.0.0.1:56934/mcp (files tools). Token saved in config/amber/config.json, readable only by you.
 $ stat -f %Lp config/amber/config.json
 600
   PASS the token file is mode 600
   PASS the token is never printed
 $ amber status
-server   http://127.0.0.1:56637/mcp
+server   http://127.0.0.1:56934/mcp
 token    from config/amber/config.json
 account  8 notes (1 locked, not synced), files tools
 
 ## Pull the account into a folder
 
 $ amber pull notes
-down    Work/Clients/Acme.md
+down    Travel/Trip/Packing.md
 down    Travel/Trip.md
 down    Work/Weekly review.md
-down    Work/Habits.md
-down    Travel/Trip/Packing.md
+down    Work/Clients/Acme.md
 down    Groceries.md
 down    Recipes.md
+down    Work/Habits.md
 skipped Work/Diary.md (locked: only the app can open it)
 pull notes: 7 down (files tools)
 $ find notes -name '*.md'
@@ -112,9 +112,9 @@ $ mkdir notes/Archive && mv "notes/Work/Weekly review.md" notes/Archive/
 $ mv notes/Recipes.md notes/Cooking.md
 [Amber, Claude on the phone] move Travel/Trip.md → Work/
 $ amber sync notes
+down    Work/Trip/Packing.md
 down    Work/Trip.md
 moved   Work/Weekly review.md → Archive/Weekly review.md
-down    Work/Trip/Packing.md
 moved   Recipes.md → Cooking.md
 skipped Work/Diary.md (locked: only the app can open it)
 sync notes: 2 down, 2 moved (files tools)
@@ -187,22 +187,23 @@ sync notes: up to date (files tools)
 up      Groceries.md
 sync notes: 1 up (files tools)
 down    Archive/Weekly review.md
+sync notes: 1 down (files tools)
 
 ## Status
 
 $ amber status notes
-server   http://127.0.0.1:56637/mcp
+server   http://127.0.0.1:56934/mcp
 token    from config/amber/config.json
 account  9 notes (1 locked, not synced), files tools
-folder   notes: 8 notes tracked, last sync 2026-10-06T06:41:03.796Z
+folder   notes: 8 notes tracked, last sync 2026-10-06T06:43:29.138Z
 here     0 changed, 0 new, 0 deleted since the last sync
 conflicts 1 conflict copy to look at:
   Work/Clients/Acme (conflict 2026-10-06).md
 
 ## The same against the classic tools (what production runs today)
 
-$ amber login --server http://127.0.0.1:56675/mcp < token.txt
-Signed in to http://127.0.0.1:56675/mcp (classic tools). Token saved in config/amber/config.json, readable only by you.
+$ amber login --server http://127.0.0.1:56973/mcp < token.txt
+Signed in to http://127.0.0.1:56973/mcp (classic tools). Token saved in config/amber/config.json, readable only by you.
 $ amber pull classic
 down    Work/Habits.md
 down    Travel/Trip/Packing.md

@@ -1,0 +1,91 @@
+== Linux 6.6.114.1-microsoft-standard-WSL2 x86_64; "Debian GNU/Linux 12 (bookworm)"
++ /work/amber-linux-x64 --version
+0.1.0
++ export XDG_CONFIG_HOME=/tmp/cfg
++ XDG_CONFIG_HOME=/tmp/cfg
++ /work/amber-linux-x64 login --server http://127.0.0.1:8787/mcp
+Signed in to http://127.0.0.1:8787/mcp (files tools). Token saved in /tmp/cfg/amber/config.json, readable only by you.
++ stat -c '%a %n' /tmp/cfg/amber/config.json
+600 /tmp/cfg/amber/config.json
++ /work/amber-linux-x64 pull /tmp/notes
+down    Travel/Trip/Packing.md
+down    Work/Habits.md
+down    Travel/Trip.md
+down    Recipes.md
+down    Work/Weekly review.md
+down    Work/Clients/Acme.md
+down    Groceries.md
+skipped Work/Diary.md (locked: only the app can open it)
+2026-10-06T06:43:26.719Z pull /tmp/notes: 7 down (files tools)
++ cd /tmp/notes
++ find . -name '*.md'
++ sort
+./Groceries.md
+./Recipes.md
+./Travel/Trip.md
+./Travel/Trip/Packing.md
+./Work/Clients/Acme.md
+./Work/Habits.md
+./Work/Weekly review.md
++ sed -i 's/- \[ \] Butter/- [x] Butter/' /tmp/notes/Groceries.md
++ printf 'Made on Linux\n\nHello from the server.\n'
++ /work/amber-linux-x64 sync /tmp/notes
+up      Groceries.md
+created Work/Linux.md
+skipped Work/Diary.md (locked: only the app can open it)
+2026-10-06T06:43:27.202Z sync /tmp/notes: 1 up, 1 created (files tools)
++ /work/amber-linux-x64 status /tmp/notes
+server   http://127.0.0.1:8787/mcp
+token    from /tmp/cfg/amber/config.json
+account  9 notes (1 locked, not synced), files tools
+folder   /tmp/notes: 8 notes tracked, last sync 2026-10-06T06:43:27.199Z
+here     0 changed, 0 new, 0 deleted since the last sync
++ rm -rf /tmp/notes2
++ /work/amber-linux-x64 pull /tmp/notes2
+down    Work/Linux.md
+down    Travel/Trip/Packing.md
+down    Work/Habits.md
+down    Travel/Trip.md
+down    Recipes.md
+down    Work/Weekly review.md
+down    Work/Clients/Acme.md
+down    Groceries.md
+skipped Work/Diary.md (locked: only the app can open it)
+2026-10-06T06:43:28.090Z pull /tmp/notes2: 8 down (files tools)
++ grep -n Butter /tmp/notes2/Groceries.md
+5:- [x] Butter
+Linux
+
+Made on Linux
+
+Hello from the server.
+skipped Work/Diary.md (locked: only the app can open it)
+2026-10-06T06:43:28.478Z sync /tmp/notes2: up to date (files tools)
+== classic tools
++ cat /tmp/notes2/Work/Linux.md
++ /work/amber-linux-x64 sync /tmp/notes2
++ set +x
++ /work/amber-linux-x64 pull /tmp/classic --server http://127.0.0.1:8788/mcp
+down    Work/Habits.md
+down    Travel/Trip/Packing.md
+down    Travel/Trip.md
+down    Work/Weekly review.md
+down    Work/Clients/Acme.md
+down    Recipes.md
+down    Groceries.md
+skipped Work/Diary.md (locked: only the app can open it)
+2026-10-06T06:43:33.101Z pull /tmp/classic: 7 down (classic tools)
++ sed -i 's/- \[ \] Milk/- [x] Milk/' /tmp/classic/Groceries.md
++ /work/amber-linux-x64 sync /tmp/classic --server http://127.0.0.1:8788/mcp
+up      Groceries.md
+skipped Work/Diary.md (locked: only the app can open it)
+2026-10-06T06:43:33.560Z sync /tmp/classic: 1 up (classic tools)
++ rm -rf /tmp/classic2
++ /work/amber-linux-x64 pull /tmp/classic2 --server http://127.0.0.1:8788/mcp --quiet
+2026-10-06T06:43:34.050Z pull /tmp/classic2: 7 down (classic tools)
++ grep -n Milk /tmp/classic2/Groceries.md
+4:- [x] Milk
+== token in any output or synced file?
++ set +x
+none
+none
