@@ -5,7 +5,8 @@ import type { CaptureResult, PostHogConfig } from "posthog-js";
 // page clicks land, and rage and dead clicks, counted into heatmaps; never a recording of a visit. Only when NEXT_PUBLIC_POSTHOG_KEY is set at build time; without
 // it nothing loads. Never in the apps, and never on a page that can show something private: shared
 // notes, the connect pages, universal links, report pages and the download redirect. No cookies,
-// nothing kept in the browser, no person profiles, no recordings. Everything here is decided
+// nothing kept in the browser, no person profiles, no recordings; visits are told apart for a day
+// only, by a hash made on PostHog's servers. Everything here is decided
 // without PostHog loaded, so the tests can check it.
 
 export const POSTHOG_DEFAULT_HOST = "https://eu.i.posthog.com";
@@ -43,7 +44,10 @@ export function visitorOptedOut(nav: { doNotTrack?: string | null; globalPrivacy
 export function posthogOptions(host: string): Partial<PostHogConfig> {
   return {
     api_host: host,
-    // Nothing stored on the visitor's device: a new anonymous id on every full page load.
+    // Nothing stored on the visitor's device. PostHog's servers tell visits apart for a day with a
+    // hash of the connection details and a salt that changes daily (cookieless server hash mode,
+    // turned on in the project's settings); without that setting the events are dropped.
+    cookieless_mode: "always",
     persistence: "memory",
     person_profiles: "never",
     respect_dnt: true,

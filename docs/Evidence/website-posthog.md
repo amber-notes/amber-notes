@@ -15,7 +15,7 @@ Use a personal PostHog account, not Incredible's organization.
    - **Session replay:** off ("Record user sessions" unchecked). The site also disables it in code.
    - **Surveys, heatmaps, web vitals, exception autocapture, dead clicks:** leave off. The code turns them off and loads no extra scripts, so turning them on here does nothing, but keep the settings honest.
    - **Person profiles:** the site sends `person_profiles: 'never'` and never calls `identify`, so no person is ever created. If the project offers a person-processing switch, leave it off.
-   - **Cookieless mode:** off. It isn't used; the site keeps its random id in memory instead.
+   - **Cookieless server hash mode:** on (Web analytics settings; turned on 6 October 2026). The site sends `cookieless_mode: 'always'`, and PostHog drops cookieless events when this setting is off. PostHog's servers then give each visitor a hash of the IP address, user agent, hostname and a daily salt, deleted once the day is processed, so a visit path holds for one day and no longer.
    - **Autocapture:** on. The site limits it to clicks on links and buttons.
    - **Data retention:** the shortest the plan allows that still covers a few months of trends.
 4. Sign the DPA (Settings, Organization, Legal or https://posthog.com/dpa). The privacy policy names it as the transfer safeguard.
@@ -36,7 +36,7 @@ To turn PostHog off again: `vercel env rm NEXT_PUBLIC_POSTHOG_KEY production` an
 
 - **Never loads** on `/n/*` (shared notes), `/connect*`, `/open/*` (universal links), `/report/*` and `/download/mac`. Gated by pathname in `SiteAnalytics`; tested in `web/app/SiteAnalytics.test.tsx` and `web/lib/posthog.test.ts`. If a visitor navigates into one of those pages from a public page, `before_send` drops anything that would be sent there.
 - **Never fetched** when the browser sends Do Not Track or Global Privacy Control.
-- **Nothing stored:** `persistence: 'memory'`. No cookies, localStorage or sessionStorage (checked in the browser below). Each full page load gets a new random id; client-side navigation keeps it.
+- **Nothing stored:** `cookieless_mode: 'always'` (and `persistence: 'memory'`). No cookies, localStorage or sessionStorage (checked in the browser below). The SDK sends the `$posthog_cookieless` placeholder as the id and PostHog's servers replace it with the day's hash, so page loads on one day join up and days don't.
 - **No queries or fragments:** every `…url` and `…referrer` property is cut to origin and path. UTM parameters are kept as their own properties; ad click ids are masked.
 - **No remote config, flags, surveys, replay or extra scripts:** `advanced_disable_flags` and `disable_external_dependency_loading`. The page only calls `https://eu.i.posthog.com/e/`.
 

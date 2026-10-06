@@ -1,6 +1,6 @@
 # Privacy Policy
 
-Last updated: 2 October 2026
+Last updated: 6 October 2026
 
 ## The short version
 
@@ -83,7 +83,7 @@ We count how features are used on our own server to improve the app. We never sh
 **Visits to the website**
 
 - **Page views,** with Vercel Web Analytics: which page was viewed, the site you came from, and your country, browser and type of device. It uses no cookies and stores nothing on your device, and it doesn't identify you or follow you to other sites. Vercel tells visits apart for a day with a hash it doesn't store. Shared notes, the connect pages and report pages are never counted, and page addresses are counted without anything after them, such as a code in a link.
-- **Clicks and scrolling,** with PostHog, hosted in Frankfurt, Germany (EU): which pages were viewed, which links and buttons were clicked on them (such as Download for Mac, Use template, or a link to the App Store or GitHub), how far down each page you scrolled, the site you came from, and your browser and type of device. On the home, download, templates, blog, help, changelog and Privacy & Security pages it also notes where on the page each click landed, and clicks that did nothing or were repeated on one spot, so we can see which parts of a page people try to use. These are added up across all visitors into a map of each page; no visit is recorded or replayed. It uses no cookies and stores nothing on your device: each visit gets a random id that's gone when you leave or reload the page. It keeps no profile of you, records no screens or keystrokes, and is set not to keep your IP address. It never runs on shared notes, the connect pages, report pages or the links that open the app, page addresses are sent without anything after them, and it doesn't run at all if your browser sends Do Not Track or Global Privacy Control.
+- **Clicks and scrolling,** with PostHog, hosted in Frankfurt, Germany (EU): which pages were viewed, which links and buttons were clicked on them (such as Download for Mac, Use template, or a link to the App Store or GitHub), how far down each page you scrolled, the site you came from, and your browser and type of device. On the home, download, templates, blog, help, changelog and Privacy & Security pages it also notes where on the page each click landed, and clicks that did nothing or were repeated on one spot, so we can see which parts of a page people try to use. These are added up across all visitors into a map of each page; no visit is recorded or replayed. It uses no cookies and stores nothing on your device. Like Vercel, it tells visits apart for a day: PostHog's servers make a one-way hash of your IP address and browser details together with a random value that changes every day and that PostHog deletes once that day's visits are counted. The next day gives a different hash, so visits on different days can't be linked. It keeps no profile of you, records no screens or keystrokes, and is set not to keep your IP address. It never runs on shared notes, the connect pages, report pages or the links that open the app, page addresses are sent without anything after them, and it doesn't run at all if your browser sends Do Not Track or Global Privacy Control.
 - **Mac downloads,** as one total per day: the date and a number. Nothing about who downloaded, not even a network address. Updates the Mac app installs itself aren't counted.
 - None of this touches your notes or your computer, and none of it is linked to your account.
 
@@ -212,7 +212,7 @@ Write to **hello@ambernotes.app**. We answer within one month. If you think we'v
 
 ## Cookies and storage on the website
 
-The website sets no cookies. Its page view counts (Vercel Web Analytics) and its click and scroll counts (PostHog) store nothing in your browser; PostHog's random visit id lives only in the open page's memory. Only the page where you connect an AI (ambernotes.app/connect) stores anything in your browser, and only what that page needs to work:
+The website sets no cookies. Its page view counts (Vercel Web Analytics) and its click and scroll counts (PostHog) store nothing in your browser; both tell visits apart for a day with a hash made on their servers (see Visits to the website). Only the page where you connect an AI (ambernotes.app/connect) stores anything in your browser, and only what that page needs to work:
 
 - **sessionStorage, `amber.connect.pkce`:** a one-time code for Sign in with Apple, kept while you go to Apple and back, and deleted as soon as you return.
 
