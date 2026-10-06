@@ -99,6 +99,7 @@ Deno.test("check_app and preview_app render a sample through the render service"
     assertStringIncludes(real.content[0].text as string, "Hotel Avenida");
   } finally {
     await server.shutdown();
+    Deno.env.delete("RENDER_URL");
     await closeBrowser();
   }
 });

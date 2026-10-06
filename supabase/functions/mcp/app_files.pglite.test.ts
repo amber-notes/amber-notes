@@ -86,5 +86,6 @@ Deno.test("a project app: the starter and its tests, files, edits, the gate, see
   } finally {
     await closeBrowser();
     await server.shutdown();
+    Deno.env.delete("RENDER_URL");
   }
 });

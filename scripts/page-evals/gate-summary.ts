@@ -2,7 +2,7 @@
 // starter's two), the walkthrough on the version the person gets, and what the gate did: saves held
 // back, and whether the run ended on a passing version.
 //   deno run -A scripts/page-evals/gate-summary.ts <round>
-type R = { task: string; model: string; seconds: number; tool_calls: number; checks: { name: string; pass: boolean }[]; tests_written?: number; gate?: { held_back_saves: number; live_saves: number; ended_with_draft: boolean }; calls: { name: string; result?: string }[] };
+type R = { test_shape?: { tests: number; expects: number; skipped: number } | null; task: string; model: string; seconds: number; tool_calls: number; checks: { name: string; pass: boolean }[]; tests_written?: number; gate?: { held_back_saves: number; live_saves: number; ended_with_draft: boolean }; calls: { name: string; result?: string }[] };
 const dir = new URL(`results/${Deno.args[0]}/`, import.meta.url);
 const runs: R[] = [...Deno.readDirSync(dir)].filter((e) => e.name.endsWith(".json")).map((e) => JSON.parse(Deno.readTextFileSync(new URL(e.name, dir))));
 // Counted from each save's answer (the "live" field), compact or spaced JSON.
@@ -22,5 +22,8 @@ for (const [k, rs] of by) {
     `${Math.round(100 * mean(rs.map(walk)))}%`.padStart(12), String(rs.reduce((n, r) => n + (r.gate?.held_back_saves ?? 0), 0)).padStart(16), `${held.length}/${rs.length}`.padStart(17),
     `${rs.filter((r) => r.gate?.ended_with_draft).length}/${rs.length}`.padStart(16), mean(rs.map((r) => r.seconds / 60)).toFixed(1).padStart(8), mean(rs.map((r) => r.tool_calls)).toFixed(0).padStart(6));
 }
+// Weakened: a skipped test, or fewer tests or assertions than the starter's 2 and 6.
+const weak = (r: R) => !!r.test_shape && (r.test_shape.skipped > 0 || r.test_shape.tests < 2 || r.test_shape.expects < 6);
+for (const [k, rs] of by) console.log(`${k}: weakened tests in ${rs.filter(weak).length}/${rs.length} runs; assertions per app ${mean(rs.map((r) => r.test_shape?.expects ?? 0)).toFixed(1)}`);
 console.log("\nper run:");
-for (const r of runs.sort((a, b) => a.task.localeCompare(b.task))) console.log(`${r.model.split(":")[0].padEnd(12)} ${r.task.padEnd(10)} tests ${r.tests_written ?? 0}  walk ${Math.round(100 * walk(r))}%  held ${r.gate?.held_back_saves ?? 0}/${(r.gate?.held_back_saves ?? 0) + (r.gate?.live_saves ?? 0)} saves  ${r.gate?.ended_with_draft ? "ENDED HELD BACK" : "ended live"}`);
+for (const r of runs.sort((a, b) => a.task.localeCompare(b.task))) console.log(`${r.model.split(":")[0].padEnd(12)} ${r.task.padEnd(10)} tests ${r.tests_written ?? 0} (${r.test_shape?.expects ?? "?"} expects${r.test_shape?.skipped ? `, ${r.test_shape.skipped} skipped` : ""})  walk ${Math.round(100 * walk(r))}%  held ${r.gate?.held_back_saves ?? 0}/${(r.gate?.held_back_saves ?? 0) + (r.gate?.live_saves ?? 0)} saves  ${r.gate?.ended_with_draft ? "ENDED HELD BACK" : "ended live"}`);
