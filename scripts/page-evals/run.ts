@@ -510,8 +510,8 @@ async function runTask(task: Task, rep = 1) {
     render: render ? { ...render, markdownAfter: undefined } : null,
     breakage, walk,
     gate: await (async () => {
-      const held = session.log.filter((l) => /Held back/.test(String((l as { result?: string }).result ?? ""))).length;
-      const live = session.log.filter((l) => /"live": "Live/.test(String((l as { result?: string }).result ?? ""))).length;
+      const held = session.log.filter((l) => /"live":\s*"Held back/.test(String((l as { result?: string }).result ?? ""))).length;
+      const live = session.log.filter((l) => /"live":\s*"Live/.test(String((l as { result?: string }).result ?? ""))).length;
       const [row] = (await s.pg.query(`select draft_ct is not null as draft from public.note_pages where note_id = (select note_id from public.note_pages order by updated_at desc limit 1)`).catch(() => ({ rows: [] }))).rows as { draft: boolean }[];
       // Tests in the final app (live, else the draft the AI left), beyond the starter's two.
       return { held_back_saves: held, live_saves: live, ended_with_draft: !!row?.draft };
