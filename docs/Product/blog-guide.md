@@ -19,8 +19,10 @@ give more than they take.
   - a link to a free template at `/templates` where one fits.
 - **Make it scannable.** Write steps as numbered cards (`Steps`) and menu paths as chips (`Path`,
   `Paths`). Give every section an `id`, so the answer box and other posts can link to it.
-- **Charm without fluff.** Each post gets a paper-cut banner (`art`) in the style of the email
-  heroes (`web/public/email/hero-*.jpg`). Write warmly and specifically: real menu names, real
+- **Charm without fluff.** Each post opens with a paper-cut banner (`art`, above the intro) in the
+  style of the email heroes (`web/public/email/hero-*.jpg`), so the first screen isn't only text.
+  Small warm details carry it further: the leaf on the short answer, checklists drawn with Notes'
+  round boxes. Write warmly and specifically: real menu names, real
   numbers, first person where Emil built something. Cut filler sentences.
 - **Real visuals only where they show a product.**
   - Screenshots and loops of Apple Notes or Amber Notes must be real captures.
@@ -51,9 +53,10 @@ give more than they take.
 | Part | File | What it's for |
 |---|---|---|
 | `Answer` | `web/lib/PostParts.tsx` | The short answer under the intro, with jump chips (`answer` prop of `PostPage`) |
-| `Banner` | `web/lib/PostParts.tsx` | The paper-cut art at the top (`art` prop of `PostPage`: `/blog/art/<slug>`, `.avif` and `.webp`, 1200×480) |
+| `Banner` | `web/lib/PostParts.tsx` | The paper-cut art above the intro (`art` prop of `PostPage`: `/blog/art/<slug>`, `.avif` and `.webp`, 1200×480) |
 | `Steps`, `Path`, `Paths` | `web/lib/PostParts.tsx` | Numbered step cards, and menu paths as chips, per device |
-| `Keep` | `web/lib/PostParts.tsx` | Something to copy: a checklist, cheat sheet, script or prompt |
+| `Keep` | `web/lib/PostParts.tsx` | Something to copy: a cheat sheet, script or prompt |
+| `Checklist` | `web/lib/PostParts.tsx` | A checklist to copy, drawn like a Notes checklist, copied as lines that become one with a tap |
 | `ResetChooser` | `web/lib/ResetChooser.tsx` | A question-by-question helper; copy its shape for other choosers |
 | `Loop` | `web/lib/Loop.tsx` | A short muted loop of the real app, from `web/public/blog/loops/` |
 | `Figure` | `web/lib/blog.tsx` | A real capture in a window or phone frame |

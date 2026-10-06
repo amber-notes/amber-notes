@@ -1,7 +1,7 @@
 import { Figure } from "@/lib/blog";
 import { PostCta } from "@/lib/PostCta";
 import { PostPage, postMetadata } from "@/lib/PostPage";
-import { Answer, Keep, Paths, Steps } from "@/lib/PostParts";
+import { Answer, Checklist, Paths, Steps } from "@/lib/PostParts";
 import { ResetChooser } from "@/lib/ResetChooser";
 import { SHOTS } from "@/lib/posts";
 
@@ -26,13 +26,14 @@ const FAQ = [
   ] },
 ];
 
-const CHECKLIST = `Before I reset my Apple Notes password
-Face ID or Touch ID on the locked note
-Two wrong tries, then read the hint
-My iPhone passcode, or my Mac login password
-Any older notes password I've used
-My password manager: search for "notes"
-Only then: reset (old locked notes keep the old password)`;
+const CHECKLIST = [
+  "Face ID or Touch ID on the locked note",
+  "Two wrong tries, then read the hint",
+  "My iPhone passcode, or my Mac login password",
+  "Any older notes password I've used",
+  "My password manager: search for \"notes\"",
+  "Only then: reset (old locked notes keep the old password)",
+];
 
 export default function Page() {
   return (
@@ -97,7 +98,7 @@ export default function Page() {
           If you use one, search it for &ldquo;notes&rdquo;; you may have saved the password there when you set it.
         </li>
       </Steps>
-      <Keep title="Before you reset: a checklist" text={CHECKLIST}
+      <Checklist title="Before I reset my notes password" items={CHECKLIST}
         note="Paste it into a note, select the lines and tap the checklist button, then tick them off as you go. If one works, you never need to reset." />
       <p>
         Don&apos;t reset first. Resetting is safe, and it won&apos;t delete anything, but once you have two passwords it gets harder to tell

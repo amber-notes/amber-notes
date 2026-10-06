@@ -4,7 +4,7 @@
 
 /* ── The short answer, before anything else ── */
 .answer { margin: 0 0 28px; padding: 20px 22px 18px; border-radius: 20px; background: var(--soft); box-shadow: inset 4px 0 0 var(--amber); }
-.answerLabel { margin: 0 0 8px; font-size: 12.5px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--link); }
+.answerLabel { display: flex; align-items: center; gap: 6px; margin: 0 0 8px; font-size: 12.5px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--link); }
 .answer > :last-child { margin-bottom: 0; }
 .answer ul, .answer ol { margin-bottom: 12px; }
 /* Doubled, like .steps, to outrank the article's list style. */
@@ -15,6 +15,8 @@
   background: var(--bg); color: var(--ink); font-size: 15px; font-weight: 600; text-decoration: none; box-shadow: 0 0 0 1px var(--line);
 }
 @media (hover: hover) { .answer .jump a:hover { box-shadow: 0 0 0 1.5px var(--amber); } }
+
+.leaf { flex: none; color: var(--amber); }
 
 /* ── A menu path: Settings › Apps › Notes › Password ── */
 .path { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 14px; font-size: 15px; line-height: 1.3; }
@@ -45,7 +47,7 @@
 .steps .path { margin: 6px 0 0; }
 
 /* ── A decorative banner: paper-cut art, a fixed shape so nothing moves as it loads ── */
-.banner { margin: 0 0 28px; border-radius: 20px; overflow: hidden; aspect-ratio: 5 / 2; background: var(--soft); }
+.banner { margin: 0 0 22px; border-radius: 20px; box-shadow: 0 0 0 1px var(--line), 0 14px 30px -18px rgba(60, 30, 5, 0.45); overflow: hidden; aspect-ratio: 5 / 2; background: var(--soft); }
 .banner img { display: block; width: 100%; height: 100%; object-fit: cover; }
 
 /* ── A short looping capture of the app ── */
@@ -87,6 +89,7 @@
    pre styles (legal.module.css), whichever stylesheet loads last. ── */
 .keep { margin: 8px 0 24px; padding: 16px 18px 14px; border-radius: 20px; background: var(--card); box-shadow: 0 0 0 1px var(--line); }
 .keepHead { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.keepTag { display: block; margin-bottom: 2px; font-size: 11.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--link); }
 .keepTitle.keepTitle { margin: 0; font-size: 16px; font-weight: 750; }
 /* Wrapped, so a phone shows every line without scrolling sideways. */
 .keep.keep pre { margin: 0; background: var(--soft); white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -119,3 +122,9 @@
 .verdict > :last-child { margin-bottom: 0; }
 .verdictTitle.verdictTitle { margin: 0 0 6px; font-weight: 750; }
 .chooser .restart { margin-top: 10px; min-height: 36px; padding: 0; border: 0; background: none; color: var(--link); font-family: inherit; font-weight: 600; font-size: 14px; line-height: 1; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+
+/* A checklist drawn like Notes draws one: an empty round box before each line. */
+.ticks.ticks { list-style: none; margin: 0; padding: 4px 2px; display: grid; gap: 10px; }
+.ticks > li { position: relative; padding-left: 32px; line-height: 1.45; }
+.ticks > li::marker { content: none; }
+.ticks > li::before { content: ""; position: absolute; left: 0; top: 1px; width: 20px; height: 20px; box-sizing: border-box; border-radius: 50%; border: 1.5px solid color-mix(in srgb, var(--muted) 60%, transparent); }

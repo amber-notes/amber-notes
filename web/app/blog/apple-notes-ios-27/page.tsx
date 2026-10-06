@@ -2,7 +2,7 @@ import { Figure } from "@/lib/blog";
 import { Loop } from "@/lib/Loop";
 import { PostCta } from "@/lib/PostCta";
 import { PostPage, postMetadata } from "@/lib/PostPage";
-import { Answer, Keep, Paths, Steps } from "@/lib/PostParts";
+import { Answer, Checklist, Keep, Paths, Steps } from "@/lib/PostParts";
 import { SHOTS } from "@/lib/posts";
 
 export const dynamic = "force-static";
@@ -43,6 +43,14 @@ const CHEAT_SHEET = `# Apple Notes in iOS 27
 - "What was the note with the cookie recipe?"
 - Ask it to add to a note, or to reformat one`;
 
+const TRY_TODAY = [
+  "Add a divider line to your longest note",
+  "Make its sections headings, then link to one from the top",
+  "Paste a ChatGPT or Claude answer into a note and watch it format itself",
+  "Select part of a note and choose Copy as Markdown",
+  "Ask Siri AI \u201cWhat was the note with\u2026\u201d (iPhone 15 Pro or later)",
+];
+
 const PROMPT = "Answer in Markdown, with short headings and bullet lists, so I can paste it straight into Apple Notes. No tables, no emoji.";
 
 export default function Page() {
@@ -70,8 +78,8 @@ export default function Page() {
       art="/blog/art/apple-notes-ios-27"
       faq={FAQ}
     >
-      <Keep title="The cheat sheet, as Markdown" text={CHEAT_SHEET} code
-        note="Copy it and paste it into a new note on iOS 27 or macOS 27: it arrives as headings and lists, which makes it a good first test of the new Markdown paste." />
+      <Checklist title="Try these 5 things in Apple Notes today" items={TRY_TODAY}
+        note="Copy it into a note, select the lines and tap the checklist button. That's every new feature, tried once." />
 
       <h2 id="in-one-table">What&apos;s new, in one table</h2>
       <div className="tableWrap">
@@ -137,6 +145,8 @@ export default function Page() {
         On a Mac, the export menu moved: it&apos;s now File, Export To, then Markdown or PDF. <a href="/blog/export-apple-notes-to-markdown">How
         to export Apple Notes to Markdown</a> has the steps for both versions, what to check in the file, and what to use for every note at once.
       </p>
+      <Keep title="The cheat sheet, as Markdown" text={CHEAT_SHEET} code
+        note="Copy it and paste it into a new note on iOS 27 or macOS 27: it arrives as headings and lists, which makes it a good first test of the new Markdown paste." />
       <Keep title="A prompt for ChatGPT, Claude or Gemini" text={PROMPT}
         note="Add it to the end of a question, then paste the answer into a note. It arrives formatted instead of full of asterisks." />
       <Figure shot={SHOTS.notesExportMenu} caption="The menu before the move: File, Export as, Markdown, in Notes on macOS 26. On macOS 27 it reads File, Export To." />

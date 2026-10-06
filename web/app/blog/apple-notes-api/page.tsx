@@ -40,8 +40,8 @@ export default function Page() {
       intro={<>People ask me whether Apple Notes has an API. It doesn&apos;t, not in the way Notion or Evernote do. Here&apos;s what does exist on a Mac and an iPhone, what each can and can&apos;t do, and what to use when you need more.</>}
       answer={
         <Answer jump={[
-          { href: "#what-exists", label: "What exists" },
           { href: "#which-to-use", label: "Which to use" },
+          { href: "#what-exists", label: "What exists" },
           { href: "#applescript", label: "AppleScript and Python" },
           { href: "#real-api", label: "A real API" },
         ]}>
@@ -59,6 +59,23 @@ export default function Page() {
       art="/blog/art/apple-notes-api"
       faq={FAQ}
     >
+      <h2 id="which-to-use">Which one should I use?</h2>
+      <p>Find what you want to do, and the right column is your answer.</p>
+      <div className="tableWrap">
+        <table>
+          <thead>
+            <tr><th scope="col">If you want to</th><th scope="col">Use</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">Read every note from a script on your Mac</th><td>AppleScript, or Python running it through <code>osascript</code></td></tr>
+            <tr><th scope="row">Add to a note from your iPhone, by tapping or on a schedule</th><td>Shortcuts: Append to Note, or Append Checklist Item</td></tr>
+            <tr><th scope="row">Take a copy of one note</th><td>Export, as Markdown on iOS 26 and macOS 26</td></tr>
+            <tr><th scope="row">Let Claude on your Mac search and edit notes</th><td>Claude&apos;s Apple Notes extension, or a community MCP server</td></tr>
+            <tr><th scope="row">Let ChatGPT or Claude on the web or iPhone use your notes</th><td>Not possible with Apple Notes; use a notes app with an API</td></tr>
+          </tbody>
+        </table>
+      </div>
+
       <h2 id="what-exists">What exists</h2>
       <div className="tableWrap">
         <table>
@@ -79,22 +96,6 @@ export default function Page() {
         devices with Apple Intelligence, the Use Model action can put a model, including ChatGPT, between those actions: for example, ask it
         to summarize some text and append the result to a note.
       </p>
-
-      <h2 id="which-to-use">Which one to use</h2>
-      <div className="tableWrap">
-        <table>
-          <thead>
-            <tr><th scope="col">If you want to</th><th scope="col">Use</th></tr>
-          </thead>
-          <tbody>
-            <tr><th scope="row">Read every note from a script on your Mac</th><td>AppleScript, or Python running it through <code>osascript</code></td></tr>
-            <tr><th scope="row">Add to a note from your iPhone, by tapping or on a schedule</th><td>Shortcuts: Append to Note, or Append Checklist Item</td></tr>
-            <tr><th scope="row">Take a copy of one note</th><td>Export, as Markdown on iOS 26 and macOS 26</td></tr>
-            <tr><th scope="row">Let Claude on your Mac search and edit notes</th><td>Claude&apos;s Apple Notes extension, or a community MCP server</td></tr>
-            <tr><th scope="row">Let ChatGPT or Claude on the web or iPhone use your notes</th><td>Not possible with Apple Notes; use a notes app with an API</td></tr>
-          </tbody>
-        </table>
-      </div>
 
       <h2 id="applescript">AppleScript, and Python on top of it</h2>
       <p>

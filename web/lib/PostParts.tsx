@@ -8,7 +8,7 @@ import s from "./post-parts.module.css";
 export function Answer({ children, jump = [] }: { children: React.ReactNode; jump?: { href: string; label: string }[] }) {
   return (
     <aside className={s.answer} aria-label="The short answer">
-      <p className={s.answerLabel}>The short answer</p>
+      <p className={s.answerLabel}><Leaf />The short answer</p>
       {children}
       {jump.length ? (
         <ul className={s.jump}>{jump.map((j) => <li key={j.href}><a href={j.href}>{j.label}</a></li>)}</ul>
@@ -62,11 +62,30 @@ export function Keep({ title, note, text, code = false, children }: { title: str
   return (
     <div className={s.keep}>
       <div className={s.keepHead}>
-        <p className={s.keepTitle}>{title}</p>
+        <p className={s.keepTitle}><span className={s.keepTag}>Keep this</span>{title}</p>
         <CopyButton text={text} label="Copy" className={s.copy} event="blog_copy_clicked" />
       </div>
       {children ?? (code ? <pre tabIndex={0}><code>{text}</code></pre> : <pre className={s.plain} tabIndex={0}>{text}</pre>)}
       {note && <p className={s.keepNote}>{note}</p>}
     </div>
+  );
+}
+
+/// The leaf from the app icon, small, beside a label.
+function Leaf() {
+  return (
+    <svg className={s.leaf} width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+      <path d="M13.5 2.5C7 2.5 2.5 6 2.5 11c0 1 .2 1.8.5 2.5C4 9.5 7 7 10.5 6 7.5 7.5 5 10 4 13.6c.8.3 1.6.4 2.5.4 4.6 0 7-4.4 7-11.5Z" fill="currentColor" />
+    </svg>
+  );
+}
+
+/// A checklist to keep: drawn with the round boxes Notes uses, and copied as plain lines (title first)
+/// that become a checklist in Notes with one tap of the checklist button.
+export function Checklist({ title, items, note }: { title: string; items: string[]; note?: React.ReactNode }) {
+  return (
+    <Keep title={title} note={note} text={[title, ...items].join("\n")}>
+      <ul className={s.ticks}>{items.map((it) => <li key={it}>{it}</li>)}</ul>
+    </Keep>
   );
 }
