@@ -17,7 +17,9 @@ import { parseStored } from "./app_project.ts";
 const isProject = (stored: string) => { const p = parseStored(stored); return Object.keys(p.files).length > 1 || Object.keys(p.compiled).length > 0; };
 import { appendText, applyEdits, coerce, findTables, fitLines, isTextType, mimeOf, outline, previewOf, replaceTable, searchFilter, searchInMemory, setChecklistItem, sliceLines, titleOf, typeSpec, wikiLinks, type Edit, type Table } from "./notes.ts";
 
-export type ToolContext = { sql: Sql; userId: string; client: string; canWrite: boolean; vault: Vault };
+/** session: the client's MCP session (its Mcp-Session-Id, or a hash of its token), for what it has read.
+ *  timing: where a call's time went, sent back in the Server-Timing header. */
+export type ToolContext = { sql: Sql; userId: string; client: string; canWrite: boolean; vault: Vault; session?: string; timing?: Record<string, number> };
 export class ToolError extends Error {}
 
 /** A result that is MCP content blocks (a file's text, an image, a PDF), sent as they are. */
