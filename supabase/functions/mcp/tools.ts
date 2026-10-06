@@ -329,7 +329,7 @@ export async function runIn(list: Tool[], impl: Record<string, (tx: Tx, a: Args,
       return await impl[name](tx, args, call);
     });
   } catch (e) {
-    // The account is full (20261007165100): say how full, and what to delete.
+    // The account is full (20261008100100): say how full, and what to delete.
     if ((e as { hint?: string }).hint === "storage") throw await storageFull(ctx, claims);
     throw e;
   } finally {

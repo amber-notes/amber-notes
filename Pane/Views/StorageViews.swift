@@ -1,7 +1,7 @@
 import Supabase
 import SwiftUI
 
-/// What the account stores, as the server counts it (storage_usage(), 20261007165100): sealed
+/// What the account stores, as the server counts it (storage_usage(), 20261008100100): sealed
 /// sizes of notes, files, apps, Recently Deleted and earlier versions, against a limit of 2 GB.
 struct StorageUsage: Codable, Equatable {
     var used: Int64

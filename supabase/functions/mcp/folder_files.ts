@@ -1,8 +1,8 @@
 // Files for the file tools (files_tools.ts): a file kept in a folder on its own ("To read/Paper.pdf",
-// 20261007165000_folder_files.sql) or embedded in a note ("Work/Acme/contract.pdf"). paths.ts names
+// 20261008100000_folder_files.sql) or embedded in a note ("Work/Acme/contract.pdf"). paths.ts names
 // them; this module moves, renames, deletes and restores files kept in folders, reads any file's
 // bytes, turns them into text the AI can read (PDF, Word, Excel, PowerPoint, plain text), and writes
-// new bytes: a new file, or a new version of one with the old one kept (20261007165100).
+// new bytes: a new file, or a new version of one with the old one kept (20261008100100).
 //
 // Bytes are sealed with the account's key on the way into Storage and opened on the way out, in this
 // request's memory only, like everything else the AI touches.

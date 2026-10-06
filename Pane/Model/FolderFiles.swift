@@ -4,7 +4,7 @@ import UniformTypeIdentifiers
 
 /// Files kept in a folder on their own (PDFs, images, spreadsheets), listed with the folder's notes
 /// and apps. Deleting one moves it to Recently Deleted for 30 days, like a note; deleting a folder
-/// takes its files there too. The server does the same for every device (20261007165000).
+/// takes its files there too. The server does the same for every device (20261008100000).
 @MainActor
 extension ModelContext {
     /// Every file in a folder, live or in Recently Deleted.

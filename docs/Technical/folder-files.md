@@ -1,6 +1,6 @@
 # Files in folders
 
-Status: prototype on `proto/files-in-folders` (2026-10-06). Migrations `20261007165000_folder_files.sql` and `20261007165100_storage_limit_and_file_versions.sql`.
+Status: prototype on `proto/files-in-folders` (2026-10-06). Migrations `20261008100000_folder_files.sql` and `20261008100100_storage_limit_and_file_versions.sql`.
 
 A folder holds notes, apps and files: "Personal/" has TODO (a note) and Habit tracker (an app); "To Read/" has Fluent Python.pdf. A file can still be embedded in a note (`pane-file:<id>`), as before.
 

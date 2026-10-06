@@ -1,4 +1,4 @@
-// Files as folder items, in the database (20261007165000_folder_files.sql): whose folder a file may
+// Files as folder items, in the database (20261008100000_folder_files.sql): whose folder a file may
 // go in, older apps' writes keeping it there, a deleted folder taking its files to Recently
 // Deleted, and the 30-day purge.
 //   cd supabase/functions/mcp && deno test -A folder_files.pglite.test.ts
@@ -263,7 +263,7 @@ Deno.test("list_files (production tools) names a file's folder and leaves out Re
   assertEquals(files.find((f: { id: string }) => f.id === photo.id).folder, undefined);
 });
 
-// MARK: Storage per person (20261007165100_storage_limit_and_file_versions.sql)
+// MARK: Storage per person (20261008100100_storage_limit_and_file_versions.sql)
 
 /** An account that already stores `bytes` (one big file), put in without the triggers. */
 async function stored(pg: PGlite, a: Account, bytes: number) {
