@@ -1,0 +1,15 @@
+// Amber Notes Beta: the same app on the staging backend, next to the real one without sharing its
+// data, keychain or links (docs/Technical/staging.md). Passed with -xcconfig by
+// `CHANNEL=beta scripts/release-mac.sh` and `CHANNEL=beta scripts/testflight.sh`.
+PANE_BUNDLE_ID = dev.emilwagman.pane.beta
+PANE_DISPLAY_NAME = Amber Notes Beta
+PANE_PRODUCT_NAME = Amber Notes Beta
+PANE_URL_SCHEME = ambernotes-beta
+PANE_APP_GROUP = group.dev.emilwagman.pane.beta
+PANE_APPLINKS_HOST = amber-notes-staging.vercel.app
+PANE_UPDATE_FEED = https:/$()/amber-notes-staging.vercel.app/updates/appcast.xml
+// The Developer ID build is sandboxed (its own container); the App Store build already is.
+PANE_MAC_ENTITLEMENTS = Pane-mac-beta.entitlements
+// The staging project's URL and anon key, the share site and the MCP address: written by
+// scripts/staging.sh, gitignored.
+#include? "Backend.staging.local.xcconfig"

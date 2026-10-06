@@ -15,7 +15,7 @@
 // The copy follows the house rules: Emil's voice, short, no em dashes, no invented features, and never
 // a person's own data quoted back (no note counts). Nothing here knows what a person's notes say.
 
-import type { Kind } from "./logic.ts";
+import type { Kind, WelcomeStep } from "./logic.ts";
 import PROMPTS from "./prompts.json" with { type: "json" };
 
 export const APP_STORE_URL = "https://apps.apple.com/app/id6817253103";
@@ -33,6 +33,10 @@ export type Context = {
   connectTried: boolean;
   /// Which subject line and preview (0 or 1) when two are being compared.
   variant?: 0 | 1;
+  /// The welcome's one next step (logic.ts welcomeStep); the other emails ignore it.
+  step?: WelcomeStep;
+  /// Previews only: the welcome without its picture, to compare.
+  plain?: boolean;
 };
 
 export type Email = { kind: Kind; subject: string; preview: string; html: string; text: string };
@@ -59,7 +63,8 @@ type Draft = {
   preview: [string, string];
   title: string;
   /// The paper-cut picture on top (web/public/email/hero-*.jpg), its ground colour and what it shows.
-  art: { file: string; ground: string; alt: string };
+  /// Optional only so a preview can show the welcome without one.
+  art?: { file: string; ground: string; alt: string };
   blocks: Block[];
 };
 
@@ -87,8 +92,43 @@ const SETUP: Block = { checks: [
   { done: false, text: "Try it" },
 ] };
 
+/// The welcome's one step, by where the person is (logic.ts welcomeStep): the button (or the ask to
+/// try) and one small line under it.
+function welcomeStepBlocks(c: Context): Block[] {
+  switch (c.step ?? "connect") {
+    case "connect":
+      return [
+        { button: { label: "Connect ChatGPT or Claude", href: connectAI(c) } },
+        { p: "That's the one thing to do first. Then ask it to start a list or tidy a note, and the change shows up in your notes.", small: true },
+      ];
+    case "app":
+      return [
+        { button: { label: "Get the app", href: `${c.site}/download` } },
+        { p: "Your AI is already connected. Sign in to the app with the same account to see your notes and change them yourself.", small: true },
+      ];
+    case "try":
+      return [
+        { prompts: PROMPTS.slice(0, 1) },
+        { p: "Your AI is already connected, so this works right away. Tap it and it opens ready to send.", small: true },
+      ];
+  }
+}
+
 function draft(kind: Kind, c: Context): Draft {
   switch (kind) {
+    case "welcome":
+      return {
+        subject: ["Welcome to Amber Notes", "Hi from Emil at Amber Notes"],
+        preview: ["What Amber Notes is good for, and the one thing to do first.",
+          "A quick hello, and the one thing to do first."],
+        title: "Welcome to Amber Notes",
+        art: c.plain ? undefined : { file: "hero-try.jpg", ground: "#2e346d", alt: "Two paper-cut armchairs with a mug each, ready for a chat" },
+        blocks: [
+          { p: "Hi, I'm Emil. Amber Notes is a simple notes app for iPhone and Mac that ChatGPT and Claude can read and edit, with your approval. It's end-to-end encrypted, and free." },
+          ...welcomeStepBlocks(c),
+          { p: "Questions, or something that doesn't work? Just reply, I read every email." },
+        ],
+      };
     case "stuck":
       return {
         subject: ["Did something go wrong after signing in?", "Your Amber Notes account is still empty"],
@@ -384,8 +424,8 @@ function htmlOf(d: Draft, c: Context): string {
   const dot = (color: string) => `<td width="10" height="10" bgcolor="${color}" style="width:10px;height:10px;border-radius:5px;background:${color};font-size:0;line-height:0;">&nbsp;</td><td width="6" style="width:6px;font-size:0;line-height:0;">&nbsp;</td>`;
   // With pictures blocked, the picture's place shows the email's title, large, on the picture's own
   // ground colour, so the block reads as meant (the picture is decoration; the title says it all).
-  const art = `  <tr><td align="center" valign="middle" bgcolor="${d.art.ground}" style="background:${d.art.ground};border-radius:20px;line-height:0;font-size:0;text-align:center;">
-    <img src="${a}/${d.art.file}" width="520" height="312" alt="${esc(d.title)}" style="display:block;width:100%;max-width:520px;height:auto;border:0;border-radius:20px;color:${inkOn(d.art.ground)};font-family:${DISPLAY};font-size:26px;font-weight:700;line-height:1.3;text-align:center;">
+  const art = !d.art ? "" : `  <tr><td align="center" valign="middle" bgcolor="${d.art!.ground}" style="background:${d.art!.ground};border-radius:20px;line-height:0;font-size:0;text-align:center;">
+    <img src="${a}/${d.art!.file}" width="520" height="312" alt="${esc(d.title)}" style="display:block;width:100%;max-width:520px;height:auto;border:0;border-radius:20px;color:${inkOn(d.art!.ground)};font-family:${DISPLAY};font-size:26px;font-weight:700;line-height:1.3;text-align:center;">
   </td></tr>
   <tr><td class="gap" style="height:16px;line-height:16px;font-size:0;">&nbsp;</td></tr>
 `;
@@ -509,4 +549,4 @@ export function render(kind: Kind, c: Context): Email {
   return { kind, subject: d.subject[v], preview: d.preview[v], html: htmlOf(d, c), text: textOf(d, c) };
 }
 
-export const KINDS: Kind[] = ["stuck", "import", "connect", "try", "undo", "apps", "templates", "iphone", "mac", "share"];
+export const KINDS: Kind[] = ["welcome", "stuck", "import", "connect", "try", "undo", "apps", "templates", "iphone", "mac", "share"];

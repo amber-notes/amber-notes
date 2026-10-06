@@ -19,8 +19,8 @@ struct NoteSourceLink: Hashable, Identifiable, Sendable {
     let slug: String
     var id: String { "\(kind.rawValue):\(slug)" }
 
-    static let scheme = "ambernotes"
-    static let webHosts: Set<String> = ["ambernotes.app", "www.ambernotes.app"]
+    static let scheme = AppIdentity.scheme
+    static let webHosts = AppIdentity.webHosts
 
     /// Template slugs, as the site names them: lowercase words joined by hyphens.
     static func validTemplateSlug(_ s: String) -> Bool {
@@ -231,6 +231,8 @@ struct WebNoteSource: NoteSourceFetching {
         // Captures and the local template flow (demo/onboarding/site.py).
         if let s = Capture.argument("-templateSite") ?? ProcessInfo.processInfo.environment["AMBER_TEMPLATE_SITE"], let u = URL(string: s) { return u }
         #endif
+        // The site the build shares to when it's a public one (the staging site for Amber Notes Beta).
+        if let u = ShareLinkConfig.baseURL, u.scheme == "https" { return u }
         return URL(string: "https://ambernotes.app")!
     }()
     var supabaseURL: URL? = BackendConfig.url

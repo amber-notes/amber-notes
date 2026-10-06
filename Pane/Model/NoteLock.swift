@@ -597,7 +597,7 @@ final class MemoryKeyStore: LockKeyStore, @unchecked Sendable {
 /// The derived key in the Keychain, readable only after Face ID or Touch ID on this device, and
 /// gone when the enrolled faces or fingers change (`.biometryCurrentSet`).
 struct KeychainKeyStore: LockKeyStore {
-    static let service = "dev.emilwagman.pane.notes-lock"
+    static let service = AppIdentity.keychainPrefix + ".notes-lock"
 
     var biometryName: String? {
         let context = LAContext()

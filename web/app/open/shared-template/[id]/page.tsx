@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { sharedTemplate } from "@/lib/collab-relay";
 import { EmptyState, Stage, ui } from "@/lib/ui";
 import OpenCard from "../../OpenCard";
+import { appURL } from "@/lib/app-scheme";
 
 // The universal link behind a shared template's "Use template" (prototype):
 // https://ambernotes.app/open/shared-template/<id> opens Amber Notes, which fetches the template and
@@ -25,7 +26,7 @@ export default async function Page({ params }: Props) {
   }
   return (
     <OpenCard
-      href={`ambernotes://shared-template/${id}`}
+      href={appURL(`shared-template/${id}`)}
       what="this template"
       lede={<>Amber Notes adds a fresh <b>{shared.template.title}</b> note{shared.template.page ? " with its app" : ""}.</>}
       markdown={shared.template.note}

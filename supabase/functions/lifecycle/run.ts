@@ -9,7 +9,7 @@
 // tried with the next email the same day.
 import type { Sql } from "npm:postgres@3.4.5";
 import { render } from "./emails.ts";
-import { clickable, type Config, decide, type Facts, gapFor, type Kind, LADDER, linkName, localMorning, MAX_EMAILS, sortable, trackedLink, unsubscribeLinks, unsubscribeToken, variantOf } from "./logic.ts";
+import { clickable, type Config, decide, type Facts, gapFor, type Kind, LADDER, linkName, localMorning, MAX_EMAILS, sortable, trackedLink, unsubscribeLinks, unsubscribeToken, variantOf, welcomeDue, welcomeStep } from "./logic.ts";
 
 export type Message = {
   from: string;
@@ -55,7 +55,7 @@ async function claim(sql: Sql, f: Facts, kind: Kind, variant: number, now: Date)
       where not exists (select 1 from public.email_unsubscribes x where x.user_id = ${userId}::uuid)
         and not exists (select 1 from public.email_sends s where s.user_id = ${userId}::uuid
                         and s.created_at > ${since})
-        and (select count(*) from public.email_sends s where s.user_id = ${userId}::uuid) < ${MAX_EMAILS}
+        and (select count(*) from public.email_sends s where s.user_id = ${userId}::uuid and s.kind <> 'welcome') < ${MAX_EMAILS}
       on conflict (user_id, kind) do nothing
       returning id`;
     return row ? Number(row.id) : null;
@@ -93,30 +93,64 @@ export async function run({ sql, send, cfg, now = new Date(), anyHour = false, p
     const variant = cfg.subjectTest ? variantOf(f.user_id) : 0;
     const id = await claim(sql, f, kind, variant, now);
     if (id === null) continue;
-    const links = unsubscribeLinks(cfg.site, f.user_id, await unsubscribeToken(cfg.unsubscribeSecret, f.user_id));
-    const email = render(kind, { site: cfg.site, assets: `${cfg.site}/email`, unsubscribe: links.page, sortable: sortable(f), connectTried: f.connect_tried, variant });
-    if (cfg.trackClicks) email.html = await track(email.html, cfg, id, [links.page, `${cfg.site}/privacy`]);
-    let result: SendResult;
-    try {
-      result = await send({
-        from: cfg.from, to: f.email, reply_to: cfg.replyTo, subject: email.subject, html: email.html, text: email.text,
-        headers: { "List-Unsubscribe": `<${links.oneClick}>, <mailto:${cfg.replyTo}?subject=Unsubscribe>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" },
-        idempotencyKey: `lifecycle-${kind}-${f.user_id}`,
-      });
-    } catch {
-      result = { ok: false, status: 0 };
-    }
-    if (result.ok) {
-      await sql`update public.email_sends set status = 'sent', sent_at = now(), provider_id = ${result.id.slice(0, 100)} where id = ${id}`;
-      report.sent++;
-    } else if (result.status === 429) {
-      await sql`delete from public.email_sends where id = ${id}`;
-      report.deferred++;
-    } else {
-      await sql`update public.email_sends set status = 'failed' where id = ${id}`;
-      report.failed++;
-    }
+    await deliver(sql, send, cfg, f, kind, id, variant, report);
     // Resend allows a couple of requests a second.
+    await pause(600);
+  }
+  return report;
+}
+
+/// Renders, sends and records one claimed email.
+async function deliver(sql: Sql, send: Send, cfg: Config, f: Facts, kind: Kind, id: number, variant: 0 | 1, report: Report) {
+  const links = unsubscribeLinks(cfg.site, f.user_id, await unsubscribeToken(cfg.unsubscribeSecret, f.user_id));
+  const email = render(kind, { site: cfg.site, assets: `${cfg.site}/email`, unsubscribe: links.page, sortable: sortable(f), connectTried: f.connect_tried, variant, step: welcomeStep(f) });
+  if (cfg.trackClicks) email.html = await track(email.html, cfg, id, [links.page, `${cfg.site}/privacy`]);
+  let result: SendResult;
+  try {
+    result = await send({
+      from: cfg.from, to: f.email!, reply_to: cfg.replyTo, subject: cfg.subjectPrefix + email.subject, html: email.html, text: email.text,
+      headers: { "List-Unsubscribe": `<${links.oneClick}>, <mailto:${cfg.replyTo}?subject=Unsubscribe>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" },
+      idempotencyKey: `lifecycle-${kind}-${f.user_id}`,
+    });
+  } catch {
+    result = { ok: false, status: 0 };
+  }
+  if (result.ok) {
+    await sql`update public.email_sends set status = 'sent', sent_at = now(), provider_id = ${result.id.slice(0, 100)} where id = ${id}`;
+    report.sent++;
+  } else if (result.status === 429) {
+    await sql`delete from public.email_sends where id = ${id}`;
+    report.deferred++;
+  } else {
+    await sql`update public.email_sends set status = 'failed' where id = ${id}`;
+    report.failed++;
+  }
+}
+
+/// The welcome round: every account made 2 to 60 minutes ago that hasn't had its welcome, at any
+/// hour. Called every minute by lifecycle_welcome_tick, but only when such an account exists. Once
+/// per account (the row is unique per account and kind), never after an unsubscribe, and outside the
+/// ladder's gap and cap: the ladder's first email then waits its usual gap after the welcome.
+export async function welcome({ sql, send, cfg, now = new Date(), pause = (ms: number) => new Promise((r) => setTimeout(r, ms)) }:
+  { sql: Sql; send: Send; cfg: Config; now?: Date; pause?: (ms: number) => Promise<unknown> }): Promise<Report> {
+  const report: Report = { enabled: cfg.enabled, accounts: 0, due: {}, sent: 0, failed: 0, deferred: 0 };
+  const rows = await sql<Row[]>`select * from public.lifecycle_facts(${cfg.since})
+    where signed_up_at > ${new Date(now.getTime() - 3_600_000)}`;
+  report.accounts = rows.length;
+  for (const r of rows) {
+    const f = asFacts(r);
+    if (!welcomeDue(f, now) || !f.email) continue;
+    if (cfg.only && !cfg.only.has(f.user_id.toLowerCase())) continue;
+    report.due.welcome = (report.due.welcome ?? 0) + 1;
+    if (!cfg.enabled) continue;
+    const [row] = await sql<{ id: number }[]>`
+      insert into public.email_sends (user_id, kind, variant)
+      select ${f.user_id}::uuid, 'welcome', 0
+      where not exists (select 1 from public.email_unsubscribes x where x.user_id = ${f.user_id}::uuid)
+      on conflict (user_id, kind) do nothing
+      returning id`;
+    if (!row) continue;
+    await deliver(sql, send, cfg, f, "welcome", Number(row.id), 0, report);
     await pause(600);
   }
   return report;

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { CLAUDE_DIRECTORY_URL } from "@/lib/facts";
 import PlaceCard from "../PlaceCard";
+import { appURL } from "@/lib/app-scheme";
 
 // "Connect in a few minutes" in the onboarding emails (https://ambernotes.app/open/connect-ai). In
 // the app it opens Settings at Connect an AI; here, the same steps by hand.
@@ -10,7 +11,7 @@ export const metadata: Metadata = { title: "Connect your AI · Amber Notes", rob
 export default function Page() {
   return (
     <PlaceCard
-      href="ambernotes://connect-ai"
+      href={appURL("connect-ai")}
       title="Connect your AI"
       lede="Amber Notes opens Settings at Connect an AI. On another device, here's how it goes."
       steps={[

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { devOnly } from "@/lib/dev-only";
 import { ButtonRow, Card, EmptyState, Field, Sign, Stage, ui } from "@/lib/ui";
+import { appURL } from "@/lib/app-scheme";
 
 // Dev only: the proposed landing pages for the links in account emails (docs/Technical/account-emails.md),
 // drawn from fixed props with no network, for review (/dev/account?screen=confirm|confirmed|expired|
@@ -9,7 +10,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Dev: account email landing pages", robots: { index: false, follow: false } };
 
 const EMAIL = "sara@example.com";
-const openApp = <a className={ui.primary} href="ambernotes://">Open Amber Notes</a>;
+const openApp = <a className={ui.primary} href={appURL()}>Open Amber Notes</a>;
 const getApp = <p className={ui.small}>Don&apos;t have it on this device? <a href="/download">Get Amber Notes</a></p>;
 
 export default async function AccountPreview({ searchParams }: { searchParams: Promise<{ screen?: string }> }) {
@@ -46,7 +47,7 @@ const screens: Record<string, React.ReactNode> = {
     </EmptyState>
   ),
   expired: (
-    <EmptyState title="This link has expired" sign={<Sign kind="gone" />} actions={<a className={ui.secondary} href="ambernotes://">Open Amber Notes</a>}>
+    <EmptyState title="This link has expired" sign={<Sign kind="gone" />} actions={<a className={ui.secondary} href={appURL()}>Open Amber Notes</a>}>
       A link in an email works once, for one hour. Ask for a new one from the sign-in screen in Amber Notes.
     </EmptyState>
   ),

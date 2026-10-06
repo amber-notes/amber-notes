@@ -38,6 +38,14 @@ settings:
     "CODE_SIGN_IDENTITY[sdk=iphoneos*]": Apple Development
     ENABLE_USER_SCRIPT_SANDBOXING: YES
     SWIFT_STRICT_CONCURRENCY: complete
+    # Who the app is. Config/Beta.xcconfig switches all of these for "Amber Notes Beta", the build
+    # that talks to the staging backend (docs/Technical/staging.md) and sits next to the real app.
+    PANE_BUNDLE_ID: dev.emilwagman.pane
+    PANE_DISPLAY_NAME: Amber Notes
+    PANE_URL_SCHEME: ambernotes
+    PANE_APP_GROUP: group.dev.emilwagman.pane
+    PANE_APPLINKS_HOST: ambernotes.app
+    PANE_UPDATE_FEED: https://ambernotes.app/updates/appcast.xml
 targets:
   Pane:
     type: application
@@ -79,8 +87,8 @@ targets:
     info:
       path: Pane/Resources/Info.plist
       properties: &appInfo
-        CFBundleDisplayName: Amber Notes
-        CFBundleName: Amber Notes
+        CFBundleDisplayName: $(PANE_DISPLAY_NAME)
+        CFBundleName: $(PANE_DISPLAY_NAME)
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         ITSAppUsesNonExemptEncryption: false
@@ -92,13 +100,16 @@ targets:
         LSApplicationCategoryType: public.app-category.productivity
         CFBundleURLTypes:
           - CFBundleURLName: dev.emilwagman.pane.connect
-            CFBundleURLSchemes: [ambernotes]
+            CFBundleURLSchemes: [$(PANE_URL_SCHEME)]
         # Handoff: Connect ChatGPT or Claude, started on iPhone, continues on the Mac.
         NSUserActivityTypes: [dev.emilwagman.pane.connect]
         PaneSupabaseURL: $(PANE_SUPABASE_URL)
         PaneSupabaseKey: $(PANE_SUPABASE_KEY)
         PaneShareURL: $(PANE_SHARE_URL)
         PaneMCPURL: $(PANE_MCP_URL)
+        PaneURLScheme: $(PANE_URL_SCHEME)
+        PaneBundleID: $(PANE_BUNDLE_ID)
+        PaneAppGroup: $(PANE_APP_GROUP)
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
         NSAppleEventsUsageDescription: Amber Notes reads the Apple Notes you choose to import. It never changes them.
@@ -131,7 +142,7 @@ targets:
         LSSupportsOpeningDocumentsInPlace: true
     settings:
       base: &appSettings
-        PRODUCT_BUNDLE_IDENTIFIER: dev.emilwagman.pane
+        PRODUCT_BUNDLE_IDENTIFIER: $(PANE_BUNDLE_ID)
         # The app's file name. Dev and test builds are Pane.app; scripts/testflight.sh sets
         # PANE_PRODUCT_NAME="Amber Notes" so the shipped Mac app installs as Amber Notes.app.
         PANE_PRODUCT_NAME: Pane
@@ -168,7 +179,7 @@ targets:
       path: Pane/Resources/Info-Direct.plist
       properties:
         <<: *appInfo
-        SUFeedURL: https://ambernotes.app/updates/appcast.xml
+        SUFeedURL: $(PANE_UPDATE_FEED)
         SUPublicEDKey: $(SPARKLE_PUBLIC_KEY)
         SUEnableAutomaticChecks: true
         SUScheduledCheckInterval: 86400
@@ -188,6 +199,7 @@ targets:
       - PaneShare
       - Pane/Views/AppMark.swift
       - Pane/Model/Inbox.swift
+      - Pane/Model/AppIdentity.swift
       - Pane/Model/SharedItem.swift
       - Pane/Model/RichTextToMarkdown.swift
       - Pane/Model/OfflineHTML.swift
@@ -198,10 +210,11 @@ targets:
     info:
       path: PaneShare/Info.plist
       properties:
-        CFBundleDisplayName: Amber Notes
+        CFBundleDisplayName: $(PANE_DISPLAY_NAME)
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         ITSAppUsesNonExemptEncryption: false
+        PaneAppGroup: $(PANE_APP_GROUP)
         NSExtension:
           NSExtensionPointIdentifier: com.apple.share-services
           NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShareViewController
@@ -214,7 +227,7 @@ targets:
               NSExtensionActivationSupportsFileWithMaxCount: 10
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: dev.emilwagman.pane.share
+        PRODUCT_BUNDLE_IDENTIFIER: $(PANE_BUNDLE_ID).share
         GENERATE_INFOPLIST_FILE: NO
         CODE_SIGN_ENTITLEMENTS: PaneShare/PaneShare.entitlements
         ASSETCATALOG_COMPILER_APPICON_NAME: ""
