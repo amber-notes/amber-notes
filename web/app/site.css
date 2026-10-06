@@ -343,6 +343,8 @@ html[data-theme] ::selection { background: var(--mark); }
 }
 @media (hover: hover) { .consent-button:hover { background: color-mix(in srgb, var(--soft) 80%, var(--amber) 20%); } }
 .consent-button:active { transform: scale(0.97); }
+.consent-accept { background: var(--cta-bg); color: var(--cta-ink); border-color: var(--cta-bg); }
+@media (hover: hover) { .consent-accept:hover { background: color-mix(in srgb, var(--cta-bg) 88%, var(--amber) 12%); } }
 .consent-button:focus-visible, .consent-text a:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
 .consent-button[aria-pressed="true"] { box-shadow: inset 0 0 0 1.5px var(--amber); }
 @media (max-width: 480px) { .consent { left: var(--gutter); right: var(--gutter); width: auto; } }
