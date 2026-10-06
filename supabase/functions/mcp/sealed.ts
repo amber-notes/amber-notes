@@ -107,16 +107,37 @@ export async function file(pg: PGlite, a: Account, name: string, type: string, c
  *  goes to `next`. Returns a function that puts the previous fetch back. */
 export function stubStorage(base: string, objects: Map<string, Uint8Array>, next = globalThis.fetch): () => void {
   const previous = globalThis.fetch;
-  globalThis.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
+  globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input instanceof Request ? input.url : input);
-    const prefix = `${base}/storage/v1/object/files/`;
-    if (url.startsWith(prefix)) {
+    const root = `${base}/storage/v1/object/`;
+    const prefix = `${root}files/`;
+    if (url.startsWith(root)) {
       const auth = new Headers(init?.headers).get("authorization");
-      if (auth !== `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`) return Promise.resolve(new Response("unauthorized", { status: 401 }));
-      const bytes = objects.get(decodeURIComponent(url.slice(prefix.length)));
-      return Promise.resolve(bytes ? new Response(new Uint8Array(bytes)) : new Response("not found", { status: 404 }));
+      if (auth !== `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`) return new Response("unauthorized", { status: 401 });
+      const method = init?.method ?? "GET";
+      // Copy (a file's version), remove (old versions), upload (new bytes), download.
+      if (url === `${root}copy`) {
+        const { sourceKey, destinationKey } = JSON.parse(String(init?.body));
+        const src = objects.get(sourceKey);
+        if (!src) return new Response("not found", { status: 404 });
+        objects.set(destinationKey, src);
+        return new Response("{}");
+      }
+      if (url === `${root}files` && method === "DELETE") {
+        for (const p of JSON.parse(String(init?.body)).prefixes) objects.delete(p);
+        return new Response("[]");
+      }
+      if (url.startsWith(prefix)) {
+        const key = decodeURIComponent(url.slice(prefix.length));
+        if (method === "POST" || method === "PUT") {
+          objects.set(key, new Uint8Array(init?.body as Uint8Array));
+          return new Response("{}");
+        }
+        const bytes = objects.get(key);
+        return bytes ? new Response(new Uint8Array(bytes)) : new Response("not found", { status: 404 });
+      }
     }
-    return next(input, init);
+    return await next(input, init);
   };
   return () => { globalThis.fetch = previous; };
 }

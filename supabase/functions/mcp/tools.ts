@@ -326,6 +326,10 @@ export async function runIn(list: Tool[], impl: Record<string, (tx: Tx, a: Args,
                       set_config('pane.client', ${ctx.client}, true)`;
       return await impl[name](tx, args, call);
     });
+  } catch (e) {
+    // The account is full (20261007165100): say how full, and what to delete.
+    if ((e as { hint?: string }).hint === "storage") throw await storageFull(ctx, claims);
+    throw e;
   } finally {
     // Scan time is charged on its own too, so a call that fails after scanning still pays.
     if (call.scanMs > 0) {
@@ -334,6 +338,22 @@ export async function runIn(list: Tool[], impl: Record<string, (tx: Tx, a: Args,
         await tx`select public.pane_scan_budget(${call.scanMs}::double precision)`;
       }).catch((e) => log("scan_charge_failed", { tool: name, ...errorKind(e) }));
     }
+  }
+}
+
+/** "Amber Notes is full", with what takes the room, for a write the storage limit refused. */
+async function storageFull(ctx: ToolContext, claims: string): Promise<ToolError> {
+  const mb = (n: number) => n >= 1073741824 ? `${(n / 1073741824).toFixed(2)} GB` : `${Math.round(n / 1048576)} MB`;
+  try {
+    const u = await ctx.sql.begin(async (tx) => {
+      await tx`select set_config('role', 'authenticated', true), set_config('request.jwt.claims', ${claims}, true)`;
+      const [r] = await tx<{ u: Record<string, number> }[]>`select public.storage_usage() as u`;
+      return r.u;
+    });
+    const parts = [["files", u.files], ["Recently Deleted", u.deleted], ["earlier versions", u.versions], ["notes", u.notes], ["apps", u.apps]] as [string, number][];
+    return new ToolError(`Amber Notes is full: ${mb(u.used)} of ${mb(u.limit)} used (${parts.filter(([, n]) => n > 0).map(([k, n]) => `${k} ${mb(n)}`).join(", ")}). Nothing was saved. The person can make room by emptying Recently Deleted or deleting large files in Amber Notes; you can delete files or notes they don't need, if they agree.`);
+  } catch {
+    return new ToolError("Amber Notes is full (2 GB). Nothing was saved. Empty Recently Deleted or delete large files, then try again.");
   }
 }
 

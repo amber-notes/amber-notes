@@ -43,7 +43,10 @@ async function seed(pg: PGlite, me: string) {
   const trashed = await sealed.note(pg, a, "Old list");
   await app(pg, me, `update public.notes set trashed_at = now() where id = $1`, [trashed]);
   const locked = await sealed.lockedNote(pg, a, lockKey, "Bank");
-  await sealed.file(pg, a, "plan.pdf", "com.adobe.pdf", new TextEncoder().encode("%PDF"));
+  const plan = await sealed.file(pg, a, "plan.pdf", "com.adobe.pdf", new TextEncoder().encode("%PDF"));
+  // An earlier version of it (the AI replaced it).
+  await app(pg, me, `insert into public.attachment_versions (attachment_id, meta_ct, size, storage_path, made_at) values ($1, $2, 4, $3, now())`,
+    [plan.id, await a.vault.sealFileMeta(plan.id, { name: "plan.pdf", type: "com.adobe.pdf", size: 4 }), `${plan.path}.v1`]);
   // The note's app: a project, its data and a held-back draft; a second save keeps the first as a version.
   const project = (html: string) => JSON.stringify({ amberApp: 1, files: { "/index.html": html } });
   await pg.query(`insert into public.note_pages (note_id, user_id, page_ct, data_ct, draft_ct, draft_problems, client) values ($1, $2, $3, $4, $5, 'today.test.tsx failed', 'Claude')`,
