@@ -770,6 +770,22 @@ final class AccountCrypto {
         await restart()
     }
 
+    /// Launching signed in: the key this device already holds for the account, opened at once,
+    /// before anything is drawn, so the notes show without a key screen first. `attach` checks it
+    /// with the server quietly afterwards (recheck, and the retries of an unverified key); only a
+    /// key that's really missing or replaced brings the key screens. False when there's no key here.
+    @discardableResult
+    func openHeld(account: UUID) -> Bool {
+        guard self.account == nil, phase == .off else { return false }
+        let decision = KeyStartup.decide(user: account, synced: store.load(account: account, slot: .synced),
+                                         pending: store.load(account: account, slot: .pending),
+                                         local: store.load(account: account, slot: .local), server: .unreachable)
+        guard case .ready(let k, _, _) = decision else { return false }
+        self.account = account
+        open(k, verified: false)
+        return true
+    }
+
     /// Runs startup again (Try again, or after the account's key changed).
     func restart() async {
         stop()

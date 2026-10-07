@@ -92,13 +92,20 @@ final class Backend {
         var email: String?
     }
 
+    /// Where the client keeps its session, for reading it once at launch (restoreHeldSession).
+    @ObservationIgnored private var sessionStore: AuthLocalStorage?
+    @ObservationIgnored private var sessionKey: String?
+
     init() {
         if BackendConfig.isEnabled, let url = BackendConfig.url, let key = BackendConfig.key {
+            let storage = SessionStorage()
+            sessionStore = storage
+            sessionKey = Self.sessionKey(url)
             client = SupabaseClient(
                 supabaseURL: url,
                 supabaseKey: key,
                 options: SupabaseClientOptions(
-                    auth: .init(storage: SessionStorage(), emitLocalSessionAsInitialSession: true),
+                    auth: .init(storage: storage, emitLocalSessionAsInitialSession: true),
                     // Which device wrote each version, for version history ("You on iPhone"); and that
                     // this app keeps locked notes sealed and reads end-to-end encrypted accounts (the
                     // server refuses builds that don't say so, for accounts that need it).
@@ -117,6 +124,30 @@ final class Backend {
             let args = ProcessInfo.processInfo.arguments
             if args.contains("-uitest"), args.contains("-captureSignedOut") { state = .signedOut }
         }
+    }
+
+    /// The key the Supabase client stores its session under (its default for the project).
+    static func sessionKey(_ url: URL) -> String {
+        "sb-\(url.host()?.split(separator: ".").first.map(String.init) ?? "")-auth-token"
+    }
+
+    /// Launching: the session this device kept, read once, before anything is drawn, so a signed-in
+    /// launch is signed in from its first frame. The client still checks and refreshes it
+    /// (watchAuth) and signs out only if it has really ended. Nil when there's no session here
+    /// (or it can't be read), and the launch goes on as before.
+    @discardableResult
+    func restoreHeldSession() -> UUID? {
+        guard state == .signedOut, let sessionStore, let sessionKey else { return nil }
+        return restore(from: sessionStore, key: sessionKey)
+    }
+
+    /// Tests: `restoreHeldSession` from a given store.
+    func restore(from store: AuthLocalStorage, key: String) -> UUID? {
+        guard let data = try? store.retrieve(key: key), let session = try? JSONDecoder().decode(Session.self, from: data) else { return nil }
+        apple = Self.appleIdentity(of: session.user)
+        google = Self.hasGoogle(session.user)
+        signedIn(session)
+        return session.user.id
     }
 
     /// Tests: a client (on a stubbed network) that counts as signed in, as `userID` when given.
