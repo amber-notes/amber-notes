@@ -21,14 +21,23 @@ import Testing
     }
 
     /// Draws `view` in a real titled window (toolbar included) and writes `name`.png.
-    static func shoot(_ view: some View, name: String, size: CGSize, dark: Bool, toolbar: Bool = true, wait: Double = 0.8) async throws {
+    /// `card`: as the signed-out window draws it (AppGate): content edge to edge under a see-through
+    /// title bar, only the window buttons on top, no title bar strip.
+    static func shoot(_ view: some View, name: String, size: CGSize, dark: Bool, toolbar: Bool = true, card: Bool = false, wait: Double = 0.8) async throws {
         guard let dir else { return }
         let window = NSWindow(contentRect: CGRect(x: -30000, y: -30000, width: size.width, height: size.height),
                               styleMask: toolbar ? [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView] : [.titled, .closable, .fullSizeContentView],
                               backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         window.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
-        window.contentViewController = NSHostingController(rootView: view)
+        if card {
+            window.titlebarAppearsTransparent = true
+            window.titleVisibility = .hidden
+            window.titlebarSeparatorStyle = .none
+            window.contentViewController = NSHostingController(rootView: AnyView(view.ignoresSafeArea()))
+        } else {
+            window.contentViewController = NSHostingController(rootView: AnyView(view))
+        }
         window.setContentSize(size)
         window.setFrameOrigin(CGPoint(x: -30000, y: -30000))
         window.orderFrontRegardless()
@@ -108,27 +117,27 @@ import Testing
         // The code boxes part typed and full, and after a wrong code.
         for (name, code) in [("confirm-typed", "704"), ("confirm-full", "704494")] {
             try await Self.shoot(WelcomeFlow(backend: backend, stage: .signIn(returning: false), flow: EmailSignInFlow(step: .confirm, email: "sara@example.com", code: code)),
-                                 name: "mac-welcome-\(name)-\(mode)", size: WelcomeFlow.size, dark: dark, toolbar: false)
+                                 name: "mac-welcome-\(name)-\(mode)", size: WelcomeFlow.size, dark: dark, toolbar: false, card: true)
         }
         try await Self.shoot(WelcomeFlow(backend: backend, stage: .signIn(returning: false), flow: EmailSignInFlow(step: .confirm, email: "sara@example.com"),
                                          error: "That code didn't work. Check the newest email from Amber Notes, or press Resend code."),
-                             name: "mac-welcome-confirm-wrong-\(mode)", size: WelcomeFlow.size, dark: dark, toolbar: false)
+                             name: "mac-welcome-confirm-wrong-\(mode)", size: WelcomeFlow.size, dark: dark, toolbar: false, card: true)
         // Email confirmation: Check your email, fresh and just after a code went out.
         for (name, sent) in [("confirm", nil), ("confirm-wait", Date.now)] as [(String, Date?)] {
             try await Self.shoot(WelcomeFlow(backend: backend, stage: .signIn(returning: false), flow: EmailSignInFlow(step: .confirm, email: "sara@example.com", codeSentAt: sent)),
-                                 name: "mac-welcome-\(name)-\(mode)", size: WelcomeFlow.size, dark: dark, toolbar: false)
+                                 name: "mac-welcome-\(name)-\(mode)", size: WelcomeFlow.size, dark: dark, toolbar: false, card: true)
         }
         try await Self.shoot(WelcomeFlow(backend: backend, stage: .signIn(returning: false), flow: EmailSignInFlow(step: .create, email: "sara@example.com", password: "correct horse battery")),
-                             name: "mac-welcome-signin-new-\(mode)", size: WelcomeFlow.size, dark: dark, toolbar: false)
+                             name: "mac-welcome-signin-new-\(mode)", size: WelcomeFlow.size, dark: dark, toolbar: false, card: true)
         // Before the email is checked: neutral words.
         try await Self.shoot(WelcomeFlow(backend: backend, stage: .signIn(returning: false)),
-                             name: "mac-welcome-signin-start-\(mode)", size: WelcomeFlow.size, dark: dark, toolbar: false)
+                             name: "mac-welcome-signin-start-\(mode)", size: WelcomeFlow.size, dark: dark, toolbar: false, card: true)
         // The heading once the email is known: an existing account.
         try await Self.shoot(WelcomeFlow(backend: backend, stage: .signIn(returning: false), flow: EmailSignInFlow(step: .signIn(fallback: false), email: "sara@example.com", password: "secret")),
-                             name: "mac-welcome-signin-existing-\(mode)", size: WelcomeFlow.size, dark: dark, toolbar: false)
+                             name: "mac-welcome-signin-existing-\(mode)", size: WelcomeFlow.size, dark: dark, toolbar: false, card: true)
         // Open your notes on this Mac: why, the QR code and the code to type.
         try await Self.shoot(AddDeviceCapture(name: "new-device").frame(width: 520, height: 760).containerBackground(for: .window) { Backdrop() },
-                             name: "mac-new-device-\(mode)", size: CGSize(width: 520, height: 760), dark: dark, toolbar: false, wait: 2.0)
+                             name: "mac-new-device-\(mode)", size: CGSize(width: 520, height: 760), dark: dark, toolbar: false, card: true, wait: 2.0)
         try await Self.render(SettingsView(backend: backend, sync: nil), name: "mac-settings-\(mode)", dark: dark)
         backend.showSignedInForPreview(email: "you@example.com")
         try await Self.render(SettingsView(backend: backend, sync: nil), name: "mac-settings-signedin-\(mode)", dark: dark)

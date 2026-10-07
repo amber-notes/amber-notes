@@ -54,21 +54,25 @@ enum AddDeviceCopy {
 
 // MARK: The code
 
-/// A QR code, dark on white in both appearances so any camera reads it.
+/// A QR code, dark on white in both appearances so any camera reads it. Drawn at a whole
+/// number of screen pixels per module, so every module is a crisp square: the side shrinks by
+/// less than one module's worth to land on that, and the image is scaled with no smoothing.
 struct QRCodeImage: View {
     let text: String
     var side: CGFloat = 176
     /// The default code's size on screen, with its white margin.
     static let outside: CGFloat = 176 + 2 * 14
+    @Environment(\.displayScale) private var displayScale
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
         Group {
-            if let image = Self.make(text) {
-                Image(decorative: image, scale: 1)
+            // Made at its final size in pixels, so nothing scales it on the way to the screen.
+            if let modules = Self.make(text)?.width,
+               let image = Self.make(text, pixelsPerModule: Self.pixelsPerModule(side, modules: modules, scale: displayScale)) {
+                Image(decorative: image, scale: displayScale)
                     .interpolation(.none)
-                    .resizable()
-                    .frame(width: side, height: side)
+                    .antialiased(false)
             } else {
                 Color.white.frame(width: side, height: side)
             }
@@ -81,17 +85,29 @@ struct QRCodeImage: View {
         .accessibilityIdentifier("addDevice.qr")
     }
 
-    /// One pixel per module, with the quiet zone the generator adds.
-    static func make(_ text: String) -> CGImage? {
+    /// The most whole pixels per module at `scale` that keep the code within `side` points.
+    nonisolated static func pixelsPerModule(_ side: CGFloat, modules: Int, scale: CGFloat) -> Int {
+        guard modules > 0, scale > 0 else { return 1 }
+        return max(1, Int((side * scale / CGFloat(modules)).rounded(.down)))
+    }
+
+    /// The side in points that `pixelsPerModule` gives.
+    nonisolated static func crispSide(_ side: CGFloat, modules: Int, scale: CGFloat) -> CGFloat {
+        CGFloat(pixelsPerModule(side, modules: modules, scale: scale) * modules) / scale
+    }
+
+    /// The code with the quiet zone the generator adds, `pixelsPerModule` pixels to a module,
+    /// enlarged by nearest-neighbour sampling so the edges stay hard.
+    nonisolated static func make(_ text: String, pixelsPerModule: Int = 1) -> CGImage? {
         let filter = CIFilter.qrCodeGenerator()
         filter.message = Data(text.utf8)
         filter.correctionLevel = "M"
         guard let output = filter.outputImage else { return nil }
-        return CIContext().createCGImage(output, from: output.extent)
+        let k = CGFloat(max(1, pixelsPerModule))
+        let scaled = output.samplingNearest().transformed(by: CGAffineTransform(scaleX: k, y: k))
+        return CIContext().createCGImage(scaled, from: scaled.extent.integral)
     }
 }
-
-// MARK: The new device
 
 /// The new device while its code shows: makes the offer, files it, asks every two seconds
 /// whether it was answered, and hands the key to `AccountCrypto` once it opens and checks out.
