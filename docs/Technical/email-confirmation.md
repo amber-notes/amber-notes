@@ -5,16 +5,19 @@ be used. Sign in with Apple and Sign in with Google arrive with a confirmed emai
 Accounts made while confirmation was off already have `email_confirmed_at` set, so nobody
 existing is asked.
 
-Approved by Emil on 7 October 2026. On staging since then; production waits for the checklist
-below.
+Approved by Emil on 7 October 2026. Tested end to end on staging; confirmation is switched off
+there again until a beta build with the code screen is out (below). Production waits for the
+checklist below.
 
 ## The flow
 
 In the apps (Mac and iPhone, `Pane/Views/SignInView.swift`, state in
 `Pane/Views/EmailSignInFlow.swift`):
 
-1. Email, Continue. A new email asks for a password (12 or more characters); the button says
-   Create account. An existing account's button says Sign in.
+1. Email, Continue, under "Sign in or create your account". The heading then follows the
+   answer: a new email shows "Create your account" and the button Create account; an existing
+   account shows "Welcome back" with the address and the button Sign in. The password field
+   has a show/hide eye.
 2. Create account. With confirmation on, `auth.signUp` returns a user and no session
    (`Backend.signUp` returns true), and the screen becomes **Check your email**: the address,
    a 6-digit code field (one-time-code content type, so iOS offers the code from Mail), Confirm,
@@ -57,6 +60,10 @@ Project `tswcrppnfzorhxhcnjvd`:
 - `smtp_pass` set to the Resend key staging already uses for its lifecycle emails. Before this,
   staging had no SMTP password (the Management API never returns it, so `staging.sh auth` can't
   copy it), and every auth email from staging failed with "Error sending confirmation email".
+- Then switched off again (`mailer_autoconfirm: true`) the same day: the beta build people had
+  (2610070839) has no code screen, so a sign-up there would have been stuck. The template and
+  SMTP stay. Once a beta build with this change is out, turn it back on with
+  `deno run -A scripts/auth-emails.ts confirm "[Staging] "` as the PATCH body.
 - `scripts/staging.sh auth` copies production's `mailer_` settings, so until production has
   confirmation on, running it turns autoconfirm back on for staging.
 
@@ -109,3 +116,11 @@ Nothing below has been done. Each step needs Emil's go.
 - `web/lib/connect.test.ts`: the unconfirmed sign-in message on `/connect`.
 - The local stack (`supabase/config.toml`) keeps `enable_confirmations = false`, so the local
   end-to-end scripts that sign up through the API still get a session.
+
+## Also in this change: Open your notes on this device
+
+The screen a new device shows when the account already has notes now says why first ("This
+account already has notes on another device. Link this Mac to open them here."), and the code
+under the QR code is large (monospaced, title 2, the groups set apart by kerning only, so a
+selection copies exactly the code), with a Copy code button that says Copied
+(`Pane/Views/AddDeviceView.swift`).

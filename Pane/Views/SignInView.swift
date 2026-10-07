@@ -175,11 +175,22 @@ struct SignInView: View {
         .task { if focusEmail { focus = .email } }
     }
 
-    /// "Check your email" replaces the heading while the code is asked for, in both layouts.
+    /// Beside the welcome's picture the heading follows what the email turned out to be: Welcome
+    /// back with the address for an account, Create your account for a new email. "Check your
+    /// email" replaces it while the code is asked for, in both layouts.
     private var shownHeading: Heading {
-        guard flow.step == .confirm else { return heading }
-        return .beside(title: Self.confirmTitle, line: Self.confirmLine)
+        if flow.step == .confirm { return .beside(title: Self.confirmTitle, line: Self.confirmLine) }
+        guard case .beside = heading else { return heading }
+        switch flow.step {
+        case .signIn(fallback: false), .apple, .forgot, .forgotSent: return .beside(title: Self.existingTitle, line: flow.email)
+        case .create: return .beside(title: Self.newTitle, line: Self.newLine)
+        default: return heading
+        }
     }
+
+    static let existingTitle = "Welcome back"
+    static let newTitle = "Create your account"
+    static let newLine = "Choose a password for this email."
 
     static let confirmTitle = "Check your email"
     static let confirmLine = "We sent a 6-digit code to this address. Type it here to confirm it's yours."

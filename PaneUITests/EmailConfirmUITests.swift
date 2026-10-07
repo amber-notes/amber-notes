@@ -35,6 +35,7 @@ final class EmailConfirmUITests: XCTestCase {
         let secret = app.secureTextFields["signin.password"]
         XCTAssertTrue(secret.waitForExistence(timeout: 15), "a new email chooses a password")
         XCTAssertEqual(app.buttons["signin.submit"].label, "Create account")
+        XCTAssertEqual(app.staticTexts["signin.title"].label, "Create your account", "the heading follows the new email")
         secret.typeText(password)
         app.buttons["signin.reveal"].tap()
         XCTAssertTrue(app.textFields["signin.password"].waitForExistence(timeout: 3), "the eye shows the password")
