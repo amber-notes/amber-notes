@@ -4,24 +4,12 @@ import SwiftUI
 import Testing
 @testable import Pane
 
-/// What's under the pointer, before and after: the notes window at rest and with a folder and a
-/// note hovered (the selection stays stronger), and the Get set up card at rest and with its
-/// buttons hovered. A capture has no pointer, so `hoverPreview` draws the hover.
-/// Runs only when AMBER_HIG_SHOTS is set: `TEST_RUNNER_AMBER_HIG_SHOTS=/path scripts/qa-test.sh PaneTests/HoverSnapshots`.
+/// What's under the pointer, before and after: the notes window with a folder and a note
+/// hovered (the selection stays stronger), the sidebar, and the Get set up card at rest and
+/// with its buttons hovered. A capture has no pointer, so `hoverPreview` draws the hover.
+/// Runs on GitHub's Macs through the snapshots workflow, never on a developer's Mac: the
+/// window capture needs a shown window.
 @MainActor @Suite(.serialized) struct HoverSnapshots {
-    @Test(arguments: [false, true])
-    func window(dark: Bool) async throws {
-        guard AppSnapshotTests.dir != nil else { return }
-        let mode = dark ? "dark" : "light"
-        let c = try AppSnapshotTests.container()
-        let size = CGSize(width: 1180, height: 760)
-        try await AppSnapshotTests.withLastNote(c, "Evening tracker") {
-            try await AppSnapshotTests.shoot(RootView().modelContainer(c), name: "mac-hover-window-rest-\(mode)", size: size, dark: dark)
-            try await AppSnapshotTests.shoot(RootView().environment(\.hoverPreview, ["Travel", "Groceries"]).modelContainer(c),
-                                             name: "mac-hover-window-hover-\(mode)", size: size, dark: dark)
-        }
-    }
-
     /// The window as the window server draws it (the sidebar's glass included), a folder and a
     /// note hovered: the folder shows its ••• in place of its count. Needs the snapshots
     /// workflow's watcher (see `ChromeSnapshots`).

@@ -19,13 +19,13 @@ import Testing
         HoverProbe.enabled = true
         defer { HoverProbe.enabled = false; HoverProbe.reset(); RenderProbe.counts = [:] }
 
-        let w = NSWindow(contentRect: CGRect(x: -30000, y: -30000, width: 1180, height: 760),
-                         styleMask: [.titled, .closable, .resizable, .fullSizeContentView], backing: .buffered, defer: false)
+        // Borderless, far off every screen and never shown: nothing appears on anyone's display.
+        let w = NSWindow(contentRect: CGRect(x: -20000, y: -20000, width: 1180, height: 760),
+                         styleMask: [.borderless], backing: .buffered, defer: false)
         w.isReleasedWhenClosed = false
         w.contentViewController = NSHostingController(rootView: RootView().modelContainer(c))
-        w.setFrameOrigin(CGPoint(x: -30000, y: -30000))
-        defer { w.orderOut(nil); w.close() }
-        w.orderFrontRegardless()
+        w.setFrameOrigin(CGPoint(x: -20000, y: -20000))
+        defer { w.close() }
         func settle() async {
             for _ in 0..<3 {
                 w.contentView?.layoutSubtreeIfNeeded()

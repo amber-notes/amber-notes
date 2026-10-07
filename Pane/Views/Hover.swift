@@ -67,7 +67,6 @@ extension Color {
 
 /// The pointer's state for one view, and nothing outside it.
 struct HoverTracking: ViewModifier {
-    let id: String
     @Binding var hovering: Bool
 
     func body(content: Content) -> some View {
@@ -77,9 +76,6 @@ struct HoverTracking: ViewModifier {
                 guard over != hovering else { return }
                 withAnimation(Hover.animation) { hovering = over }
             }
-            #if DEBUG
-            .onAppear { HoverProbe.register(id) { hovering = $0 } }
-            #endif
             #endif
     }
 }
@@ -105,10 +101,14 @@ struct HoverRowReader<Content: View>: View {
     var body: some View {
         #if os(macOS)
         let on = hovering || preview.contains("*") || (!id.isEmpty && preview.contains(id))
+        #if DEBUG
+        // Here rather than on appear: a test's window is never shown.
+        let _ = HoverProbe.register(id) { [self] in hovering = $0 }
+        #endif
         content(on)
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(.rect)
-            .modifier(HoverTracking(id: id, hovering: $hovering))
+            .modifier(HoverTracking(hovering: $hovering))
             .background {
                 if on {
                     RoundedRectangle(cornerRadius: Hover.rowRadius, style: .continuous)
@@ -146,7 +146,7 @@ struct RowMenuButton<Items: View>: View {
         .buttonStyle(.plain)
         .menuIndicator(.hidden)
         .fixedSize()
-        .modifier(HoverTracking(id: "", hovering: $hovering))
+        .modifier(HoverTracking(hovering: $hovering))
         // The row keeps the height of its text; the target reaches past it.
         .padding(.vertical, -(Hover.menuTarget - 16) / 2)
         .help(help)
@@ -165,7 +165,7 @@ private struct HoverHighlight<S: InsettableShape>: ViewModifier {
         content
             .background { if enabled && (hovering || preview.contains("*")) { shape.fill(Hover.fill) } }
             .contentShape(shape)
-            .modifier(HoverTracking(id: "", hovering: $hovering))
+            .modifier(HoverTracking(hovering: $hovering))
         #else
         content
         #endif
@@ -183,7 +183,7 @@ private struct HoverOverlay<S: InsettableShape>: ViewModifier {
         #if os(macOS)
         content
             .overlay { if enabled && (hovering || preview.contains("*")) { shape.fill(tint).allowsHitTesting(false) } }
-            .modifier(HoverTracking(id: "", hovering: $hovering))
+            .modifier(HoverTracking(hovering: $hovering))
         #else
         content
         #endif
@@ -217,7 +217,7 @@ private struct HoverIconButton: View {
                 if configuration.isPressed { shape.fill(Hover.pressed) } else if on { shape.fill(Hover.fill) }
             }
             .contentShape(shape)
-            .modifier(HoverTracking(id: "", hovering: $hovering))
+            .modifier(HoverTracking(hovering: $hovering))
         #else
         // On iPhone, as the plain style draws it.
         configuration.label.opacity(configuration.isPressed ? 0.6 : enabled ? 1 : 0.5)
@@ -248,7 +248,7 @@ private struct HoverTextButton: View {
             .underline(on)
             .opacity(configuration.isPressed ? 0.6 : enabled ? 1 : 0.5)
             .contentShape(.rect)
-            .modifier(HoverTracking(id: "", hovering: $hovering))
+            .modifier(HoverTracking(hovering: $hovering))
             #if os(macOS)
             .pointerStyle(link && enabled ? .link : nil)
             #endif

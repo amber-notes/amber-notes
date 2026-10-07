@@ -99,7 +99,7 @@ private struct AmberProminentButton: View {
                 }
             }
             .contentShape(shape)
-            .modifier(HoverTracking(id: "", hovering: $hovering))
+            .modifier(HoverTracking(hovering: $hovering))
             .scaleEffect(configuration.isPressed && !reduceMotion ? 0.97 : 1)
             .animation(.snappy(duration: 0.15), value: configuration.isPressed)
             .accessibilityValue(busy ? Text("Working") : Text(""))
