@@ -516,6 +516,7 @@ final class PictureView: NSView {
         imageView.imageScaling = .scaleAxesIndependently
         imageView.animates = true
         imageView.autoresizingMask = [.width, .height]
+        clipsToBounds = true
         addSubview(imageView)
     }
 
@@ -552,6 +553,8 @@ final class PictureView: NSView {
         guard checker, let ctx = NSGraphicsContext.current?.cgContext,
               let tile = Checkerboard.image(dark: effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua) else { return }
         let side = Checkerboard.cell * 2 / max(zoom, 0.01)
+        // Only under the picture: views draw past their bounds unless told not to.
+        ctx.clip(to: bounds)
         ctx.draw(tile, in: CGRect(x: 0, y: 0, width: side, height: side), byTiling: true)
     }
 }
