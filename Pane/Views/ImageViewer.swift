@@ -102,7 +102,8 @@ final class ImageViewerModel {
         scale = 3
         #endif
         let s = shownSize
-        let shown = max(s.width, s.height) * max(zoom, fitZoom) * scale
+        // Fitting: the fit zoom, whatever the zoom was before the size was known.
+        let shown = max(s.width, s.height) * (fits ? fitZoom : max(zoom, fitZoom)) * scale
         return Int(min(max(shown, 512), max(s.width, s.height), 8192))
     }
 
@@ -111,6 +112,7 @@ final class ImageViewerModel {
         guard let info = await Task.detached(priority: .userInitiated, operation: { ImageDecoder.info(url) }).value else { failed = true; return }
         pixelSize = info.size
         hasAlpha = info.alpha
+        if fits { zoom = fitZoom }
         if info.frames > 1 {
             let (f, d) = await Task.detached(priority: .userInitiated) { ImageDecoder.frames(url, turns: turns, maxPixels: 1600) }.value
             frames = f
