@@ -35,7 +35,10 @@ describe("universal links", () => {
     expect(catchAll.test("/open/connect")).toBe(false);
     expect(catchAll.test("/n/some-shared-note")).toBe(true);
     const redirects = await nextConfig.redirects!();
-    expect(redirects.some((r) => r.source.includes("well-known") || r.source.startsWith("/open"))).toBe(false);
+    expect(redirects.some((r) => r.source.includes("well-known"))).toBe(false);
+    // Only Use template's and Use this note's links go back to their page in a browser; the app's
+    // other hand-offs (/open/connect, /open/connect-ai, /open/history, /open/import) stay pages.
+    expect(redirects.filter((r) => r.source.startsWith("/open")).map((r) => r.source)).toEqual(["/open/template/:slug", "/open/copy/:slug"]);
   });
 });
 

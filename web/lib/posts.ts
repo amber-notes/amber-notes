@@ -29,7 +29,7 @@ export type Post = {
 
 /// The ground a cover (and the post's first picture) sits on: the site's palette, the help page's
 /// leaf brown, the app's dark look, or the home page's dunes.
-export type Ground = "paper" | "soft" | "tint" | "amber" | "leaf" | "dark" | "dunes" | "ink" | "peach" | "cream" | "sand" | "clay" | "mist" | "honey" | "sage" | "heather" | "blush" | "wheat" | "fog" | "dusk" | "pearl" | "linen" | "night" | "rose" | "mint" | "sky" | "lemon" | "coral" | "lagoon";
+export type Ground = "paper" | "soft" | "tint" | "amber" | "leaf" | "dark" | "dunes" | "ink" | "peach" | "cream" | "sand" | "clay" | "mist" | "honey" | "sage" | "heather" | "blush" | "wheat" | "fog" | "dusk" | "pearl" | "linen" | "night" | "rose" | "mint" | "sky" | "lemon" | "coral" | "lagoon" | "denim";
 
 /// A card's picture: one real capture of the element the post is about, on the post's ground. The
 /// capture is cropped at 2x (3x from iPhone) to about the card's width, so it shows at full size.
@@ -65,6 +65,18 @@ export const SHOTS = {
 } satisfies Record<string, Shot>;
 
 export const posts: Post[] = [
+  {
+    slug: "shared-memory-for-coding-agents",
+    title: "One memory for Claude Code, Codex and your other agents",
+    description: "Give Claude Code, Codex and other agents one shared memory in a note you can read: connect both, a Project memory note, and who changed what.",
+    excerpt: "A Project memory note that every coding agent reads first and adds to, that you can read too, with each change labelled by the agent that made it.",
+    category: "Guides",
+    date: "2026-10-06",
+    updated: "2026-10-06",
+    image: SHOTS.history,
+    thumb: thumb("denim", "thumb-iphone-agents", 1206, 680, "The note list, with notes edited by Claude Code and by Claude"),
+    draft: false,
+  },
   {
     slug: "apple-notes-not-syncing",
     title: "Apple Notes not syncing between iPhone and Mac: how to fix it",

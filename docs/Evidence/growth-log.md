@@ -5,6 +5,40 @@ assistants. Newest first. Research behind it: [seo-aeo-research-2026-09-30.md](s
 
 `docs/` had no README naming a folder for evidence, so this and the research live in `docs/Evidence/`.
 
+## 6 October 2026: a week of PostHog, Search Console, and "One memory for Claude Code, Codex and your other agents"
+
+### Measured
+
+- **PostHog (EU project 291184), 30 September to 6 October 09:00 UTC.** Data starts 2 October, when the key went live. Page views: 148 on 2 October, 39, 53, 90 on 5 October, 6 so far on 6 October; 336 in all.
+- **Top pages:** / 152, /templates 60, /blog 27, /changelog 17, /help 13, /download 12, /blog/apple-notes-ios-27 6.
+- **Where landings came from:** Google 14 (/blog/apple-notes-ios-27 5, / 3, /blog/apple-notes-api 3, /download, /blog/forgot-apple-notes-password and /blog/best-notes-app-for-ai-agents 1 each), github.com 10 (/ 6, /download 4), Bing 2 (/templates), Facebook 1. Everything else was direct.
+- **Named clicks:** `download_mac_clicked` 7 (4 on /download, 2 on /, 1 on /templates; 2 on 2 October, 1 on 3 October, 3 on 5 October, 1 on 6 October; six from macOS, which includes our own checks), `outbound_github_clicked` 25 (17 on /), `use_template_clicked` 3, `copy_prompt_clicked` 1, `outbound_claude_clicked` 1.
+- **Home page:** 126 page loads began on /, and 102 of them (81%) saw no second page; across all landings it's 160 of 191 (84%). The site keeps no id between full page loads, so a reload counts as a new visitor and these numbers overstate bounce.
+- **404s:** /& 3 (two on 3 October, one on 5 October at 10:46 UTC, before the redirect from PR 192 was live; it answers 308 now), /blog/obsidian-mcp-servers-compared 1 (5 October, direct, a guessed address; no link of ours uses it), /L9cu 1, /test 1.
+- **Google Search Console: reached** this time, in Chrome. Last 7 days (Google's data runs to 3 October): 6 clicks, 319 impressions, 1.9% click rate, average position 9.7, 35 queries. Top queries by impressions: "forgot notes password" 8, "amber notes" 5, "apple notes api" 4, "icloud notes api" 4, "apple notes mcp" 3, and five more forgotten-password variants with 2 or 3 each.
+
+Reading: GitHub and Google send about the same number of landings, and GitHub's go to the home page and /download, where most download clicks start. The forgotten-password post earns the most impressions and no clicks yet.
+
+### Picked
+
+- A developer came to Amber Notes this week for shared memory across several coding agents that they can read themselves. No post answers that; the closest, `/blog/notes-in-claude-code-and-codex`, only connects one agent at a time.
+
+### Changed (branch `site/blog-agent-memory`)
+
+- New post `/blog/shared-memory-for-coding-agents`, in Guides. Search title "Shared memory for Claude Code and Codex". Covers why a note works as shared memory, connecting both agents with an access token each, a pinned Project memory note with Decisions, Conventions and a Handoff log, the lines to put in `CLAUDE.md` and `AGENTS.md`, who changed what (Edited by, the tinted lines with Undo, version history, `note_history`), and what the encryption covers. Checked on main:
+  - Tokens are named after the agent they were made for (`ConnectAI.swift`, `ConnectTokens.create(name: guide.title)`), and that name goes on every edit (`pane.client` in `tools.ts`, the `ai_editor` trigger). A browser sign-in from a terminal (loopback redirect) is named "An app on this computer" (`displayName` in `oauth.ts`), so two agents signed in that way look the same. The post recommends a token per agent for that reason.
+  - Add to Claude Code shows only where the app can run a shell; the post says "if your copy shows it".
+  - `get_overview` lists pinned notes; `append_to_note` takes `under_heading`; each tool call locks the note row (`findNote`, `for update`), so two appends at once both land; `edit_note` with `expected_version` fails if the note changed.
+  - The bar text "Codex changed 2 lines" and Undo's merge, which fails when you changed the same lines (`AIEdit.swift`).
+  - Encryption wording follows `lib/facts.ts`. The iPhone lines follow `APP_STORE_LIVE`.
+- The card is a new crop of the existing iPhone note list capture (Standup notes Edited by Claude Code, Lisbon Edited by Claude) on a new denim ground.
+- `/blog/obsidian-mcp-servers-compared` now redirects to `/blog/obsidian-mcp` with a 308 (`next.config.ts`, tested in `seo.test.ts`).
+
+### To measure next
+
+- Search Console: impressions for "claude code codex shared memory", "shared memory for ai agents" and "claude code memory" once the post is indexed.
+- PostHog: landings on the new post, and `download_mac_clicked` by page.
+
 ## 5 October 2026: status, "Apple Notes not syncing between iPhone and Mac", and the /& redirect
 
 ### Measured

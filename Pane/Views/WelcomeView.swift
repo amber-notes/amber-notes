@@ -46,9 +46,9 @@ struct WelcomeFlow: View {
                 .frame(width: Self.size.width / 2)
                 .frame(maxHeight: .infinity)
         }
-        // Its ideal size is the window's: the app fits the window to it (WindowShaper).
-        .frame(width: Self.size.width)
-        .frame(minHeight: 540, idealHeight: Self.size.height, maxHeight: .infinity)
+        // The window is held at this size (WindowShaper); whatever it ends up, the picture
+        // takes the rest of it, so there's never a band beside or around it.
+        .frame(minWidth: Self.size.width, maxWidth: .infinity, minHeight: 540, idealHeight: Self.size.height, maxHeight: .infinity)
         .background { Backdrop() }
         #else
         Group {
@@ -208,11 +208,11 @@ struct WelcomeFlow: View {
     }
 
     #if os(macOS)
-    /// Edge to edge, the window buttons on it.
+    /// Edge to edge, the window buttons on it. It fills its panel and crops from the centre,
+    /// where the leaf on the paper is.
     private var art: some View {
         Color.clear
-            .frame(width: Self.size.width / 2)
-            .frame(maxHeight: .infinity)
+            .frame(minWidth: Self.size.width / 2, maxWidth: .infinity, maxHeight: .infinity)
             .overlay { picture }
             .clipped()
     }

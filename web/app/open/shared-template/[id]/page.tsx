@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import { sharedTemplate } from "@/lib/collab-relay";
 import { EmptyState, Stage, ui } from "@/lib/ui";
-import OpenCard from "../../OpenCard";
-import { appURL } from "@/lib/app-scheme";
+import { redirect } from "next/navigation";
 
 // The universal link behind a shared template's "Use template" (prototype):
 // https://ambernotes.app/open/shared-template/<id> opens Amber Notes, which fetches the template and
-// adds a fresh copy. Where the app isn't installed, this page tries the app's scheme.
+// adds a fresh copy. A browser that lands here goes back to the template's page (/t/<id>), as
+// /open/template and /open/copy do since the open-card pages went (#212).
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Open Amber Notes", robots: { index: false, follow: false } };
 
@@ -24,13 +24,5 @@ export default async function Page({ params }: Props) {
       </Stage>
     );
   }
-  return (
-    <OpenCard
-      href={appURL(`shared-template/${id}`)}
-      what="this template"
-      lede={<>Amber Notes adds a fresh <b>{shared.template.title}</b> note{shared.template.page ? " with its app" : ""}.</>}
-      markdown={shared.template.note}
-      back={{ href: `/t/${id}`, label: "Back to the template" }}
-    />
-  );
+  redirect(`/t/${id}`);
 }

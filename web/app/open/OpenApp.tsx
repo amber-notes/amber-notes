@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { ui } from "@/lib/ui";
 import s from "./open.module.css";
 import { APP_SCHEME } from "@/lib/app-scheme";
+import { tryApp } from "./try-app";
 
 /// Tries the app as the page loads and gives the page its state: "trying" for about 1.5 s, then
 /// "opened" if the browser left for the app, or "fallback" if it didn't. Without JavaScript the
@@ -18,30 +19,7 @@ export default function OpenApp({ href, children }: { href: string; children: Re
   useEffect(() => {
     if (!APP_LINK.test(href)) return;
     setState("trying");
-    let left = false;
-    const away = () => { if (document.visibilityState === "hidden" || !document.hasFocus()) left = true; };
-    window.addEventListener("blur", away);
-    document.addEventListener("visibilitychange", away);
-    window.addEventListener("pagehide", away);
-    // Safari shows an "address is invalid" alert when a page itself goes to a scheme no app
-    // handles, so there the attempt goes through a hidden frame; elsewhere the page navigates.
-    const ua = navigator.userAgent;
-    const safari = /Safari\//.test(ua) && !/Chrome|Chromium|CriOS|Edg|OPR|Firefox|FxiOS/.test(ua);
-    let frame: HTMLIFrameElement | undefined;
-    if (safari) {
-      frame = document.createElement("iframe");
-      frame.style.display = "none";
-      frame.src = href;
-      document.body.appendChild(frame);
-    } else window.location.href = href;
-    const timer = window.setTimeout(() => setState(left ? "opened" : "fallback"), 1500);
-    return () => {
-      window.clearTimeout(timer);
-      window.removeEventListener("blur", away);
-      document.removeEventListener("visibilitychange", away);
-      window.removeEventListener("pagehide", away);
-      frame?.remove();
-    };
+    return tryApp(href, 1500, (opened) => setState(opened ? "opened" : "fallback"));
   }, [href]);
   return <div className={`${ui.stage} ${ui.stageInSite} ${s.page}`} data-state={state}>{children}</div>;
 }

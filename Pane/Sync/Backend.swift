@@ -113,6 +113,9 @@ final class Backend {
             }
         } else {
             client = nil
+            // Captures: `-uitest -captureSignedOut` opens the real signed-out window, offline.
+            let args = ProcessInfo.processInfo.arguments
+            if args.contains("-uitest"), args.contains("-captureSignedOut") { state = .signedOut }
         }
     }
 

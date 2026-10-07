@@ -159,7 +159,7 @@ struct PaneApp: App {
             let size = CGSize(width: min(asked ?? 1180, screen.width - 80), height: min(760, screen.height - 80))
             return WindowPlacement(CGPoint(x: screen.midX - size.width / 2, y: screen.midY - size.height / 2), size: size)
         }
-        .windowResizability(.contentMinSize)
+        .windowResizability(.contentSize)
         .windowToolbarStyle(.unified)
         .commands {
             PaneCommands()
@@ -249,6 +249,28 @@ enum WindowFrameMemory {
     static var enabled: Bool { !ProcessInfo.processInfo.arguments.contains("-uitest") }
 }
 
+/// The signed-out card keeps its size. SwiftUI holds it there (the scene's windows take their
+/// content's size, and the card's is fixed); full screen is the one way around that, so it's
+/// off for the card and back for the notes.
+enum CardWindow {
+    static func lock(_ window: NSWindow) {
+        if window.styleMask.contains(.fullScreen) { window.toggleFullScreen(nil) }
+        window.collectionBehavior.remove(.fullScreenPrimary)
+        window.collectionBehavior.insert(.fullScreenNone)
+    }
+
+    static func unlock(_ window: NSWindow) {
+        window.collectionBehavior.remove(.fullScreenNone)
+        window.collectionBehavior.insert(.fullScreenPrimary)
+    }
+
+    /// The window's frame for a card of `size`: the title bar's height comes on top, as it does
+    /// for SwiftUI's own limits on the window.
+    static func frameSize(_ window: NSWindow, card size: CGSize) -> CGSize {
+        CGSize(width: size.width, height: size.height + max(0, window.frame.height - window.contentLayoutRect.height))
+    }
+}
+
 /// Signed out, the window is just the sign-in card: small, no title bar.
 /// Signed in, it becomes the normal three-column window, back where you left it.
 private struct WindowShaper: NSViewRepresentable {
@@ -300,9 +322,13 @@ private struct WindowShaper: NSViewRepresentable {
             window.standardWindowButton(.zoomButton)?.isEnabled = !compact
             window.contentMinSize = compact ? CGSize(width: 300, height: 300) : CGSize(width: 760, height: 520)
             if compact {
+                CardWindow.lock(window)
                 coordinator.fittedCard = nil
                 fitCard(window, coordinator, placeOnScreen: true)
-            } else if WindowFrameMemory.enabled {
+            } else {
+                CardWindow.unlock(window)
+            }
+            if !compact, WindowFrameMemory.enabled {
                 let frame = WindowFrameMemory.frame(saved: WindowFrameMemory.saved,
                                                     screens: NSScreen.screens.map(\.visibleFrame),
                                                     main: (window.screen ?? NSScreen.main)?.visibleFrame ?? window.frame)
@@ -323,8 +349,9 @@ private struct WindowShaper: NSViewRepresentable {
         if let last = coordinator.fittedCard, abs(last.width - cardSize.width) < 1, abs(last.height - cardSize.height) < 1 { return }
         if NSEvent.pressedMouseButtons != 0 { return } // mid-drag: try again on the next update
         coordinator.fittedCard = cardSize
-        var frame = CGRect(x: window.frame.midX - cardSize.width / 2, y: window.frame.maxY - cardSize.height,
-                           width: cardSize.width, height: cardSize.height)
+        let size = CardWindow.frameSize(window, card: cardSize)
+        var frame = CGRect(x: window.frame.midX - size.width / 2, y: window.frame.maxY - size.height,
+                           width: size.width, height: size.height)
         if placeOnScreen, let screen = window.screen?.visibleFrame {
             frame.origin.x = min(max(frame.origin.x, screen.minX), screen.maxX - frame.width)
             frame.origin.y = min(max(frame.origin.y, screen.minY), screen.maxY - frame.height)
@@ -386,7 +413,6 @@ final class DefaultsFlag {
 struct AppGate: View {
     let backend: Backend
     let sync: SyncEngine
-    @State private var cardSize: CGSize = .zero
     /// The first-run "Get set up" card's state, for the signed-in account.
     @State private var setup = SetupStore()
     /// "Enjoying Amber Notes?", once, after a week of use.
@@ -453,12 +479,15 @@ struct AppGate: View {
             case .signedOut:
                 WelcomeFlow(backend: backend)
                     #if os(macOS)
-                    .fixedSize()
-                    .onGeometryChange(for: CGSize.self, of: \.size) { cardSize = $0 }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    // Edge to edge, title bar included: the window buttons sit on the picture.
                     .ignoresSafeArea()
+                    // The window's size: it can't be resized (the scene sizes windows to their
+                    // content), so the picture always fills its half.
+                    .frame(width: WelcomeFlow.size.width, height: WelcomeFlow.size.height)
                     .containerBackground(for: .window) { Backdrop() }
                     .toolbar(removing: .title)
+                    // A window in the background otherwise draws a title bar strip over the picture.
+                    .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
                     #endif
                     .transition(.opacity)
             case .signedIn where keyGateShown:
@@ -484,7 +513,7 @@ struct AppGate: View {
             }
         }
         #if os(macOS)
-        .background(WindowShaper(compact: backend.state == .signedOut, cardSize: cardSize))
+        .background(WindowShaper(compact: backend.state == .signedOut, cardSize: WelcomeFlow.size))
         #endif
         .animation(.easeOut(duration: 0.25), value: backend.state)
         .onAppear {
