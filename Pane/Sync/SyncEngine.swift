@@ -189,7 +189,8 @@ final class SyncEngine {
             await pushPageData(client, sealer: sealer)
             await pushAPIKeyNames(client, sealer: sealer)
             if pulling { try await pull(client); hasSynced = true }
-            lastReach = .online
+            // Only when it changes: views read it, and every write would redraw them.
+            if lastReach != .online { lastReach = .online }
             if pulling { downloadKeptFiles() }
             if slowedDown {
                 // The server asked us to slow down: the rest goes up in a little while.
@@ -203,7 +204,7 @@ final class SyncEngine {
         } catch {
             log.error("sync failed: \(String(describing: error), privacy: .public)")
             status = .offline(Self.describe(error))
-            lastReach = Self.reach(after: error) ?? lastReach
+            if let r = Self.reach(after: error), r != lastReach { lastReach = r }
         }
     }
 
