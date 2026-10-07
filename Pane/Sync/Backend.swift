@@ -123,11 +123,14 @@ final class Backend {
     init(testClient: SupabaseClient, email: String, userID: UUID? = nil) {
         client = testClient
         state = .signedIn(email: email)
-        testUserID = userID
+        self.userID = userID
     }
 
-    private var testUserID: UUID?
-    var userID: UUID? { testUserID ?? client?.auth.currentUser?.id }
+    /// The signed-in account, kept as sign-in, refreshes and sign-out arrive. Asking the client for
+    /// its current user reads the session from the Keychain (and runs its storage migrations) each
+    /// time, and views read this in their bodies: every update of the window waited on the
+    /// Keychain, enough to freeze the app on a slow Keychain.
+    private(set) var userID: UUID?
 
     /// What this build can do, for the server: seal locked notes, and read and write encrypted accounts.
     static let clientTag = "lock-aware/1 e2ee/1"
@@ -147,6 +150,7 @@ final class Backend {
 
     private func signedIn(_ session: Session) {
         willSignIn(session.user.id)
+        userID = session.user.id
         state = .signedIn(email: session.user.email ?? "")
     }
 
@@ -165,9 +169,11 @@ final class Backend {
                 if (try? await client.auth.refreshSession()) != nil {
                     signedIn(session)
                 } else {
+                    userID = nil
                     state = .signedOut
                 }
             } else {
+                userID = nil
                 state = .signedOut
             }
         }
