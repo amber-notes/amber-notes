@@ -309,6 +309,11 @@ cmd_dev_app() {
     echo "→ Waiting for Amber Notes Beta to quit"
     while pgrep -f "^$dest/Contents/MacOS/" >/dev/null; do sleep 5; done
   fi
+  # TestFlight installs its copy as root, which this can't replace: it goes to the Trash by hand.
+  if [[ -e $dest && ! -O $dest ]]; then
+    echo "$dest belongs to $(stat -f %Su "$dest") (TestFlight installs it that way). Move it to the Trash in Finder, then run this again. Built: $app" >&2
+    exit 4
+  fi
   rm -rf "$dest"
   ditto "$app" "$dest"
   echo "✓ Installed $dest: build $build from dev $commit ($(codesign -dv "$dest" 2>&1 | sed -n 's/^Authority=//p' | head -1)). Not opened."
