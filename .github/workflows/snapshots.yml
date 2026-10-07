@@ -1,0 +1,74 @@
+name: Snapshots
+
+# Screenshots for review, made on a GitHub Mac rather than a developer's screen: label a pull
+# request "snapshots" and this runs the suites in .github/snapshot-suites.txt, light and dark,
+# and keeps the PNGs as the run's "snapshots" artifact. New pushes to a labelled PR run it again.
+on:
+  pull_request:
+    types: [labeled, synchronize]
+  # A branch named snapshots/… runs it without a pull request (for "before" pictures).
+  push:
+    branches: ['snapshots/**']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: snapshots-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  shots:
+    if: github.event_name == 'push' || contains(github.event.pull_request.labels.*.name, 'snapshots')
+    runs-on: macos-26
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select the newest Xcode
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          [ -n "$XCODE" ] && sudo xcode-select -s "$XCODE/Contents/Developer"
+          xcodebuild -version
+      - name: Generate the project
+        run: brew install xcodegen && xcodegen generate
+      - name: Snapshot suites
+        env:
+          TEST_RUNNER_AMBER_HIG_SHOTS: ${{ github.workspace }}/build/shots
+          # Suites that need the window server's own picture (glass, full screen) write
+          # ready-<name> and the window's id here; the watcher below captures it.
+          TEST_RUNNER_AMBER_DEMO_FRAMES: ${{ github.workspace }}/build/shots/window
+        run: |
+          set -o pipefail
+          frames="$PWD/build/shots/window"
+          mkdir -p "$frames"
+          (
+            while true; do
+              for ready in "$frames"/ready-*; do
+                [ -e "$ready" ] || continue
+                name="${ready##*/ready-}"
+                screencapture -x -o -l "$(cat "$frames/window-id")" "$frames/$name.png" || echo "capture failed: $name"
+                rm -f "$ready"
+                touch "$frames/shot-$name"
+              done
+              sleep 0.1
+            done
+          ) &
+          watcher=$!
+          only=()
+          while read -r suite; do
+            [[ -z "$suite" || "$suite" == \#* ]] && continue
+            only+=(-only-testing:"$suite")
+          done < .github/snapshot-suites.txt
+          xcodebuild test -project Pane.xcodeproj -scheme Pane -destination 'platform=macOS' \
+            "${only[@]}" -derivedDataPath build/shots-dd \
+            ENABLE_TESTABILITY=YES ENABLE_HARDENED_RUNTIME=NO \
+            CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= PROVISIONING_PROFILE_SPECIFIER= \
+            | grep -E "✔ Test run|✘|error:|\*\* TEST" || true
+          kill $watcher || true
+          rm -f build/shots/window/shot-* build/shots/window/window-id
+          ls -R build/shots
+      - uses: actions/upload-artifact@v4
+        with:
+          name: snapshots
+          path: build/shots
+          retention-days: 14

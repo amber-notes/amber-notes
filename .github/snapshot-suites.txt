@@ -1,0 +1,2 @@
+# Before pictures for PR 254: the chrome as dev draws it.
+PaneTests/ChromeSnapshots
