@@ -1,5 +1,6 @@
 #if os(macOS)
 import AppKit
+import SwiftData
 import SwiftUI
 import Testing
 @testable import Pane
@@ -67,17 +68,30 @@ import Testing
         }
     }
 
-    /// The detail pane with no note open.
+    /// A new account: no notes, nothing open, the Get set up card in the list; windowed and in
+    /// full screen (Emil's 2610071519 screenshots: a grey band over the empty detail pane, and a
+    /// lighter strip over the sidebar in full screen).
     @Test(arguments: [false, true])
     func empty(dark: Bool) async throws {
         guard let dir = WarmGreySnapshots.dir else { return }
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let mode = dark ? "dark" : "light"
         let c = try AppSnapshotTests.container()
+        for n in (try? c.mainContext.fetch(FetchDescriptor<Note>())) ?? [] { c.mainContext.purge(n) }
+        try? c.mainContext.save()
         try await AppSnapshotTests.withLastNote(c, "") {
-            let w = Self.frontWindow(RootView().modelContainer(c).tint(Color(PColor.paneAccent)), dark: dark)
+            let root = RootView().modelContainer(c).environment(SetupStore(progress: SetupProgress())).tint(Color(PColor.paneAccent))
+            let w = Self.frontWindow(root, dark: dark)
             defer { w.orderOut(nil); w.close() }
             try? await Task.sleep(for: .seconds(1.6))
-            try await WarmGreySnapshots.shoot(w, "mac-chrome-empty-\(dark ? "dark" : "light")", in: dir)
+            try await WarmGreySnapshots.shoot(w, "mac-chrome-empty-\(mode)", in: dir)
+            w.toggleFullScreen(nil)
+            for _ in 0..<40 where !w.styleMask.contains(.fullScreen) { try? await Task.sleep(for: .milliseconds(100)) }
+            try? await Task.sleep(for: .seconds(1.5))
+            try await WarmGreySnapshots.shoot(w, "mac-chrome-empty-fullscreen-\(w.styleMask.contains(.fullScreen) ? "" : "FAILED-")\(mode)", in: dir)
+            w.toggleFullScreen(nil)
+            for _ in 0..<40 where w.styleMask.contains(.fullScreen) { try? await Task.sleep(for: .milliseconds(100)) }
+            try? await Task.sleep(for: .seconds(1))
         }
     }
 }

@@ -92,6 +92,10 @@ struct RootView: View {
         #if os(macOS)
         // The list column shows its own title; no window title in the bar.
         .toolbar(removing: .title)
+        // No toolbar material over the columns: each column's own warm ground runs up under its
+        // buttons, in a window and in full screen (where the bar otherwise turned a cool grey
+        // band, over an empty note pane and over the sidebar).
+        .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
         #endif
     }
 
