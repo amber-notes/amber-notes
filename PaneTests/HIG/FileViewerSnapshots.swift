@@ -17,13 +17,13 @@ import Testing
     }
 
     static func picture(_ view: some View, size: CGSize, dark: Bool, wait: Double = 1.2) async throws -> Data {
-        let w = NSWindow(contentRect: CGRect(x: -30000, y: -30000, width: size.width, height: size.height), styleMask: [.borderless], backing: .buffered, defer: false)
+        // Borderless, far off screen, never ordered front: these run in every test run.
+        let w = NSWindow(contentRect: CGRect(x: -20000, y: -20000, width: size.width, height: size.height), styleMask: [.borderless], backing: .buffered, defer: false)
         w.isReleasedWhenClosed = false
         w.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
         w.contentViewController = NSHostingController(rootView: view.frame(width: size.width, height: size.height))
         w.setContentSize(size)
-        w.orderFrontRegardless()
-        defer { w.orderOut(nil); w.close() }
+        defer { w.close() }
         try? await Task.sleep(for: .seconds(wait))
         let v = try #require(w.contentView)
         v.layoutSubtreeIfNeeded()
@@ -53,12 +53,13 @@ import Testing
             alert.window.appearance = appearance
             alert.layout()
             let frame = try #require(alert.window.contentView?.superview)
-            alert.window.setFrameOrigin(CGPoint(x: -30000, y: -30000))
-            alert.window.orderFrontRegardless()
+            // The alert's window is titled, so it is never ordered front (it would be pulled back
+            // onto the display): drawn where it is, offscreen.
+            alert.window.setFrameOrigin(CGPoint(x: -20000, y: -20000))
             try? await Task.sleep(for: .seconds(0.6))
+            frame.layoutSubtreeIfNeeded()
             let rep = try #require(frame.bitmapImageRepForCachingDisplay(in: frame.bounds))
             frame.cacheDisplay(in: frame.bounds, to: rep)
-            alert.window.orderOut(nil)
             // cacheDisplay doesn't draw the alert's material: put the window's own ground under it,
             // in that appearance, so light and dark read as they do on screen.
             let size = frame.bounds.size
