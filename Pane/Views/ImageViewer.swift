@@ -333,9 +333,13 @@ struct ImageViewer: View {
                 .help("Rotate (⌘R). The file stays as it is unless you save a copy.")
                 .accessibilityIdentifier("image.rotate")
             if model.turns != 0 {
-                Button("Save a Copy") { saveRotatedCopy() }
+                Button { saveRotatedCopy() } label: { Label("Save a Copy", systemImage: "square.and.arrow.down.on.square") }
+                    #if os(macOS)
+                    .labelStyle(.titleOnly)
                     .buttonStyle(.bordered)
                     .controlSize(.small)
+                    #endif
+                    .help("Save the turned picture as a copy next to this one")
                     .accessibilityIdentifier("image.saveCopy")
             }
             Button { copy() } label: { Label(copied ? "Copied" : "Copy Image", systemImage: copied ? "checkmark" : "doc.on.doc") }
