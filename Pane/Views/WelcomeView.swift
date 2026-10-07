@@ -178,9 +178,9 @@ struct WelcomeFlow: View {
             .keyboardShortcut(.cancelAction)
             .accessibilityIdentifier("welcome.back")
             #endif
-            SignInView(backend: backend, flow: flow, heading: returning
-                       ? .beside(title: "Welcome back", line: "Sign in with Apple, Google or your email.")
-                       : .beside(title: "Sign in or create your account", line: "Use Apple, Google or your email."),
+            // The same neutral words from Get started and I already have an account: until the email
+            // is checked, nobody knows which it is (SignInView then says Welcome back or Create your account).
+            SignInView(backend: backend, flow: flow, heading: .beside(title: SignInView.startTitle, line: SignInView.startLine),
                        focusEmail: focusEmail)
                 #if os(macOS)
                 // Top-anchored, so the form keeps its place as its steps come and go, but low

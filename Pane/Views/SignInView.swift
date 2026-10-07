@@ -188,6 +188,8 @@ struct SignInView: View {
         }
     }
 
+    static let startTitle = "Sign in or sign up"
+    static let startLine = "Enter your email to continue."
     static let existingTitle = "Welcome back"
     static let newTitle = "Create your account"
     static let newLine = "Choose a password for this email."
@@ -333,15 +335,6 @@ struct SignInView: View {
 
             if flow.step == .confirm {
                 resendRow
-                    .transition(.opacity)
-            }
-
-            // Under the button, like the link below, so the button stays where it was.
-            if flow.step == .create {
-                Text("New here? We'll create your account.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .center)
                     .transition(.opacity)
             }
 

@@ -27,7 +27,7 @@ final class EmailConfirmUITests: XCTestCase {
         start.tap()
         let email = app.textFields["signin.email"]
         XCTAssertTrue(email.waitForExistence(timeout: 5))
-        XCTAssertEqual(app.staticTexts["signin.title"].label, "Sign in or create your account")
+        XCTAssertEqual(app.staticTexts["signin.title"].label, "Sign in or sign up")
         email.tap()
         email.typeText(address)
         app.buttons["signin.submit"].tap() // Continue

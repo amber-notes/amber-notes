@@ -14,7 +14,8 @@ checklist below.
 In the apps (Mac and iPhone, `Pane/Views/SignInView.swift`, state in
 `Pane/Views/EmailSignInFlow.swift`):
 
-1. Email, Continue, under "Sign in or create your account". The heading then follows the
+1. "Sign in or sign up", "Enter your email to continue.", Email, Continue (the same from Get
+   started and I already have an account). The heading then follows the
    answer: a new email shows "Create your account" and the button Create account; an existing
    account shows "Welcome back" with the address and the button Sign in. The password field
    has a show/hide eye.
