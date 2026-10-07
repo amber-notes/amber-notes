@@ -102,7 +102,7 @@ extension EditorPerfTests {
                     h.scroll.frame.size = NSSize(width: w, height: 900)
                     h.window.contentView?.layoutSubtreeIfNeeded()
                     // What the next turn of the run loop does after a resize.
-                    h.view.layoutCards()
+                    h.view.layoutCards(animated: false)
                     h.window.displayIfNeeded()
                 }))
             }

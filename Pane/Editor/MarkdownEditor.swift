@@ -51,8 +51,15 @@ final class EditorCore {
     }
 
 
+    /// What a live view shows: when it's the same as last time, the view needn't be given again.
+    enum CardContent: Equatable {
+        case grid(GridTable, focusFirst: Bool, request: GridFocusRequest?, selected: Bool)
+        /// `resolved`: its file is here (one can arrive by sync after the line that shows it).
+        case embed(LineEmbed, controller: ObjectIdentifier?, resolved: Bool)
+    }
+
     /// Every live view to place over the text: cards and embeds, keyed for reuse.
-    func overlays(layout: NSTextLayoutManager?, origin: CGPoint, target: EditorTarget, storage: NSTextStorage, controller: EditorController?, selection: @escaping () -> NSRange?) -> [(key: String, frame: CGRect, view: AnyView)] {
+    func overlays(layout: NSTextLayoutManager?, origin: CGPoint, target: EditorTarget, storage: NSTextStorage, controller: EditorController?, selection: @escaping () -> NSRange?) -> [(key: String, frame: CGRect, view: AnyView, content: CardContent)] {
         guard let tlm = layout, let tcm = tlm.textContentManager, let container = tlm.textContainer else { return [] }
         let width = container.size.width - container.lineFragmentPadding * 2
         func frame(at offset: Int, height: CGFloat, maxWidth: CGFloat = .infinity) -> CGRect? {
@@ -62,7 +69,13 @@ final class EditorCore {
             let y = frag.layoutFragmentFrame.minY + line.typographicBounds.minY + origin.y
             return CGRect(x: origin.x + container.lineFragmentPadding, y: y, width: min(width, maxWidth), height: height)
         }
-        var out: [(String, CGRect, AnyView)] = []
+        func resolved(_ e: LineEmbed) -> Bool {
+            switch e.kind {
+            case .file(let id, _), .image(let id, _): controller?.resolveAttachment(id) != nil
+            case .link, .note: true
+            }
+        }
+        var out: [(String, CGRect, AnyView, CardContent)] = []
         for g in grids {
             // The row handles sit in the margin, so the grid lines up with the text.
             guard var f = frame(at: g.range.location, height: GridMetrics.height(g)) else { continue }
@@ -79,7 +92,7 @@ final class EditorCore {
                 guard edited.index < now.count else { return }
                 target.apply(TextEdit(range: now[edited.index].range, replacement: edited.markdown, caret: -1))
             }
-            out.append(("g\(g.index)", f, AnyView(view)))
+            out.append(("g\(g.index)", f, AnyView(view), .grid(g, focusFirst: focusFirst, request: request, selected: isSelected)))
         }
         for e in embeds {
             // Cards and images share one column width, so their edges line up.
@@ -92,7 +105,7 @@ final class EditorCore {
                 if NSMaxRange(r) == ns.length, r.location > 0 { r = NSRange(location: r.location - 1, length: r.length + 1) }
                 target.apply(TextEdit(range: r, replacement: "", caret: -1))
             }
-            out.append((e.key, f, AnyView(EmbedView(embed: e, controller: controller, remove: remove))))
+            out.append((e.key, f, AnyView(EmbedView(embed: e, controller: controller, remove: remove)), .embed(e, controller: controller.map(ObjectIdentifier.init), resolved: resolved(e))))
         }
         return out
     }
@@ -1185,11 +1198,18 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
         let inset = NSSize(width: 20, height: headerLabel.stringValue.isEmpty ? 14 : 44)
         if textContainerInset != inset { textContainerInset = inset }
         headerLabel.frame = NSRect(x: 0, y: 14, width: newSize.width, height: 16)
-        DispatchQueue.main.async { [weak self] in self?.layoutCards() }
+        // Straight to their new places: while the width changes (the sidebar sliding, the window
+        // being resized) the cards follow the text instead of gliding after it.
+        DispatchQueue.main.async { [weak self] in self?.layoutCards(animated: false) }
     }
 
-    /// Places live views (cards, files, links) over their reserved lines.
-    func layoutCards() {
+    /// What each live view last showed, so one whose content is the same isn't given it again.
+    private var cardContent: [String: EditorCore.CardContent] = [:]
+
+    /// Places live views (cards, files, links) over their reserved lines. A view whose content is
+    /// unchanged only moves: giving every card its view again, and animating each one, on every
+    /// frame of a width change made a note of tables stall.
+    func layoutCards(animated: Bool = true) {
         guard let storage = textStorage else { return }
         let items = core.overlays(layout: textLayoutManager, origin: textContainerOrigin,
                                   target: self, storage: storage, controller: controller) { [weak self] in self?.editingSelection }
@@ -1197,6 +1217,7 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
         for (k, host) in cardHosts where !live.contains(k) {
             host.removeFromSuperview()
             cardHosts[k] = nil
+            cardContent[k] = nil
         }
         for item in items {
             let host = cardHosts[item.key] ?? {
@@ -1207,11 +1228,15 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
                 cardHosts[item.key] = h
                 return h
             }()
-            host.rootView = item.view
+            if cardContent[item.key] != item.content {
+                host.rootView = item.view
+                cardContent[item.key] = item.content
+            }
             if host.frame != item.frame {
                 NSAnimationContext.runAnimationGroup { ctx in
-                    ctx.duration = 0.22
-                    ctx.allowsImplicitAnimation = true
+                    // Zero duration also ends a glide still under way.
+                    ctx.duration = animated ? 0.22 : 0
+                    ctx.allowsImplicitAnimation = animated
                     host.animator().frame = item.frame
                 }
             }
