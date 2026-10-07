@@ -789,7 +789,7 @@ private struct WindowCloser: NSViewRepresentable {
 
 /// Captures only (`-uitest`): one screen on its own, or the setup card at a given step, so the
 /// iPhone simulator can show them without anyone tapping through.
-///   `-captureScreen connect`, `connect-chatgpt`, `connect-claude`, `connected-chatgpt`, `connect-incredible`, `settings`, `template`, `template-added`, `copy`, `signin`, `welcome`, `welcome-signin`, `welcome-signin-focused`, `new-device`, `add-device` (the sheet as this device opens it), `add-device-type`, `add-device-confirm`, `add-device-done`, `key-kept`, `key-kept-unconfirmed`, `key-kept-only`, `key-checking` or `device-added-notice`; `-captureSetup 1…4` (4: the moment after your AI's first edit).
+///   `-captureScreen connect`, `connect-chatgpt`, `connect-claude`, `connected-chatgpt`, `connect-incredible`, `settings`, `template`, `template-added`, `copy`, `signin`, `welcome`, `welcome-signin`, `welcome-signin-focused`, `welcome-signin-new`, `welcome-signin-existing`, `welcome-confirm` (Check your email), `welcome-confirm-wait` (a code just sent: Resend code counts down), `new-device`, `add-device` (the sheet as this device opens it), `add-device-type`, `add-device-confirm`, `add-device-done`, `key-kept`, `key-kept-unconfirmed`, `key-kept-only`, `key-checking` or `device-added-notice`; `-captureSetup 1…4` (4: the moment after your AI's first edit).
 struct CaptureScreen: View {
     let name: String
     let backend: Backend
@@ -869,6 +869,12 @@ struct CaptureScreen: View {
             WelcomeFlow(backend: backend, stage: .welcome)
         case "welcome-signin", "welcome-signin-focused":
             WelcomeFlow(backend: backend, stage: .signIn(returning: false), focusEmail: name.hasSuffix("-focused"))
+        case "welcome-signin-new", "welcome-signin-existing":
+            WelcomeFlow(backend: backend, stage: .signIn(returning: false),
+                        flow: EmailSignInFlow(step: name.hasSuffix("-new") ? .create : .signIn(fallback: false), email: "sara@example.com", password: "correct horse battery"))
+        case "welcome-confirm", "welcome-confirm-wait":
+            WelcomeFlow(backend: backend, stage: .signIn(returning: false),
+                        flow: EmailSignInFlow(step: .confirm, email: "sara@example.com", codeSentAt: name.hasSuffix("-wait") ? .now : nil))
         default:
             SignInView(backend: backend)
         }

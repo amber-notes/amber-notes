@@ -14,7 +14,7 @@ const stubs = `
   alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
   alter default privileges in schema public grant execute on functions to anon, authenticated, service_role;
   alter default privileges in schema extensions grant execute on functions to anon, authenticated, service_role;
-  create table auth.users (id uuid primary key, email text, raw_app_meta_data jsonb, raw_user_meta_data jsonb, created_at timestamptz default now(), recovery_sent_at timestamptz, encrypted_password text);
+  create table auth.users (id uuid primary key, email text, raw_app_meta_data jsonb, raw_user_meta_data jsonb, created_at timestamptz default now(), email_confirmed_at timestamptz default now(), recovery_sent_at timestamptz, encrypted_password text);
   create table auth.sessions (id uuid primary key default gen_random_uuid(), user_id uuid not null references auth.users (id) on delete cascade,
     created_at timestamptz default now(), refreshed_at timestamp, user_agent text, ip inet);
   create table auth.identities (id uuid primary key default gen_random_uuid(), user_id uuid not null references auth.users (id) on delete cascade,

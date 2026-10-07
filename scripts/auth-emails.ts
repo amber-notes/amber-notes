@@ -6,6 +6,8 @@
 //   deno run -A scripts/auth-emails.ts write    rewrite supabase/templates/*.html
 //   deno run -A scripts/auth-emails.ts patch    print the subjects and templates as the body of
 //                                               PATCH /v1/projects/<ref>/config/auth (nothing else)
+//   deno run -A scripts/auth-emails.ts confirm  print the body that turns on email confirmation
+//                                               with a 6-digit code (docs/Technical/email-confirmation.md)
 //
 // Supabase Auth fills these in with Go's html/template, which drops every HTML comment. So there are
 // no comments in the output, Outlook's conditional comments (and a VML button) included: classic
@@ -34,7 +36,6 @@ export type AuthEmail = {
 const SITE = "https://ambernotes.app";
 const ASSETS = `${SITE}/email`;
 const RESET = "{{ .SiteURL }}/reset-password#token_hash={{ .TokenHash }}&amp;type=recovery";
-const CONFIRM = "{{ .SiteURL }}/account/confirm?token_hash={{ .TokenHash }}&type=email";
 const CHANGE = "{{ .SiteURL }}/account/confirm?token_hash={{ .TokenHash }}&type=email_change";
 
 export const EMAILS: AuthEmail[] = [
@@ -61,15 +62,15 @@ export const EMAILS: AuthEmail[] = [
     link: "{{ .ConfirmationURL }}",
   },
   {
+    // A code, not a link: the apps ask for it right after sign-up (docs/Technical/email-confirmation.md).
     file: "confirmation.html",
     key: "confirmation",
     subject: "Confirm your email for Amber Notes",
-    preview: "One quick check that this address is yours.",
+    preview: "Your code is inside. It works for one hour.",
     title: "One quick check",
-    line: "Press the button to confirm that {{ .Email }} is yours.",
-    button: { label: "Confirm my email", href: CONFIRM },
-    note: "Didn't make an Amber Notes account? Ignore this email.",
-    link: CONFIRM,
+    line: "Type this code in Amber Notes to confirm that {{ .Email }} is yours.",
+    code: "{{ .Token }}",
+    note: "The code works for one hour. Didn't make an Amber Notes account? Ignore this email.",
   },
   {
     file: "email_change.html",
@@ -269,9 +270,23 @@ export function patch(): Record<string, string> {
   return out;
 }
 
+/// The body of PATCH /v1/projects/<ref>/config/auth that turns on email confirmation for email
+/// sign-ups, with the code email. Apple and Google sign-ups arrive confirmed and skip it.
+export function confirmPatch(subjectPrefix = ""): Record<string, string | number | boolean> {
+  const e = EMAILS.find((x) => x.key === "confirmation")!;
+  return {
+    mailer_autoconfirm: false,
+    mailer_otp_length: 6,
+    mailer_otp_exp: 3600,
+    mailer_subjects_confirmation: subjectPrefix + e.subject,
+    mailer_templates_confirmation_content: html(e),
+  };
+}
+
 if (import.meta.main) {
   const dir = new URL("../supabase/templates/", import.meta.url);
   if (Deno.args[0] === "write") for (const e of EMAILS) Deno.writeTextFileSync(new URL(e.file, dir), html(e));
   else if (Deno.args[0] === "patch") console.log(JSON.stringify(patch(), null, 2));
-  else throw new Error("Usage: deno run -A scripts/auth-emails.ts write|patch");
+  else if (Deno.args[0] === "confirm") console.log(JSON.stringify(confirmPatch(Deno.args[1] ?? ""), null, 2));
+  else throw new Error("Usage: deno run -A scripts/auth-emails.ts write|patch|confirm [subject prefix]");
 }

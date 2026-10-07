@@ -306,11 +306,47 @@ final class Backend {
         return r.password ? .password : .appleOnly
     }
 
-    /// A new account with email and password (at least 12 characters). Email isn't confirmed,
-    /// so the new session starts at once.
-    func signUp(email: String, password: String) async throws {
+    /// A new account with email and password (at least 12 characters). Returns true when the
+    /// server wants the email confirmed first: no session yet, and a 6-digit code is on its way
+    /// (docs/Technical/email-confirmation.md). With confirmation off, the session starts at once.
+    func signUp(email: String, password: String) async throws -> Bool {
+        guard let client else { return false }
+        let response = try await client.auth.signUp(email: email.trimmingCharacters(in: .whitespaces), password: password)
+        return response.session == nil
+    }
+
+    /// The code from the confirmation email: confirms the address and signs in, so the normal
+    /// first run follows from the session.
+    func confirmSignUp(email: String, code: String) async throws {
         guard let client else { return }
-        try await client.auth.signUp(email: email.trimmingCharacters(in: .whitespaces), password: password)
+        try await client.auth.verifyOTP(email: email.trimmingCharacters(in: .whitespaces), token: code, type: .signup)
+    }
+
+    /// A new confirmation code. Supabase sends at most one a minute to an address.
+    func resendSignUpCode(email: String) async throws {
+        guard let client else { return }
+        try await client.auth.resend(email: email.trimmingCharacters(in: .whitespaces), type: .signup)
+    }
+
+    /// Signing in to an account whose email isn't confirmed yet.
+    nonisolated static func isEmailNotConfirmed(_ error: Error) -> Bool {
+        guard let auth = error as? AuthError else { return false }
+        return auth.errorCode == .emailNotConfirmed || auth.message.lowercased().contains("email not confirmed")
+    }
+
+    /// Words for the code screen: a code that didn't work, or a resend too soon.
+    nonisolated static func confirmMessage(for error: Error) -> String {
+        if error is URLError { return "Can't reach the server. Check your connection and try again." }
+        let code = (error as? AuthError)?.errorCode.rawValue
+        let lower = ((error as? AuthError)?.message ?? error.localizedDescription).lowercased()
+        if lower.contains("error sending") { return "Couldn't send the email with your code. Try again in a minute." }
+        if code == "over_email_send_rate_limit" || code == "over_request_rate_limit" || lower.contains("rate limit") || lower.contains("only request this after") {
+            return "We just sent a code. Wait a minute, then press Resend code."
+        }
+        if code == "otp_expired" || lower.contains("expired") || lower.contains("invalid") {
+            return "That code didn't work. Check the newest email from Amber Notes, or press Resend code."
+        }
+        return "Couldn't confirm your email. Try again in a moment."
     }
 
     /// "Forgot password?": Supabase emails a link to ambernotes.app/reset-password, where the new
@@ -335,10 +371,11 @@ final class Backend {
     }
 
     /// Words a person can act on, instead of raw server errors.
-    static func message(for error: Error, signingUp: Bool) -> String {
+    nonisolated static func message(for error: Error, signingUp: Bool) -> String {
         if error is URLError { return "Can't reach the server. Check your connection." }
         let raw = (error as? AuthError)?.message ?? error.localizedDescription
         let lower = raw.lowercased()
+        if lower.contains("error sending") { return "Couldn't send the email with your code. Try again in a minute." }
         if lower.contains("already") { return "That email already has an account. Sign in instead." }
         if lower.contains("invalid login") || lower.contains("invalid credentials") { return "That email and password didn't match." }
         if lower.contains("password") && signingUp { return "Pick a longer password: at least 12 characters." }

@@ -158,7 +158,7 @@ struct KeyGateView: View {
     /// the rest are small links under it.
     private var addDevice: some View {
         VStack(spacing: 18) {
-            heading(AddDeviceCopy.gateTitle, crypto.phase == .mismatch ? Copy.mismatch + " " + AddDeviceCopy.gateMessage : AddDeviceCopy.gateMessage)
+            heading(AddDeviceCopy.gateTitle, crypto.phase == .mismatch ? Copy.mismatch + " " + AddDeviceCopy.gateMessage : AddDeviceCopy.gateWhy + "\n\n" + AddDeviceCopy.gateMessage)
             NewDeviceCodeView(session: session)
                 .task(id: session.round) { await session.run() }
             VStack(spacing: 10) {

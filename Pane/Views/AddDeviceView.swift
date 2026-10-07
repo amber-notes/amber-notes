@@ -11,7 +11,11 @@ import UIKit
 enum AddDeviceCopy {
     static var gateTitle: String { "Open your notes on this \(InstallID.kind)" }
     static let gateMessage = "On a device where Amber Notes already works, go to Settings \u{203A} Add a device and scan this code."
+    /// Why the screen is there, before what to do: the notes exist, this device isn't linked yet.
+    static var gateWhy: String { "This account already has notes on another device. Link this \(InstallID.kind) to open them here." }
     static let codeLead = "Can\u{2019}t scan? Type this code there:"
+    static let copyCode = "Copy code"
+    static let copiedCode = "Copied"
     static let useRecovery = "Use a recovery key instead"
     static let noDevice = "No device left?"
     static let expired = "This code expired."
@@ -240,21 +244,35 @@ struct NewDeviceCodeView: View {
     }
 
     private func codeLines(_ code: String) -> some View {
-        VStack(spacing: 4) {
+        VStack(spacing: 8) {
             Text(AddDeviceCopy.codeLead)
-                .font(.footnote)
+                .font(.subheadline)
                 .foregroundStyle(Color.muted)
                 .fixedSize(horizontal: false, vertical: true)
-            Text(code)
-                .font(.system(.title3, design: .monospaced).weight(.semibold))
+            // The thing to read and type: large, monospaced, its groups apart. Selecting it
+            // copies the code as typed (with its dashes).
+            Self.spaced(code)
+                .font(.system(.title2, design: .monospaced).weight(.semibold))
                 .foregroundStyle(Color.ink)
                 .lineLimit(1)
-                .minimumScaleFactor(0.4)
+                .minimumScaleFactor(0.75)
                 .textSelection(.enabled)
                 .accessibilityLabel(code.map(String.init).joined(separator: " "))
                 .accessibilityIdentifier("addDevice.code")
+            CopyCodeButton(code: code)
         }
         .multilineTextAlignment(.center)
+    }
+
+    /// The code with room around each dash, by kerning only, so a selection copies exactly the
+    /// code (VG9B-70QK-S4QA).
+    static func spaced(_ code: String) -> Text {
+        var text = AttributedString(code)
+        for i in text.characters.indices where text.characters[i] == "-" {
+            text[i..<text.characters.index(after: i)].kern = 8
+            if i > text.startIndex { text[text.characters.index(before: i)..<i].kern = 8 }
+        }
+        return Text(text)
     }
 
     private func message(_ text: String) -> some View {
@@ -264,6 +282,37 @@ struct NewDeviceCodeView: View {
             .multilineTextAlignment(.center)
             .fixedSize(horizontal: false, vertical: true)
             .padding(.top, 8)
+    }
+}
+
+/// Copy code, then "Copied" with a tick for a moment.
+struct CopyCodeButton: View {
+    let code: String
+    @State private var copied = false
+
+    var body: some View {
+        Button {
+            #if os(iOS)
+            UIPasteboard.general.string = code
+            #else
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(code, forType: .string)
+            #endif
+            copied = true
+            Task {
+                try? await Task.sleep(for: .seconds(1.6))
+                copied = false
+            }
+        } label: {
+            Label(copied ? AddDeviceCopy.copiedCode : AddDeviceCopy.copyCode, systemImage: copied ? "checkmark" : "doc.on.doc")
+                .frame(minHeight: 28)
+                .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .font(.subheadline.weight(.semibold))
+        .foregroundStyle(.tint)
+        .animation(.snappy(duration: 0.2), value: copied)
+        .accessibilityIdentifier("addDevice.copyCode")
     }
 }
 

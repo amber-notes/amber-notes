@@ -141,9 +141,14 @@ export const startsWithWrite = (r: Pick<ConnectRequest, "wants_write">) => r.wan
 export const destination = (host: string, loopback: boolean) => (loopback ? "an app on this computer" : host);
 
 /// A sign-in failure from Supabase Auth, in plain words.
+/// Signing in on the web to an account whose email isn't confirmed yet.
+export const EMAIL_NOT_CONFIRMED = "This email isn't confirmed yet. Open Amber Notes on your iPhone or Mac, sign in, and type the code we email you. Then connect again.";
+
 export function signInError(status: number, body: { error_code?: string } | null): string {
   if (status === 429) return "Too many attempts. Wait a few minutes and try again.";
-  if (body?.error_code === "email_not_confirmed") return "Confirm your email first, then sign in.";
+  // An account that never typed its confirmation code has never signed in, so it has no notes'
+  // key yet: only the app can finish it (docs/Technical/email-confirmation.md).
+  if (body?.error_code === "email_not_confirmed") return EMAIL_NOT_CONFIRMED;
   if (body?.error_code === "invalid_credentials" || status === 400) return "The email or password isn't right.";
   return "Couldn't sign in. Check your connection and try again.";
 }
