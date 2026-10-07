@@ -69,7 +69,8 @@ jobs:
             ENABLE_TESTABILITY=YES ENABLE_HARDENED_RUNTIME=NO \
             CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= PROVISIONING_PROFILE_SPECIFIER= \
             | tee build/ci-perf.log | grep -E "✔ Test run|✘|error:|PERF|\*\* TEST" || true
-          grep -q "\*\* TEST SUCCEEDED \*\*" build/ci-perf.log
+          # test-without-building says TEST EXECUTE SUCCEEDED.
+          grep -qE "\*\* TEST (EXECUTE )?SUCCEEDED \*\*" build/ci-perf.log
       # A failure keeps the whole log and the result bundle: a test host that hangs or crashes
       # records no issue in the filtered output above, only its name under "Failing tests".
       - name: Keep the test results
