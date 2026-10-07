@@ -1014,8 +1014,9 @@ import AppKit
         // Tailwind and the tokens: the primary button colour is Amber's accent.
         let bg = try await sandbox.webView.evaluateJavaScript("getComputedStyle(document.querySelector('nav a[aria-current=page]')).color") as? String
         #expect(bg != nil && bg != "rgb(0, 0, 0)", "\(bg ?? "nil")")
-        // The Log sheet (Radix Dialog through a portal) opens with its field.
-        _ = try await sandbox.webView.evaluateJavaScript("[...document.querySelectorAll('main button')].find((b) => b.textContent.includes('Bench press')).click(); 1")
+        // The Log sheet (Radix Dialog through a portal) opens with its field. Today shows the plan's
+        // workout for the weekday (Wednesday is Lower: no bench press), so any of today's exercises.
+        _ = try await sandbox.webView.evaluateJavaScript("[...document.querySelectorAll('main button')].find((b) => /Last:|First time/.test(b.textContent)).click(); 1")
         try await run(sandbox.webView, until: "document.querySelector('[role=dialog]') !== null")
         let sheet = try await sandbox.webView.evaluateJavaScript("(() => { const d = document.querySelector('[role=dialog]'); const r = d.getBoundingClientRect(); const cs = getComputedStyle(d); return [Math.round(r.top), Math.round(r.height), cs.opacity, cs.visibility, cs.transform, d.dataset.state, document.querySelector('[role=dialog] input') ? 'input' : 'none'].join(' '); })()") as? String
         #expect(sheet?.hasSuffix("open input") == true, "\(sheet ?? "nil")")
