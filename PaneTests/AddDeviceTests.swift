@@ -986,3 +986,20 @@ final class FakeAddDeviceServer: AddDeviceServer, @unchecked Sendable {
         relaunched.signedOut()
     }
 }
+
+/// The QR code on "Open your notes on this device": every module the same whole number of
+/// screen pixels, so none is blurred or a pixel wider than its neighbour.
+@MainActor @Suite struct QRCodeCrispTests {
+    @Test func everyModuleIsAWholeNumberOfPixels() throws {
+        let image = try #require(QRCodeImage.make(E2EE.addDeviceQR(secret: Data((0x80 ..< 0x90).map { UInt8($0) }))))
+        for scale in [1.0, 2.0, 3.0] {
+            let side = QRCodeImage.crispSide(176, modules: image.width, scale: scale)
+            let perModule = side * scale / CGFloat(image.width)
+            #expect(perModule == perModule.rounded(), "scale \(scale): \(perModule) pixels a module")
+            #expect(side <= 176 && 176 - side < CGFloat(image.width) / scale, "shrinks by less than one module")
+            let k = QRCodeImage.pixelsPerModule(176, modules: image.width, scale: scale)
+            let big = try #require(QRCodeImage.make(E2EE.addDeviceQR(secret: Data((0x80 ..< 0x90).map { UInt8($0) })), pixelsPerModule: k))
+            #expect(big.width == image.width * k, "made at its final pixel size")
+        }
+    }
+}

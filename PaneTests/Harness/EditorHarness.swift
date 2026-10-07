@@ -15,7 +15,7 @@ final class EditorHarness {
     let controller = EditorController()
 
     init(_ text: String, width: CGFloat = 720, height: CGFloat = 900, dark: Bool = false, focus: Bool = true) async {
-        window = KeyableWindow(contentRect: NSRect(x: -30000, y: -30000, width: width, height: height),
+        window = KeyableWindow(contentRect: NSRect(x: -20000, y: -20000, width: width, height: height),
                           styleMask: [.borderless], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         window.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
