@@ -22,6 +22,24 @@ import Testing
         }
     }
 
+    /// The window as the window server draws it (the sidebar's glass included), a folder and a
+    /// note hovered: the folder shows its ••• in place of its count. Needs the snapshots
+    /// workflow's watcher (see `ChromeSnapshots`).
+    @Test(arguments: [false, true])
+    func glass(dark: Bool) async throws {
+        guard let dir = WarmGreySnapshots.dir else { return }
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let c = try AppSnapshotTests.container()
+        try await AppSnapshotTests.withLastNote(c, "Evening tracker") {
+            let root = RootView().modelContainer(c).tint(Color(PColor.paneAccent)).environment(\.controlActiveState, .key)
+                .environment(\.hoverPreview, ["Travel", "Groceries"])
+            let w = AIEditSnapshots.window(root, size: CGSize(width: 1180, height: 720), dark: dark)
+            defer { w.orderOut(nil); w.close() }
+            try? await Task.sleep(for: .seconds(1.6))
+            try await WarmGreySnapshots.shoot(w, "mac-hover-glass-\(dark ? "dark" : "light")", in: dir)
+        }
+    }
+
     /// The sidebar on its own: in the window its glass doesn't draw offscreen.
     @Test(arguments: [false, true])
     func sidebar(dark: Bool) async throws {

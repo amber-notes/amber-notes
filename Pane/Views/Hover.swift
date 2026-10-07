@@ -20,12 +20,16 @@ enum Hover {
     /// background of its own there), and its corners. Measured from the selection in captures.
     static let listReach = EdgeInsets(top: 2, leading: 6, bottom: 2, trailing: 6)
     /// The sidebar's selection reaches further, to the left past the icon, and a level of
-    /// sub-folders moves the content right by `sidebarIndent`.
+    /// sub-folders moves the content right by `sidebarIndent`. Top and bottom stop `rowGap`
+    /// short of the row's edges, so a hovered row and the selected one read as separate pills.
     static func sidebarReach(depth: Int = 0) -> EdgeInsets {
-        EdgeInsets(top: 7.5, leading: 15 + CGFloat(depth) * sidebarIndent, bottom: 7.5, trailing: 6)
+        EdgeInsets(top: 7.5 - rowGap, leading: 15 + CGFloat(depth) * sidebarIndent, bottom: 7.5 - rowGap, trailing: 6)
     }
+    static let rowGap: CGFloat = 3
     static let sidebarIndent: CGFloat = 12
     static let rowRadius: CGFloat = 5
+    /// A row's ••• button: at least this big to hit.
+    static let menuTarget: CGFloat = 24
 }
 
 extension EnvironmentValues {
@@ -83,13 +87,25 @@ struct HoverTracking: ViewModifier {
 private struct HoverRow: ViewModifier {
     let id: String
     let reach: EdgeInsets
+
+    func body(content: Content) -> some View {
+        HoverRowReader(id: id, reach: reach) { _ in content }
+    }
+}
+
+/// A list row that also shows something of its own under the pointer (a folder's ••• in place
+/// of its count): `content` gets whether the pointer is over the row. The hover stays in here.
+struct HoverRowReader<Content: View>: View {
+    var id = ""
+    var reach = Hover.listReach
+    @ViewBuilder let content: (Bool) -> Content
     @State private var hovering = false
     @Environment(\.hoverPreview) private var preview
 
-    func body(content: Content) -> some View {
+    var body: some View {
         #if os(macOS)
         let on = hovering || preview.contains("*") || (!id.isEmpty && preview.contains(id))
-        content
+        content(on)
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(.rect)
             .modifier(HoverTracking(id: id, hovering: $hovering))
@@ -104,8 +120,37 @@ private struct HoverRow: ViewModifier {
             .onChange(of: hovering) { HoverProbe.rowChanges += 1 }
             #endif
         #else
-        content
+        content(false)
         #endif
+    }
+}
+
+/// A row's own menu under the pointer (••• in place of a folder's count): the same menu as a
+/// right-click, a 24 pt target that takes the accent while the pointer is on it. It never
+/// changes the row's height.
+struct RowMenuButton<Items: View>: View {
+    let help: String
+    @ViewBuilder let items: () -> Items
+    @State private var hovering = false
+
+    var body: some View {
+        Menu(content: items) {
+            Image(systemName: "ellipsis.circle")
+                .font(.system(size: 14))
+                .foregroundStyle(hovering ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
+                .frame(width: Hover.menuTarget, height: Hover.menuTarget)
+                .background { if hovering { Circle().fill(Hover.fill) } }
+                .contentShape(.circle)
+        }
+        .menuStyle(.button)
+        .buttonStyle(.plain)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .modifier(HoverTracking(id: "", hovering: $hovering))
+        // The row keeps the height of its text; the target reaches past it.
+        .padding(.vertical, -(Hover.menuTarget - 16) / 2)
+        .help(help)
+        .accessibilityLabel(help)
     }
 }
 

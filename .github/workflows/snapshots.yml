@@ -6,6 +6,9 @@ name: Snapshots
 on:
   pull_request:
     types: [labeled, synchronize]
+  # A branch named snapshots/… runs it without a pull request (for "before" pictures).
+  push:
+    branches: ['snapshots/**']
 
 permissions:
   contents: read
@@ -16,7 +19,7 @@ concurrency:
 
 jobs:
   shots:
-    if: contains(github.event.pull_request.labels.*.name, 'snapshots')
+    if: github.event_name == 'push' || contains(github.event.pull_request.labels.*.name, 'snapshots')
     runs-on: macos-26
     timeout-minutes: 40
     steps:
@@ -31,8 +34,26 @@ jobs:
       - name: Snapshot suites
         env:
           TEST_RUNNER_AMBER_HIG_SHOTS: ${{ github.workspace }}/build/shots
+          # Suites that need the window server's own picture (glass, full screen) write
+          # ready-<name> and the window's id here; the watcher below captures it.
+          TEST_RUNNER_AMBER_DEMO_FRAMES: ${{ github.workspace }}/build/shots/window
         run: |
           set -o pipefail
+          frames="$PWD/build/shots/window"
+          mkdir -p "$frames"
+          (
+            while true; do
+              for ready in "$frames"/ready-*; do
+                [ -e "$ready" ] || continue
+                name="${ready##*/ready-}"
+                screencapture -x -o -l "$(cat "$frames/window-id")" "$frames/$name.png" || echo "capture failed: $name"
+                rm -f "$ready"
+                touch "$frames/shot-$name"
+              done
+              sleep 0.1
+            done
+          ) &
+          watcher=$!
           only=()
           while read -r suite; do
             [[ -z "$suite" || "$suite" == \#* ]] && continue
@@ -43,7 +64,9 @@ jobs:
             ENABLE_TESTABILITY=YES ENABLE_HARDENED_RUNTIME=NO \
             CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= PROVISIONING_PROFILE_SPECIFIER= \
             | grep -E "✔ Test run|✘|error:|\*\* TEST" || true
-          ls build/shots
+          kill $watcher || true
+          rm -f build/shots/window/shot-* build/shots/window/window-id
+          ls -R build/shots
       - uses: actions/upload-artifact@v4
         with:
           name: snapshots

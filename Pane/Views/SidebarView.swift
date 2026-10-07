@@ -386,20 +386,27 @@ private struct FolderTree: View {
     }
 
     private var label: some View {
-        Label {
-            HStack {
-                Text(folder.name)
-                Spacer()
-                Text(folder.liveNotes.count + (files[folder.id] ?? 0), format: .number)
-                    .monospacedDigit()
-                    .foregroundStyle(.secondary)
+        // Under the pointer the count gives way to ••• with the folder's menu.
+        HoverRowReader(id: folder.name, reach: Hover.sidebarReach(depth: depth)) { hovering in
+            Label {
+                HStack {
+                    Text(folder.name)
+                    Spacer()
+                    if hovering {
+                        RowMenuButton(help: "Folder options") { menuItems }
+                            .accessibilityHidden(true)
+                    } else {
+                        Text(folder.liveNotes.count + (files[folder.id] ?? 0), format: .number)
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            } icon: {
+                SidebarIcon(name: dropTarget == folder.id ? "folder.fill" : "folder")
+                    .contentTransition(.symbolEffect(.replace))
             }
-        } icon: {
-            SidebarIcon(name: dropTarget == folder.id ? "folder.fill" : "folder")
-                .contentTransition(.symbolEffect(.replace))
+            .rowAccessibility(folder.name, count: folder.liveNotes.count, files: files[folder.id] ?? 0)
         }
-        .rowAccessibility(folder.name, count: folder.liveNotes.count, files: files[folder.id] ?? 0)
-        .hoverRow(folder.name, reach: Hover.sidebarReach(depth: depth))
         .tag(Scope.folder(folder.id))
         .accessibilityIdentifier("folder.\(folder.name)")
         .draggable(PaneDragItem(kind: .folder, id: folder.id)) {
@@ -430,14 +437,17 @@ private struct FolderTree: View {
             }
             return true
         }
-        .contextMenu {
-            Button("New Folder Inside", systemImage: "folder.badge.plus") { newSub(folder) }
-            Button("Rename", systemImage: "pencil") { rename(folder) }
-            if folder.parent != nil {
-                Button("Move to Top Level", systemImage: "arrow.up.to.line") { context.move(folder, into: nil) }
-            }
-            Divider()
-            Button("Delete Folder…", systemImage: "trash", role: .destructive) { delete(folder) }
+        .contextMenu { menuItems }
+    }
+
+    /// The folder's menu: a right-click, or its ••• under the pointer.
+    @ViewBuilder private var menuItems: some View {
+        Button("New Folder Inside", systemImage: "folder.badge.plus") { newSub(folder) }
+        Button("Rename", systemImage: "pencil") { rename(folder) }
+        if folder.parent != nil {
+            Button("Move to Top Level", systemImage: "arrow.up.to.line") { context.move(folder, into: nil) }
         }
+        Divider()
+        Button("Delete Folder…", systemImage: "trash", role: .destructive) { delete(folder) }
     }
 }
