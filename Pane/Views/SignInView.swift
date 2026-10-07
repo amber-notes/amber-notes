@@ -18,6 +18,8 @@ struct SignInView: View {
     @State private var resending = false
     /// Under the code: a new code went out (Resend code's "done").
     @State private var codeNotice: String?
+    /// A wrong or expired code: the boxes shake once per try.
+    @State private var codeShakes = 0
     @FocusState private var focus: Field?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -30,11 +32,13 @@ struct SignInView: View {
         case beside(title: String, line: String)
     }
 
-    init(backend: Backend, flow: EmailSignInFlow = EmailSignInFlow(), heading: Heading = .card, focusEmail: Bool = false) {
+    /// `error`: captures only, the screen as it looks after a failed try.
+    init(backend: Backend, flow: EmailSignInFlow = EmailSignInFlow(), heading: Heading = .card, focusEmail: Bool = false, error: String? = nil) {
         self.backend = backend
         self.heading = heading
         self.focusEmail = focusEmail
         _flow = State(initialValue: flow)
+        _error = State(initialValue: error)
     }
 
     /// Email sign-in sits under Sign in with Apple.
@@ -172,7 +176,10 @@ struct SignInView: View {
         .onChange(of: flow.step) { _, step in if step == .confirm { focus = .code } }
         // Six digits, typed or filled in from the email by iOS: confirm straight away.
         .onChange(of: flow.code) { _, code in if code.count == EmailSignInFlow.codeLength, flow.step == .confirm { primary() } }
-        .task { if focusEmail { focus = .email } }
+        .task {
+            if focusEmail { focus = .email }
+            if flow.step == .confirm { focus = .code }
+        }
     }
 
     /// Beside the welcome's picture the heading follows what the email turned out to be: Welcome
@@ -364,28 +371,11 @@ struct SignInView: View {
         .textFieldStyle(.plain)
     }
 
-    /// The 6-digit code, large and spaced like the email shows it. One-time-code content, so iOS
-    /// offers the code from Mail above the keyboard.
+    /// The 6-digit code as six boxes (CodeBoxes). One-time-code content, so iOS offers the code
+    /// from Mail above the keyboard.
     private var codeField: some View {
         VStack(spacing: 8) {
-            field(focused: focus == .code) {
-                TextField("6-digit code", text: $flow.code, prompt: Text("6-digit code").foregroundStyle(Color(Palette.placeholder)))
-                    .textContentType(.oneTimeCode)
-                    #if os(iOS)
-                    .keyboardType(.numberPad)
-                    #endif
-                    .autocorrectionDisabled()
-                    // The prompt in the form's own type; only typed digits are large and spaced.
-                    .font(flow.code.isEmpty ? .system(size: Row.text) : .system(size: Row.text + 4, weight: .semibold, design: .monospaced))
-                    .tracking(flow.code.isEmpty ? 0 : 4)
-                    .multilineTextAlignment(.center)
-                    .focused($focus, equals: .code)
-                    .submitLabel(.go)
-                    .onSubmit(primary)
-                    .disabled(working)
-                    .accessibilityLabel("Confirmation code")
-                    .accessibilityIdentifier("signin.code")
-            }
+            CodeBoxes(code: $flow.code, focus: $focus, disabled: working, shakes: codeShakes, onSubmit: primary)
             if let codeNotice {
                 note(codeNotice, id: "signin.codeSent")
             }
@@ -585,6 +575,7 @@ struct SignInView: View {
                     try await backend.confirmSignUp(email: email, code: code)
                 } catch {
                     self.error = Backend.confirmMessage(for: error)
+                    codeShakes += 1
                     flow.code = ""
                     focus = .code
                 }
