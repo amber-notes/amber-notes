@@ -37,6 +37,7 @@ what works with no network, how it was checked, and what changed on 2026-10-07 t
 | Search | Works: local | `NoteListView` filters SwiftData | Works |
 | Note apps | Run: bundled libraries are local, npm libraries are cached after the first download (`NotePageLibraries.npm`), app data is local and merges on sync. An app whose library was never downloaded, or that calls the network itself, can't do that part | `NotePageLibraries`, `NotePageDataStore` | Same |
 | Reconnect: everything goes up, nothing lost or doubled | Works for the normal path. **Doubled conflicted copy** when the connection dropped during the "yours is newer" conflict write | `aConnectionDroppingMidConflictMakesOneCopy` fails on the old code (2 copies, 3 server rows) | One copy: its id comes from the note and the server version |
+| A file added to a folder made offline, or a sub-note under a note made offline | **Stuck until the app restarted.** Files went up before folders and notes in no order; the server refused the row (`not_yours`) and it was set aside for the rest of the run. Found in the simulator | `aNewFolderWithAFileAndSubNotesGoesUpInOneSync` (StubSupabase now enforces the rule) | Folders, then files, then notes parents first; a `not_yours` refusal is tried again next sync |
 | New note whose first push landed but the answer was lost | Works: upsert with `ignoreDuplicates`, then update | `aNewNoteWhoseAnswerWasLostIsNotDoubled` | Works |
 | Same note edited on two devices while offline | Works: different lines merge (`TextDiff.merge`); overlapping edits keep the older one as a conflicted copy | `editsOnBothDevicesWhileOfflineComeTogether`, `theirNewerEditKeepsYoursAsACopy` | Works |
 | Edits made on another device while this one was offline | Works: the cursor pull brings them | `editsOnBothDevicesWhileOfflineComeTogether` | Works, and now right when the network returns instead of at the next poll |
@@ -53,6 +54,20 @@ what works with no network, how it was checked, and what changed on 2026-10-07 t
 | Version history, notes password | Already said "You're offline…" | `HistoryError.offline`, `LockError.offline` | Same |
 | Profile name and photo | Saved here, sent later | `ProfileStore` | Same |
 
+## Simulator run (2026-10-07)
+
+`scripts/offline-ios.sh` on an iPhone 17 Pro simulator (iOS 26.4), against a local stack with
+every migration, light and dark. Both tests passed in both appearances:
+
+- Signed in, wrote a note, went offline: the line said "Offline", then "Offline · changes sync
+  later" after writing offline; Settings showed the offline note with Connect an AI disabled.
+  Back online the line went within seconds.
+- Opened the app with no network at all: still signed in, the notes there at once (3.6 to 4.7 s
+  from XCUITest's launch call, which includes starting the app; no key screen), a note written, a
+  file without its bytes said "Not downloaded yet" and opened by itself once back online.
+- Afterwards the device and the server held the same 28 notes (25 live), 1 folder and 1 file,
+  with nothing left unsynced and no doubles.
+
 ## What changed
 
 - `Backend.keepsSession(afterRefreshError:)`: only an answer from the auth server (a 4xx, or the
@@ -62,6 +77,8 @@ what works with no network, how it was checked, and what changed on 2026-10-07 t
   most this long and checks the key once the server answers (as e2ee-design.md says: "Offline with
   a key: carry on and verify once the server answers").
 - `SyncEngine.conflictCopyID(of:server:)`: one conflicted copy per note and server version.
+- Push order: folders, files, then notes with parents first (`SyncEngine.parentsFirst`); a row
+  pointing at something not up yet (`not_yours`) waits for the next sync.
 - `NetworkPath` (NWPathMonitor): with no network nothing polls and a sync doesn't send anything;
   when it's back the engine syncs, the key is checked (`AccountCrypto.networkReturned`) and AI
   connection asks are looked at, at once.
