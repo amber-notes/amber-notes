@@ -197,6 +197,26 @@ import Testing
         #expect(f.code.isEmpty, "only ASCII digits: the server's code is")
     }
 
+    @Test func aPastedCodeWithASpaceFillsAllSixBoxes() {
+        var f = EmailSignInFlow(step: .confirm, email: "new@example.com")
+        f.code = "123 456"
+        #expect(f.code == "123456")
+        let (digits, active) = CodeBoxes.slots(f.code)
+        #expect(digits == ["1", "2", "3", "4", "5", "6"])
+        #expect(active == nil, "no box left to fill")
+        #expect(f.buttonEnabled)
+    }
+
+    @Test func theNextBoxToFillIsTheActiveOne() {
+        #expect(CodeBoxes.slots("").active == 0)
+        let (digits, active) = CodeBoxes.slots("70")
+        #expect(digits == ["7", "0", nil, nil, nil, nil])
+        #expect(active == 2)
+        var f = EmailSignInFlow(step: .confirm, email: "new@example.com", code: "704")
+        f.code.removeLast()
+        #expect(CodeBoxes.slots(f.code).active == 2, "backspace goes back one box")
+    }
+
     @Test func resendWaitsAMinuteAfterEachCode() {
         let sent = Date(timeIntervalSince1970: 1_000)
         var f = EmailSignInFlow(email: "new@example.com")
