@@ -221,8 +221,9 @@ extension AppSnapshotTests {
 
     @Test(arguments: [false, true])
     func settingsTabs(dark: Bool) async throws {
-        // A titled window ordered in: CI only (PANE_CI_WINDOWS), never on a developer's Mac.
-        guard let dir = Self.dir, ProcessInfo.processInfo.environment["PANE_CI_WINDOWS"] != nil else { return }
+        // A titled window ordered in, for the toolbar: CI only (PANE_CI_WINDOWS, set in ci.yml),
+        // never on a developer's Mac. The pictures are attached to the results (the "snapshots" artifact).
+        guard ProcessInfo.processInfo.environment["PANE_CI_WINDOWS"] != nil else { return }
         let view = try await Self.settingsFixture()
         #expect(view.tabs == SettingsTab.allCases)
         for tab in view.tabs {
@@ -242,8 +243,12 @@ extension AppSnapshotTests {
             frame.display()
             let rep = try #require(frame.bitmapImageRepForCachingDisplay(in: frame.bounds))
             frame.cacheDisplay(in: frame.bounds, to: rep)
-            try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-            try #require(rep.representation(using: .png, properties: [:])).write(to: dir.appending(path: "mac-settings-\(tab.rawValue)-\(dark ? "dark" : "light").png"))
+            let png = try #require(rep.representation(using: .png, properties: [:]))
+            Testing.Attachment.record(png, named: "mac-settings-\(tab.rawValue)-\(dark ? "dark" : "light").png")
+            if let dir = Self.dir {
+                try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+                try png.write(to: dir.appending(path: "mac-settings-\(tab.rawValue)-\(dark ? "dark" : "light").png"))
+            }
         }
         ProfileStore.shared.showForPreview(name: nil, photo: nil)
     }

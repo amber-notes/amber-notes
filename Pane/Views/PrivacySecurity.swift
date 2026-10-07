@@ -8,9 +8,9 @@ import AppKit
 import PDFKit
 #endif
 
-/// What Settings › Privacy & Security says, in one place.
+/// What Settings › Security says, in one place.
 enum PrivacyCopy {
-    static let title = "Privacy & Security"
+    static let title = "Security"
     static let summary = "Encrypted on your devices. We can't read your notes. When you connect an AI, our server unlocks your notes for that AI's requests."
     static let recoveryFooter = "A recovery key opens your notes on a new device when none of your other devices is at hand. If every device is gone and you saved no recovery key, your notes are lost. We can\u{2019}t open them either."
     static let pageTitle = "Amber Notes recovery key"
@@ -51,12 +51,12 @@ enum PrivacyCopy {
     static let fileName = "Amber Notes Recovery Key"
     static let recoveryChangedTitle = "Your recovery key changed"
     static let recoveryChanged = "Your account started fresh on another device, so a recovery key you saved before no longer opens your notes. The new one is here."
-    static let recoveryChangedAlert = "Your account started fresh on another device, so it has a new recovery key. If you keep one, the new one is in Settings › Privacy & Security."
+    static let recoveryChangedAlert = "Your account started fresh on another device, so it has a new recovery key. If you keep one, the new one is in Settings › Security."
     static let exportFooter = "Every note as a Markdown file in its folder, with its files. Your notes are encrypted, so the export is made on this device."
 }
 
 #if os(iOS)
-/// Settings › Privacy & Security on iPhone, a page of its own.
+/// Settings › Security on iPhone, a page of its own.
 struct PrivacySecurityView: View {
     let crypto: AccountCrypto
     var devices: KeyDevices = .shared
@@ -115,7 +115,7 @@ struct PrivacySecuritySection: View {
                     .accessibilityIdentifier("privacy.recoveryKey")
             }
             #if os(macOS)
-            // Side by side on the Mac, so Privacy & Security fits its window without scrolling.
+            // Side by side on the Mac, so Security fits its window without scrolling.
             HStack(spacing: 10) {
                 showOrHide
                 saveButton

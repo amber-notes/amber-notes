@@ -158,7 +158,7 @@ struct SettingsView: View {
             Section {
                 ForEach(tabs.filter { $0 == .ai || $0 == .security }) { row($0) }
                 if tabs.contains(.security), isSignedIn, crypto.isReady {
-                    // A new device's screen says Settings › Privacy & Security › Add a device; here it's one tap.
+                    // A new device's screen says Settings › Security › Add a device; here it's one tap.
                     Button { addingDevice = true } label: {
                         Label(AddDeviceCopy.sheetTitle, systemImage: "plus.circle")
                     }
