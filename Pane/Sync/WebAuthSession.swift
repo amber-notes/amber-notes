@@ -12,11 +12,8 @@ enum WebAuthSession {
     static func run(_ url: URL, callbackScheme: String) async throws -> URL {
         try await withCheckedThrowingContinuation { continuation in
             let anchor = Anchor()
-            let session = ASWebAuthenticationSession(url: url, callbackURLScheme: callbackScheme) { result, error in
-                _ = anchor // keep the presentation anchor alive until the sheet finishes
-                if let result { continuation.resume(returning: result) }
-                else { continuation.resume(throwing: error ?? ASWebAuthenticationSessionError(.canceledLogin)) }
-            }
+            let session = ASWebAuthenticationSession(url: url, callbackURLScheme: callbackScheme,
+                                                     completionHandler: finish(continuation, keeping: anchor))
             session.presentationContextProvider = anchor
             // Shares the browser's cookies, so someone already signed in to Google picks an
             // account instead of typing a password.
@@ -25,7 +22,22 @@ enum WebAuthSession {
         }
     }
 
-    private final class Anchor: NSObject, ASWebAuthenticationPresentationContextProviding {
+    /// The sheet's completion handler. AuthenticationServices calls it on whatever queue it likes
+    /// (closing the sheet answers from a background XPC queue), so it's made outside the main actor:
+    /// a closure written inside `run` would be main-actor isolated and trap off the main thread.
+    /// It keeps `anchor` alive until the sheet finishes.
+    nonisolated static func finish(_ continuation: CheckedContinuation<URL, Error>,
+                                   keeping anchor: (any Sendable)? = nil) -> @Sendable (URL?, Error?) -> Void {
+        { result, error in
+            withExtendedLifetime(anchor) {
+                if let result { continuation.resume(returning: result) }
+                else { continuation.resume(throwing: error ?? ASWebAuthenticationSessionError(.canceledLogin)) }
+            }
+        }
+    }
+
+    /// Holds no state, so it's safe to keep alive from the completion handler's queue.
+    private final class Anchor: NSObject, ASWebAuthenticationPresentationContextProviding, @unchecked Sendable {
         nonisolated func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
             MainActor.assumeIsolated {
                 #if os(macOS)
