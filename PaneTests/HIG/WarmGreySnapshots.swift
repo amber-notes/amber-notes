@@ -12,7 +12,10 @@ import Testing
 /// for the shell to write `shot-<name>`.
 /// `TEST_RUNNER_AMBER_DEMO_FRAMES=/path scripts/qa-test.sh PaneTests/WarmGreySnapshots`
 @MainActor @Suite(.serialized) struct WarmGreySnapshots {
-    static var dir: URL? { ProcessInfo.processInfo.environment["AMBER_DEMO_FRAMES"].map { URL(fileURLWithPath: $0) } }
+    /// Captured by window id (screencapture), which needs the window on screen: CI only
+    /// (AppSnapshotTests.onScreenAllowed). The sign-in shots draw offscreen and use `anyDir`.
+    static var dir: URL? { AppSnapshotTests.onScreenDir("AMBER_DEMO_FRAMES") }
+    static var anyDir: URL? { ProcessInfo.processInfo.environment["AMBER_DEMO_FRAMES"].map { URL(fileURLWithPath: $0) } }
 
     static func shoot(_ w: NSWindow, _ name: String, in dir: URL) async throws {
         try "\(w.windowNumber)".write(to: dir.appending(path: "window-id"), atomically: true, encoding: .utf8)
@@ -57,7 +60,7 @@ import Testing
 
     @Test(arguments: [false, true])
     func signIn(dark: Bool) async throws {
-        guard let dir = Self.dir else { return }
+        guard let dir = Self.anyDir else { return }
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         for (name, email) in [("mac-signin", ""), ("mac-signin-email", "you@example.com")] {
             let view = SignInView(backend: Backend(), flow: EmailSignInFlow(email: email))
