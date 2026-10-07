@@ -40,6 +40,75 @@ import Testing
         #expect(defaults.bool(forKey: DeviceRemoval.noticeFlag) == false)
     }
 
+    /// The menu bar item's setting: on until it's turned off, and its scene is told only when it
+    /// changes (redoing the menu bar item mid-layout crashed the app).
+    @Test func menuBarSettingIsOnByDefaultAndChangesOnlyWithItsKey() async throws {
+        let defaults = try #require(UserDefaults(suiteName: "WindowUpdateTests.\(UUID().uuidString)"))
+        let shown = DefaultsFlag(MenuBarSettings.key, default: true, defaults: defaults)
+        #expect(shown.value)
+        final class Count: @unchecked Sendable { var value = 0 }
+        let count = Count()
+        withObservationTracking { _ = shown.value } onChange: { count.value += 1 }
+        defaults.set("main", forKey: "lastNote")
+        defaults.set(Data([1]), forKey: "lastScope")
+        try await Task.sleep(for: .milliseconds(100))
+        #expect(count.value == 0)
+        defaults.set(false, forKey: MenuBarSettings.key)
+        try await Task.sleep(for: .milliseconds(100))
+        #expect(count.value == 1)
+        #expect(!shown.value)
+    }
+
+    /// Every click on a folder row selects it. Folder rows that skipped their updates (an equatable
+    /// view) left some clicks without effect: Recently Deleted stayed selected (dev 2610071220).
+    @Test(.timeLimit(.minutes(2))) func everyFolderRowClickSelectsIt() async throws {
+        let c = try ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        let ctx = c.mainContext
+        let folders = (0..<4).map { ctx.createFolder(named: "Folder \($0)") }
+        for f in folders { _ = ctx.createNote(in: .folder(f.id), body: "In \(f.name)\n\ntext") }
+        try ctx.save()
+        UserDefaults.standard.removeObject(forKey: "lastScope")
+        let w = NSWindow(contentRect: CGRect(x: -30000, y: -30000, width: 1180, height: 760),
+                         styleMask: [.titled, .closable, .resizable, .fullSizeContentView], backing: .buffered, defer: false)
+        w.isReleasedWhenClosed = false
+        w.contentViewController = NSHostingController(rootView: RootView().modelContainer(c))
+        w.setFrameOrigin(CGPoint(x: -30000, y: -30000))
+        defer { w.orderOut(nil); w.close() }
+        w.orderFrontRegardless()
+        func settle() async {
+            for _ in 0..<3 {
+                w.contentView?.layoutSubtreeIfNeeded()
+                w.displayIfNeeded()
+                try? await Task.sleep(for: .milliseconds(100))
+            }
+        }
+        await settle()
+        func find<T: NSView>(_ type: T.Type, in view: NSView) -> T? {
+            if let v = view as? T { return v }
+            for s in view.subviews { if let v = find(type, in: s) { return v } }
+            return nil
+        }
+        let split = try #require(w.contentView.flatMap { find(NSSplitView.self, in: $0) })
+        let table = try #require(split.arrangedSubviews.first.flatMap { find(NSTableView.self, in: $0) })
+        func remembered() -> Scope? {
+            UserDefaults.standard.data(forKey: "lastScope").flatMap { try? JSONDecoder().decode(Scope.self, from: $0) }
+        }
+        var selected: [Scope] = []
+        // Twice over every row, with Recently Deleted (the last row) in between, as Emil clicked.
+        for _ in 0..<2 {
+            for row in 0..<table.numberOfRows {
+                table.selectRowIndexes([table.numberOfRows - 1], byExtendingSelection: false)
+                await settle()
+                table.selectRowIndexes([row], byExtendingSelection: false)
+                await settle()
+                if let s = remembered() { selected.append(s) }
+            }
+        }
+        for f in folders {
+            #expect(selected.filter { $0 == .folder(f.id) }.count == 2, "a click on \(f.name) selects it each time")
+        }
+    }
+
     /// The sidebar counts in the store. Notes made, deleted or recovered count straight away,
     /// before the library is saved.
     @Test func sidebarCountsIncludeUnsavedChanges() throws {

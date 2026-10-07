@@ -116,10 +116,6 @@ struct PaneApp: App {
     /// The notes window's scene id (the menu bar panel opens it by this).
     static let mainWindowID = "main"
 
-    #if os(macOS)
-    @AppStorage(MenuBarSettings.key) private var showInMenuBar = true
-    #endif
-
     var body: some Scene {
         WindowGroup(id: Self.mainWindowID) {
             if Self.isUnitTestHost {
@@ -193,8 +189,27 @@ struct PaneApp: App {
             return WindowPlacement(ConnectPanel.placement(screen: context.defaultDisplay.visibleRect, size: size), size: size)
         }
 
-        // Amber Notes in the menu bar: quick capture, search, pinned and recent notes.
-        MenuBarExtra(isInserted: Binding(get: { showInMenuBar && MenuBarSettings.allowed }, set: { if MenuBarSettings.allowed { showInMenuBar = $0 } })) {
+        MenuBarItem(backend: backend, sync: sync, container: container)
+        #endif
+    }
+}
+
+#if os(macOS)
+/// Amber Notes in the menu bar: quick capture, search, pinned and recent notes. A scene of its own,
+/// with inputs that don't change: the menu bar item is given its label again whenever its scene is
+/// worked out again, and setting the status item's image asks the windows for another layout pass.
+/// Built inline in PaneApp's body with an @AppStorage binding, it was redone on every update of the
+/// app, and in a window already busy updating AppKit gave up and the app crashed (Amber Notes Beta
+/// 1.2, 2610071120).
+private struct MenuBarItem: Scene {
+    let backend: Backend
+    let sync: SyncEngine
+    let container: ModelContainer
+    /// Settings › Menu Bar, told only when that setting changes (see DefaultsFlag).
+    @State private var shown = DefaultsFlag(MenuBarSettings.key, default: true)
+
+    var body: some Scene {
+        MenuBarExtra(isInserted: Binding(get: { shown.value && MenuBarSettings.allowed }, set: { if MenuBarSettings.allowed { shown.value = $0 } })) {
             MenuBarPanel(backend: backend, sync: sync)
                 .modelContainer(container)
                 .tint(Color(PColor.paneAccent))
@@ -202,9 +217,9 @@ struct PaneApp: App {
             Image("MenuBarIcon").accessibilityLabel("Amber Notes")
         }
         .menuBarExtraStyle(.window)
-        #endif
     }
 }
+#endif
 
 #if os(macOS)
 import AppKit
@@ -394,17 +409,21 @@ final class DefaultsFlag {
         }
     }
 
-    init(_ key: String, defaults: UserDefaults = .standard) {
+    /// `default`: the value while the key has never been set.
+    init(_ key: String, default fallback: Bool = false, defaults: UserDefaults = .standard) {
         self.key = key
         self.defaults = defaults
-        stored = defaults.bool(forKey: key)
+        self.fallback = fallback
+        stored = defaults.object(forKey: key) as? Bool ?? fallback
         observer = NotificationCenter.default.addObserver(forName: UserDefaults.didChangeNotification, object: defaults, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.refresh() }
         }
     }
 
+    @ObservationIgnored private let fallback: Bool
+
     private func refresh() {
-        let now = defaults.bool(forKey: key)
+        let now = defaults.object(forKey: key) as? Bool ?? fallback
         if now != stored { stored = now }
     }
 }
