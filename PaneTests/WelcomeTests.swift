@@ -47,5 +47,45 @@ import AppKit
         #expect(titleBar > 0)
         #expect(CardWindow.frameSize(window, card: WelcomeFlow.size) == CGSize(width: 900, height: 600 + titleBar))
     }
+
+    /// Emil (dev 2610071519): "the window keeps moving around. When I filled in the 6 digit code,
+    /// the window moved." Signing in sent the window to the screen's centre (or to where the notes
+    /// were last time). Now the window stays where you put the card: the notes grow out of it with
+    /// its top edge and centre in place, and signing out shrinks them back into the same card.
+    @Test func theWindowStaysWhereYouPutTheCard() {
+        let screen = CGRect(x: 0, y: 0, width: 1728, height: 1084)
+        let saved = CGRect(x: 40, y: 60, width: 1300, height: 820)
+        // The card, dragged up and to the left of where it opened.
+        let card = CGRect(x: 300, y: 380, width: 900, height: 632)
+        for remembered in [nil, saved] {
+            let before = WindowFrameMemory.frame(saved: remembered, screens: [screen], main: screen)
+            let notes = CardWindow.notesFrame(from: card, saved: remembered, screen: screen)
+            let back = CardWindow.resized(notes, to: card.size, on: screen)
+            print("window flow (saved \(remembered.map(NSStringFromRect) ?? "none")): card \(NSStringFromRect(card))"
+                  + " -> notes before \(NSStringFromRect(before)), after \(NSStringFromRect(notes)) -> card \(NSStringFromRect(back))")
+            #expect(notes.maxY == card.maxY, "the top edge stays put")
+            #expect(notes.midX == card.midX, "the centre stays put")
+            #expect(notes.size == (remembered?.size ?? WindowFrameMemory.defaultSize), "the notes keep their size")
+            #expect(back == card, "signing out brings back the same card")
+        }
+    }
+
+    @Test func aWindowNearTheEdgeMovesOnlyEnoughToStayOnScreen() {
+        let screen = CGRect(x: 0, y: 0, width: 1440, height: 875)
+        let card = CGRect(x: 520, y: 200, width: 900, height: 632)
+        let notes = CardWindow.notesFrame(from: card, saved: nil, screen: screen)
+        #expect(screen.contains(notes))
+        #expect(notes.maxX == screen.maxX, "pushed back from the right edge, no further")
+        #expect(notes.maxY == card.maxY)
+        // Bigger than the screen: it fills it.
+        let huge = CardWindow.resized(card, to: CGSize(width: 3000, height: 2000), on: screen)
+        #expect(huge == screen)
+    }
+
+    @Test func nothingMovesWhenTheSizeIsTheSame() {
+        let screen = CGRect(x: 0, y: 0, width: 1728, height: 1084)
+        let card = CGRect(x: 311, y: 207, width: 900, height: 632)
+        #expect(CardWindow.resized(card, to: card.size, on: screen) == card)
+    }
 }
 #endif

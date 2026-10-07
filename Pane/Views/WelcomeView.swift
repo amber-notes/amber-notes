@@ -202,7 +202,7 @@ struct WelcomeFlow: View {
     // MARK: The picture
 
     /// Decorative: the words say everything, so VoiceOver skips it.
-    private var picture: some View {
+    fileprivate static var picture: some View {
         Image("Welcome")
             .resizable()
             .interpolation(.high)
@@ -210,15 +210,19 @@ struct WelcomeFlow: View {
             .accessibilityHidden(true)
     }
 
+    private var picture: some View { Self.picture }
+
     #if os(macOS)
     /// Edge to edge, the window buttons on it. It fills its panel and crops from the centre,
     /// where the leaf on the paper is.
-    private var art: some View {
+    fileprivate static var art: some View {
         Color.clear
-            .frame(minWidth: Self.size.width / 2, maxWidth: .infinity, maxHeight: .infinity)
+            .frame(minWidth: size.width / 2, maxWidth: .infinity, maxHeight: .infinity)
             .overlay { picture }
             .clipped()
     }
+
+    private var art: some View { Self.art }
     #else
     /// The picture across the top, under the status bar. `share` is its part of the screen's height.
     private func phoneArt(share: CGFloat) -> some View {
@@ -251,3 +255,23 @@ struct WelcomeFlow: View {
     }
     #endif
 }
+
+#if os(macOS)
+/// The steps after sign-in that come before the notes (adding this Mac, the recovery key, "No
+/// device left?") in the welcome's window: the same picture on the left, the step on the right,
+/// so the window keeps its size and place from the welcome until the notes open.
+struct CardLayout<Side: View>: View {
+    @ViewBuilder var side: Side
+
+    var body: some View {
+        HStack(spacing: 0) {
+            WelcomeFlow.art
+            side
+                .frame(width: WelcomeFlow.size.width / 2)
+                .frame(maxHeight: .infinity)
+        }
+        .frame(minWidth: WelcomeFlow.size.width, maxWidth: .infinity, maxHeight: .infinity)
+        .background { Backdrop() }
+    }
+}
+#endif
