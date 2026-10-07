@@ -60,6 +60,65 @@ import Testing
         #expect(SidebarView.counts(in: ctx) == (live: 5, trashed: 1))
     }
 
+    /// The list's notes are fetched again only when a save adds or deletes notes; edits reach the
+    /// list through the notes themselves.
+    @Test func listNotesFollowSavesThatAddOrDelete() throws {
+        let c = try ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        let ctx = c.mainContext
+        let notes = (0..<3).map { ctx.createNote(in: .all, body: "Note \($0)\n\ntext") }
+        let library = LibraryNotes()
+        #expect(library.notes(in: ctx).count == 3)
+        final class Count: @unchecked Sendable { var value = 0 }
+        let fetches = Count()
+        func watch() { withObservationTracking { _ = library.notes(in: ctx) } onChange: { fetches.value += 1 } }
+
+        watch()
+        notes[0].body = "Note 0\n\nedited"
+        notes[0].touch()
+        try ctx.save()
+        #expect(fetches.value == 0, "an edit isn't fetched for")
+        let made = ctx.createNote(in: .all, body: "Arrived\n\nfrom sync")
+        #expect(fetches.value == 1)
+        #expect(library.notes(in: ctx).contains { $0.id == made.id })
+        watch()
+        ctx.delete(notes[1])
+        try ctx.save()
+        #expect(fetches.value == 2)
+        #expect(library.notes(in: ctx).count == 3)
+    }
+
+    /// The wiki index takes a save in note by note; what it ends up with is what building it again gives.
+    @Test func wikiIndexTakesSavesNoteByNote() throws {
+        let c = try ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        let ctx = c.mainContext
+        let work = ctx.createFolder(named: "Work")
+        let plan = ctx.createNote(in: .folder(work.id), body: "Plan\n\nsee [[Budget]]")
+        let budget = ctx.createNote(in: .folder(work.id), body: "Budget\n\nnumbers")
+        WikiDirectory.invalidate()
+        _ = WikiDirectory.index(ctx)
+        let start = WikiDirectory.generation
+
+        budget.body = "Budget\n\nmore numbers"
+        budget.touch()
+        try ctx.save()
+        #expect(WikiDirectory.generation == start, "typing in a note changes no title")
+        #expect(WikiDirectory.index(ctx).resolve("Budget") == budget.id)
+
+        budget.body = "Budget 2027\n\nmore numbers"
+        try ctx.save()
+        #expect(WikiDirectory.generation > start)
+        #expect(WikiDirectory.index(ctx).resolve("Budget") == nil)
+        #expect(WikiDirectory.index(ctx).resolve("Budget 2027") == budget.id)
+
+        let arrived = ctx.createNote(in: .all, body: "Budget\n\nanother")
+        ctx.trash(plan)
+        let taken = WikiDirectory.index(ctx).entries.sorted { $0.id.uuidString < $1.id.uuidString }
+        WikiDirectory.invalidate()
+        let rebuilt = WikiDirectory.index(ctx).entries.sorted { $0.id.uuidString < $1.id.uuidString }
+        #expect(taken == rebuilt)
+        #expect(WikiDirectory.index(ctx).resolve("Budget") == arrived.id)
+    }
+
     /// The editor writes the open note every 0.35 s while you type. With 2,000 notes each write
     /// used to fetch and sort every note twice (the list and the sidebar) and rebuild both twice.
     @Test(.timeLimit(.minutes(3))) func savingTheOpenNoteInABigLibrary() async throws {

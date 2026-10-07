@@ -13,9 +13,9 @@ struct NoteListView: View {
     @State private var editMode: EditMode = .inactive
     #endif
 
-    /// Unsorted: `newestFirst` sorts them. A sorted query sorts again in memory after every change,
-    /// comparing through key paths, and with 2,000 notes that took most of each write while typing.
-    @Query private var notes: [Note]
+    /// Every note, fetched again only when a save adds or deletes one (see LibraryNotes).
+    @State private var library = LibraryNotes()
+    private var notes: [Note] { library.notes(in: context) }
     @State private var search = ""
     @State private var fileDropTargeted = false
     @State private var collapsed: Set<String> = []
@@ -578,6 +578,45 @@ struct NoteListView: View {
                 }
             }
         }
+    }
+}
+
+/// Every note in the library, for the list. A query of every note fetched and wrapped all of them
+/// again after any change at all: each save while you type, and again when sync marks the note
+/// sent (with 2,000 notes about half of each save's time). Here they're fetched when the list
+/// first shows and again only when a save adds or deletes notes. Everything else the list shows
+/// (dates, folders, trash, pins) it reads from the notes themselves, so those changes still update
+/// it, through observation.
+@MainActor @Observable
+final class LibraryNotes {
+    /// Goes up with each new fetch; reading it is what updates the list.
+    private var generation = 0
+    @ObservationIgnored private var all: [Note] = []
+    @ObservationIgnored private weak var context: ModelContext?
+    @ObservationIgnored private var observer: NSObjectProtocol?
+
+    func notes(in context: ModelContext) -> [Note] {
+        if self.context !== context { start(context) }
+        _ = generation
+        return all
+    }
+
+    private func start(_ context: ModelContext) {
+        self.context = context
+        all = (try? context.fetch(FetchDescriptor<Note>())) ?? []
+        if let observer { NotificationCenter.default.removeObserver(observer) }
+        observer = NotificationCenter.default.addObserver(forName: ModelContext.didSave, object: context, queue: nil) { [weak self] n in
+            let keys = [ModelContext.NotificationKey.insertedIdentifiers, .deletedIdentifiers].map(\.rawValue)
+            let changed = keys.contains { !((n.userInfo?[$0] as? [PersistentIdentifier]) ?? []).isEmpty }
+            guard changed else { return }
+            MainActor.assumeIsolated { self?.refetch() }
+        }
+    }
+
+    private func refetch() {
+        guard let context else { return }
+        all = (try? context.fetch(FetchDescriptor<Note>())) ?? []
+        generation += 1
     }
 }
 

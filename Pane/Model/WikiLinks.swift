@@ -179,6 +179,28 @@ struct WikiIndex {
         for (i, e) in entries.enumerated() { byKey[WikiLinks.key(e.title), default: []].append(i) }
     }
 
+    /// Puts in one note's entry as it is now (nil: it isn't live any more). True when that changed
+    /// a title, a folder or which notes there are; a newer date alone keeps the index as it was.
+    mutating func take(_ entry: Entry?, id: UUID) -> Bool {
+        let i = entries.firstIndex { $0.id == id }
+        switch (i, entry) {
+        case (nil, nil):
+            return false
+        case (let i?, let entry?) where WikiLinks.key(entries[i].title) == WikiLinks.key(entry.title) && entries[i].folders == entry.folders:
+            entries[i] = entry
+            return false
+        case (let i?, let entry?):
+            entries[i] = entry
+        case (let i?, nil):
+            entries.remove(at: i)
+        case (nil, let entry?):
+            entries.append(entry)
+        }
+        byKey = [:]
+        for (i, e) in entries.enumerated() { byKey[WikiLinks.key(e.title), default: []].append(i) }
+        return true
+    }
+
     /// Notes with this title.
     func titled(_ title: String) -> [Entry] { (byKey[WikiLinks.key(title)] ?? []).map { entries[$0] } }
 
@@ -228,6 +250,8 @@ private extension Array where Element: Equatable {
 @MainActor
 enum WikiDirectory {
     private static var cached: WikiIndex?
+    /// The context the index was built from: only its saves change it.
+    private static weak var cachedContext: ModelContext?
     private static var observer: NSObjectProtocol?
     /// Goes up each time a title or folder changes.
     private(set) static var generation = 0
@@ -236,8 +260,13 @@ enum WikiDirectory {
     static func index(_ context: ModelContext) -> WikiIndex {
         if let cached { return cached }
         if observer == nil {
-            observer = NotificationCenter.default.addObserver(forName: ModelContext.didSave, object: nil, queue: .main) { _ in
-                MainActor.assumeIsolated { WikiDirectory.cached = nil }
+            // As the save posts, so whoever reads the index after a save sees it.
+            observer = NotificationCenter.default.addObserver(forName: ModelContext.didSave, object: nil, queue: nil) { n in
+                // The library's context saves on the main thread; others (TipKit keeps its own
+                // store) can save on any, and aren't the library.
+                guard Thread.isMainThread else { return }
+                nonisolated(unsafe) let saved = n
+                MainActor.assumeIsolated { WikiDirectory.take(saved) }
             }
         }
         let notes = ((try? context.fetch(FetchDescriptor<Note>())) ?? []).filter { $0.deletedAt == nil && $0.trashedAt == nil }
@@ -252,6 +281,7 @@ enum WikiDirectory {
         }
         let index = WikiIndex(notes.map { WikiIndex.Entry(id: $0.id, title: $0.title, folders: path($0.folder), updated: $0.updatedAt) })
         cached = index
+        cachedContext = context
         // Most saves are typing: the editor recolours only when a title or folder changed.
         let signature = index.entries.map { "\($0.id)\u{1F}\(WikiLinks.key($0.title))\u{1F}\($0.folders.joined(separator: "/"))" }.sorted()
         if signature != lastSignature {
@@ -262,6 +292,25 @@ enum WikiDirectory {
     }
 
     static func invalidate() { cached = nil }
+
+    /// A save, taken into the index note by note: most saves are a note being typed in, and with
+    /// thousands of notes building the index again after each of them took most of the save's time.
+    /// Folders changing or notes deleted for good build it again. Taking the same save twice is harmless.
+    static func take(_ saved: Notification) {
+        guard var index = cached, let context = saved.object as? ModelContext, context === cachedContext else { return }
+        guard let changes = context.savedNotes(saved), !changes.folders else {
+            cached = nil
+            return
+        }
+        var changed = false
+        for n in changes.notes {
+            let live = n.deletedAt == nil && n.trashedAt == nil
+            let entry = live ? WikiIndex.Entry(id: n.id, title: n.title, folders: context.folderPath(n.folder), updated: n.updatedAt) : nil
+            if index.take(entry, id: n.id) { changed = true }
+        }
+        cached = index
+        if changed { generation += 1 }
+    }
 
     /// Titles to offer after `[[`: those starting with what's typed, then those containing it,
     /// each edited last first. Every title once; never the note being written.
@@ -295,6 +344,23 @@ extension ModelContext {
     /// The note a wiki link in `note` leads to, if there is one.
     func resolveWikiLink(_ target: String, from note: Note) -> Note? {
         WikiDirectory.index(self).resolve(target, from: folderPath(note.folder)).flatMap { self.note($0) }
+    }
+
+    /// The notes a save added or changed, and whether it changed folders; nil when it deleted
+    /// something for good (those can't be looked at any more).
+    func savedNotes(_ saved: Notification) -> (notes: [Note], folders: Bool)? {
+        func ids(_ key: ModelContext.NotificationKey) -> [PersistentIdentifier] { (saved.userInfo?[key.rawValue] as? [PersistentIdentifier]) ?? [] }
+        guard ids(.deletedIdentifiers).isEmpty else { return nil }
+        var notes: [Note] = []
+        var folders = false
+        for id in ids(.insertedIdentifiers) + ids(.updatedIdentifiers) {
+            switch model(for: id) {
+            case let n as Note: notes.append(n)
+            case is Folder: folders = true
+            default: break
+            }
+        }
+        return (notes, folders)
     }
 
     /// Notes that link to `note`, with a wiki link or a note link, newest first. Its parent's link
