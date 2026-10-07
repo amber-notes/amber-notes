@@ -126,6 +126,13 @@ final class Backend {
         self.userID = userID
     }
 
+    /// Tests: a client (on a stubbed network) whose stored session decides the state, as at launch.
+    init(watching testClient: SupabaseClient) {
+        client = testClient
+        state = .signedOut
+        Task { await watchAuth() }
+    }
+
     /// The signed-in account, kept as sign-in, refreshes and sign-out arrive. Asking the client for
     /// its current user reads the session from the Keychain (and runs its storage migrations) each
     /// time, and views read this in their bodies: every update of the window waited on the
@@ -165,18 +172,36 @@ final class Backend {
             if let session, !session.isExpired {
                 signedIn(session)
             } else if let session, session.isExpired {
-                // Let the SDK refresh; stay signed in if it can.
-                if (try? await client.auth.refreshSession()) != nil {
+                // Let the SDK refresh; stay signed in if it can, and while offline (an hour after
+                // the last refresh, on a plane): the notes are on this device, and the refresh
+                // happens with the next request that gets through. A refresh token the server
+                // refuses signs out (the SDK removes the session and sends signedOut).
+                do {
+                    _ = try await client.auth.refreshSession()
                     signedIn(session)
-                } else {
-                    userID = nil
-                    state = .signedOut
+                } catch {
+                    if Self.keepsSession(afterRefreshError: error) {
+                        signedIn(session)
+                    } else {
+                        userID = nil
+                        state = .signedOut
+                    }
                 }
             } else {
                 userID = nil
                 state = .signedOut
             }
         }
+    }
+
+    /// A refresh that failed because the server couldn't be reached (offline, a dead connection, a
+    /// server that's down, a plane's Wi-Fi answering with its own page) keeps the session; one the
+    /// auth server answered and refused doesn't.
+    nonisolated static func keepsSession(afterRefreshError error: Error) -> Bool {
+        guard let auth = error as? AuthError else { return true }
+        // 5xx: the server is there but failing; the token may well be fine.
+        if case .api(_, _, _, let response) = auth { return response.statusCode >= 500 }
+        return false
     }
 
     /// The email to show for you: Apple's, unless Apple hides it behind a relay address.

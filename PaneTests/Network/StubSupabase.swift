@@ -48,8 +48,34 @@ final class StubSupabase: URLProtocol, @unchecked Sendable {
         set { lock.withLock { _tooFast = newValue } }
     }
 
+    nonisolated(unsafe) private static var _sessionLifetime: TimeInterval = 3600
+    nonisolated(unsafe) private static var _refusesRefresh = false
+    nonisolated(unsafe) private static var _failing: [(method: String, path: String, skip: Int, applied: Bool)] = []
+
+    /// How long a session from the auth endpoint lasts; below zero it's expired as it's handed out.
+    static var sessionLifetime: TimeInterval {
+        get { lock.withLock { _sessionLifetime } }
+        set { lock.withLock { _sessionLifetime = newValue } }
+    }
+
+    /// The auth server refuses a refresh token (signed out elsewhere, or it expired).
+    static var refusesRefresh: Bool {
+        get { lock.withLock { _refusesRefresh } }
+        set { lock.withLock { _refusesRefresh = newValue } }
+    }
+
+    /// The next request with this method whose path ends with `path` (after `skip` of them) fails
+    /// as the connection drops: after the server applied it and before the answer came back, or
+    /// (`applied: false`) before it reached the server.
+    static func loseAnswer(_ method: String, _ path: String, skip: Int = 0, applied: Bool = true) {
+        lock.withLock { _failing.append((method, path, skip, applied)) }
+    }
+
     static func reset() {
-        lock.withLock { tables = [:]; _requests = []; _bodies = []; _objects = [:]; _rpcCalls = []; _rpcAnswers = [:]; _tooFast = false }
+        lock.withLock {
+            tables = [:]; _requests = []; _bodies = []; _objects = [:]; _rpcCalls = []; _rpcAnswers = [:]; _tooFast = false
+            _sessionLifetime = 3600; _refusesRefresh = false; _failing = []
+        }
     }
 
     /// "METHOD /path?query" of every request that reached the server.
@@ -99,7 +125,8 @@ final class StubSupabase: URLProtocol, @unchecked Sendable {
     }
 
     /// A client whose requests go through the fault layer, then here.
-    static func client() -> SupabaseClient {
+    /// `storage`: where the session is kept; pass the same one to a second client to launch again.
+    static func client(storage: AuthLocalStorage = MemoryAuthStorage()) -> SupabaseClient {
         let forward = URLSessionConfiguration.ephemeral
         forward.protocolClasses = [StubSupabase.self]
         NetFault.forward = forward
@@ -107,7 +134,7 @@ final class StubSupabase: URLProtocol, @unchecked Sendable {
             supabaseURL: url,
             supabaseKey: "stub-key",
             options: SupabaseClientOptions(
-                auth: .init(storage: MemoryAuthStorage(), emitLocalSessionAsInitialSession: true),
+                auth: .init(storage: storage, autoRefreshToken: false, emitLocalSessionAsInitialSession: true),
                 global: .init(session: NetFault.session())
             )
         )
@@ -120,6 +147,17 @@ final class StubSupabase: URLProtocol, @unchecked Sendable {
     override func stopLoading() {}
 
     override func startLoading() {
+        let path = request.url?.path ?? ""
+        let lost = Self.lock.withLock { () -> (applied: Bool, Void)? in
+            guard let i = Self._failing.firstIndex(where: { $0.method == (request.httpMethod ?? "GET") && path.hasSuffix($0.path) }) else { return nil }
+            if Self._failing[i].skip > 0 { Self._failing[i].skip -= 1; return nil }
+            return (Self._failing.remove(at: i).applied, ())
+        }
+        if let lost {
+            if lost.applied { _ = Self.handle(request) }
+            client?.urlProtocol(self, didFailWithError: URLError(.networkConnectionLost))
+            return
+        }
         let (status, body) = Self.handle(request)
         let response = HTTPURLResponse(url: request.url!, statusCode: status, httpVersion: "HTTP/1.1", headerFields: ["Content-Type": "application/json"])!
         client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
@@ -137,6 +175,7 @@ final class StubSupabase: URLProtocol, @unchecked Sendable {
             if let body { _bodies.append(String(decoding: body, as: UTF8.self)) }
         }
         let path = comps.path
+        if path == "/auth/v1/token" { return token(grant: comps.queryItems?.first { $0.name == "grant_type" }?.value) }
         if path.hasPrefix("/storage/v1/object/") { return storage(method, String(path.dropFirst("/storage/v1/object/".count)), request, body) }
         guard path.hasPrefix("/rest/v1/") else { return (404, Data("{}".utf8)) }
         let name = String(path.dropFirst("/rest/v1/".count))
@@ -202,6 +241,29 @@ final class StubSupabase: URLProtocol, @unchecked Sendable {
                 return (405, Data("{}".utf8))
             }
         }
+    }
+
+    /// Auth: a password sign-in or a refresh hands out a session for the test's account.
+    private static func token(grant: String?) -> (Int, Data) {
+        if grant == "refresh_token", refusesRefresh {
+            return (400, Data(#"{"code":400,"error_code":"refresh_token_not_found","msg":"Invalid Refresh Token: Refresh Token Not Found"}"#.utf8))
+        }
+        let lifetime = sessionLifetime
+        let expires = Date.now.addingTimeInterval(lifetime)
+        func b64(_ o: [String: Any]) -> String {
+            (try! JSONSerialization.data(withJSONObject: o)).base64EncodedString()
+                .replacingOccurrences(of: "+", with: "-").replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: "=", with: "")
+        }
+        let user = SealedAccount.user.uuidString.lowercased()
+        let jwt = b64(["alg": "HS256", "typ": "JWT"]) + "." + b64(["sub": user, "exp": Int(expires.timeIntervalSince1970), "role": "authenticated"]) + ".sig"
+        let now = stamp(.now)
+        let session: [String: Any] = [
+            "access_token": jwt, "token_type": "bearer", "expires_in": Int(lifetime), "expires_at": expires.timeIntervalSince1970,
+            "refresh_token": "refresh-\(UUID().uuidString)",
+            "user": ["id": user, "aud": "authenticated", "role": "authenticated", "email": "qa@example.com",
+                     "app_metadata": [:] as [String: Any], "user_metadata": [:] as [String: Any], "created_at": now, "updated_at": now],
+        ]
+        return (200, (try? JSONSerialization.data(withJSONObject: session)) ?? Data("{}".utf8))
     }
 
     /// The files bucket: uploads (multipart) and downloads by path.

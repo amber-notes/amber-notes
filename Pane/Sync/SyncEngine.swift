@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import Observation
 import Supabase
@@ -29,8 +30,15 @@ private let log = Logger(subsystem: "dev.emilwagman.pane", category: "sync")
 @Observable
 final class SyncEngine {
     enum Status: Equatable { case idle, syncing, offline(String), synced(Date) }
+    /// Whether the server can be reached, as far as this device knows: `offline` with no network
+    /// (NetworkPath, or a sync that failed as not connected), `unreachable` when there's a network
+    /// but the server didn't answer (a plane's Wi-Fi before you pay, a server that's down).
+    enum Reach: Equatable { case online, offline, unreachable }
 
     private(set) var status: Status = .idle
+    /// What the last sync found (see `Reach`); `reach` adds what the network path says.
+    private var lastReach = Reach.online
+    var reach: Reach { path.isUp ? lastReach : .offline }
     /// True once a sync has completed since launch.
     private(set) var hasSynced = false
     /// Bumps when a pull changed a note, so an open editor can refresh.
@@ -79,13 +87,19 @@ final class SyncEngine {
 
     /// Seals conflicted copies of locked notes; the app's vault unless a test gives its own.
     private let lockVault: NoteVault?
+    /// Whether there's a network at all: nothing polls while there isn't, and a sync runs the
+    /// moment it's back. Tests give each engine its own.
+    let path: NetworkPath
 
-    init(backend: Backend, context: ModelContext, defaults: UserDefaults = .standard, vault: NoteVault? = nil, crypto: AccountCrypto? = nil) {
+    init(backend: Backend, context: ModelContext, defaults: UserDefaults = .standard, vault: NoteVault? = nil, crypto: AccountCrypto? = nil,
+         path: NetworkPath = .shared) {
         self.backend = backend
         self.context = context
         self.defaults = defaults
         self.lockVault = vault
+        self.path = path
         SyncSignal.onChange = { [weak self] in self?.localChanged() }
+        path.watch { [weak self] up in self?.networkChanged(up: up) }
         // Start fresh removes the account's files from Storage through here. It happens when this
         // device doesn't have the key, long before sync starts, so it's set up front.
         (crypto ?? AccountCrypto.shared).removeAccountFiles = { [weak self] user in
@@ -169,6 +183,7 @@ final class SyncEngine {
             await pushPageData(client, sealer: sealer)
             await pushAPIKeyNames(client, sealer: sealer)
             if pulling { try await pull(client); hasSynced = true }
+            lastReach = .online
             if slowedDown {
                 // The server asked us to slow down: the rest goes up in a little while.
                 status = .offline("Syncing a lot of changes, continuing shortly")
@@ -181,7 +196,25 @@ final class SyncEngine {
         } catch {
             log.error("sync failed: \(String(describing: error), privacy: .public)")
             status = .offline(Self.describe(error))
+            lastReach = Self.reach(after: error) ?? lastReach
         }
+    }
+
+    /// What a failed sync says about the connection; nil when it's about something else.
+    nonisolated static func reach(after error: Error) -> Reach? {
+        guard let u = error as? URLError else { return nil }
+        switch u.code {
+        case .notConnectedToInternet, .networkConnectionLost, .dataNotAllowed, .internationalRoamingOff, .callIsActive: return .offline
+        case .cancelled: return nil
+        default: return .unreachable
+        }
+    }
+
+    /// The network went (nothing polls) or came back (everything that waited goes up now, and
+    /// whatever changed elsewhere comes down, without waiting for the next poll).
+    private func networkChanged(up: Bool) {
+        updateFallback()
+        if up, started { schedule(after: 0) }
     }
 
     /// Starts realtime and a first sync after sign-in.
@@ -228,11 +261,12 @@ final class SyncEngine {
                 joined = true
             }
         })
-        // A safety net for anything realtime missed.
+        // A safety net for anything realtime missed. Not while there's no network: coming back
+        // syncs at once (networkChanged).
         realtimeTasks.append(Task { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(60))
-                self?.schedule(after: 0)
+                if self?.path.isUp == true { self?.schedule(after: 0) }
             }
         })
     }
@@ -439,7 +473,7 @@ final class SyncEngine {
 
     /// Realtime joined or dropped. While it's down, edits from other devices come in by a
     /// poll every 8 s (30 s once nothing has changed for 5 minutes) instead of only the
-    /// minute pull; joining again stops it.
+    /// minute pull; joining again stops it, and so does losing the network.
     func realtimeChanged(up: Bool) {
         realtimeUp = up
         updateFallback()
@@ -453,7 +487,7 @@ final class SyncEngine {
 
     private func updateFallback() {
         var signedIn: Bool { if case .signedIn = backend.state { true } else { false } }
-        let wanted = started && active && !realtimeUp && backend.client != nil && signedIn
+        let wanted = started && active && !realtimeUp && path.isUp && backend.client != nil && signedIn
         if !wanted { fallback?.cancel(); fallback = nil; return }
         guard fallback == nil else { return }
         fallback = Task { [weak self] in
@@ -790,22 +824,37 @@ final class SyncEngine {
             return saved
         }
         if sealed { return try await resolveSealedConflict(client, local: n, server: s) }
+        let copyID = Self.conflictCopyID(of: n.id, server: s.version)
         if s.updated_at > n.updatedAt {
             // Theirs is newer: keep it, and keep ours as a conflicted copy.
-            let copy = Note(body: Self.conflictCopy(of: n.body), folder: n.folder)
-            copy.createdAt = n.updatedAt
-            copy.updatedAt = n.updatedAt
-            context.insert(copy)
+            insertConflictCopy(copyID, body: Self.conflictCopy(of: n.body), folder: n.folder, at: n.updatedAt)
             apply(s, to: n)
             return server
         }
         // Ours is newer: it goes up, and theirs is kept here as a conflicted copy (the server
         // keeps it in note_revisions too), so neither edit is lost.
-        let copy = Note(body: Self.conflictCopy(of: s.body), folder: n.folder)
-        copy.createdAt = s.updated_at
-        copy.updatedAt = s.updated_at
-        context.insert(copy)
+        insertConflictCopy(copyID, body: Self.conflictCopy(of: s.body), folder: n.folder, at: s.updated_at)
         return try await client.from("notes").update(NoteDTO(n).patch).eq("id", value: n.id).select().execute().value
+    }
+
+    /// The conflicted copy made for a note against one server version always has the same id: when
+    /// the connection drops after the copy is made (the write that follows never answers), the next
+    /// push meets the same conflict and finds the copy instead of making a second one.
+    nonisolated static func conflictCopyID(of note: UUID, server version: Int64?) -> UUID {
+        var bytes = Array(SHA256.hash(data: Data("conflicted-copy|\(note.uuidString.lowercased())|\(version ?? -1)".utf8)).prefix(16))
+        bytes[6] = (bytes[6] & 0x0F) | 0x40
+        bytes[8] = (bytes[8] & 0x3F) | 0x80
+        return UUID(uuid: (bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
+                           bytes[8], bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15]))
+    }
+
+    private func insertConflictCopy(_ id: UUID, body: String, folder: Folder?, at date: Date) {
+        guard context.note(id) == nil else { return }
+        let copy = Note(body: body, folder: folder)
+        copy.id = id
+        copy.createdAt = date
+        copy.updatedAt = date
+        context.insert(copy)
     }
 
     /// A conflict where either side is locked. The loser is kept as a conflicted copy, and that
@@ -823,8 +872,10 @@ final class SyncEngine {
             problem = "“\(n.title)” was changed on another device while it was locked here. Enter your notes password to sync it."
             return []
         }
-        let copy = try vault.sealedCopy(of: Self.conflictCopy(of: loser), in: n.folder, at: theirsWins ? n.updatedAt : s.updated_at)
-        context.insert(copy)
+        let copyID = Self.conflictCopyID(of: n.id, server: s.version)
+        if context.note(copyID) == nil {
+            context.insert(try vault.sealedCopy(of: Self.conflictCopy(of: loser), in: n.folder, at: theirsWins ? n.updatedAt : s.updated_at, id: copyID))
+        }
         if theirsWins {
             apply(s, to: n)
             return [s]

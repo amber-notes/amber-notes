@@ -46,6 +46,17 @@ struct PaneApp: App {
         // Which device this is, for the list of devices that hold the key: in a Keychain item that stays on it.
         DeviceIdentity.shared = DeviceIdentity(store: inMemory ? MemoryDeviceIdentityStore() : KeychainDeviceIdentityStore())
         KeyDevices.shared = KeyDevices()
+        // Whether there's a network at all: nothing polls without one, and coming back syncs at once.
+        if !PaneApp.isUnitTestHost {
+            NetworkPath.shared.start()
+            AccountCrypto.shared.networkUp = { NetworkPath.shared.isUp }
+            #if DEBUG || QA
+            DebugOffline.realtime = { up in
+                guard let realtime = backend.client?.realtimeV2 else { return }
+                Task { if up { await realtime.connect() } else { realtime.disconnect() } }
+            }
+            #endif
+        }
         let sync = SyncEngine(backend: backend, context: container.mainContext)
         _sync = State(initialValue: sync)
         // "What's new" after a major update: decided before anything is drawn or seeded, while
@@ -657,6 +668,13 @@ struct AppGate: View {
         }
         #endif
         .onReceive(NotificationCenter.default.publisher(for: .paneNoteClosed)) { _ in askToShareSoon() }
+        // Back online: the key check and AI connection asks look now (sync does so itself).
+        .onChange(of: NetworkPath.shared.isUp) { _, up in
+            guard up, case .signedIn = backend.state else { return }
+            Task { await AccountCrypto.shared.networkReturned() }
+            if let connectAsks { Task { await connectAsks.refresh() } }
+            if let notices { Task { await notices.refresh() } }
+        }
         .onAppear { context.drainInbox() }
     }
 
