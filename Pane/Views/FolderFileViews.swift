@@ -48,25 +48,6 @@ enum ListItem: Identifiable, DatedListItem {
     }
 }
 
-/// A file dragged from the list: to a folder in the sidebar (as a PaneDragItem, the same JSON), or
-/// out of the app to Finder, Mail or another app (its local copy).
-struct FileDragItem: Codable, Transferable {
-    var kind = PaneDragItem.Kind.file
-    var id: UUID
-    var others: [UUID]? = nil
-    var url: URL?
-
-    enum CodingKeys: String, CodingKey { case kind, id, others }
-
-    static var transferRepresentation: some TransferRepresentation {
-        CodableRepresentation(contentType: .paneItem)
-        FileRepresentation(exportedContentType: .data) { item in
-            guard let url = item.url else { throw CocoaError(.fileNoSuchFile) }
-            return SentTransferredFile(url)
-        }
-    }
-}
-
 /// What a drop carries: items from inside the app, and file or folder URLs from outside it.
 enum DropLoader {
     @MainActor
@@ -99,10 +80,14 @@ struct FileListRow: View {
     var query = ""
     var showFolder = false
     let remove: () -> Void
+    @Environment(SyncEngine.self) private var sync: SyncEngine?
 
     var body: some View {
         FileRow(file: file, showFolder: showFolder)
-            .draggable(FileDragItem(id: file.id, url: FileStore.exists(file) ? FileStore.url(for: file.id, filename: file.filename) : nil)) {
+            // Out to Finder, Mail or the Desktop (the file itself), or onto a sidebar folder.
+            .onDrag {
+                FileOut.provider(for: file) { [sync] a in await sync?.download(a) ?? false }
+            } preview: {
                 Label(file.filename, systemImage: file.symbol)
                     .padding(.horizontal, 12).padding(.vertical, 8)
                     .glassEffect(.regular, in: .capsule)
@@ -227,6 +212,7 @@ struct FileDetailView: View {
     @State private var renaming = false
     @State private var nameDraft = ""
     @State private var confirmForever = false
+    @State private var exporting = false
     let onNewNote: () -> Void
 
     enum Load: Equatable { case checking, downloading, ready(URL), failed, notDownloaded }
@@ -251,6 +237,7 @@ struct FileDetailView: View {
             } message: {
                 Text("The ending (.\((file.filename as NSString).pathExtension)) stays.")
             }
+            .fileExport(file, isPresented: $exporting)
             .confirmationDialog("Delete \u{201C}\(file.filename)\u{201D} forever?", isPresented: $confirmForever, titleVisibility: .visible) {
                 Button("Delete Forever", role: .destructive) { withAnimation(.snappy) { context.purge(file) } }
             } message: {
@@ -262,7 +249,11 @@ struct FileDetailView: View {
     private var content: some View {
         switch state {
         case .ready(let url):
-            if CSVTable.handles(file.filename) {
+            if file.type.conforms(to: .pdf) {
+                // PDFs read like Preview: zoom, pages, contents, Find.
+                PDFReader(url: url)
+                    .id(url)
+            } else if CSVTable.handles(file.filename) {
                 // Quick Look shows CSV as plain text on iPhone: a table reads it as what it is.
                 CSVTableView(url: url, separator: CSVTable.separator(file.filename))
                     .id(url)
@@ -340,6 +331,19 @@ struct FileDetailView: View {
         ToolbarSpacer(.flexible)
         #endif
         if case .ready(let url) = state {
+            #if os(macOS)
+            // The file itself, to drag out to Finder or Mail, like a document's icon in Preview's title bar.
+            ToolbarItem {
+                Image(systemName: file.symbol)
+                    .foregroundStyle(file.tint)
+                    .padding(.horizontal, 6)
+                    .contentShape(.rect)
+                    .onDrag { FileOut.provider(for: file) { [sync] a in await sync?.download(a) ?? false } }
+                    .help("Drag to Finder or Mail")
+                    .accessibilityLabel("\(file.filename), drag to copy it out")
+                    .accessibilityIdentifier("file.dragOut")
+            }
+            #endif
             ToolbarItem {
                 ShareLink(item: url) { Label("Share", systemImage: "square.and.arrow.up") }
                     .accessibilityIdentifier("file.share")
@@ -348,6 +352,10 @@ struct FileDetailView: View {
         ToolbarItem {
             Menu {
                 if file.trashedAt == nil {
+                    Button(FileOut.exportTitle, systemImage: FileOut.exportSymbol) { exporting = true }
+                        .disabled(!FileStore.exists(file))
+                        .accessibilityIdentifier("file.export")
+                    Divider()
                     Button("Rename…", systemImage: "pencil") { nameDraft = FolderFileName.stem(file.filename); renaming = true }
                     Menu("Move to", systemImage: "folder") {
                         ForEach(context.allFolders().sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }) { f in

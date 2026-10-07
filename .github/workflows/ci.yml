@@ -63,6 +63,21 @@ jobs:
             build/ci-test.log
             build/ci-tests.xcresult
           retention-days: 7
+      # Pictures the snapshot tests attach (FileViewerSnapshots and others): kept after every run, so a
+      # UI change can be looked at without running anything on a developer's screen.
+      - name: Export the snapshots
+        if: always()
+        run: |
+          mkdir -p build/snapshots
+          [ -d build/ci-tests.xcresult ] && xcrun xcresulttool export attachments --path build/ci-tests.xcresult --output-path build/snapshots || true
+      - name: Keep the snapshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: snapshots
+          path: build/snapshots
+          if-no-files-found: ignore
+          retention-days: 7
       - name: iOS simulator build
         run: |
           set -o pipefail
