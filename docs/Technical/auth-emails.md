@@ -19,16 +19,16 @@ Dark mode, images blocked and phone widths are handled as in the lifecycle email
 | `recovery.html` | Reset password | Reset your Amber Notes password | Yes, from Forgot password? |
 | `password_changed.html` | Password changed notification | Your Amber Notes password was changed | Not until the notice is turned on |
 | `magic_link.html` | Magic link | Your Amber Notes sign-in code | No UI asks for one |
-| `confirmation.html` | Confirm signup | Confirm your email for Amber Notes | No: email addresses are confirmed automatically |
+| `confirmation.html` | Confirm signup | Confirm your email for Amber Notes | On staging: a 6-digit code after an email sign-up (`docs/Technical/email-confirmation.md`). Production confirms automatically for now |
 | `email_change.html` | Change email address | Confirm your new email for Amber Notes | No UI changes an email |
 | `invite.html` | Invite user | You're invited to Amber Notes | Only from the dashboard |
 | `reauthentication.html` | Reauthentication | Your Amber Notes code | No UI asks for one |
 
 Each keeps its Go variables and link shape. The reset link stays
 `{{ .SiteURL }}/reset-password#token_hash={{ .TokenHash }}&amp;type=recovery`
-(`docs/Technical/password-reset.md`). `confirmation.html` and `email_change.html` keep their
-`{{ .SiteURL }}/account/confirm?...` links, but the site has no `/account/confirm` page yet: that
-page has to exist before either email is turned on.
+(`docs/Technical/password-reset.md`). `confirmation.html` carries a code and no link. `email_change.html` keeps its
+`{{ .SiteURL }}/account/confirm?...` link, but the site has no `/account/confirm` page yet: that
+page has to exist before that email is turned on.
 
 ## Things that matter
 

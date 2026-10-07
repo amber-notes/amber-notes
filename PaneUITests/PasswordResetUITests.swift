@@ -2,7 +2,7 @@
 import XCTest
 
 /// Forgot password? on the iPhone sign-in card, against the LOCAL stack: an existing account's
-/// email, Continue, Forgot password?, Email Me a Link, and the same "we've sent it a link" for
+/// email, Continue, Forgot password?, Email me a link, and the same "we've sent it a link" for
 /// every email. Run by hand with a build pointed at the local stack and an account made there
 /// (docs/Technical/password-reset.md); skipped otherwise.
 final class PasswordResetUITests: XCTestCase {
@@ -33,7 +33,7 @@ final class PasswordResetUITests: XCTestCase {
         forgot.tap()
         XCTAssertTrue(app.staticTexts["signin.forgotNote"].waitForExistence(timeout: 3))
         XCTAssertFalse(app.secureTextFields["signin.password"].exists, "no password field while asking for a link")
-        XCTAssertEqual(app.buttons["signin.submit"].label, "Email Me a Link")
+        XCTAssertEqual(app.buttons["signin.submit"].label, "Email me a link")
         Thread.sleep(forTimeInterval: 0.8)
         shot("2-forgot")
 
@@ -43,7 +43,7 @@ final class PasswordResetUITests: XCTestCase {
         Thread.sleep(forTimeInterval: 0.8)
         shot("3-sent")
 
-        app.buttons["signin.submit"].tap() // Back to Sign In
+        app.buttons["signin.submit"].tap() // Back to sign in
         XCTAssertTrue(app.secureTextFields["signin.password"].waitForExistence(timeout: 3))
     }
 }

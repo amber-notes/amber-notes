@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ALLOW_HEADING, appleSignInURL, oauthSignInURL, appLink, destination, fetchLabel, functionURL, parseLabel, pkcePair, problemText, qrConnectLive, returnURL, scanFragment, signInError, startsWithWrite, universalLink, validRequest } from "./connect";
+import { ALLOW_HEADING, appleSignInURL, EMAIL_NOT_CONFIRMED, oauthSignInURL, appLink, destination, fetchLabel, functionURL, parseLabel, pkcePair, problemText, qrConnectLive, returnURL, scanFragment, signInError, startsWithWrite, universalLink, validRequest } from "./connect";
 import { allowedPath, functionRegion, upstream, upstreamHeaders } from "./mcp-proxy";
 
 const ID = "5a0f6c1e-2b1d-4c36-9e0a-6b6f0c1a2b3c";
@@ -75,7 +75,9 @@ describe("the connect page", () => {
 
   it("says why sign-in failed in plain words", () => {
     expect(signInError(400, { error_code: "invalid_credentials" })).toBe("The email or password isn't right.");
-    expect(signInError(400, { error_code: "email_not_confirmed" })).toBe("Confirm your email first, then sign in.");
+    expect(signInError(400, { error_code: "email_not_confirmed" })).toBe(EMAIL_NOT_CONFIRMED);
+    expect(EMAIL_NOT_CONFIRMED).toMatch(/Amber Notes on your iPhone or Mac/);
+    expect(EMAIL_NOT_CONFIRMED).not.toMatch(/[\u2013\u2014]/);
     expect(signInError(429, null)).toMatch(/Too many attempts/);
     expect(signInError(500, null)).toMatch(/Check your connection/);
     expect(destination("x.example", false)).toBe("x.example");

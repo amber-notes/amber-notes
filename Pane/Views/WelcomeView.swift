@@ -9,6 +9,8 @@ struct WelcomeFlow: View {
     let backend: Backend
     /// Captures: sign-in opens with the cursor in the email field.
     var focusEmail = false
+    /// Captures: the sign-in form at a given step (the code screen, say).
+    var flow = EmailSignInFlow()
     @State private var stage: Stage
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var typeSize
@@ -25,9 +27,10 @@ struct WelcomeFlow: View {
         }
     }
 
-    init(backend: Backend, stage: Stage = .first(), focusEmail: Bool = false) {
+    init(backend: Backend, stage: Stage = .first(), focusEmail: Bool = false, flow: EmailSignInFlow = EmailSignInFlow()) {
         self.backend = backend
         self.focusEmail = focusEmail
+        self.flow = flow
         _stage = State(initialValue: stage)
     }
 
@@ -175,9 +178,9 @@ struct WelcomeFlow: View {
             .keyboardShortcut(.cancelAction)
             .accessibilityIdentifier("welcome.back")
             #endif
-            SignInView(backend: backend, heading: returning
-                       ? .beside(title: "Welcome back", line: "Sign in with Apple, Google or your email.")
-                       : .beside(title: "Create your account", line: "Already have one? This signs you in too."),
+            // The same neutral words from Get started and I already have an account: until the email
+            // is checked, nobody knows which it is (SignInView then says Welcome back or Create your account).
+            SignInView(backend: backend, flow: flow, heading: .beside(title: SignInView.startTitle, line: SignInView.startLine),
                        focusEmail: focusEmail)
                 #if os(macOS)
                 // Top-anchored, so the form keeps its place as its steps come and go, but low
