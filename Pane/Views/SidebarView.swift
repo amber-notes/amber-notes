@@ -153,7 +153,8 @@ struct SidebarView: View {
                         .accessibilityIdentifier("sidebar.all")
                 }
                 ForEach(roots) { folder in
-                    FolderTree(folder: folder, dropTarget: $dropTarget, rename: startRename, newSub: startNewFolder, delete: deleteFolder)
+                    FolderTree(folder: folder, dropTarget: dropTarget, targeted: folderTargeted, rename: startRename, newSub: startNewFolder, delete: deleteFolder)
+                        .equatable()
                 }
                 // Last in the same list, like Notes.
                 row("Recently Deleted", icon: "trash", count: counts.trashed)
@@ -290,6 +291,11 @@ struct SidebarView: View {
         if settled != scope { scope = settled }
     }
 
+    /// A drag is over a folder's row, or has left it.
+    private func folderTargeted(_ over: Bool, _ id: UUID) {
+        withAnimation(.snappy(duration: 0.18)) { dropTarget = over ? id : (dropTarget == id ? nil : dropTarget) }
+    }
+
     private func startRename(_ f: Folder) { nameDraft = f.name; renaming = f }
     private func startNewFolder(_ parent: Folder?) { nameDraft = ""; newFolderParent = .some(parent) }
 
@@ -318,15 +324,23 @@ struct SidebarView: View {
     }
 }
 
-/// A folder row with its sub-folders; accepts dropped notes and folders.
-private struct FolderTree: View {
+/// A folder row with its sub-folders; accepts dropped notes and folders. Its own equatable view:
+/// the sidebar is worked out again on every save, and each row then counted its folder's notes
+/// again; now a row updates when its folder, its notes or the drop target change.
+private struct FolderTree: View, @MainActor Equatable {
     @Environment(\.modelContext) private var context
     let folder: Folder
-    @Binding var dropTarget: UUID?
+    /// The folder a drag is over, if any.
+    let dropTarget: UUID?
+    let targeted: (Bool, UUID) -> Void
     let rename: (Folder) -> Void
     let newSub: (Folder) -> Void
     let delete: (Folder) -> Void
     @State private var expanded = true
+
+    static func == (a: FolderTree, b: FolderTree) -> Bool {
+        a.folder.id == b.folder.id && a.dropTarget == b.dropTarget
+    }
 
     var body: some View {
         if folder.liveChildren.isEmpty {
@@ -334,7 +348,8 @@ private struct FolderTree: View {
         } else {
             DisclosureGroup(isExpanded: $expanded) {
                 ForEach(folder.liveChildren) { child in
-                    FolderTree(folder: child, dropTarget: $dropTarget, rename: rename, newSub: newSub, delete: delete)
+                    FolderTree(folder: child, dropTarget: dropTarget, targeted: targeted, rename: rename, newSub: newSub, delete: delete)
+                        .equatable()
                 }
             } label: { label }
         }
@@ -375,7 +390,7 @@ private struct FolderTree: View {
             if moved { expanded = true }
             return moved
         } isTargeted: { over in
-            withAnimation(.snappy(duration: 0.18)) { dropTarget = over ? folder.id : (dropTarget == folder.id ? nil : dropTarget) }
+            targeted(over, folder.id)
         }
         .contextMenu {
             Button("New Folder Inside", systemImage: "folder.badge.plus") { newSub(folder) }
