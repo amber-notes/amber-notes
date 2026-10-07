@@ -25,11 +25,26 @@ import Testing
         w.orderFrontRegardless()
         defer { w.orderOut(nil); w.close() }
         try? await Task.sleep(for: .seconds(wait))
+        if let shot = windowServerShot(w) { return shot }
         let v = try #require(w.contentView)
         v.layoutSubtreeIfNeeded()
         let rep = try #require(v.bitmapImageRepForCachingDisplay(in: v.bounds))
         v.cacheDisplay(in: v.bounds, to: rep)
         return try #require(rep.representation(using: .png, properties: [:]))
+    }
+
+    /// The window as the window server draws it (PDFKit's page tiles and alert materials included),
+    /// where the run may capture windows (CI's runner); nil elsewhere, and cacheDisplay is used.
+    static func windowServerShot(_ w: NSWindow) -> Data? {
+        let out = FileManager.default.temporaryDirectory.appending(path: "snap-\(UUID().uuidString).png")
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
+        p.arguments = ["-x", "-o", "-l", "\(w.windowNumber)", out.path]
+        guard (try? p.run()) != nil else { return nil }
+        p.waitUntilExit()
+        defer { try? FileManager.default.removeItem(at: out) }
+        guard p.terminationStatus == 0, let d = try? Data(contentsOf: out), d.count > 1000 else { return nil }
+        return d
     }
 
     @Test(arguments: [false, true]) func pdfReaderWithPagesAndFind(dark: Bool) async throws {
@@ -56,6 +71,11 @@ import Testing
             alert.window.setFrameOrigin(CGPoint(x: -30000, y: -30000))
             alert.window.orderFrontRegardless()
             try? await Task.sleep(for: .seconds(0.6))
+            if let shot = Self.windowServerShot(alert.window) {
+                alert.window.orderOut(nil)
+                Testing.Attachment.record(shot, named: "cant-add-\(name)-\(dark ? "dark" : "light").png")
+                continue
+            }
             let rep = try #require(frame.bitmapImageRepForCachingDisplay(in: frame.bounds))
             frame.cacheDisplay(in: frame.bounds, to: rep)
             alert.window.orderOut(nil)
