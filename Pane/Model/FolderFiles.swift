@@ -19,6 +19,13 @@ extension ModelContext {
             .filter { $0.trashedAt == nil }
     }
 
+    /// The pictures kept in the same folder as `file`, in the list's order (newest first), for
+    /// stepping through them in the viewer. A file only notes embed has only itself.
+    func pictures(besides file: Attachment) -> [Attachment] {
+        guard let folder = file.folderID else { return [file] }
+        return files(in: folder).filter(\.isImage).sorted { $0.listDate > $1.listDate || ($0.listDate == $1.listDate && $0.id.uuidString < $1.id.uuidString) }
+    }
+
     /// Copies files into a folder, on their own (not in a note). Kinds the app can't show, and
     /// files over 100 MB, are refused with a message naming them (FileRefusal).
     @discardableResult
