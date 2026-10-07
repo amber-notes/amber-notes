@@ -45,7 +45,10 @@ struct RootView: View {
     }
 
     var body: some View {
-        imports(lifecycle(split))
+        #if DEBUG
+        RenderProbe.count("RootView")
+        #endif
+        return imports(lifecycle(split))
             .focusedSceneValue(\.newNoteAction, newNote)
             .focusedSceneValue(\.editorController, editor)
             .focusedSceneValue(\.importAction, { showImport = true })

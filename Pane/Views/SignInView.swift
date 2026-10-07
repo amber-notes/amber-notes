@@ -261,7 +261,7 @@ struct SignInView: View {
                         .frame(maxWidth: .infinity, minHeight: 24, alignment: .leading)
                         .contentShape(.rect)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.hoverLink)
                 .font(.footnote)
                 .foregroundStyle(.tint)
                 .accessibilityIdentifier("signin.back")
@@ -297,7 +297,7 @@ struct SignInView: View {
                                 .frame(width: 28, height: 28)
                                 .contentShape(.rect)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.hoverIcon)
                         .foregroundStyle(.secondary)
                         .accessibilityLabel(revealPassword ? "Hide password" : "Show password")
                         .accessibilityIdentifier("signin.reveal")
@@ -406,7 +406,7 @@ struct SignInView: View {
                 .frame(minHeight: 28)
                 .contentShape(.rect)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.hoverLink)
             .font(.footnote)
             .foregroundStyle(wait > 0 || resending ? AnyShapeStyle(.secondary) : AnyShapeStyle(.tint))
             .disabled(wait > 0 || resending || working)
@@ -447,7 +447,7 @@ struct SignInView: View {
     /// A text button under the main one, still big enough to hit.
     private func smallButton(_ title: String, id: String, action: @escaping () -> Void) -> some View {
         Button(title, action: action)
-            .buttonStyle(.plain)
+            .buttonStyle(.hoverLink)
             .font(.footnote)
             .foregroundStyle(.tint)
             .frame(minHeight: 28)

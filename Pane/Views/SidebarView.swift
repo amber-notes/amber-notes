@@ -9,7 +9,6 @@ struct AccountButton: View {
     let email: String
     let backend: Backend
     @State private var profile = ProfileStore.shared
-    @State private var hovering = false
     @Environment(\.openSettings) private var openSettings
 
     private var name: String { profile.name ?? email }
@@ -27,12 +26,9 @@ struct AccountButton: View {
             }
             .padding(.horizontal, 8)
             .frame(height: 34)
-            .background(hovering ? AnyShapeStyle(.fill.tertiary) : AnyShapeStyle(.clear), in: .rect(cornerRadius: 8))
-            .contentShape(.rect(cornerRadius: 8))
+            .hoverHighlight(RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
         .buttonStyle(.plain)
-        .onHover { hovering = $0 }
-        .animation(.easeOut(duration: 0.12), value: hovering)
         .help("Account Settings")
         .accessibilityLabel("Account, \(name). Opens Settings")
         .accessibilityIdentifier("sidebar.account")
@@ -173,6 +169,9 @@ struct SidebarView: View {
     private var roots: [Folder] { folders.filter { $0.parent == nil || $0.parent?.deletedAt != nil } }
 
     var body: some View {
+        #if DEBUG
+        RenderProbe.count("SidebarView")
+        #endif
         let counts = self.counts
         let files = self.files
         return List(selection: $scope) {
@@ -315,6 +314,7 @@ struct SidebarView: View {
             SidebarIcon(name: icon)
         }
         .rowAccessibility(title, count: count, files: files)
+        .hoverRow(title, reach: Hover.sidebarReach())
     }
 
     /// Keeps the selection on something that exists (see `Scope.settled`).
@@ -369,6 +369,8 @@ private struct FolderTree: View {
     let rename: (Folder) -> Void
     let newSub: (Folder) -> Void
     let delete: (Folder) -> Void
+    /// How many folders up: the row's content sits that many levels to the right.
+    var depth = 0
     @State private var expanded = true
 
     var body: some View {
@@ -377,7 +379,7 @@ private struct FolderTree: View {
         } else {
             DisclosureGroup(isExpanded: $expanded) {
                 ForEach(folder.liveChildren) { child in
-                    FolderTree(folder: child, files: files, dropTarget: dropTarget, targeted: targeted, rename: rename, newSub: newSub, delete: delete)
+                    FolderTree(folder: child, files: files, dropTarget: dropTarget, targeted: targeted, rename: rename, newSub: newSub, delete: delete, depth: depth + 1)
                 }
             } label: { label }
         }
@@ -397,6 +399,7 @@ private struct FolderTree: View {
                 .contentTransition(.symbolEffect(.replace))
         }
         .rowAccessibility(folder.name, count: folder.liveNotes.count, files: files[folder.id] ?? 0)
+        .hoverRow(folder.name, reach: Hover.sidebarReach(depth: depth))
         .tag(Scope.folder(folder.id))
         .accessibilityIdentifier("folder.\(folder.name)")
         .draggable(PaneDragItem(kind: .folder, id: folder.id)) {

@@ -935,6 +935,7 @@ struct ConnectWaitingRow: View {
             }
             .padding(.vertical, 2)
             .contentShape(.rect)
+            .hoverRow()
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .ignore)
@@ -1494,6 +1495,7 @@ struct ConnectAISection: View {
                     }
                     .padding(.vertical, 2)
                     .contentShape(.rect)
+                    .hoverRow()
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Connect \(g.title)")
@@ -1553,7 +1555,8 @@ struct ConnectAISection: View {
             .accessibilityElement(children: .combine)
             Spacer()
             Button("Disconnect…") { removing = c }
-                .buttonStyle(.borderless)
+                .buttonStyle(.hoverText)
+                .foregroundStyle(.tint)
                 .accessibilityLabel("Disconnect \(c.title)")
                 .accessibilityIdentifier("connect.disconnect")
         }

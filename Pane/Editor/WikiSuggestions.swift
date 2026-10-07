@@ -22,6 +22,7 @@ struct WikiSuggestionList: View {
                         .truncationMode(.tail)
                         .padding(.horizontal, 8)
                         .frame(maxWidth: .infinity, minHeight: Self.rowHeight, maxHeight: Self.rowHeight, alignment: .leading)
+                        .hoverHighlight(RoundedRectangle(cornerRadius: 5))
                         .background(i == controller.wikiChoice ? Color.amberSoft : .clear, in: .rect(cornerRadius: 5))
                         .contentShape(.rect)
                 }

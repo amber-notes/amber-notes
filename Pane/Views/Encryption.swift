@@ -218,6 +218,7 @@ struct KeyGateView: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
             .frame(minHeight: Row.height)
+            .hoverHighlight(shape)
             .background(Color(Palette.field), in: shape)
             .overlay(shape.strokeBorder(Color(Palette.fieldHairline), lineWidth: 1 / displayScale))
             .contentShape(shape)
@@ -483,7 +484,7 @@ struct KeyGateView: View {
 
     private func quietButton(_ title: String, id: String, muted: Bool = false, action: @escaping () -> Void) -> some View {
         Button(title) { error = nil; action() }
-            .buttonStyle(.plain)
+            .buttonStyle(.hoverLink)
             .font(muted ? .footnote : .subheadline)
             .foregroundStyle(muted ? AnyShapeStyle(Color.muted) : AnyShapeStyle(.tint))
             .frame(minHeight: 28)

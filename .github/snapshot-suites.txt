@@ -1,0 +1,4 @@
+# Snapshot suites the "snapshots" label runs on a pull request (one per line). Each writes PNGs
+# to $AMBER_HIG_SHOTS offscreen, without the screen; the run keeps them as an artifact.
+PaneTests/HoverSnapshots
+PaneTests/HeardFromSnapshots

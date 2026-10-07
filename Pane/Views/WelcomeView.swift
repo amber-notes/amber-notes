@@ -155,7 +155,7 @@ struct WelcomeFlow: View {
                     .frame(maxWidth: .infinity, minHeight: 36)
                     .contentShape(.rect)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.hoverLink)
             .font(.subheadline.weight(.semibold))
             .foregroundStyle(.tint)
             .accessibilityIdentifier("welcome.signIn")
@@ -172,7 +172,7 @@ struct WelcomeFlow: View {
                     .frame(minHeight: 24)
                     .contentShape(.rect)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.hoverText)
             .font(.subheadline.weight(.semibold))
             .foregroundStyle(.tint)
             .keyboardShortcut(.cancelAction)

@@ -223,7 +223,7 @@ struct AppleNotesImportView: View {
                                     let ids = items.map(\.id)
                                     if items.allSatisfy({ picked.contains($0.id) }) { picked.subtract(ids) } else { picked.formUnion(ids) }
                                 }
-                                .buttonStyle(.plain)
+                                .buttonStyle(.hoverLink)
                                 .font(.system(size: 12))
                                 .foregroundStyle(.tint)
                             }
@@ -266,6 +266,7 @@ struct AppleNotesImportView: View {
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 7)
+            .hoverHighlight(Rectangle())
             .background(on ? Color.accentColor.opacity(0.10) : .clear)
             .contentShape(.rect)
         }
