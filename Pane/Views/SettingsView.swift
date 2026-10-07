@@ -203,9 +203,48 @@ private struct SettingsPage<Content: View>: View {
             .formStyle(.grouped)
             #if os(macOS)
             .frame(width: SettingsLayout.width)
+            .background(NoInitialFocus())
             #endif
     }
 }
+
+#if os(macOS)
+/// A page opens with nothing focused. AppKit hands a window's keyboard to its first text field
+/// when the window becomes key or a tab's page comes in, which put a caret in your name, ready
+/// for a stray keystroke. Clicking a field still focuses it.
+private struct NoInitialFocus: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView { Resigner() }
+    func updateNSView(_ nsView: NSView, context: Context) {}
+
+    final class Resigner: NSView {
+        private var keyObserver: NSObjectProtocol?
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            if let keyObserver { NotificationCenter.default.removeObserver(keyObserver) }
+            keyObserver = nil
+            guard let window else { return }
+            resignSoon()
+            // Only the first time the window becomes key: later the focus is the person's own.
+            keyObserver = NotificationCenter.default.addObserver(forName: NSWindow.didBecomeKeyNotification, object: window, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    self?.resignSoon()
+                    if let o = self?.keyObserver { NotificationCenter.default.removeObserver(o) }
+                    self?.keyObserver = nil
+                }
+            }
+        }
+
+        /// After AppKit and SwiftUI have placed their focus: a text field's editor gives it up.
+        private func resignSoon() {
+            DispatchQueue.main.async { [weak self] in
+                guard let window = self?.window, window.firstResponder is NSText else { return }
+                window.makeFirstResponder(nil)
+            }
+        }
+    }
+}
+#endif
 
 private enum SettingsLayout {
     static let width: CGFloat = 520
