@@ -201,6 +201,7 @@ struct SidebarView: View {
         #if os(iOS)
         .scrollContentBackground(.hidden)
         .background(Color(Palette.foldersGround).ignoresSafeArea())
+        .safeAreaInset(edge: .bottom, spacing: 0) { OfflineLine(sync: sync).animation(.easeOut(duration: 0.25), value: sync?.reach) }
         #else
         // A little of the icon's brown inside the sidebar's glass, which stays vibrant.
         .background(Color(Palette.sidebarWarmth).ignoresSafeArea())
@@ -268,9 +269,13 @@ struct SidebarView: View {
         #if os(macOS)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if let backend, case .signedIn(let email) = backend.state {
-                AccountButton(email: backend.displayEmail ?? email, backend: backend)
-                    .padding(.horizontal, 10)
-                    .padding(.bottom, 10)
+                VStack(alignment: .leading, spacing: 4) {
+                    OfflineLine(sync: sync)
+                    AccountButton(email: backend.displayEmail ?? email, backend: backend)
+                        .padding(.horizontal, 10)
+                }
+                .padding(.bottom, 10)
+                .animation(.easeOut(duration: 0.25), value: sync?.reach)
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .paneNewFolder)) { _ in startNewFolder(nil) }
@@ -360,6 +365,7 @@ struct SidebarView: View {
 /// skipping its updates kept the sidebar's selection from following some clicks on folder rows.
 private struct FolderTree: View {
     @Environment(\.modelContext) private var context
+    @Environment(SyncEngine.self) private var sync: SyncEngine?
     let folder: Folder
     /// Live files per folder, counted once for the whole tree.
     let files: [UUID: Int]
@@ -430,6 +436,14 @@ private struct FolderTree: View {
         .contextMenu {
             Button("New Folder Inside", systemImage: "folder.badge.plus") { newSub(folder) }
             Button("Rename", systemImage: "pencil") { rename(folder) }
+            if let sync {
+                // Its files fetched to this device as they arrive, so they open offline.
+                let kept = sync.keptChanged >= 0 && sync.keepsDownloaded(folder.id)
+                Toggle(isOn: Binding(get: { kept }, set: { sync.setKeepsDownloaded(folder.id, $0) })) {
+                    Label("Keep Files Downloaded", systemImage: "arrow.down.circle")
+                }
+                .accessibilityIdentifier("folder.keepDownloaded")
+            }
             if folder.parent != nil {
                 Button("Move to Top Level", systemImage: "arrow.up.to.line") { context.move(folder, into: nil) }
             }

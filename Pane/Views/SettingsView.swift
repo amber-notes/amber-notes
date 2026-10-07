@@ -41,6 +41,7 @@ struct SettingsView: View {
     private var form: some View {
         ScrollViewReader { proxy in
             sections
+                .environment(\.networkReach, reach)
                 .onChange(of: route.target, initial: true) { _, target in
                     guard let target else { return }
                     Task { @MainActor in
@@ -52,8 +53,17 @@ struct SettingsView: View {
         }
     }
 
+    private var reach: SyncEngine.Reach { sync?.reach ?? .online }
+
     private var sections: some View {
             Form {
+                if case .signedIn = backend.state, reach != .online {
+                    Section {
+                        Label(OfflineCopy.settings, systemImage: OfflineCopy.symbol(reach))
+                            .foregroundStyle(Color.muted)
+                            .accessibilityIdentifier("settings.offline")
+                    }
+                }
                 if case .signedIn(let email) = backend.state {
                     // You first, like the Apple Account at the top of System Settings.
                     ProfileSection(backend: backend, email: backend.displayEmail ?? email)
@@ -103,6 +113,7 @@ struct SettingsView: View {
                             Label(AddDeviceCopy.sheetTitle, systemImage: "plus.circle")
                         }
                         .accessibilityIdentifier("settings.addDevice")
+                        .disabled(reach != .online)
                         .sheet(isPresented: $addingDevice) {
                             AddDeviceSheet(crypto: AccountCrypto.shared, server: addDevice)
                                 .onDisappear { Task { await KeyDevices.shared.refresh(AccountCrypto.shared) } }
@@ -308,7 +319,8 @@ struct SyncStatusLabel: View {
         case .idle: Text("Waiting").foregroundStyle(.secondary)
         case .syncing: HStack(spacing: 6) { ProgressView().controlSize(.mini); Text("Syncing…") }
         case .synced(let d): Text("Syncing to your iPhone and Mac · \(Self.when(d))").foregroundStyle(.secondary)
-        case .offline(let why): Text(why).foregroundStyle(.orange)
+        // No network isn't a problem to fix: said plainly. Refusals and the like stay orange.
+        case .offline(let why): Text(why).foregroundStyle(why == SyncEngine.describe(URLError(.notConnectedToInternet)) ? AnyShapeStyle(.secondary) : AnyShapeStyle(.orange))
         }
     }
 
