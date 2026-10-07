@@ -47,7 +47,7 @@ Deno.test("only the listed sources are taken", async () => {
   await assertRejects(() => answer(pg, me, "billboard"));
 });
 
-Deno.test("GitHub is one of them (20261008140000_heard_from_github.sql)", async () => {
+Deno.test("GitHub is one of them (20261007152100_heard_from_github.sql)", async () => {
   const pg = await schemaDB();
   const me = await newUser(pg);
   await answer(pg, me, "github");
