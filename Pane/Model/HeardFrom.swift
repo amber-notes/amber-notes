@@ -70,6 +70,8 @@ final class HeardFromStore {
     /// The choice just tapped: its row shows a tick for a moment before the sheet goes.
     private(set) var chosen: HeardFrom.Source?
 
+    /// The latest answer's send, so tests can wait for it rather than guess.
+    @ObservationIgnored private(set) var sending: Task<Void, Never>?
     @ObservationIgnored private var service: HeardFromService?
     @ObservationIgnored private var account: UUID?
     @ObservationIgnored let defaults: UserDefaults
@@ -126,7 +128,7 @@ final class HeardFromStore {
             defaults.set(saved, forKey: answerKey)
             if let service {
                 let key = answerKey
-                Task {
+                sending = Task {
                     if (try? await service.answer(source, detail: kept)) != nil {
                         defaults.set(["source": source.rawValue, "sent": "1"], forKey: key)
                     }
