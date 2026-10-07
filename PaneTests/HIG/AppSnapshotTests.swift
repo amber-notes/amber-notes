@@ -199,7 +199,8 @@ extension AppSnapshotTests {
 
     @Test(arguments: [false, true])
     func settingsTabs(dark: Bool) async throws {
-        guard let dir = Self.dir else { return }
+        // A titled window ordered in: CI only (PANE_CI_WINDOWS), never on a developer's Mac.
+        guard let dir = Self.dir, ProcessInfo.processInfo.environment["PANE_CI_WINDOWS"] != nil else { return }
         let view = try await Self.settingsFixture()
         #expect(view.tabs == SettingsTab.allCases)
         for tab in view.tabs {
@@ -223,6 +224,29 @@ extension AppSnapshotTests {
             try #require(rep.representation(using: .png, properties: [:])).write(to: dir.appending(path: "mac-settings-\(tab.rawValue)-\(dark ? "dark" : "light").png"))
         }
         ProfileStore.shared.showForPreview(name: nil, photo: nil)
+    }
+}
+#endif
+
+#if os(macOS)
+/// Settings opens with nothing focused: a caret in the name field invites typing by accident.
+/// It needs a real key window, so it runs only on CI (PANE_CI_WINDOWS, set in ci.yml), never
+/// on a developer's Mac where the window would show.
+@MainActor @Suite(.serialized) struct SettingsFocusTests {
+    @Test(.enabled(if: ProcessInfo.processInfo.environment["PANE_CI_WINDOWS"] != nil), arguments: [SettingsTab.account, .general, .ai])
+    func opensWithNothingFocused(_ tab: SettingsTab) async throws {
+        let view = try await AppSnapshotTests.settingsFixture()
+        defer { ProfileStore.shared.showForPreview(name: nil, photo: nil) }
+        view.route.tab = tab
+        let window = NSWindow(contentRect: NSRect(x: 200, y: 200, width: 520, height: 640), styleMask: [.titled, .closable], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentViewController = NSHostingController(rootView: view)
+        NSApp.activate()
+        window.makeKeyAndOrderFront(nil)
+        defer { window.orderOut(nil); window.close() }
+        try await Task.sleep(for: .seconds(1.5))
+        #expect(window.isKeyWindow, "the check means something only in a key window")
+        #expect(!(window.firstResponder is NSText), "\(tab): \(String(describing: window.firstResponder))")
     }
 }
 #endif

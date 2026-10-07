@@ -17,7 +17,8 @@ Heights are for the sample account below. The window takes each tab's height.
 
 All of them come from tests that draw offscreen. Nothing was shown on a screen.
 
-- Mac: `TEST_RUNNER_AMBER_HIG_SHOTS=<dir> scripts/qa-test.sh 'PaneTests/AppSnapshotTests/settingsTabs(dark:)'`.
+- Mac: `TEST_RUNNER_AMBER_HIG_SHOTS=<dir> TEST_RUNNER_PANE_CI_WINDOWS=1 scripts/qa-test.sh 'PaneTests/AppSnapshotTests/settingsTabs(dark:)'`,
+  on a CI runner only: it orders a titled window in, which would show on a developer's Mac.
   Each tab's real page is drawn in a window with AppKit toolbar tabs (`NSTabViewController`,
   `.toolbar` style), which is how the Settings scene draws them. The selected tab's glass
   capsule can't be drawn offscreen (it samples the screen behind it and comes out as a white
