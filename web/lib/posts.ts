@@ -156,7 +156,7 @@ export const posts: Post[] = [
     excerpt: "Within 30 days it's almost always in Recently Deleted. After that, what still works, what doesn't, and what recovery apps won't tell you.",
     category: "Apple Notes",
     date: "2026-10-01",
-    updated: "2026-10-02",
+    updated: "2026-10-07",
     image: SHOTS.history,
     thumb: thumb("night", "thumb-restore-dark", 846, 558, "An earlier version of a Groceries note in Amber Notes, in dark mode"),
     draft: false,
