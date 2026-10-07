@@ -65,17 +65,20 @@ import Testing
                 .tint(Color(PColor.paneAccent))
                 .environment(\.controlActiveState, .key)
                 .containerBackground(for: .window) { Backdrop() }
-            let w = NSWindow(contentRect: CGRect(x: -30000, y: -30000, width: 380, height: 560),
-                             styleMask: [.titled, .closable, .fullSizeContentView], backing: .buffered, defer: false)
+            // Borderless, far off screen, never ordered front or made key (AppSnapshotTests.shoot).
+            let w = NSWindow(contentRect: CGRect(x: -20000, y: -20000, width: 380, height: 560),
+                             styleMask: [.borderless], backing: .buffered, defer: false)
             w.isReleasedWhenClosed = false
-            w.titlebarAppearsTransparent = true
             w.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
             w.contentViewController = NSHostingController(rootView: view)
-            w.setFrameOrigin(CGPoint(x: -30000, y: -30000))
-            w.orderFrontRegardless()
-            defer { w.orderOut(nil); w.close() }
+            defer { w.close() }
             try? await Task.sleep(for: .seconds(1.2))
-            try await Self.shoot(w, "\(name)-\(dark ? "dark" : "light")", in: dir)
+            // Drawn offscreen: a window that is never on screen can't be captured by its id.
+            let content = try #require(w.contentView)
+            content.layoutSubtreeIfNeeded()
+            let rep = try #require(content.bitmapImageRepForCachingDisplay(in: content.bounds))
+            content.cacheDisplay(in: content.bounds, to: rep)
+            try #require(rep.representation(using: .png, properties: [:])).write(to: dir.appending(path: "\(name)-\(dark ? "dark" : "light").png"))
         }
     }
 }

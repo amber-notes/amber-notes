@@ -20,33 +20,26 @@ import Testing
         return c
     }
 
-    /// Draws `view` in a real titled window (toolbar included) and writes `name`.png.
-    /// `card`: as the signed-out window draws it (AppGate): content edge to edge under a see-through
-    /// title bar, only the window buttons on top, no title bar strip.
+    /// Draws `view` at `size` and writes `name`.png. The window is borderless, far off every
+    /// screen (-20000, -20000) and never ordered front or made key: a titled window placed off
+    /// screen gets pulled back onto the display, where it showed up on a developer's Mac.
+    /// No window chrome is drawn. `card`: edge to edge, as the signed-out window shows it.
+    /// `toolbar` is kept for the callers; nothing draws a toolbar any more.
     static func shoot(_ view: some View, name: String, size: CGSize, dark: Bool, toolbar: Bool = true, card: Bool = false, wait: Double = 0.8) async throws {
         guard let dir else { return }
-        let window = NSWindow(contentRect: CGRect(x: -30000, y: -30000, width: size.width, height: size.height),
-                              styleMask: toolbar ? [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView] : [.titled, .closable, .fullSizeContentView],
-                              backing: .buffered, defer: false)
+        let window = NSWindow(contentRect: CGRect(x: -20000, y: -20000, width: size.width, height: size.height),
+                              styleMask: [.borderless], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         window.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
-        if card {
-            window.titlebarAppearsTransparent = true
-            window.titleVisibility = .hidden
-            window.titlebarSeparatorStyle = .none
-            window.contentViewController = NSHostingController(rootView: AnyView(view.ignoresSafeArea()))
-        } else {
-            window.contentViewController = NSHostingController(rootView: AnyView(view))
-        }
-        window.setContentSize(size)
-        window.setFrameOrigin(CGPoint(x: -30000, y: -30000))
-        window.orderFrontRegardless()
+        let host = NSHostingView(rootView: AnyView(card ? AnyView(view.ignoresSafeArea()) : AnyView(view)))
+        host.appearance = window.appearance
+        host.frame = CGRect(origin: .zero, size: size)
+        window.contentView = host
         try? await Task.sleep(for: .seconds(wait))
-        defer { window.orderOut(nil); window.close() }
-        guard let frame = window.contentView?.superview else { return }
-        let rect = frame.bounds
-        let rep = try #require(frame.bitmapImageRepForCachingDisplay(in: rect))
-        frame.cacheDisplay(in: rect, to: rep)
+        defer { window.close() }
+        host.layoutSubtreeIfNeeded()
+        let rep = try #require(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+        host.cacheDisplay(in: host.bounds, to: rep)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         try #require(rep.representation(using: .png, properties: [:])).write(to: dir.appending(path: "\(name).png"))
     }
@@ -56,7 +49,7 @@ import Testing
         guard let dir else { return }
         let host = NSHostingView(rootView: view.background(Color(nsColor: .windowBackgroundColor)))
         host.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
-        let window = NSWindow(contentRect: CGRect(x: -30000, y: -30000, width: 600, height: 900), styleMask: [.borderless], backing: .buffered, defer: false)
+        let window = NSWindow(contentRect: CGRect(x: -20000, y: -20000, width: 600, height: 900), styleMask: [.borderless], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         window.contentView = host
         host.frame = CGRect(origin: .zero, size: host.fittingSize)
