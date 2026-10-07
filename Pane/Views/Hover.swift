@@ -194,15 +194,18 @@ private struct HoverOverlay<S: InsettableShape>: ViewModifier {
 /// under the pointer, a firmer one while pressed.
 struct HoverIconButtonStyle: ButtonStyle {
     var cornerRadius: CGFloat = 6
+    /// Room around a bare symbol, so the background isn't tight on its ink.
+    var padding: CGFloat = 0
 
     func makeBody(configuration: Configuration) -> some View {
-        HoverIconButton(configuration: configuration, cornerRadius: cornerRadius)
+        HoverIconButton(configuration: configuration, cornerRadius: cornerRadius, padding: padding)
     }
 }
 
 private struct HoverIconButton: View {
     let configuration: ButtonStyleConfiguration
     let cornerRadius: CGFloat
+    let padding: CGFloat
     @State private var hovering = false
     @Environment(\.hoverPreview) private var preview
     @Environment(\.isEnabled) private var enabled
@@ -212,6 +215,7 @@ private struct HoverIconButton: View {
         let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
         let on = enabled && (hovering || preview.contains("*"))
         configuration.label
+            .padding(padding)
             .opacity(enabled ? 1 : 0.5)
             .background {
                 if configuration.isPressed { shape.fill(Hover.pressed) } else if on { shape.fill(Hover.fill) }
@@ -220,7 +224,7 @@ private struct HoverIconButton: View {
             .modifier(HoverTracking(hovering: $hovering))
         #else
         // On iPhone, as the plain style draws it.
-        configuration.label.opacity(configuration.isPressed ? 0.6 : enabled ? 1 : 0.5)
+        configuration.label.padding(padding).opacity(configuration.isPressed ? 0.6 : enabled ? 1 : 0.5)
         #endif
     }
 }
@@ -257,7 +261,7 @@ private struct HoverTextButton: View {
 
 extension ButtonStyle where Self == HoverIconButtonStyle {
     static var hoverIcon: HoverIconButtonStyle { .init() }
-    static func hoverIcon(cornerRadius: CGFloat) -> HoverIconButtonStyle { .init(cornerRadius: cornerRadius) }
+    static func hoverIcon(cornerRadius: CGFloat = 6, padding: CGFloat = 0) -> HoverIconButtonStyle { .init(cornerRadius: cornerRadius, padding: padding) }
 }
 
 extension ButtonStyle where Self == HoverTextButtonStyle {

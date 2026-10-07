@@ -255,7 +255,7 @@ struct PDFReader: View {
             findField
         }
         .labelStyle(.iconOnly)
-        .buttonStyle(.borderless)
+        .buttonStyle(.hoverIcon(padding: 4))
         .padding(.horizontal, 12)
         .padding(.vertical, 7)
         .background(.bar)
@@ -331,7 +331,7 @@ struct PDFReader: View {
                             model.showsSidebar = false
                             #endif
                         }
-                            .buttonStyle(.plain)
+                            .buttonStyle(.hoverText)
                             .foregroundStyle(Color.ink)
                             .lineLimit(2)
                     }
