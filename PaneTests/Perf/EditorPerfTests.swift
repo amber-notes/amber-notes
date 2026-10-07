@@ -102,7 +102,15 @@ extension EditorPerfTests {
             var steps: [Double] = []
             // 15 frames from 760 to 990 points wide, and back: the sidebar's width.
             let widths = (0...15).map { 760 + 230 * Double($0) / 15 }
-            for w in widths + widths.reversed() {
+            // One pass untimed first: the first layout at each width fills caches the rest reuse.
+            for w in widths {
+                h.window.setContentSize(NSSize(width: w, height: 900))
+                h.scroll.frame.size = NSSize(width: w, height: 900)
+                h.window.contentView?.layoutSubtreeIfNeeded()
+                h.view.layoutCards(animated: false)
+                h.window.displayIfNeeded()
+            }
+            for w in widths.reversed() + widths {
                 steps.append(ms(clock.measure {
                     h.window.setContentSize(NSSize(width: w, height: 900))
                     h.scroll.frame.size = NSSize(width: w, height: 900)

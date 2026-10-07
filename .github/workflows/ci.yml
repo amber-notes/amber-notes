@@ -30,6 +30,10 @@ jobs:
     name: App tests (macOS)
     runs-on: macos-26
     timeout-minutes: 45
+    env:
+      # The suites that time things (PaneTests/Perf): run apart from the rest.
+      PERF_SKIP: -skip-testing:PaneTests/EditorPerfTests -skip-testing:PaneTests/AppPerfTests -skip-testing:PaneTests/ScanPerfTests -skip-testing:PaneTests/WindowUpdateTests -skip-testing:PaneTests/ListPiecesPerfTests
+      PERF_ONLY: -only-testing:PaneTests/EditorPerfTests -only-testing:PaneTests/AppPerfTests -only-testing:PaneTests/ScanPerfTests -only-testing:PaneTests/WindowUpdateTests -only-testing:PaneTests/ListPiecesPerfTests
     steps:
       - uses: actions/checkout@v4
       - name: Select the newest Xcode
@@ -46,12 +50,26 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p build
+          # The timing suites run on their own afterwards (next step), so the snapshot, PDF and
+          # web view suites running beside them in this process can't slow what they measure.
           xcodebuild test -project Pane.xcodeproj -scheme Pane -destination 'platform=macOS' \
-            -only-testing:PaneTests -derivedDataPath build/ci -resultBundlePath build/ci-tests.xcresult \
+            -only-testing:PaneTests $PERF_SKIP -derivedDataPath build/ci -resultBundlePath build/ci-tests.xcresult \
             ENABLE_TESTABILITY=YES ENABLE_HARDENED_RUNTIME=NO \
             CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= PROVISIONING_PROFILE_SPECIFIER= \
             | tee build/ci-test.log | grep -E "✔ Test run|✘|error:|PERF|\*\* TEST" || true
           grep -q "\*\* TEST SUCCEEDED \*\*" build/ci-test.log
+      - name: Timing tests, on their own
+        env:
+          TEST_RUNNER_PANE_PERF_SLACK: "4"
+        run: |
+          set -o pipefail
+          # A process of their own, one test at a time, after the build is warm.
+          xcodebuild test-without-building -project Pane.xcodeproj -scheme Pane -destination 'platform=macOS' \
+            $PERF_ONLY -parallel-testing-enabled NO -derivedDataPath build/ci -resultBundlePath build/ci-perf.xcresult \
+            ENABLE_TESTABILITY=YES ENABLE_HARDENED_RUNTIME=NO \
+            CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= PROVISIONING_PROFILE_SPECIFIER= \
+            | tee build/ci-perf.log | grep -E "✔ Test run|✘|error:|PERF|\*\* TEST" || true
+          grep -q "\*\* TEST SUCCEEDED \*\*" build/ci-perf.log
       # A failure keeps the whole log and the result bundle: a test host that hangs or crashes
       # records no issue in the filtered output above, only its name under "Failing tests".
       - name: Keep the test results
@@ -62,6 +80,8 @@ jobs:
           path: |
             build/ci-test.log
             build/ci-tests.xcresult
+            build/ci-perf.log
+            build/ci-perf.xcresult
           retention-days: 7
       - name: iOS simulator build
         run: |
