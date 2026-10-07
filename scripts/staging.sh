@@ -316,7 +316,7 @@ cmd_dev_app() {
   fi
   rm -rf "$dest"
   ditto "$app" "$dest"
-  echo "✓ Installed $dest: build $build from dev $commit ($(codesign -dv "$dest" 2>&1 | sed -n 's/^Authority=//p' | head -1)). Not opened."
+  echo "✓ Installed $dest: build $build from dev $commit ($(codesign -dvv "$dest" 2>&1 | sed -n 's/^Authority=//p' | head -1)). Not opened."
 }
 
 cmd_status() {
