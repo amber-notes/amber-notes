@@ -62,7 +62,10 @@ private struct OfflineLineContent: View {
             .lineLimit(1)
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
-            .glassEffect(.regular, in: .capsule)
+            // Solid, so list text scrolling behind never shows through.
+            .background(Color(Palette.row), in: .capsule)
+            .overlay(Capsule().strokeBorder(Color.line, lineWidth: 0.5))
+            .shadow(color: .black.opacity(0.06), radius: 6, y: 2)
             .padding(.bottom, 6)
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("sync.offline")

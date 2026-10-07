@@ -47,7 +47,14 @@ final class OfflineUITests: XCTestCase {
         }
     }
 
+    /// Launch reopens the note you were in: back to its list.
+    private func toList() {
+        let compose = app.buttons["list.newNote"]
+        for _ in 0..<3 where !compose.waitForExistence(timeout: 2) { back() }
+    }
+
     private func newNote(_ text: String) {
+        toList()
         let compose = app.buttons["list.newNote"]
         XCTAssertTrue(compose.waitForExistence(timeout: 10))
         compose.tap()
@@ -118,21 +125,30 @@ final class OfflineUITests: XCTestCase {
         app.launchArguments = ["-netOffline", "-netToggle", "-skipWelcome", "-forgetDownloads"]
         let started = Date()
         app.launch()
-        let compose = app.buttons["list.newNote"]
-        XCTAssertTrue(compose.waitForExistence(timeout: 10), "the notes open with no network")
+        // The list, or the note you were in (launch reopens it).
+        let open = app.buttons["list.newNote"].exists || app.textViews["editor"].exists
+        let notes = NSPredicate { _, _ in self.app.buttons["list.newNote"].exists || self.app.textViews["editor"].exists }
+        if !open { expectation(for: notes, evaluatedWith: NSNull()); waitForExpectations(timeout: 10) }
         let took = Date().timeIntervalSince(started)
         print("PERF launch with no network: notes after \(String(format: "%.2f", took)) s (including the app's launch)")
         XCTAssertFalse(app.textFields["signin.email"].exists, "still signed in")
+        toList()
         XCTAssertTrue(offlineLine.waitForExistence(timeout: 5))
         shot("launch-offline")
 
         newNote("Landed soon\nWritten after opening the app offline.")
+        Thread.sleep(forTimeInterval: 1)
         toFolders()
         let trip = app.cells.containing(.any, identifier: "folder.Trip").firstMatch
         XCTAssertTrue(trip.waitForExistence(timeout: 5))
         trip.tap()
         let file = app.descendants(matching: .any)["file.Boarding pass.txt"].firstMatch
+        // Earlier runs leave notes above it, and a list makes rows only as they come into view.
+        _ = app.buttons["list.newNote"].waitForExistence(timeout: 5)
+        for _ in 0..<8 where !(file.exists && file.isHittable) { app.swipeUp() }
         XCTAssertTrue(file.waitForExistence(timeout: 5))
+        // The note just written is still sliding in above it.
+        Thread.sleep(forTimeInterval: 1)
         file.tap()
         XCTAssertTrue(app.descendants(matching: .any)["file.notDownloaded"].firstMatch.waitForExistence(timeout: 5), "a file that isn't here says so, at once")
         shot("file-not-downloaded")

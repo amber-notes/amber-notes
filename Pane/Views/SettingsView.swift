@@ -319,7 +319,8 @@ struct SyncStatusLabel: View {
         case .idle: Text("Waiting").foregroundStyle(.secondary)
         case .syncing: HStack(spacing: 6) { ProgressView().controlSize(.mini); Text("Syncing…") }
         case .synced(let d): Text("Syncing to your iPhone and Mac · \(Self.when(d))").foregroundStyle(.secondary)
-        case .offline(let why): Text(why).foregroundStyle(.orange)
+        // No network isn't a problem to fix: said plainly. Refusals and the like stay orange.
+        case .offline(let why): Text(why).foregroundStyle(why == SyncEngine.describe(URLError(.notConnectedToInternet)) ? AnyShapeStyle(.secondary) : AnyShapeStyle(.orange))
         }
     }
 
