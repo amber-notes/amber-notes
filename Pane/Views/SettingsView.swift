@@ -3,32 +3,82 @@ import Supabase
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Account, sync status, and the AIs connected to your notes.
+/// The pages of Settings: toolbar tabs on the Mac, as in the system's apps, and rows that open a
+/// page on iPhone.
+enum SettingsTab: String, CaseIterable, Identifiable, Hashable {
+    case general, account, ai, security, storage
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .general: "General"
+        case .account: "Account"
+        case .ai: "AI"
+        case .security: PrivacyCopy.title
+        case .storage: "Storage"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .general: "gearshape"
+        case .account: "person.crop.circle"
+        case .ai: "sparkles"
+        case .security: "lock.shield"
+        case .storage: "externaldrive"
+        }
+    }
+}
+
+/// Account, sync status, the AIs connected to your notes, your devices and your storage.
 struct SettingsView: View {
     let backend: Backend
     let sync: SyncEngine?
+    var crypto: AccountCrypto = .shared
+    var devices: KeyDevices = .shared
+    /// Captures: shows these instead of asking the server.
+    var connections: [Connection]? = nil
+    var route: SettingsRoute = .shared
     @Environment(\.dismiss) private var dismiss
-    @State private var confirmSignOut = false
-    @State private var route = SettingsRoute.shared
+    #if os(iOS)
+    @State private var path: [SettingsTab] = []
     @State private var addingDevice = false
+    @State private var storage = StorageStore.shared
+    #endif
 
     var body: some View {
         #if os(macOS)
-        // A Mac Settings window: no navigation bar, no Done button.
-        form
-            .frame(width: 520)
-            .frame(minHeight: 560)
+        // A Mac Settings window: a tab per page, and the window takes each page's height.
+        TabView(selection: Binding(get: { shown(route.tab) }, set: { route.tab = $0 })) {
+            ForEach(tabs) { tab in
+                Tab(tab.title, systemImage: tab.symbol, value: tab) { page(tab) }
+            }
+        }
+        .onChange(of: isSignedIn) { was, now in if was && !now { dismiss() } }
         #else
-        NavigationStack {
-            form
+        NavigationStack(path: $path) {
+            root
                 .navigationTitle("Settings")
                 // Scrolled, the rows pass under a solid edge instead of showing through the title.
                 .scrollEdgeEffectStyle(.hard, for: .top)
                 .toolbar {
                     ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
                 }
+                .navigationDestination(for: SettingsTab.self) { tab in
+                    page(tab)
+                        .navigationTitle(tab.title)
+                        .navigationBarTitleDisplayMode(.inline)
+                }
         }
         .consentHost(client: backend.client, active: isSignedIn)
+        // A link, a card or the storage warning opens Settings at its page.
+        .onChange(of: route.target, initial: true) { _, target in
+            guard let target else { return }
+            if tabs.contains(target) { path = [target] }
+            route.target = nil
+        }
+        .onChange(of: isSignedIn) { was, now in if was && !now { dismiss() } }
         #endif
     }
 
@@ -37,118 +87,237 @@ struct SettingsView: View {
         return false
     }
 
-    /// Opened at a section (What's new's "Reconnect your AI"): scrolls there once it's drawn.
-    private var form: some View {
-        ScrollViewReader { proxy in
-            sections
-                .onChange(of: route.target, initial: true) { _, target in
-                    guard let target else { return }
-                    Task { @MainActor in
-                        try? await Task.sleep(for: .seconds(0.3))
-                        withAnimation(.snappy(duration: 0.3)) { proxy.scrollTo(target, anchor: .top) }
-                        route.target = nil
-                    }
-                }
+    private var demoStorage: Bool { ProcessInfo.processInfo.arguments.contains("-demoStorage") }
+
+    /// The pages there is something on: signed out, only General and Account.
+    var tabs: [SettingsTab] {
+        SettingsTab.allCases.filter { tab in
+            switch tab {
+            case .general, .account: true
+            case .ai: isSignedIn && backend.client != nil
+            case .security: (isSignedIn && crypto.isReady) || NoteVault.shared.isSetUp
+            case .storage: (isSignedIn && backend.client != nil) || demoStorage
+            }
         }
     }
 
-    private var sections: some View {
-            Form {
-                if case .signedIn(let email) = backend.state {
-                    // You first, like the Apple Account at the top of System Settings.
-                    ProfileSection(backend: backend, email: backend.displayEmail ?? email)
-                }
-                Section("Account") {
-                    if case .signedIn = backend.state {
-                        // The status and its action on one row, like iCloud in System Settings.
-                        LabeledContent("Sync") {
-                            HStack(spacing: 10) {
-                                SyncStatusLabel(status: sync?.status ?? .idle)
-                                Button("Sync Now") { Task { await sync?.sync() } }
-                                    .controlSize(.small)
-                                    .accessibilityIdentifier("settings.syncNow")
-                            }
-                        }
-                        AppleIDRow(backend: backend)
-                    } else if backend.state == .disabled {
-                        // Only a build without a backend; signing out (signedOut) shows nothing
-                        // here for the moment before the sheet goes.
-                        Text("Sync is off. This build keeps notes on this device only.")
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                if case .signedIn = backend.state, let client = backend.client {
-                    ConnectAISection(client: client)
-                        .id(SettingsRoute.connectAI)
+    /// The remembered tab, or General when that page isn't there now.
+    private func shown(_ tab: SettingsTab) -> SettingsTab { tabs.contains(tab) ? tab : .general }
+
+    @ViewBuilder
+    func page(_ tab: SettingsTab) -> some View {
+        switch tab {
+        case .general:
+            SettingsPage { GeneralSettings(signedIn: isSignedIn, close: { dismiss() }) }
+        case .account:
+            SettingsPage { AccountSettings(backend: backend, sync: sync) }
+        case .ai:
+            SettingsPage {
+                if let client = backend.client {
+                    ConnectAISection(client: client, preview: connections)
                     AppPreviewSection(client: client)
+                }
+            }
+            .connectGuides(client: backend.client)
+        case .security:
+            SettingsPage {
+                if isSignedIn, crypto.isReady {
+                    PrivacySecuritySection(crypto: crypto, devices: devices, addDeviceServer: backend.client.map { SupabaseAddDevice(client: $0) })
+                }
+                LockedNotesSection(sync: sync)
+            }
+        case .storage:
+            SettingsPage {
+                if isSignedIn, let client = backend.client {
                     StorageSection(client: client)
-                } else if ProcessInfo.processInfo.arguments.contains("-demoStorage") {
+                } else {
                     // Captures without an account.
                     StorageSectionBody(usage: StorageStore.shared.usage)
                 }
-                if case .signedIn = backend.state, AccountCrypto.shared.isReady {
-                    let addDevice = backend.client.map { SupabaseAddDevice(client: $0) }
-                    #if os(macOS)
-                    PrivacySecuritySection(crypto: AccountCrypto.shared, addDeviceServer: addDevice)
-                    #else
-                    Section {
-                        NavigationLink {
-                            PrivacySecurityView(crypto: AccountCrypto.shared, addDeviceServer: addDevice)
-                        } label: {
-                            Label(PrivacyCopy.title, systemImage: "lock.shield")
-                        }
-                        .accessibilityIdentifier("settings.privacy")
-                        // What a new device's screen says to open: Settings › Add a device.
-                        Button { addingDevice = true } label: {
-                            Label(AddDeviceCopy.sheetTitle, systemImage: "plus.circle")
-                        }
-                        .accessibilityIdentifier("settings.addDevice")
-                        .sheet(isPresented: $addingDevice) {
-                            AddDeviceSheet(crypto: AccountCrypto.shared, server: addDevice)
-                                .onDisappear { Task { await KeyDevices.shared.refresh(AccountCrypto.shared) } }
-                        }
+            }
+        }
+    }
+
+    #if os(iOS)
+    /// You first, like the Apple Account at the top of Settings, then a row per page.
+    private var root: some View {
+        Form {
+            if case .signedIn(let email) = backend.state {
+                Section {
+                    NavigationLink(value: SettingsTab.account) {
+                        AccountRow(backend: backend, email: backend.displayEmail ?? email)
                     }
-                    #endif
+                    .accessibilityIdentifier("settings.account")
                 }
-                LockedNotesSection(sync: sync)
-                APIKeysSection()
-                #if os(macOS)
-                MenuBarSection()
-                #else
-                if case .signedIn = backend.state {
-                    // On the Mac this is Help › Show Setup Guide.
-                    Section {
-                        Button("Show Setup Guide") {
-                            NotificationCenter.default.post(name: .paneShowSetupGuide, object: nil)
-                            dismiss()
-                        }
-                        .accessibilityIdentifier("settings.setupGuide")
-                    } footer: {
-                        Text("Shows the Get set up steps at the top of your notes again.")
-                    }
-                }
-                #endif
-                AboutSection()
-                if case .signedIn = backend.state {
-                    // Signing out sits apart, last, as in System Settings.
-                    Section {
-                        Button(role: .destructive) { confirmSignOut = true } label: { Text("Sign Out…").foregroundStyle(.red) }
-                            .accessibilityIdentifier("settings.signOut")
-                        DeleteAccountButton(backend: backend)
-                    } footer: {
-                        LegalLinksRow()
-                    }
+            } else if backend.state == .disabled {
+                Section {
+                    Text("Sync is off. This build keeps notes on this device only.")
+                        .foregroundStyle(.secondary)
                 }
             }
+            Section {
+                ForEach(tabs.filter { $0 == .ai || $0 == .security }) { row($0) }
+                if tabs.contains(.security), isSignedIn, crypto.isReady {
+                    // A new device's screen says Settings › Privacy & Security › Add a device; here it's one tap.
+                    Button { addingDevice = true } label: {
+                        Label(AddDeviceCopy.sheetTitle, systemImage: "plus.circle")
+                    }
+                    .accessibilityIdentifier("settings.addDevice")
+                    .sheet(isPresented: $addingDevice) {
+                        AddDeviceSheet(crypto: crypto, server: backend.client.map { SupabaseAddDevice(client: $0) })
+                            .onDisappear { Task { await devices.refresh(crypto) } }
+                    }
+                }
+                if tabs.contains(.storage) { row(.storage) }
+            }
+            Section { row(.general) }
+        }
+        .formStyle(.grouped)
+        .task(id: isSignedIn) { await storage.refresh(backend.client, force: false) }
+    }
+
+    private func row(_ tab: SettingsTab) -> some View {
+        NavigationLink(value: tab) {
+            if tab == .storage, let usage = storage.usage {
+                LabeledContent {
+                    Text(usage.summary).monospacedDigit()
+                } label: {
+                    Label(tab.title, systemImage: tab.symbol)
+                }
+            } else {
+                Label(tab == .ai ? "Connect an AI" : tab.title, systemImage: tab.symbol)
+            }
+        }
+        .accessibilityIdentifier("settings.\(tab.rawValue)")
+    }
+    #endif
+}
+
+/// One page of Settings: a grouped form. On the Mac the window takes the page's own height, so
+/// no page scrolls at its normal size.
+private struct SettingsPage<Content: View>: View {
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        Form { content }
             .formStyle(.grouped)
-            .connectGuides(client: backend.client)
-            .confirmationDialog("Sign out of Amber Notes?", isPresented: $confirmSignOut, titleVisibility: .visible) {
-                Button("Sign Out", role: .destructive) { Task { await backend.signOut(); dismiss() } }
-            } message: {
-                Text("Your notes stay in your account and come back when you sign in again.")
-            }
+            #if os(macOS)
+            .frame(width: SettingsLayout.width)
+            #endif
     }
 }
+
+private enum SettingsLayout {
+    static let width: CGFloat = 520
+}
+
+/// General: the menu bar item (on iPhone, the setup guide), API keys for apps in notes, and about.
+private struct GeneralSettings: View {
+    let signedIn: Bool
+    let close: () -> Void
+
+    var body: some View {
+        #if os(macOS)
+        MenuBarSection()
+        #else
+        if signedIn {
+            // On the Mac this is Help › Show Setup Guide.
+            Section {
+                Button("Show Setup Guide") {
+                    NotificationCenter.default.post(name: .paneShowSetupGuide, object: nil)
+                    close()
+                }
+                .accessibilityIdentifier("settings.setupGuide")
+            } footer: {
+                Text("Shows the Get set up steps at the top of your notes again.")
+            }
+        }
+        #endif
+        APIKeysSection()
+        AboutSection()
+    }
+}
+
+/// Account: you, sync, how you sign in, exporting your notes, and signing out last, apart, as in
+/// System Settings.
+private struct AccountSettings: View {
+    let backend: Backend
+    let sync: SyncEngine?
+    @State private var confirmSignOut = false
+
+    var body: some View {
+        if case .signedIn(let email) = backend.state {
+            ProfileSection(backend: backend, email: backend.displayEmail ?? email)
+            Section {
+                // The status and its action on one row, like iCloud in System Settings.
+                LabeledContent("Sync") {
+                    HStack(spacing: 10) {
+                        SyncStatusLabel(status: sync?.status ?? .idle)
+                        Button("Sync Now") { Task { await sync?.sync() } }
+                            .controlSize(.small)
+                            .accessibilityIdentifier("settings.syncNow")
+                    }
+                }
+                AppleIDRow(backend: backend)
+            }
+            // Next to Delete Account, which says to export first.
+            Section {
+                ExportNotesButton()
+            } footer: {
+                Text(PrivacyCopy.exportFooter)
+            }
+            Section {
+                Button(role: .destructive) { confirmSignOut = true } label: { Text("Sign Out…").foregroundStyle(.red) }
+                    .accessibilityIdentifier("settings.signOut")
+                    // Settings closes once you're signed out.
+                    .confirmationDialog("Sign out of Amber Notes?", isPresented: $confirmSignOut, titleVisibility: .visible) {
+                        Button("Sign Out", role: .destructive) { Task { await backend.signOut() } }
+                    } message: {
+                        Text("Your notes stay in your account and come back when you sign in again.")
+                    }
+                DeleteAccountButton(backend: backend)
+            }
+        } else if backend.state == .disabled {
+            // Only a build without a backend.
+            Section {
+                Text("Sync is off. This build keeps notes on this device only.")
+                    .foregroundStyle(.secondary)
+            }
+        } else {
+            Section {
+                Text("Sign in to sync your notes across your iPhone and Mac.")
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+}
+
+#if os(iOS)
+/// Settings' first row on iPhone: your photo, name and email, opening Account.
+private struct AccountRow: View {
+    let backend: Backend
+    let email: String
+    @State private var profile = ProfileStore.shared
+
+    var body: some View {
+        HStack(spacing: 14) {
+            AvatarView(photo: profile.photo, name: profile.name ?? email, size: 56)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(profile.name ?? "Your Name")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(profile.name == nil ? .secondary : .primary)
+                Text(email)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+        }
+        .padding(.vertical, 4)
+        .task(id: backend.state) { await profile.bind(backend) }
+    }
+}
+#endif
 
 /// Your photo, name and email, and the controls to change the first two.
 private struct ProfileSection: View {
@@ -337,7 +506,8 @@ private struct MenuBarSection: View {
 }
 #endif
 
-/// About › Open source: three quiet links to the code on GitHub. Nothing here ever asks.
+/// About › Open source: three quiet links to the code on GitHub, and the terms and privacy
+/// policy under them. Nothing here ever asks.
 struct AboutSection: View {
     static let links: [(title: String, url: URL, id: String)] = [
         ("Star on GitHub", ShareAsk.repository, "settings.github"),
@@ -346,7 +516,7 @@ struct AboutSection: View {
     ]
 
     var body: some View {
-        Section("About") {
+        Section {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Open source")
                 ViewThatFits(in: .horizontal) {
@@ -359,6 +529,10 @@ struct AboutSection: View {
             .padding(.vertical, 2)
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("settings.openSource")
+        } header: {
+            Text("About")
+        } footer: {
+            LegalLinksRow()
         }
     }
 

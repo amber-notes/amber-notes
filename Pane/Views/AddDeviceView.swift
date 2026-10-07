@@ -10,7 +10,7 @@ import UIKit
 /// Add a device, in words: the new device's screen, and the sheet on the device that has the key.
 enum AddDeviceCopy {
     static var gateTitle: String { "Open your notes on this \(InstallID.kind)" }
-    static let gateMessage = "On a device where Amber Notes already works, go to Settings \u{203A} Add a device and scan this code."
+    static let gateMessage = "On a device where Amber Notes already works, go to Settings \u{203A} Privacy & Security \u{203A} Add a device and scan this code."
     /// Why the screen is there, before what to do: the notes exist, this device isn't linked yet.
     static var gateWhy: String { "This account already has notes on another device. Link this \(InstallID.kind) to open them here." }
     static let codeLead = "Can\u{2019}t scan? Type this code there:"

@@ -93,10 +93,6 @@ struct PrivacySecuritySection: View {
             Text(PrivacyCopy.summary)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("privacy.summary")
-        } header: {
-            #if os(macOS)
-            Text(PrivacyCopy.title)
-            #endif
         }
         keySection
         Section {
@@ -117,29 +113,23 @@ struct PrivacySecuritySection: View {
                     .font(.system(.body, design: .monospaced).weight(.semibold))
                     .textSelection(.enabled)
                     .accessibilityIdentifier("privacy.recoveryKey")
-                Button("Hide recovery key") { self.shown = nil }
-                    .accessibilityIdentifier("privacy.hideRecovery")
-            } else {
-                Button("Show recovery key") { Task { await reveal(reason: PrivacyCopy.showReason) { shown = $0 } } }
-                    .accessibilityIdentifier("privacy.showRecovery")
             }
-            // The sheet hangs on its button: on a Section it isn't presented on iPhone.
-            Button("Save a recovery key…") { Task { await reveal(reason: PrivacyCopy.saveReason) { saving = $0 } } }
-                .accessibilityIdentifier("privacy.saveRecovery")
-                .sheet(item: Binding(get: { saving.map(RecoveryKeyItem.init) }, set: { saving = $0?.key })) { item in
-                    SaveRecoveryKeySheet(key: item.key) { await markSaved() }
-                }
+            #if os(macOS)
+            // Side by side on the Mac, so Privacy & Security fits its window without scrolling.
+            HStack(spacing: 10) {
+                showOrHide
+                saveButton
+            }
+            #else
+            showOrHide
+            saveButton
+            #endif
             if let problem {
                 Text(problem).font(.footnote).foregroundStyle(.red)
             }
         } footer: {
             // "Optional" only while something else is known to open the notes.
             Text((recoveryStatus == "Optional" ? "Optional. " : "") + PrivacyCopy.recoveryFooter)
-        }
-        Section {
-            ExportNotesButton()
-        } footer: {
-            Text(PrivacyCopy.exportFooter)
         }
         .task {
             await crypto.recheck()
@@ -149,6 +139,25 @@ struct PrivacySecuritySection: View {
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in shown = nil }
         #endif
         .onDisappear { shown = nil }
+    }
+
+    @ViewBuilder private var showOrHide: some View {
+        if shown != nil {
+            Button("Hide recovery key") { self.shown = nil }
+                .accessibilityIdentifier("privacy.hideRecovery")
+        } else {
+            Button("Show recovery key") { Task { await reveal(reason: PrivacyCopy.showReason) { shown = $0 } } }
+                .accessibilityIdentifier("privacy.showRecovery")
+        }
+    }
+
+    /// The sheet hangs on its button: on a Section it isn't presented on iPhone.
+    private var saveButton: some View {
+        Button("Save a recovery key…") { Task { await reveal(reason: PrivacyCopy.saveReason) { saving = $0 } } }
+            .accessibilityIdentifier("privacy.saveRecovery")
+            .sheet(item: Binding(get: { saving.map(RecoveryKeyItem.init) }, set: { saving = $0?.key })) { item in
+                SaveRecoveryKeySheet(key: item.key) { await markSaved() }
+            }
     }
 
     // MARK: Where your key is kept
