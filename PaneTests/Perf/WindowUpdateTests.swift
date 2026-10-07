@@ -40,6 +40,25 @@ import Testing
         #expect(defaults.bool(forKey: DeviceRemoval.noticeFlag) == false)
     }
 
+    /// The menu bar item's setting: on until it's turned off, and its scene is told only when it
+    /// changes (redoing the menu bar item mid-layout crashed the app).
+    @Test func menuBarSettingIsOnByDefaultAndChangesOnlyWithItsKey() async throws {
+        let defaults = try #require(UserDefaults(suiteName: "WindowUpdateTests.\(UUID().uuidString)"))
+        let shown = DefaultsFlag(MenuBarSettings.key, default: true, defaults: defaults)
+        #expect(shown.value)
+        final class Count: @unchecked Sendable { var value = 0 }
+        let count = Count()
+        withObservationTracking { _ = shown.value } onChange: { count.value += 1 }
+        defaults.set("main", forKey: "lastNote")
+        defaults.set(Data([1]), forKey: "lastScope")
+        try await Task.sleep(for: .milliseconds(100))
+        #expect(count.value == 0)
+        defaults.set(false, forKey: MenuBarSettings.key)
+        try await Task.sleep(for: .milliseconds(100))
+        #expect(count.value == 1)
+        #expect(!shown.value)
+    }
+
     /// The sidebar counts in the store. Notes made, deleted or recovered count straight away,
     /// before the library is saved.
     @Test func sidebarCountsIncludeUnsavedChanges() throws {
