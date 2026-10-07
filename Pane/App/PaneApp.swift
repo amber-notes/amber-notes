@@ -307,6 +307,20 @@ enum CardWindow {
     }
 }
 
+extension View {
+    /// The card window's content: edge to edge, title bar included, so the window buttons sit on
+    /// the picture, at the card's fixed size (the scene sizes windows to their content, so it
+    /// can't be resized and the picture always fills its half).
+    func cardWindow() -> some View {
+        ignoresSafeArea()
+            .frame(width: WelcomeFlow.size.width, height: WelcomeFlow.size.height)
+            .containerBackground(for: .window) { Backdrop() }
+            .toolbar(removing: .title)
+            // A window in the background otherwise draws a title bar strip over the picture.
+            .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
+    }
+}
+
 /// Every frame the window is given on the way between the card and the notes, in the log
 /// (`-windowProbe`, or any DEBUG build): "window card {{x, y}, {w, h}} -> {{x, y}, {w, h}}".
 enum WindowProbe {
@@ -532,29 +546,37 @@ struct AppGate: View {
             || (backend.client != nil && crypto.account != backend.userID)
     }
 
+    #if os(macOS)
+    /// The window is the card from the welcome until the notes open.
+    private var cardShown: Bool {
+        switch backend.state {
+        case .signedOut: true
+        case .signedIn: keyGateShown
+        case .disabled: false
+        }
+    }
+    #endif
+
     private var gate: some View {
         Group {
             switch backend.state {
             case .signedOut:
                 WelcomeFlow(backend: backend)
                     #if os(macOS)
-                    // Edge to edge, title bar included: the window buttons sit on the picture.
-                    .ignoresSafeArea()
-                    // The window's size: it can't be resized (the scene sizes windows to their
-                    // content), so the picture always fills its half.
-                    .frame(width: WelcomeFlow.size.width, height: WelcomeFlow.size.height)
-                    .containerBackground(for: .window) { Backdrop() }
-                    .toolbar(removing: .title)
-                    // A window in the background otherwise draws a title bar strip over the picture.
-                    .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
+                    .cardWindow()
                     #endif
                     .transition(.opacity)
             case .signedIn where keyGateShown:
-                KeyGateView(crypto: crypto, backend: backend)
-                    #if os(macOS)
-                    .toolbar(removing: .title)
-                    #endif
+                #if os(macOS)
+                // The welcome's window, picture and all, until the notes open: nothing moves or
+                // changes size between signing in and adding this Mac.
+                CardLayout { KeyGateView(crypto: crypto, backend: backend) }
+                    .cardWindow()
                     .transition(.opacity)
+                #else
+                KeyGateView(crypto: crypto, backend: backend)
+                    .transition(.opacity)
+                #endif
             case .disabled, .signedIn:
                 RootView()
                     .environment(backend)
@@ -572,7 +594,7 @@ struct AppGate: View {
             }
         }
         #if os(macOS)
-        .background(WindowShaper(compact: backend.state == .signedOut, cardSize: WelcomeFlow.size))
+        .background(WindowShaper(compact: cardShown, cardSize: WelcomeFlow.size))
         #endif
         .animation(.easeOut(duration: 0.25), value: backend.state)
         .onAppear {
