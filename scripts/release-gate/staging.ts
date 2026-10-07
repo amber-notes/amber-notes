@@ -140,8 +140,8 @@ async function ensure(n: number) {
   }
   for (const [label, body] of GATE_NOTES) {
     const id = await gateID(s.user, label);
-    const have = (await rest(s, "GET", `notes?select=id,deleted_at,trashed_at&id=eq.${id}`)).body;
-    if (have?.length && !have[0].deleted_at && !have[0].trashed_at) continue;
+    // Written again every time: a run that typed into the wrong note can't leave it changed.
+    const have = (await rest(s, "GET", `notes?select=id&id=eq.${id}`)).body;
     const row = await sealNote(s, id, body());
     const r = have?.length ? await rest(s, "PATCH", `notes?id=eq.${id}`, { ...row, deleted_at: null, trashed_at: null }) : await rest(s, "POST", "notes", { ...row, folder_id: null, parent_id: null, is_pinned: false });
     if (r.status >= 300) throw new Error(`gate note ${label}: ${r.status} ${JSON.stringify(r.body).slice(0, 200)}`);

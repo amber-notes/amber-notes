@@ -22,6 +22,9 @@ scripts/release-gate.sh origin/dev --baseline mac-v1.1.2
 - `--only security` (or `perf`, `storage`, `network`, comma-separated), `--sizes 1,2000`, `--runs 1`
   for a quick look. A quick look is not a gate report: say so if you share one.
 - It exits 0 on pass, 1 on fail, and prints the report's path.
+- What the Mac measured is kept in `build/release-gate/out/<sha>/perf-*.json`. If a later step
+  failed, `--reuse-perf` writes the report from it without measuring again. `--rescore <report.json>`
+  scores an existing report against the current budgets.
 
 ## Before the first run on a machine
 

@@ -202,7 +202,10 @@ final class GateProbe: NSObject {
 
         // Typing: 25 keys at 120 ms, then the save and the push it starts.
         await open(typing.id)
-        if let text = editor {
+        // Only ever into the typing note: if the window shows another one, no typing at all.
+        if let text = editor, !text.string.hasPrefix("Gate typing note") {
+            results["typing"] = "the editor didn't show the typing note"
+        } else if let text = editor {
             window?.makeFirstResponder(text)
             text.setSelectedRange(NSRange(location: (text.string as NSString).length, length: 0))
             try? await Task.sleep(for: .milliseconds(500))
@@ -236,9 +239,11 @@ final class GateProbe: NSObject {
             try? await Task.sleep(for: .seconds(1))
             results["saveNet"] = summary(GateNet.shared.between(saveStart, CACurrentMediaTime()))
             // The note goes back as it was, so the account doesn't grow run after run.
-            text.setSelectedRange(NSRange(location: 0, length: (text.string as NSString).length))
-            text.insertText("Gate typing note\n\nTyped here by the release gate.\n", replacementRange: text.selectedRange())
-            try? await until("pushed", seconds: 30) { self.synced && !self.dirty(typing) }
+            if text.string.hasPrefix("Gate typing note") {
+                text.setSelectedRange(NSRange(location: 0, length: (text.string as NSString).length))
+                text.insertText("Gate typing note\n\nTyped here by the release gate.\n", replacementRange: text.selectedRange())
+                try? await until("pushed", seconds: 30) { self.synced && !self.dirty(typing) }
+            }
         }
 
         // Opening a note on its own, for its requests and bytes.

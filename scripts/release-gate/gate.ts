@@ -1,7 +1,7 @@
 // The release gate (docs/Technical/release-gate.md): scripts/release-gate.sh runs this.
 //
 //   deno run -A scripts/release-gate/gate.ts <candidate ref> [--baseline <ref>] [--sizes 1,2000,20000]
-//       [--runs 3] [--only perf,security,storage,network] [--rebuild] [--host fleet-air]
+//       [--runs 3] [--only perf,security,storage,network] [--rebuild] [--host fleet-air] [--reuse-perf] [--rescore <report.json>]
 //
 // Builds the candidate (scripts/release-gate/build.sh), measures it on a real Mac over ssh with the
 // staging bench accounts, checks security, storage and network, and writes
@@ -12,7 +12,7 @@
 import { parseArgs } from "jsr:@std/cli@1/parse-args";
 
 const ROOT = new URL("../..", import.meta.url).pathname.replace(/\/$/, "");
-const args = parseArgs(Deno.args, { string: ["baseline", "sizes", "runs", "only", "host", "rescore"], boolean: ["rebuild", "no-baseline"], default: { sizes: "1,2000,20000", runs: "3", host: "fleet-air" } });
+const args = parseArgs(Deno.args, { string: ["baseline", "sizes", "runs", "only", "host", "rescore"], boolean: ["rebuild", "no-baseline", "reuse-perf"], default: { sizes: "1,2000,20000", runs: "3", host: "fleet-air" } });
 // `--rescore <report.json>`: the same numbers against the current budgets and baseline, nothing measured again.
 const RESCORE = args.rescore ? JSON.parse(await Deno.readTextFile(args.rescore)) : null;
 const candidate = String(args._[0] ?? RESCORE?.ref ?? "");
@@ -200,7 +200,16 @@ async function symbolicate(report: string): Promise<string> {
   return `${path[0].count - path[0].idle} of ${root.count} samples busy\n${lines.join("\n")}`;
 }
 
-if (only.has("perf") || only.has("storage") || only.has("network")) {
+// What the Mac measured is kept beside the build, so a later failure doesn't cost the runs:
+// `--reuse-perf` takes it from there instead of measuring again.
+const PERF_FILE = `${OUT}/perf-${sizes.join("-")}x${runs}.json`;
+const reused = args["reuse-perf"] ? await Deno.readTextFile(PERF_FILE).then((t) => JSON.parse(t), () => null) : null;
+if (reused) {
+  Object.assign(perf, reused.perf);
+  machine = reused.machine;
+  metrics.push(...reused.checks);
+  log(`→ Reusing the measured runs in ${PERF_FILE}`);
+} else if (only.has("perf") || only.has("storage") || only.has("network")) {
   log(`→ Copy the app to ${HOST}`);
   machine = (await ssh("sysctl -n hw.model; sw_vers -productVersion; sysctl -n machdep.cpu.brand_string")).stdout.trim().split("\n").join(", ");
   await run("ditto", ["-c", "-k", "--keepParent", `${OUT}/Amber Notes Beta.app`, `${OUT}/app.zip`]);
@@ -226,6 +235,7 @@ if (only.has("perf") || only.has("storage") || only.has("network")) {
   const fresh = reportsAfter.filter((r) => r && !reportsBefore.includes(r) && /Amber Notes Beta/i.test(r));
   check("perf", "perf.crashReports", "Crash, hang or spin reports from the app", fresh.length === 0, fresh.length ? fresh.join(", ") : "none");
   await ssh(`rm -rf release-gate/${short}`, { allowFail: true });
+  await Deno.writeTextFile(PERF_FILE, JSON.stringify({ perf, machine, checks: metrics.filter((m) => m.key === "perf.crashReports") }));
 }
 
 const num = (x: unknown) => typeof x === "number" ? x : NaN;
@@ -258,6 +268,8 @@ if (only.has("perf")) {
         add("perf", `perf.${size}.${g}.keyMaxMs`, `${size} notes: slowest key`, per((s) => num(s.keyMaxMs), (xs) => Math.max(...xs)), "ms");
       }
     }
+    const untyped = rs.filter((r) => typeof r.typing === "string").length;
+    if (untyped) check("perf", `perf.${size}.typing`, `${size} notes: the typing step ran`, false, `skipped in ${untyped} of ${rs.length} runs`, String(rs.find((r) => r.typing)?.typing));
     const late = rs.filter((r) => r.typingPushTimedOut || r.savePushTimedOut).length;
     check("perf", `perf.${size}.savePushed`, `${size} notes: an edit reaches the server within 30 s`, late === 0, late ? `late in ${late} of ${rs.length} runs` : "yes");
     // Hangs: how many per run and the longest, outside launch and in it.
@@ -275,125 +287,139 @@ if (only.has("perf")) {
 
 // MARK: Security
 
-if (only.has("security")) {
-  log("→ Security");
-  const src = `${ROOT}/build/release-gate/src-${short}`;
-  // Secrets: gitleaks over the commits since the baseline (all history without one), with the repo's config.
-  const range = baseline ? `${baseline.sha}..${sha}` : sha;
-  const leakReport = await Deno.makeTempFile({ suffix: ".json" });
-  await run("gitleaks", ["git", "--no-banner", "--redact", "-c", `${ROOT}/.gitleaks.toml`, "--log-opts", range, "--report-format", "json", "--report-path", leakReport, src], { allowFail: true });
-  const found = await Deno.readTextFile(leakReport).then((t) => (JSON.parse(t) as unknown[]).length, () => -1);
-  await Deno.remove(leakReport).catch(() => {});
-  check("security", "security.secrets", "Secret scan (gitleaks, repo config)", found === 0, found < 0 ? "didn't run" : `${found} findings`, `commits ${baseline ? range.replace(/([0-9a-f]{10})[0-9a-f]+/g, "$1") : "all"}`);
+try {
+  if (only.has("security")) {
+    log("→ Security");
+    const src = `${ROOT}/build/release-gate/src-${short}`;
+    // Secrets: gitleaks over the commits since the baseline (all history without one), with the repo's config.
+    const range = baseline ? `${baseline.sha}..${sha}` : sha;
+    const leakReport = await Deno.makeTempFile({ suffix: ".json" });
+    await run("gitleaks", ["git", "--no-banner", "--redact", "-c", `${ROOT}/.gitleaks.toml`, "--log-opts", range, "--report-format", "json", "--report-path", leakReport, src], { allowFail: true });
+    const found = await Deno.readTextFile(leakReport).then((t) => (JSON.parse(t) as unknown[]).length, () => -1);
+    await Deno.remove(leakReport).catch(() => {});
+    check("security", "security.secrets", "Secret scan (gitleaks, repo config)", found === 0, found < 0 ? "didn't run" : `${found} findings`, `commits ${baseline ? range.replace(/([0-9a-f]{10})[0-9a-f]+/g, "$1") : "all"}`);
 
-  const adv = await staging("advisors");
-  for (const kind of ["security", "performance"]) {
-    check("security", `security.advisors.${kind}.errors`, `Supabase ${kind} advisor errors (staging)`, adv[kind].errors === 0, String(adv[kind].errors), adv[kind].errorDetails.join("; ") || undefined);
-    add("security", `security.advisors.${kind}.warnings`, `Supabase ${kind} advisor warnings (staging)`, adv[kind].warnings, "",
-      Object.entries(adv[kind].counts as Record<string, number>).filter(([k]) => !k.startsWith("INFO")).map(([k, v]) => `${k.replace(/^WARN /, "")} ${v}`).join(", ") || undefined);
+    const adv = await staging("advisors");
+    for (const kind of ["security", "performance"]) {
+      check("security", `security.advisors.${kind}.errors`, `Supabase ${kind} advisor errors (staging)`, adv[kind].errors === 0, String(adv[kind].errors), adv[kind].errorDetails.join("; ") || undefined);
+      add("security", `security.advisors.${kind}.warnings`, `Supabase ${kind} advisor warnings (staging)`, adv[kind].warnings, "",
+        Object.entries(adv[kind].counts as Record<string, number>).filter(([k]) => !k.startsWith("INFO")).map(([k, v]) => `${k.replace(/^WARN /, "")} ${v}`).join(", ") || undefined);
+    }
+    const small = sizes[0], big = sizes.find((s) => s !== small) ?? 2000;
+    const rls = await staging("rls", String(small), String(big));
+    check("security", "security.rls", "Row-level security: one account can't read or change another's rows", rls.problems.length === 0,
+      rls.problems.length ? `${rls.problems.length} problems` : `${rls.tables} tables, ${rls.withUserId} with user_id`, rls.problems.join("; ") || undefined);
+    if (only.has("perf")) {
+      const pt = await staging("plaintext");
+      check("security", "security.plaintext", "E2EE: no note text in the clear in any server table", pt.found.length === 0,
+        pt.found.length ? pt.found.join("; ") : `${pt.needles} phrases the app typed, none found`);
+    }
+    // Dependencies.
+    for (const dir of ["web", "app-stack"]) {
+      if (!(await Deno.stat(`${src}/${dir}/package.json`).then(() => true, () => false))) continue;
+      const a = await run("pnpm", ["audit", "--prod", "--json"], { cwd: `${src}/${dir}`, allowFail: true });
+      let v: Record<string, number> = {};
+      let which = "";
+      try {
+        const j = JSON.parse(a.stdout);
+        v = j.metadata.vulnerabilities;
+        which = Object.values(j.advisories ?? {}).filter((x) => ["high", "critical"].includes((x as { severity: string }).severity))
+          .map((x) => { const y = x as { module_name: string; severity: string; vulnerable_versions: string; patched_versions: string }; return `${y.module_name} ${y.vulnerable_versions} (${y.severity}, fixed in ${y.patched_versions})`; })
+          .filter((x, i, all) => all.indexOf(x) === i).join("; ");
+      } catch { /* no JSON */ }
+      const serious = (v.high ?? 0) + (v.critical ?? 0);
+      check("security", `security.npm.${dir}`, `npm audit, ${dir} (production dependencies)`, serious === 0, Object.keys(v).length ? `${v.critical ?? 0} critical, ${v.high ?? 0} high, ${v.moderate ?? 0} moderate` : "didn't run", which || undefined);
+    }
+    for (const dir of ["cli", "supabase/functions"]) {
+      if (!(await Deno.stat(`${src}/${dir}`).then(() => true, () => false))) continue;
+      const a = await run("deno", ["audit"], { cwd: `${src}/${dir}`, allowFail: true });
+      const text = (a.stdout + a.stderr).replace(/\x1b\[[0-9;]*m/g, "");
+      const sev = text.match(/Severity:\s*(\d+) low, (\d+) moderate, (\d+) high, (\d+) critical/);
+      const serious = sev ? Number(sev[3]) + Number(sev[4]) : 0;
+      // deno audit prints a box per advisory: the package and its severity.
+      const which = [...text.matchAll(/│ Severity:\s*(\w+)\s*\n│ Package:\s*(\S+)\s*\n│ Vulnerable:\s*(.+)/g)].filter((m) => /high|critical/.test(m[1])).map((m) => `${m[2]} ${m[3].trim()} (${m[1]})`).filter((x, i, all) => all.indexOf(x) === i).join("; ");
+      check("security", `security.deno.${dir}`, `deno audit, ${dir}`, serious === 0, sev ? `${sev[4]} critical, ${sev[3]} high, ${sev[2]} moderate` : /No known vulnerabilities/.test(text) ? "none" : "didn't run", which || undefined);
+    }
+    // Entitlements: what the release builds ask for, against the baseline.
+    if (baseline) {
+      const files = (await git("ls-tree", "-r", "--name-only", sha, "--", "Pane/Resources", "PaneShare")).split("\n").filter((f) => f.endsWith(".entitlements"));
+      const changed = (await run("git", ["diff", "--stat", baseline.sha, sha, "--", ...files, "Pane/Resources/Pane-mac-direct.entitlements"], { allowFail: true })).stdout.trim();
+      check("security", "security.entitlements", "Entitlements unchanged since the baseline", changed === "", changed ? changed.split("\n").slice(0, -1).map((l) => l.trim()).join("; ") : "unchanged",
+        changed ? "A change isn't wrong by itself: review it, then pass it by hand in the release notes." : undefined);
+    }
+    // Hosts: every host the app, the site and the functions name, against the reviewed list.
+    const hostsOf = async (rev: string) => new Set((await run("git", ["grep", "-hoE", "https?://[a-zA-Z0-9.-]+\\.[a-z]{2,}", rev, "--", "Pane/**.swift", "PaneShare/**.swift", "Pane/Resources/*.plist", "web/app/**.ts", "web/app/**.tsx", "web/lib/**.ts", "web/lib/**.tsx", "web/components/**", "web/next.config.ts", "web/middleware.ts", "supabase/functions/**.ts", ":!*test*"], { allowFail: true })).stdout.split("\n").filter(Boolean).map((u) => u.replace(/^https?:\/\//, "").toLowerCase()));
+    const allowed = new Set((await Deno.readTextFile(`${ROOT}/scripts/release-gate/hosts.txt`)).split("\n").map((l) => l.replace(/#.*/, "").trim()).filter(Boolean));
+    const hosts = await hostsOf(sha);
+    const unknown = [...hosts].filter((h) => !allowed.has(h) && !/(^|\.)(example\.(com|org)|localhost)$/.test(h));
+    check("security", "security.hosts", "No new third-party hosts in the app, site or functions", unknown.length === 0, unknown.length ? unknown.join(", ") : `${hosts.size} hosts, all reviewed`,
+      unknown.length ? "Add each to scripts/release-gate/hosts.txt once reviewed (what it is, and whether the app or site calls it)." : undefined);
+    // And what the app actually called while it ran.
+    const called = new Set<string>();
+    for (const size of sizes) for (const r of perf[size]?.runs ?? []) for (const k of ["launchNet", "saveNet", "openNet"]) for (const e of ((r[k] as Record<string, string[]>)?.endpoints ?? [])) called.add(e.split("/")[0]);
+    if (called.size) {
+      const stagingHost = new URL((await Deno.readTextFile(`${ROOT}/Config/Backend.staging.local.xcconfig`)).match(/PANE_SUPABASE_URL\s*=\s*(\S+)/)![1].replace("$()", "")).host;
+      const odd = [...called].filter((h) => h !== stagingHost);
+      check("security", "security.calledHosts", "Hosts the app called while measured", odd.length === 0, [...called].join(", "));
+    }
   }
-  const small = sizes[0], big = sizes.find((s) => s !== small) ?? 2000;
-  const rls = await staging("rls", String(small), String(big));
-  check("security", "security.rls", "Row-level security: one account can't read or change another's rows", rls.problems.length === 0,
-    rls.problems.length ? `${rls.problems.length} problems` : `${rls.tables} tables, ${rls.withUserId} with user_id`, rls.problems.join("; ") || undefined);
-  if (only.has("perf")) {
-    const pt = await staging("plaintext");
-    check("security", "security.plaintext", "E2EE: no note text in the clear in any server table", pt.found.length === 0,
-      pt.found.length ? pt.found.join("; ") : `${pt.needles} phrases the app typed, none found`);
-  }
-  // Dependencies.
-  for (const dir of ["web", "app-stack"]) {
-    const a = await run("pnpm", ["audit", "--prod", "--json"], { cwd: `${src}/${dir}`, allowFail: true });
-    let v: Record<string, number> = {};
-    let which = "";
-    try {
-      const j = JSON.parse(a.stdout);
-      v = j.metadata.vulnerabilities;
-      which = Object.values(j.advisories ?? {}).filter((x) => ["high", "critical"].includes((x as { severity: string }).severity))
-        .map((x) => { const y = x as { module_name: string; severity: string; vulnerable_versions: string; patched_versions: string }; return `${y.module_name} ${y.vulnerable_versions} (${y.severity}, fixed in ${y.patched_versions})`; })
-        .filter((x, i, all) => all.indexOf(x) === i).join("; ");
-    } catch { /* no JSON */ }
-    const serious = (v.high ?? 0) + (v.critical ?? 0);
-    check("security", `security.npm.${dir}`, `npm audit, ${dir} (production dependencies)`, serious === 0, Object.keys(v).length ? `${v.critical ?? 0} critical, ${v.high ?? 0} high, ${v.moderate ?? 0} moderate` : "didn't run", which || undefined);
-  }
-  for (const dir of ["cli", "supabase/functions"]) {
-    const a = await run("deno", ["audit"], { cwd: `${src}/${dir}`, allowFail: true });
-    const text = (a.stdout + a.stderr).replace(/\x1b\[[0-9;]*m/g, "");
-    const sev = text.match(/Severity:\s*(\d+) low, (\d+) moderate, (\d+) high, (\d+) critical/);
-    const serious = sev ? Number(sev[3]) + Number(sev[4]) : 0;
-    // deno audit prints a box per advisory: the package and its severity.
-    const which = [...text.matchAll(/│ Severity:\s*(\w+)\s*\n│ Package:\s*(\S+)\s*\n│ Vulnerable:\s*(.+)/g)].filter((m) => /high|critical/.test(m[1])).map((m) => `${m[2]} ${m[3].trim()} (${m[1]})`).filter((x, i, all) => all.indexOf(x) === i).join("; ");
-    check("security", `security.deno.${dir}`, `deno audit, ${dir}`, serious === 0, sev ? `${sev[4]} critical, ${sev[3]} high, ${sev[2]} moderate` : /No known vulnerabilities/.test(text) ? "none" : "didn't run", which || undefined);
-  }
-  // Entitlements: what the release builds ask for, against the baseline.
-  if (baseline) {
-    const files = (await git("ls-tree", "-r", "--name-only", sha, "--", "Pane/Resources", "PaneShare")).split("\n").filter((f) => f.endsWith(".entitlements"));
-    const changed = (await run("git", ["diff", "--stat", baseline.sha, sha, "--", ...files, "Pane/Resources/Pane-mac-direct.entitlements"], { allowFail: true })).stdout.trim();
-    check("security", "security.entitlements", "Entitlements unchanged since the baseline", changed === "", changed ? changed.split("\n").slice(0, -1).map((l) => l.trim()).join("; ") : "unchanged",
-      changed ? "A change isn't wrong by itself: review it, then pass it by hand in the release notes." : undefined);
-  }
-  // Hosts: every host the app, the site and the functions name, against the reviewed list.
-  const hostsOf = async (rev: string) => new Set((await run("git", ["grep", "-hoE", "https?://[a-zA-Z0-9.-]+\\.[a-z]{2,}", rev, "--", "Pane/**.swift", "PaneShare/**.swift", "Pane/Resources/*.plist", "web/app/**.ts", "web/app/**.tsx", "web/lib/**.ts", "web/lib/**.tsx", "web/components/**", "web/next.config.ts", "web/middleware.ts", "supabase/functions/**.ts", ":!*test*"], { allowFail: true })).stdout.split("\n").filter(Boolean).map((u) => u.replace(/^https?:\/\//, "").toLowerCase()));
-  const allowed = new Set((await Deno.readTextFile(`${ROOT}/scripts/release-gate/hosts.txt`)).split("\n").map((l) => l.replace(/#.*/, "").trim()).filter(Boolean));
-  const hosts = await hostsOf(sha);
-  const unknown = [...hosts].filter((h) => !allowed.has(h) && !/(^|\.)(example\.(com|org)|localhost)$/.test(h));
-  check("security", "security.hosts", "No new third-party hosts in the app, site or functions", unknown.length === 0, unknown.length ? unknown.join(", ") : `${hosts.size} hosts, all reviewed`,
-    unknown.length ? "Add each to scripts/release-gate/hosts.txt once reviewed (what it is, and whether the app or site calls it)." : undefined);
-  // And what the app actually called while it ran.
-  const called = new Set<string>();
-  for (const size of sizes) for (const r of perf[size]?.runs ?? []) for (const k of ["launchNet", "saveNet", "openNet"]) for (const e of ((r[k] as Record<string, string[]>)?.endpoints ?? [])) called.add(e.split("/")[0]);
-  if (called.size) {
-    const stagingHost = new URL((await Deno.readTextFile(`${ROOT}/Config/Backend.staging.local.xcconfig`)).match(/PANE_SUPABASE_URL\s*=\s*(\S+)/)![1].replace("$()", "")).host;
-    const odd = [...called].filter((h) => h !== stagingHost);
-    check("security", "security.calledHosts", "Hosts the app called while measured", odd.length === 0, [...called].join(", "));
-  }
+} catch (e) {
+  check("security", "security.error", "Security checks ran to the end", false, "stopped", String(e).slice(0, 300));
 }
 
 // MARK: Storage
 
-if (only.has("storage")) {
-  add("storage", "storage.macDmgBytes", "Mac download (DMG)", sizesJSON.macDmgBytes, "bytes");
-  add("storage", "storage.macAppBytes", "Mac app installed", sizesJSON.macAppBytes, "bytes");
-  add("storage", "storage.iosCompressedBytes", "iPhone app compressed (download stand-in)", sizesJSON.iosCompressedBytes ?? null, "bytes", "Release build, unsigned, zipped; the App Store's thinned download is usually smaller.");
-  add("storage", "storage.iosAppBytes", "iPhone app installed (universal, unthinned)", sizesJSON.iosAppBytes ?? null, "bytes");
-  for (const size of sizes) {
-    const st = (perf[size]?.setup?.storage ?? {}) as Record<string, number>;
-    if (st.storeBytes !== undefined) add("storage", `storage.${size}.storeBytes`, `${size} notes: local database after sync`, st.storeBytes, "bytes");
-    if (st.libraryBytes !== undefined) add("storage", `storage.${size}.libraryBytes`, `${size} notes: everything the app keeps on disk`, st.libraryBytes, "bytes", `caches ${Math.round((st.cachesBytes ?? 0) / 1024)} KB`);
+try {
+  if (only.has("storage")) {
+    add("storage", "storage.macDmgBytes", "Mac download (DMG)", sizesJSON.macDmgBytes, "bytes");
+    add("storage", "storage.macAppBytes", "Mac app installed", sizesJSON.macAppBytes, "bytes");
+    add("storage", "storage.iosCompressedBytes", "iPhone app compressed (download stand-in)", sizesJSON.iosCompressedBytes ?? null, "bytes", "Release build, unsigned, zipped; the App Store's thinned download is usually smaller.");
+    add("storage", "storage.iosAppBytes", "iPhone app installed (universal, unthinned)", sizesJSON.iosAppBytes ?? null, "bytes");
+    for (const size of sizes) {
+      const st = (perf[size]?.setup?.storage ?? {}) as Record<string, number>;
+      if (st.storeBytes !== undefined) add("storage", `storage.${size}.storeBytes`, `${size} notes: local database after sync`, st.storeBytes, "bytes");
+      if (st.libraryBytes !== undefined) add("storage", `storage.${size}.libraryBytes`, `${size} notes: everything the app keeps on disk`, st.libraryBytes, "bytes", `caches ${Math.round((st.cachesBytes ?? 0) / 1024)} KB`);
+    }
+    const server = await staging("bytes", ...sizes.map(String));
+    for (const size of sizes) {
+      const s = server[size];
+      add("storage", `storage.${size}.serverBytes`, `${size} notes: server bytes for the account`, s.rowBytes + s.fileBytes, "bytes",
+        Object.entries(s.byTable as Record<string, number>).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([t, b]) => `${t} ${Math.round(b / 1024)} KB`).join(", "));
+    }
   }
-  const server = await staging("bytes", ...sizes.map(String));
-  for (const size of sizes) {
-    const s = server[size];
-    add("storage", `storage.${size}.serverBytes`, `${size} notes: server bytes for the account`, s.rowBytes + s.fileBytes, "bytes",
-      Object.entries(s.byTable as Record<string, number>).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([t, b]) => `${t} ${Math.round(b / 1024)} KB`).join(", "));
-  }
+} catch (e) {
+  check("storage", "storage.error", "Storage checks ran to the end", false, "stopped", String(e).slice(0, 300));
 }
 
 // MARK: Network
 
-if (only.has("network")) {
-  log("→ Network");
-  for (const size of sizes) {
-    const rs = perf[size]?.runs.filter((r) => !r.error) ?? [];
-    for (const [k, label] of [["launchNet", "launch"], ["openNet", "opening a note"], ["saveNet", "saving a note"]] as const) {
-      const vals = rs.map((r) => r[k] as Record<string, number>).filter(Boolean);
-      if (!vals.length) continue;
-      add("network", `network.${size}.${k}.requests`, `${size} notes: requests for ${label}`, median(vals.map((v) => v.requests)), "");
-      add("network", `network.${size}.${k}.bytes`, `${size} notes: bytes for ${label}`, median(vals.map((v) => v.bytesSent + v.bytesReceived)), "bytes",
-        ((rs[0][k] as Record<string, string[]>)?.endpoints ?? []).slice(0, 4).join(", ").replace(/[a-z0-9]{20}\.supabase\.co/g, "") || undefined);
+try {
+  if (only.has("network")) {
+    log("→ Network");
+    for (const size of sizes) {
+      const rs = perf[size]?.runs.filter((r) => !r.error) ?? [];
+      for (const [k, label] of [["launchNet", "launch"], ["openNet", "opening a note"], ["saveNet", "saving a note"]] as const) {
+        const vals = rs.map((r) => r[k] as Record<string, number>).filter(Boolean);
+        if (!vals.length) continue;
+        add("network", `network.${size}.${k}.requests`, `${size} notes: requests for ${label}`, median(vals.map((v) => v.requests)), "");
+        add("network", `network.${size}.${k}.bytes`, `${size} notes: bytes for ${label}`, median(vals.map((v) => v.bytesSent + v.bytesReceived)), "bytes",
+          ((rs[0][k] as Record<string, string[]>)?.endpoints ?? []).slice(0, 4).join(", ").replace(/[a-z0-9]{20}\.supabase\.co/g, "") || undefined);
+      }
+      const setup = perf[size]?.setup?.firstSyncNet as Record<string, number> | undefined;
+      if (setup) add("network", `network.${size}.firstSync.bytes`, `${size} notes: bytes for the first sync`, setup.bytesSent + setup.bytesReceived, "bytes", `${setup.requests} requests`);
     }
-    const setup = perf[size]?.setup?.firstSyncNet as Record<string, number> | undefined;
-    if (setup) add("network", `network.${size}.firstSync.bytes`, `${size} notes: bytes for the first sync`, setup.bytesSent + setup.bytesReceived, "bytes", `${setup.requests} requests`);
-  }
-  for (const size of [sizes.find((s) => s >= 2000) ?? sizes[0], 20000].filter((v, i, a) => a.indexOf(v) === i && sizes.includes(v))) {
-    const lat = await staging("latency", String(size));
-    for (const [name, v] of Object.entries(lat.calls as Record<string, { p50: number; p95: number; errors: number }>)) {
-      add("network", `network.${size}.${name}.p50`, `${size} notes: ${name}, p50`, v.p50, "ms");
-      add("network", `network.${size}.${name}.p95`, `${size} notes: ${name}, p95`, v.p95, "ms", v.errors ? `${v.errors} errors` : undefined);
-      if (v.errors) check("network", `network.${size}.${name}.errors`, `${size} notes: ${name} errors`, false, String(v.errors));
+    for (const size of [sizes.find((s) => s >= 2000) ?? sizes[0], 20000].filter((v, i, a) => a.indexOf(v) === i && sizes.includes(v))) {
+      const lat = await staging("latency", String(size));
+      for (const [name, v] of Object.entries(lat.calls as Record<string, { p50: number; p95: number; errors: number }>)) {
+        add("network", `network.${size}.${name}.p50`, `${size} notes: ${name}, p50`, v.p50, "ms");
+        add("network", `network.${size}.${name}.p95`, `${size} notes: ${name}, p95`, v.p95, "ms", v.errors ? `${v.errors} errors` : undefined);
+        if (v.errors) check("network", `network.${size}.${name}.errors`, `${size} notes: ${name} errors`, false, String(v.errors));
+      }
+      if (!lat.mcp) add("network", `network.${size}.mcp`, `${size} notes: MCP`, "not measured", "", "no MCP token for this account in .secrets");
     }
-    if (!lat.mcp) add("network", `network.${size}.mcp`, `${size} notes: MCP`, "not measured", "", "no MCP token for this account in .secrets");
   }
+} catch (e) {
+  check("network", "network.error", "Network checks ran to the end", false, "stopped", String(e).slice(0, 300));
 }
 
 // MARK: Budgets and the baseline
