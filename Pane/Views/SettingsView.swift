@@ -235,11 +235,14 @@ private struct NoInitialFocus: NSViewRepresentable {
             }
         }
 
-        /// After AppKit and SwiftUI have placed their focus: a text field's editor gives it up.
+        /// After AppKit and SwiftUI have placed their focus, on the next pass and once more a
+        /// moment later (SwiftUI can place it a pass late): a text field's editor gives it up.
         private func resignSoon() {
-            DispatchQueue.main.async { [weak self] in
-                guard let window = self?.window, window.firstResponder is NSText else { return }
-                window.makeFirstResponder(nil)
+            for delay in [0, 0.15] {
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+                    guard let window = self?.window, window.firstResponder is NSText else { return }
+                    window.makeFirstResponder(nil)
+                }
             }
         }
     }

@@ -43,8 +43,6 @@ jobs:
         env:
           # Runners are several times slower than a developer's Mac; see PaneTests/Perf/PerfBudget.swift.
           TEST_RUNNER_PANE_PERF_SLACK: "4"
-          # Tests that need real, key windows (SettingsFocusTests); they never run on a developer's Mac.
-          TEST_RUNNER_PANE_CI_WINDOWS: "1"
         run: |
           set -o pipefail
           mkdir -p build
