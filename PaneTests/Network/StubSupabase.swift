@@ -197,6 +197,11 @@ final class StubSupabase: URLProtocol, @unchecked Sendable {
         return lock.withLock { () -> (Int, Data) in
             var list = tables[name] ?? []
             let matches = { (r: [String: Any]) in filters(query).allSatisfy { $0(r) } }
+            // As the server's triggers do (pane_over('not_yours')): a row can only point at a folder
+            // or a parent note the server already has.
+            if method == "POST" || method == "PATCH", let missing = danglingReference(name, decodeRows(body)) {
+                return (400, Data(#"{"code":"PT413","message":"That folder or note doesn't exist.","hint":"not_yours","details":"\#(missing)"}"#.utf8))
+            }
             switch method {
             case "GET":
                 var out = list.filter(matches)
@@ -264,6 +269,23 @@ final class StubSupabase: URLProtocol, @unchecked Sendable {
                      "app_metadata": [:] as [String: Any], "user_metadata": [:] as [String: Any], "created_at": now, "updated_at": now],
         ]
         return (200, (try? JSONSerialization.data(withJSONObject: session)) ?? Data("{}".utf8))
+    }
+
+    /// The first folder or parent note a row points at that the server doesn't have. Under `lock`.
+    private static func danglingReference(_ table: String, _ rows: [[String: Any]]) -> String? {
+        func has(_ t: String, _ id: Any?) -> Bool {
+            guard let id = (id as? String)?.lowercased() else { return true }   // none, or null
+            return (tables[t] ?? []).contains { ($0["id"] as? String)?.lowercased() == id }
+                || rows.contains { ($0["id"] as? String)?.lowercased() == id && t == table }
+        }
+        for r in rows {
+            if table == "notes" || table == "attachments" || table == "folders" {
+                let folderKey = table == "folders" ? "parent_id" : "folder_id"
+                if !has("folders", r[folderKey]) { return "folder" }
+            }
+            if table == "notes", !has("notes", r["parent_id"]) { return "parent" }
+        }
+        return nil
     }
 
     /// The files bucket: uploads (multipart) and downloads by path.

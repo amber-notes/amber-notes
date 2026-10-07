@@ -198,6 +198,42 @@ extension NetworkFaults {
         await finish()
     }
 
+    /// Made offline: a folder, a file in it, a note in it and a sub-note under that note (made in
+    /// the order that the server would refuse). Back online, one sync puts all of it up: the server
+    /// takes a row only once what it points at is there.
+    @Test func aNewFolderWithAFileAndSubNotesGoesUpInOneSync() async throws {
+        NetFault.config = .init(offline: true)
+        let folder = context.createFolder(named: "Trip")
+        let file = try FileStore.importData(Data("Seat 14A".utf8), filename: "pass.txt", type: .plainText)
+        file.folderID = folder.id
+        context.insert(file)
+        defer { FileStore.remove(file) }
+        let parent = context.createNote(in: .folder(folder.id), body: "Itinerary")
+        let sub = context.createNote(in: .folder(folder.id), body: "Hotel")
+        sub.parentID = parent.id
+        // The sub-note is the older edit, so it would go first.
+        sub.updatedAt = .now.addingTimeInterval(-60)
+        try context.save()
+        await engine.sync()
+
+        NetFault.config = .init()
+        await engine.sync()
+        #expect(engine.problem == nil, "nothing refused: \(engine.problem ?? "")")
+        #expect(!folder.dirty && !parent.dirty && !sub.dirty && file.uploaded && !file.dirty)
+        #expect(StubSupabase.rows("attachments").count == 1)
+        #expect(StubSupabase.rows("notes").count == 2)
+        await finish()
+    }
+
+    @Test func parentsGoUpBeforeTheirSubNotes() {
+        let a = Note(body: "A"), b = Note(body: "B"), c = Note(body: "C"), d = Note(body: "D")
+        c.parentID = b.id
+        b.parentID = a.id
+        let order = SyncEngine.parentsFirst([c, d, b, a]).map(\.body)
+        #expect(order.firstIndex(of: "A")! < order.firstIndex(of: "B")! && order.firstIndex(of: "B")! < order.firstIndex(of: "C")!)
+        #expect(order.first == "D" || order.first == "A")
+    }
+
     // MARK: The network going and coming back
 
     /// No network: nothing polls, however long it lasts. Back: what waited goes up at once, with

@@ -533,7 +533,8 @@ final class SyncEngine {
     /// wait; rows it refuses outright are set aside instead of failing the whole sync.
     private func push(_ client: SupabaseClient, sealer: Sealer) async throws -> Bool {
         problem = nil
-        if try await pushFiles(client, sealer: sealer) { return true }
+        // Folders first: a file or note made offline in a new folder points at it, and the server
+        // refuses a row whose folder it doesn't have yet.
         let folders = ((try? context.fetch(FetchDescriptor<Folder>(predicate: #Predicate { $0.dirty }))) ?? [])
             .sorted { Self.depth($0) < Self.depth($1) } // parents first, for the foreign key
         for f in folders where !isRefused(f.id, f.updatedAt) {
@@ -548,12 +549,15 @@ final class SyncEngine {
                 switch Self.refusal(error) {
                 case .tooFast?: try? context.save(); return true
                 case .refused(let why)?: refuse(f.id, f.updatedAt, "A folder couldn't sync: \(why)")
+                case .waits?: continue
                 case nil: throw error
                 }
             }
         }
+        if try await pushFiles(client, sealer: sealer) { return true }
 
-        let notes = (try? context.fetch(FetchDescriptor<Note>(predicate: #Predicate { $0.dirty }))) ?? []
+        // A sub-note made offline under a note made offline goes up after it.
+        let notes = Self.parentsFirst((try? context.fetch(FetchDescriptor<Note>(predicate: #Predicate { $0.dirty }))) ?? [])
         var pushedNotes: [UUID] = []
         for n in notes where !isRefused(n.id, n.updatedAt) {
             let sentAt = n.updatedAt
@@ -580,6 +584,7 @@ final class SyncEngine {
                 case .refused(let why)?:
                     refuse(n.id, n.updatedAt, "“\(n.title)” couldn't sync: \(why)")
                     continue
+                case .waits?: continue
                 case nil: throw error
                 }
             }
@@ -696,7 +701,21 @@ final class SyncEngine {
         problem = message
     }
 
-    enum Refusal: Equatable, Sendable { case tooFast, refused(String) }
+    /// `waits`: the row points at a folder or note the server doesn't have yet (made offline too,
+    /// and not up yet): tried again on the next sync, never set aside.
+    enum Refusal: Equatable, Sendable { case tooFast, refused(String), waits }
+
+    /// Dirty notes with each one after the dirty notes above it, so a parent made offline is on
+    /// the server before its sub-notes. Otherwise in the order given.
+    nonisolated static func parentsFirst(_ notes: [Note]) -> [Note] {
+        let byID = Dictionary(notes.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        func depth(_ n: Note) -> Int {
+            var d = 0, p = n.parentID
+            while let id = p, let parent = byID[id], d < 64 { d += 1; p = parent.parentID }
+            return d
+        }
+        return notes.enumerated().sorted { (depth($0.element), $0.offset) < (depth($1.element), $1.offset) }.map(\.element)
+    }
 
     /// Sorts a failed write: "too fast" (try again later), "refused" (this row as it stands
     /// can never go up: too big, over a limit, bad data), or nil (network and the like).
@@ -708,6 +727,7 @@ final class SyncEngine {
         if let p = error as? PostgrestError {
             switch p.code {
             case "PT429": return .tooFast
+            case "PT413" where p.hint == "not_yours": return .waits
             case "42501" where p.hint == "wrong_key" || p.hint == "no_key":
                 // The account's key changed on another device (Start fresh): this device gets the
                 // new one, and what it has goes up again (adoptKeyIfChanged).
@@ -767,6 +787,7 @@ final class SyncEngine {
                 switch Self.refusal(error) {
                 case .tooFast?: return true
                 case .refused(let why)?: refuse(a.id, a.createdAt, "“\(a.filename)” couldn't sync: \(why)")
+                case .waits?: continue
                 case nil: throw error
                 }
             }
