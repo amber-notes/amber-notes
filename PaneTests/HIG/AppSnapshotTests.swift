@@ -13,12 +13,12 @@ import Testing
     static var dir: URL? { ProcessInfo.processInfo.environment["AMBER_HIG_SHOTS"].map { URL(fileURLWithPath: $0) } }
 
     /// Shots that need a real window on screen (a toolbar, a key window, a capture by window id)
-    /// run only where nobody is using the screen: CI sets AMBER_ONSCREEN_SHOTS=1. On a
-    /// developer's Mac every test window is borderless, at -20000,-20000, and never ordered
-    /// front or made key.
-    static var onScreenAllowed: Bool { ProcessInfo.processInfo.environment["AMBER_ONSCREEN_SHOTS"] == "1" }
+    /// run only where nobody is using the screen: with AMBER_DEMO_FRAMES set, which only CI's
+    /// snapshots workflow sets (WarmGreySnapshots.dir). Everywhere else every test window is
+    /// borderless, at -20000,-20000, and never ordered front or made key.
+    static var onScreenAllowed: Bool { WarmGreySnapshots.dir != nil }
 
-    /// `path` from the environment, for a shot that needs an on-screen window: nil off CI.
+    /// `variable`'s path, for a shot that needs an on-screen window: nil unless on-screen shots run.
     static func onScreenDir(_ variable: String) -> URL? {
         guard onScreenAllowed else { return nil }
         return ProcessInfo.processInfo.environment[variable].map { URL(fileURLWithPath: $0) }
