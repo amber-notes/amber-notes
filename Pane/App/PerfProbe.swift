@@ -106,6 +106,28 @@ final class PerfProbe: NSObject {
 
         // What each write of the open note costs the rest of the window (the editor writes the
         // note every 0.35 s while you type): the note changes the way the editor changes it.
+        // The window narrowed and widened a frame at a time, as the sidebar does to the note
+        // (`-perfOnly widths [-perfNote Blocks]`): what each step costs, start to drawn.
+        if only == "widths", let w = window {
+            open(Capture.argument("-perfNote") ?? "Blocks")
+            try? await Task.sleep(for: .seconds(1.5))
+            let start = w.frame.size
+            var steps: [Double] = []
+            for _ in 0..<times {
+                for i in Array(0...15) + Array((0...15).reversed()) {
+                    let t = CACurrentMediaTime()
+                    w.setContentSize(NSSize(width: start.width - 230 + 230 * Double(i) / 15, height: w.contentLayoutRect.height))
+                    w.contentView?.layoutSubtreeIfNeeded()
+                    editor?.layoutCards(animated: false)
+                    w.displayIfNeeded()
+                    steps.append((CACurrentMediaTime() - t) * 1000)
+                    try? await Task.sleep(for: .milliseconds(16))
+                }
+            }
+            steps.sort()
+            record("width step", ["medianMs": steps[steps.count / 2], "maxMs": steps.last ?? 0])
+        }
+
         // A note arriving from another device: inserted and saved, as sync does (`-perfOnly arrive`).
         if runs("arrive") {
             open("Note 1")
