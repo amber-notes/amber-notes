@@ -202,10 +202,11 @@ struct FileRefusal: Equatable, Identifiable {
 
     /// The files by name, one a line, then one line on what works.
     var message: String {
-        var lines = Self.names(unsupported + tooBig)
-        if !unsupported.isEmpty { lines.append("Amber Notes takes PDFs, pictures, text, CSV and Office files.") }
-        if !tooBig.isEmpty { lines.append("Files can be up to 100 MB.") }
-        return lines.joined(separator: "\n")
+        var help: [String] = []
+        if !unsupported.isEmpty { help.append("Amber Notes takes PDFs, pictures, text, CSV and Office files.") }
+        if !tooBig.isEmpty { help.append("Files can be up to 100 MB.") }
+        // The names, a blank line, then what works: two blocks the eye can tell apart.
+        return Self.names(unsupported + tooBig).joined(separator: "\n") + "\n\n" + help.joined(separator: " ")
     }
 
     static func names(_ names: [String]) -> [String] {

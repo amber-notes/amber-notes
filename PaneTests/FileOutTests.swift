@@ -98,7 +98,7 @@ import UniformTypeIdentifiers
     @Test func refusalsAreShortAndNameTheKind() {
         let video = FileRefusal(unsupported: ["Holiday.mov"], tooBig: [])
         #expect(video.title == "Can't add videos yet")
-        #expect(video.message == "\u{201C}Holiday.mov\u{201D}\nAmber Notes takes PDFs, pictures, text, CSV and Office files.")
+        #expect(video.message == "\u{201C}Holiday.mov\u{201D}\n\nAmber Notes takes PDFs, pictures, text, CSV and Office files.")
         #expect(FileRefusal(unsupported: ["a.mp3", "b.m4a"], tooBig: []).title == "Can't add audio yet")
         #expect(FileRefusal(unsupported: ["Book.epub"], tooBig: []).title == "Can't add e-books yet")
         #expect(FileRefusal(unsupported: ["x.exe"], tooBig: []).title == "Can't add this kind of file")
@@ -106,7 +106,7 @@ import UniformTypeIdentifiers
         #expect(FileRefusal(unsupported: [], tooBig: ["Scan.pdf"]).message.hasSuffix("Files can be up to 100 MB."))
         let many = FileRefusal(unsupported: (1...8).map { "Clip \($0).mov" }, tooBig: [])
         #expect(many.title == "Can't add videos yet", "one alert for several files")
-        #expect(many.message.components(separatedBy: "\n").count == 6, "four names, how many more, and what works")
+        #expect(many.message.components(separatedBy: "\n").count == 7, "four names, how many more, a blank line, what works")
         #expect(many.message.contains("and 4 more"))
         #expect(FileRefusal(unsupported: ["a.mov"], tooBig: ["b.pdf"]).title == "Can't add these files")
     }

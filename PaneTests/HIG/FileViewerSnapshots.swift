@@ -49,7 +49,8 @@ import Testing
             alert.messageText = r.title
             alert.informativeText = r.message
             alert.addButton(withTitle: "OK")
-            alert.window.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
+            let appearance = NSAppearance(named: dark ? .darkAqua : .aqua)!
+            alert.window.appearance = appearance
             alert.layout()
             let frame = try #require(alert.window.contentView?.superview)
             alert.window.setFrameOrigin(CGPoint(x: -30000, y: -30000))
@@ -58,7 +59,19 @@ import Testing
             let rep = try #require(frame.bitmapImageRepForCachingDisplay(in: frame.bounds))
             frame.cacheDisplay(in: frame.bounds, to: rep)
             alert.window.orderOut(nil)
-            Testing.Attachment.record(try #require(rep.representation(using: .png, properties: [:])), named: "cant-add-\(name)-\(dark ? "dark" : "light").png")
+            // cacheDisplay doesn't draw the alert's material: put the window's own ground under it,
+            // in that appearance, so light and dark read as they do on screen.
+            let size = frame.bounds.size
+            let image = NSImage(size: size)
+            image.lockFocus()
+            appearance.performAsCurrentDrawingAppearance {
+                NSColor.windowBackgroundColor.setFill()
+                NSBezierPath(roundedRect: NSRect(origin: .zero, size: size), xRadius: 18, yRadius: 18).fill()
+            }
+            rep.draw(in: NSRect(origin: .zero, size: size))
+            image.unlockFocus()
+            let out = try #require(image.tiffRepresentation.flatMap(NSBitmapImageRep.init(data:))?.representation(using: .png, properties: [:]))
+            Testing.Attachment.record(out, named: "cant-add-\(name)-\(dark ? "dark" : "light").png")
         }
     }
 }
