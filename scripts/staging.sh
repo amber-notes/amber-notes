@@ -309,7 +309,7 @@ cmd_dev_app() {
       exit 3
     fi
     echo "→ Waiting for Amber Notes Beta to quit"
-    while pgrep -f "^$dest/Contents/MacOS/" >/dev/null; do sleep 5; done
+    while pgrep -f "^$dest/Contents/MacOS/" >/dev/null; do sleep 1; done
   fi
   # TestFlight installs its copy as root, which this can't replace: it goes to the Trash by hand.
   if [[ -e $dest && ! -O $dest ]]; then
