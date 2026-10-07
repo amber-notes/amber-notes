@@ -91,6 +91,9 @@ struct PaneApp: App {
         #if os(macOS)
         Capture.demoSequenceFromArguments(container.mainContext)
         Capture.importSequenceFromArguments()
+        #if os(macOS)
+        Capture.windowShotFromArguments(container)
+        #endif
         #endif
     }
 
@@ -585,11 +588,14 @@ struct AppGate: View {
                     await KeyDevices.shared.refresh(AccountCrypto.shared)
                 }
                 context.drainInbox()
+                context.backfillSubNoteParents()
                 sync.schedule()
             } else {
                 connectAsks?.setForeground(false)
-                // Leaving the app: whatever you just typed is written and synced.
+                // Leaving the app: whatever you just typed is written and synced, and the share
+                // sheet gets the folders as they are now.
                 DebouncedSave.flushAll()
+                context.publishFolderChoices()
                 sync.schedule()
             }
         }

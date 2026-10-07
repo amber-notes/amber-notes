@@ -70,10 +70,10 @@ for (const [name, ex] of Object.entries(examples)) {
 }
 
 // The guide imports the generated templates, so it's read after they're written.
-const { PAGE_GUIDE, PAGE_INSTRUCTIONS } = await import(new URL("supabase/functions/mcp/page_guide.ts", root).href + `?v=${Date.now()}`);
+const { pageGuide, PAGE_INSTRUCTIONS } = await import(new URL("supabase/functions/mcp/page_guide.ts", root).href + `?v=${Date.now()}`);
 const stamp = "<!-- Generated from supabase/functions/mcp/page_guide.ts by scripts/page-evals/build-skill.ts. Don't edit. -->";
 await Deno.mkdir(new URL("references/", skill), { recursive: true });
-await write(new URL("references/guide.md", skill), `${stamp}\n${PAGE_GUIDE}`);
+await write(new URL("references/guide.md", skill), `${stamp}\n${await pageGuide()}`);
 // The real default stylesheet, as the app ships it (amber-base.ts mirrors Pane/Resources/AppLibraries/amber-base.css).
 const { AMBER_BASE_CSS } = await import(new URL("supabase/functions/mcp/amber-base.ts", root).href);
 await write(new URL("references/amber-base.css", skill), AMBER_BASE_CSS);

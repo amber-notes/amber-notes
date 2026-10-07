@@ -1,3 +1,6 @@
+#if os(macOS)
+import AppKit
+#endif
 import EventKit
 import QuartzCore
 import SwiftData
@@ -657,3 +660,56 @@ extension Capture {
         }
     }
 }
+
+#if os(macOS)
+/// One still of the notes window, without touching the screen:
+///   `-uitest -demo -open "Fluent Python.pdf" -captureWindow <dir>`
+/// The window moves off-screen at 1280×800, the app writes `<dir>/window-id` and waits for
+/// `<dir>/shot` (the shell runs `screencapture -l`), then quits. No input events.
+extension Capture {
+    @MainActor static func windowShotFromArguments(_ container: ModelContainer) {
+        guard ProcessInfo.processInfo.arguments.contains("-uitest"), let path = argument("-captureWindow") else { return }
+        let dir = URL(fileURLWithPath: path)
+        let dark = argument("-scheme") == "dark"
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(1.5))
+            // A window of its own off-screen, as the store shots make them: the real views, drawn by
+            // the window server so the glass renders.
+            let settings = ProcessInfo.processInfo.arguments.contains("-openSettings")
+            let size = settings ? CGSize(width: 520, height: 520) : CGSize(width: 1280, height: 800)
+            let root: AnyView = settings
+                ? AnyView(Form { StorageSectionBody(usage: StorageStore.shared.usage) }.formStyle(.grouped).frame(width: size.width, height: size.height))
+                : AnyView(RootView().modelContainer(container).environment(SetupStore()).environment(\.controlActiveState, .key))
+            let w = NSWindow(contentRect: CGRect(x: -30000, y: -30000, width: size.width, height: size.height),
+                             styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView], backing: .buffered, defer: false)
+            w.isReleasedWhenClosed = false
+            w.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
+            w.contentViewController = NSHostingController(rootView: root)
+            w.setContentSize(size)
+            w.setFrameOrigin(CGPoint(x: -30000, y: -30000))
+            w.orderFrontRegardless()
+            try? await Task.sleep(for: .seconds(1))
+            if let split = AIEditSplit.find(in: w.contentView) {
+                split.setPosition(220, ofDividerAt: 0)
+                split.setPosition(540, ofDividerAt: 1)
+            }
+            try? await Task.sleep(for: .seconds(2.5))
+            try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            try? "\(w.windowNumber)".write(to: dir.appending(path: "window-id"), atomically: true, encoding: .utf8)
+            let done = dir.appending(path: "shot")
+            for _ in 0..<200 where !FileManager.default.fileExists(atPath: done.path) { try? await Task.sleep(for: .milliseconds(50)) }
+            NSApp.terminate(nil)
+        }
+    }
+}
+
+/// The window's split view (sidebar, list, detail), to set the columns' widths.
+enum AIEditSplit {
+    @MainActor static func find(in view: NSView?) -> NSSplitView? {
+        guard let view else { return nil }
+        if let s = view as? NSSplitView, s.arrangedSubviews.count >= 3 { return s }
+        for v in view.subviews { if let s = find(in: v) { return s } }
+        return nil
+    }
+}
+#endif

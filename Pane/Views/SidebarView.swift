@@ -91,10 +91,11 @@ struct SidebarIcon: View {
 extension View {
     /// One element per sidebar row, read as "Travel, 4 notes". Without it VoiceOver reads the
     /// folder symbol's own name ("Move") before the row's.
-    func rowAccessibility(_ name: String, count: Int) -> some View {
-        accessibilityElement(children: .ignore)
+    func rowAccessibility(_ name: String, count: Int, files: Int = 0) -> some View {
+        let notes = count == 1 ? "1 note" : "\(count) notes"
+        return accessibilityElement(children: .ignore)
             .accessibilityLabel(name)
-            .accessibilityValue(count == 1 ? "1 note" : "\(count) notes")
+            .accessibilityValue(files == 0 ? notes : notes + (files == 1 ? ", 1 file" : ", \(files) files"))
     }
 }
 
@@ -113,6 +114,13 @@ struct SidebarView: View {
     /// query of every note did. The counts come from the store (`counts`). A query of every note
     /// fetched and sorted all of them again on every save while you type.
     @Query(SidebarView.anyNote) private var noteChanges: [Note]
+    /// The same for files kept in folders.
+    @Query(SidebarView.anyFile) private var fileChanges: [Attachment]
+    private static var anyFile: FetchDescriptor<Attachment> {
+        var d = FetchDescriptor<Attachment>()
+        d.fetchLimit = 1
+        return d
+    }
     private static var anyNote: FetchDescriptor<Note> {
         var d = FetchDescriptor<Note>()
         d.fetchLimit = 1
@@ -140,24 +148,47 @@ struct SidebarView: View {
         let trashed = (try? context.fetchCount(FetchDescriptor<Note>(predicate: #Predicate { $0.deletedAt == nil && $0.trashedAt != nil }))) ?? 0
         return (live, trashed)
     }
+
+    private var files: (live: Int, trashed: Int, byFolder: [UUID: Int]) {
+        _ = fileChanges
+        return Self.fileCounts(in: context)
+    }
+
+    /// Files kept in folders: how many are live and in Recently Deleted, and how many live ones each
+    /// folder holds. Counted by the store; only when there are files are their folders looked up,
+    /// so a library without folder files pays for two counts.
+    static func fileCounts(in context: ModelContext) -> (live: Int, trashed: Int, byFolder: [UUID: Int]) {
+        let liveFile = #Predicate<Attachment> { (f: Attachment) -> Bool in f.folderID != nil && f.deletedAt == nil && f.trashedAt == nil }
+        let trashedFile = #Predicate<Attachment> { (f: Attachment) -> Bool in f.folderID != nil && f.deletedAt == nil && f.trashedAt != nil }
+        let live = (try? context.fetchCount(FetchDescriptor<Attachment>(predicate: liveFile))) ?? 0
+        let trashed = (try? context.fetchCount(FetchDescriptor<Attachment>(predicate: trashedFile))) ?? 0
+        guard live > 0 else { return (0, trashed, [:]) }
+        var d = FetchDescriptor<Attachment>(predicate: liveFile)
+        d.propertiesToFetch = [\Attachment.folderID]
+        var byFolder: [UUID: Int] = [:]
+        let found: [Attachment] = (try? context.fetch(d)) ?? []
+        for f in found { if let id = f.folderID { byFolder[id, default: 0] += 1 } }
+        return (live, trashed, byFolder)
+    }
     private var roots: [Folder] { folders.filter { $0.parent == nil || $0.parent?.deletedAt != nil } }
 
     var body: some View {
         let counts = self.counts
+        let files = self.files
         return List(selection: $scope) {
             Section {
                 // "All Notes" only earns its row once there's more than one folder.
                 if folders.count > 1 {
-                    row("All Notes", icon: "tray.full", count: counts.live)
+                    row("All Notes", icon: "tray.full", count: counts.live, files: files.live)
                         .tag(Scope.all)
                         .accessibilityIdentifier("sidebar.all")
                 }
                 ForEach(roots) { folder in
-                    FolderTree(folder: folder, dropTarget: dropTarget, targeted: folderTargeted, rename: startRename, newSub: startNewFolder, delete: deleteFolder)
+                    FolderTree(folder: folder, files: files.byFolder, dropTarget: dropTarget, targeted: folderTargeted, rename: startRename, newSub: startNewFolder, delete: deleteFolder)
                         .equatable()
                 }
                 // Last in the same list, like Notes.
-                row("Recently Deleted", icon: "trash", count: counts.trashed)
+                row("Recently Deleted", icon: "trash", count: counts.trashed, files: files.trashed)
                     .tag(Scope.trash)
                     .accessibilityIdentifier("sidebar.trash")
             } header: {
@@ -254,7 +285,9 @@ struct SidebarView: View {
                 deletingFolder = nil
             }
         } message: {
-            Text("Its notes move to Recently Deleted, where you can recover them for 30 days.")
+            Text(deletingFolder.map { context.files(in: $0.id).isEmpty } ?? true
+                 ? "Its notes move to Recently Deleted, where you can recover them for 30 days."
+                 : "Its notes and files move to Recently Deleted, where you can recover them for 30 days.")
         }
         .alert(renaming == nil ? "New Folder" : "Rename Folder", isPresented: Binding(
             get: { renaming != nil || newFolderParent != nil },
@@ -270,19 +303,19 @@ struct SidebarView: View {
         }
     }
 
-    private func row(_ title: String, icon: String, count: Int) -> some View {
+    private func row(_ title: String, icon: String, count: Int, files: Int = 0) -> some View {
         Label {
             HStack {
                 Text(title)
                 Spacer()
-                Text(count, format: .number)
+                Text(count + files, format: .number)
                     .monospacedDigit()
                     .foregroundStyle(.secondary)
             }
         } icon: {
             SidebarIcon(name: icon)
         }
-        .rowAccessibility(title, count: count)
+        .rowAccessibility(title, count: count, files: files)
     }
 
     /// Keeps the selection on something that exists (see `Scope.settled`).
@@ -315,7 +348,7 @@ struct SidebarView: View {
 
     /// Asks first when the folder holds notes, like Notes: they move to Recently Deleted.
     private func deleteFolder(_ f: Folder) {
-        if f.liveNotes.isEmpty && f.liveChildren.isEmpty { performDelete(f) } else { deletingFolder = f }
+        if f.liveNotes.isEmpty && f.liveChildren.isEmpty && context.files(in: f.id).isEmpty { performDelete(f) } else { deletingFolder = f }
     }
 
     private func performDelete(_ f: Folder) {
@@ -330,6 +363,8 @@ struct SidebarView: View {
 private struct FolderTree: View, @MainActor Equatable {
     @Environment(\.modelContext) private var context
     let folder: Folder
+    /// Live files per folder, counted once for the whole tree.
+    let files: [UUID: Int]
     /// The folder a drag is over, if any.
     let dropTarget: UUID?
     let targeted: (Bool, UUID) -> Void
@@ -339,7 +374,7 @@ private struct FolderTree: View, @MainActor Equatable {
     @State private var expanded = true
 
     static func == (a: FolderTree, b: FolderTree) -> Bool {
-        a.folder.id == b.folder.id && a.dropTarget == b.dropTarget
+        a.folder.id == b.folder.id && a.dropTarget == b.dropTarget && a.files == b.files
     }
 
     var body: some View {
@@ -348,7 +383,7 @@ private struct FolderTree: View, @MainActor Equatable {
         } else {
             DisclosureGroup(isExpanded: $expanded) {
                 ForEach(folder.liveChildren) { child in
-                    FolderTree(folder: child, dropTarget: dropTarget, targeted: targeted, rename: rename, newSub: newSub, delete: delete)
+                    FolderTree(folder: child, files: files, dropTarget: dropTarget, targeted: targeted, rename: rename, newSub: newSub, delete: delete)
                         .equatable()
                 }
             } label: { label }
@@ -360,7 +395,7 @@ private struct FolderTree: View, @MainActor Equatable {
             HStack {
                 Text(folder.name)
                 Spacer()
-                Text(folder.liveNotes.count, format: .number)
+                Text(folder.liveNotes.count + (files[folder.id] ?? 0), format: .number)
                     .monospacedDigit()
                     .foregroundStyle(.secondary)
             }
@@ -368,29 +403,36 @@ private struct FolderTree: View, @MainActor Equatable {
             SidebarIcon(name: dropTarget == folder.id ? "folder.fill" : "folder")
                 .contentTransition(.symbolEffect(.replace))
         }
-        .rowAccessibility(folder.name, count: folder.liveNotes.count)
+        .rowAccessibility(folder.name, count: folder.liveNotes.count, files: files[folder.id] ?? 0)
         .tag(Scope.folder(folder.id))
         .accessibilityIdentifier("folder.\(folder.name)")
         .draggable(PaneDragItem(kind: .folder, id: folder.id)) {
             Label(folder.name, systemImage: "folder").padding(8).glassEffect(.regular, in: .capsule)
         }
-        .dropDestination(for: PaneDragItem.self) { items, _ in
-            var moved = false
-            for item in items {
-                switch item.kind {
-                case .note:
-                    // A dragged multi-selection moves together.
-                    for id in item.ids {
-                        if let n = context.note(id) { context.move(n, to: folder); moved = true }
+        // Notes, folders and files from inside the app, and files and folders from Finder, Mail or
+        // Safari: they land in this folder.
+        .onDrop(of: [.paneItem, .fileURL], isTargeted: Binding(get: { dropTarget == folder.id }, set: { over in targeted(over, folder.id) })) { providers in
+            DropLoader.load(providers) { items, urls in
+                var moved = false
+                for item in items {
+                    switch item.kind {
+                    case .note:
+                        // A dragged multi-selection moves together.
+                        for id in item.ids {
+                            if let n = context.note(id) { context.move(n, to: folder); moved = true }
+                        }
+                    case .folder:
+                        if item.id != folder.id, let f = context.folder(item.id) { context.move(f, into: folder); moved = true }
+                    case .file:
+                        for id in item.ids {
+                            if let f = context.attachment(id), f.folderID != nil { context.move(f, to: folder); moved = true }
+                        }
                     }
-                case .folder:
-                    if item.id != folder.id, let f = context.folder(item.id) { context.move(f, into: folder); moved = true }
                 }
+                if !urls.isEmpty, !context.importFiles(urls, into: .folder(folder.id)).isEmpty { moved = true }
+                if moved { withAnimation(.snappy) { expanded = true } }
             }
-            if moved { expanded = true }
-            return moved
-        } isTargeted: { over in
-            targeted(over, folder.id)
+            return true
         }
         .contextMenu {
             Button("New Folder Inside", systemImage: "folder.badge.plus") { newSub(folder) }

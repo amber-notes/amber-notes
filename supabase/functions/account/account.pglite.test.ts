@@ -43,13 +43,20 @@ async function seed(pg: PGlite, me: string) {
   const trashed = await sealed.note(pg, a, "Old list");
   await app(pg, me, `update public.notes set trashed_at = now() where id = $1`, [trashed]);
   const locked = await sealed.lockedNote(pg, a, lockKey, "Bank");
-  await sealed.file(pg, a, "plan.pdf", "com.adobe.pdf", new TextEncoder().encode("%PDF"));
+  const plan = await sealed.file(pg, a, "plan.pdf", "com.adobe.pdf", new TextEncoder().encode("%PDF"));
+  // An earlier version of it (the AI replaced it).
+  await app(pg, me, `insert into public.attachment_versions (attachment_id, meta_ct, size, storage_path, made_at) values ($1, $2, 4, $3, now())`,
+    [plan.id, await a.vault.sealFileMeta(plan.id, { name: "plan.pdf", type: "com.adobe.pdf", size: 4 }), `${plan.path}.v1`]);
   // The note's app: a project, its data and a held-back draft; a second save keeps the first as a version.
   const project = (html: string) => JSON.stringify({ amberApp: 1, files: { "/index.html": html } });
   await pg.query(`insert into public.note_pages (note_id, user_id, page_ct, data_ct, draft_ct, draft_problems, client) values ($1, $2, $3, $4, $5, 'today.test.tsx failed', 'Claude')`,
     [note, me, await a.vault.sealPage(note, project("<p>1</p>")), await a.vault.sealPageData(note, "{}"), await a.vault.sealPage(note, project("<p>3</p>"))]);
   await pg.query(`update public.note_pages set page_ct = $2 where note_id = $1`, [note, await a.vault.sealPage(note, project("<p>2</p>"))]);
   await pg.query(`insert into public.app_load_failures (note_id, user_id, message, device) values ($1, $2, 'ReferenceError: x is not defined', 'iPhone')`, [note, me]);
+  // What an AI connection has read, and its sealed title and word indexes (the MCP file tools).
+  await pg.query(`insert into public.mcp_reads (user_id, session, item, stamp) values ($1, 's1', $2, '7')`, [me, `note:${note}`]);
+  await pg.query(`insert into public.mcp_title_index (user_id, index_ct) values ($1, $2)`, [me, await a.vault.sealTitleIndex("{}")]);
+  await pg.query(`insert into public.mcp_word_index (user_id, shard, shard_ct) values ($1, 3, $2)`, [me, await a.vault.sealWordShard(3, new Uint8Array([1, 2, 3]))]);
   const keyName = crypto.randomUUID();
   await pg.query(`insert into public.api_key_names (id, user_id, meta_ct) values ($1, $2, $3)`,
     [keyName, me, await a.vault.sealAPIKeyMeta(keyName, JSON.stringify({ name: "Weather", hosts: ["api.example.com"] }))]);

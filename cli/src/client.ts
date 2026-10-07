@@ -10,7 +10,7 @@ export class ToolFailed extends Error {}
 /** The server turned the token away. */
 export class Refused extends Error {}
 
-export type Mcp = { tools: string[]; call(name: string, args?: Record<string, unknown>): Promise<any>; close(): Promise<void> };
+export type Mcp = { tools: string[]; session: string | null; call(name: string, args?: Record<string, unknown>): Promise<any>; close(): Promise<void> };
 
 /** Any token-shaped text in `s`, hidden. */
 export const redact = (s: string) => s.replace(/\b(pane|amb_at|amb_rt|amb_code)_[0-9a-f]{6,}/gi, "$1_…");
@@ -36,8 +36,8 @@ async function answer(res: Response, id: number): Promise<Rpc | null> {
   return Array.isArray(m) ? m.find((x: Rpc) => x.id === id) ?? null : m;
 }
 
-async function open(server: string, token: string): Promise<Mcp> {
-  let session: string | null = null;
+async function open(server: string, token: string, resume?: string): Promise<Mcp> {
+  let session: string | null = resume ?? null;
   let version = PROTOCOL;
   let next = 0;
   const post = async (method: string, params?: Record<string, unknown>, notify = false): Promise<any> => {
@@ -73,6 +73,7 @@ async function open(server: string, token: string): Promise<Mcp> {
   }
   return {
     tools,
+    get session() { return session; },
     async call(name, args = {}) {
       const r = await post("tools/call", { name, arguments: args });
       const text = (r.content as { type: string; text?: string }[] | undefined)?.find((c) => c.type === "text")?.text ?? "";
@@ -89,11 +90,11 @@ async function open(server: string, token: string): Promise<Mcp> {
 }
 
 /** Connects with `token(false)`; turned away, tries once more with `token(true)` (a refreshed one). */
-export async function connect(server: string, token: (force: boolean) => Promise<string>): Promise<Mcp> {
+export async function connect(server: string, token: (force: boolean) => Promise<string>, session?: string): Promise<Mcp> {
   try {
-    return await open(server, await token(false));
+    return await open(server, await token(false), session);
   } catch (e) {
     if (!(e instanceof Refused)) throw e;
-    return await open(server, await token(true));
+    return await open(server, await token(true), session);
   }
 }

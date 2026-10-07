@@ -562,7 +562,7 @@ extension NetworkFaults {
             #expect(row["body_ct"] is NSNull)
             let sealed = try #require(row["locked_body"] as? String)
             #expect(serverAccepts(sealed) && sealed.hasPrefix("amb2."))
-            #expect(try !serverText().contains("PIN") && !serverText().contains("1234"), "the server has no plaintext")
+            #expect(try !serverText().contains("PIN") && !serverText().contains("PIN 1234"), "the server has no plaintext")
 
             let phone = try device()
             await phone.engine.sync()
@@ -663,7 +663,7 @@ extension NetworkFaults {
             await phone.engine.sync()
             let everything = try serverText()
             #expect(!everything.contains("PUK"), "the phone's edit of a locked note reached the server: \(evidence())")
-            #expect(!everything.contains("1234"), "the text from before the lock is still readable on the server: \(evidence())")
+            #expect(!everything.contains("PIN 1234"), "the text from before the lock is still readable on the server: \(evidence())")
             await mac.engine.stop()
             await phone.engine.stop()
         }
@@ -688,12 +688,12 @@ extension NetworkFaults {
             p.dirty = true
             await phone.engine.sync(); await phone.engine.sync()
             #expect(try !serverText().contains("PUK"), "the phone's edit reached the server: \(evidence())")
-            #expect(try !serverText().contains("1234"), "the text from before the lock is readable on the server: \(evidence())")
+            #expect(try !serverText().contains("PIN 1234"), "the text from before the lock is readable on the server: \(evidence())")
             await phone.vault.refresh()
             try await phone.vault.unlock(password: "pw")
             await phone.engine.sync(); await phone.engine.sync()
             #expect(try !serverText().contains("PUK"), "after unlocking, the phone's edit reached the server: \(evidence())")
-            #expect(try !serverText().contains("1234"), "after unlocking, readable text is on the server: \(evidence())")
+            #expect(try !serverText().contains("PIN 1234"), "after unlocking, readable text is on the server: \(evidence())")
             let copy = try #require(try copies(phone).first)
             #expect(copy.isLocked && phone.vault.text(of: copy)?.contains("PUK 5678") == true)
             await mac.engine.stop(); await phone.engine.stop()

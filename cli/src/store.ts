@@ -7,7 +7,8 @@
 export const DEFAULT_SERVER = "https://mcp.ambernotes.app";
 const SERVICE = Deno.env.get("AMBER_KEYCHAIN_SERVICE") ?? "amber-cli";
 
-export type Config = { server?: string };
+/** sessions: the MCP session per server, reused between runs (not a secret: it only names what was read). */
+export type Config = { server?: string; sessions?: Record<string, { id: string; at: number }> };
 
 export type Credentials = {
   access_token: string;

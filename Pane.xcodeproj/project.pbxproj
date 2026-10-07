@@ -26,9 +26,11 @@
 		06F7EAAE8C5A877B40369156 /* StressTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17A49ECF5C2416ECB7428670 /* StressTests.swift */; };
 		08773924130EF4A9F50D4F1C /* Recipes.enex in Resources */ = {isa = PBXBuildFile; fileRef = 351EB8D113A762C5B0DBCE7A /* Recipes.enex */; };
 		088BB78B4A790B24F552FB83 /* Backend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00DCB857B69E6D8507AAD6E4 /* Backend.swift */; };
+		08ABB77C92ED699EACC5139B /* FolderFilesMacShots.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BD1216B6D4DCB8FA429A9E9 /* FolderFilesMacShots.swift */; };
 		08FC707004626EBEE64DA611 /* HeardFromView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 730B7663C46D3F18F6A80738 /* HeardFromView.swift */; };
 		093583D1082D0EEA478EDFCF /* dayjs.js in Resources */ = {isa = PBXBuildFile; fileRef = 451FCC96A1E65D0DCF2FB5B6 /* dayjs.js */; };
 		09421089BA6B69D611F9DEA3 /* Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 37C6B4F675EF00B712CB8496 /* Info.plist */; };
+		09512A465EB52DDF7EDBB653 /* FolderFiles.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F4CFF72D9674A50F39589DE /* FolderFiles.swift */; };
 		096DB2D1EA0B49F8E5D705FE /* MultiSelectTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D82B1491DE222D4C7AFA3D82 /* MultiSelectTests.swift */; };
 		0A1ACD933DAE00CD5397ADF3 /* WelcomeSnapshots.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35649101F1DCFA7BD1618B78 /* WelcomeSnapshots.swift */; };
 		0A3ED7AE8489C38C98E6CEED /* AppleSignInTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C561D2BC7327C8F950CD3504 /* AppleSignInTests.swift */; };
@@ -68,13 +70,16 @@
 		186AEC104A2516CB9646F065 /* NoteIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 667042B618528FF4943E6948 /* NoteIntents.swift */; };
 		18C02D793F48E2FF3C7F447F /* AmberButtonTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B19F579047FE527B735EFCE /* AmberButtonTests.swift */; };
 		197DDF6AAC9C2FE91649E1C1 /* stack.json in Resources */ = {isa = PBXBuildFile; fileRef = 1936CFFEE4A4126D37AE43CB /* stack.json */; };
+		1B775534C534B91815A40306 /* StorageViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 587AD0188BB0C85D166B7656 /* StorageViews.swift */; };
 		1BB0A248D658A1C8DADC7424 /* SyncFaultTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DE5145EFFCEE51D61F16FCD /* SyncFaultTests.swift */; };
 		1CB56AA727694AFCF834FB2E /* AddDeviceSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 672F945AC1C85249447146D1 /* AddDeviceSync.swift */; };
 		1CDE672D3CF4CC64C0D79511 /* ConnectAITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87987EC62A5DA06AB545080F /* ConnectAITests.swift */; };
+		1CE6B672D7A30D70F5913750 /* FolderFilesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C55C10553460868D451E9230 /* FolderFilesTests.swift */; };
 		1D4FF721F8652972368E5901 /* RichTextToMarkdown.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99375A4ACF211AEE18EC4EC3 /* RichTextToMarkdown.swift */; };
 		1E19A90801FFFD1FDEBB3653 /* EvernoteImportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0FD3EFDF28989E46C2DEBCE /* EvernoteImportTests.swift */; };
 		1F3920D5C81239B5851606C5 /* habit-tracker.json in Resources */ = {isa = PBXBuildFile; fileRef = DEDD1370565EF6AB3859F03B /* habit-tracker.json */; };
 		200B4D52729EDEF49B3B26D6 /* ShareLinks.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AD2A5599581D39A27243D0F /* ShareLinks.swift */; };
+		207BE6B30770B3478899C1FA /* StorageViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 587AD0188BB0C85D166B7656 /* StorageViews.swift */; };
 		20F4E1295A4016791245DD8A /* ScanPerfTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95DE547CFC93E05EB42F06C4 /* ScanPerfTests.swift */; };
 		2126B6954D09D7888E6BC7BA /* Updater.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBAD2D5CF280D4F4179CB2F7 /* Updater.swift */; };
 		21B3A13060F5A1F99F01DAEF /* ApplePins.swift in Sources */ = {isa = PBXBuildFile; fileRef = 187BCDDD3155D5979CC60AC7 /* ApplePins.swift */; };
@@ -132,6 +137,7 @@
 		3B7105221B24D815E7438BDD /* AppIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2916AFC1F3D0B78C58824A3 /* AppIdentity.swift */; };
 		3C09258A07518303314D8CB1 /* MenuBarPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72C1B655873A4CE5E1D4F0B3 /* MenuBarPanel.swift */; };
 		3C2F6E06C33232A72AE556C6 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F9EEA5AC460DA18550E8304 /* Models.swift */; };
+		3C5726BD6097194CCFDF8831 /* FolderFiles.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F4CFF72D9674A50F39589DE /* FolderFiles.swift */; };
 		3C70CD8C3CF6BE8100A2CC47 /* CollabStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 930FD737A522ABA46963C7E1 /* CollabStore.swift */; };
 		3C7F2854475BF1AEADCC82A7 /* SharedItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F0CA0A157AFFD73FB9DEA75 /* SharedItem.swift */; };
 		3DA2E4E96D0FFDFD48511D86 /* InboxImport.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE38BE2414E2D6EFB432A70C /* InboxImport.swift */; };
@@ -360,6 +366,7 @@
 		B2ED3B92BF26B120620D6A92 /* NoteLockSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD40DB3A0959421F768D4D34 /* NoteLockSync.swift */; };
 		B2F7CE0BA4833686E5050E97 /* CheckPop.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE674CEBF2979E842FF6221C /* CheckPop.swift */; };
 		B333717CEDA6A81DC8B20E72 /* amber-ui.json in Resources */ = {isa = PBXBuildFile; fileRef = 24D8355994666F6DBB272BC0 /* amber-ui.json */; };
+		B3A35F855326D7C579373AF0 /* FolderFileViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCE5233DC533CE9F350228FC /* FolderFileViews.swift */; };
 		B3F002E30EABB6099A2A950A /* LayoutHangTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DFAA356C8EA6422D73B1A4F /* LayoutHangTests.swift */; };
 		B42365DC281602AD586DB89C /* NotePage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8202889E526383AF7BD0F449 /* NotePage.swift */; };
 		B568FC006AB97255DF994967 /* ChecklistLookTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7306680E0E335C07172C36F /* ChecklistLookTests.swift */; };
@@ -382,6 +389,7 @@
 		BEE93E29CA3F8BE4E6B32A69 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = 409280D87901FB1375A2EBEC /* AppIcon.icon */; };
 		BF098AF84D129909C75C13CF /* amber-base.css in Resources */ = {isa = PBXBuildFile; fileRef = 7C5A3BE24CB24DDD03944249 /* amber-base.css */; };
 		BF2B915D732726B9367D9C98 /* ConnectAI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39EF6421870B0C2E8060E578 /* ConnectAI.swift */; };
+		BFA444849B687C47057C7C56 /* FolderFileViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCE5233DC533CE9F350228FC /* FolderFileViews.swift */; };
 		C036D7D76F7E932D5EB797F7 /* ConnectAI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39EF6421870B0C2E8060E578 /* ConnectAI.swift */; };
 		C18DC6574D1F988EE78B00AE /* ShareAsk.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DCC46BAF9DF564799127E10 /* ShareAsk.swift */; };
 		C23E87D238AFF3935F64E24B /* Files.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3E39767B1556B484757CE36 /* Files.swift */; };
@@ -659,6 +667,7 @@
 		569EB1430761546DBD046F80 /* AccountKeysSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountKeysSync.swift; sourceTree = "<group>"; };
 		57082248EBCF867276471FE9 /* firstopen-note.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "firstopen-note.jpg"; sourceTree = "<group>"; };
 		586174156618B0DB73BFE5A7 /* htm.module.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = htm.module.js; sourceTree = "<group>"; };
+		587AD0188BB0C85D166B7656 /* StorageViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StorageViews.swift; sourceTree = "<group>"; };
 		58E462452EB0E75152BD5846 /* CollabDemo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollabDemo.swift; sourceTree = "<group>"; };
 		591D65AE1B7FABAAE04A733D /* tracker-prefixed.xlsx */ = {isa = PBXFileReference; path = "tracker-prefixed.xlsx"; sourceTree = "<group>"; };
 		599DE60FE9E6F13C56486743 /* IncrementalStyleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IncrementalStyleTests.swift; sourceTree = "<group>"; };
@@ -684,6 +693,7 @@
 		6A6208FEEA0F5F12A1F9C829 /* chart.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = chart.js; sourceTree = "<group>"; };
 		6ACA8D5B7797EDE74894433D /* DeleteAccountTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeleteAccountTests.swift; sourceTree = "<group>"; };
 		6BBAD3D7E5ED5CA9C34129EE /* MacImportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacImportTests.swift; sourceTree = "<group>"; };
+		6BD1216B6D4DCB8FA429A9E9 /* FolderFilesMacShots.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderFilesMacShots.swift; sourceTree = "<group>"; };
 		6CDCC8AFDF6EDF69C609FDEA /* world.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = world.js; sourceTree = "<group>"; };
 		6D471635BF1AC9AF5430C420 /* BestAppsUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BestAppsUITests.swift; sourceTree = "<group>"; };
 		6F02A8CE43D7031D271CA25B /* RichTextTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RichTextTests.swift; sourceTree = "<group>"; };
@@ -723,6 +733,7 @@
 		8E1EDD6EA0A72A2064832EE9 /* FolderNavigationUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderNavigationUITests.swift; sourceTree = "<group>"; };
 		8E820108DA2C23C11D35865C /* E2EESyncTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = E2EESyncTests.swift; sourceTree = "<group>"; };
 		8ECD0B12EBDDFDF91722F337 /* MarkdownImportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownImportTests.swift; sourceTree = "<group>"; };
+		8F4CFF72D9674A50F39589DE /* FolderFiles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderFiles.swift; sourceTree = "<group>"; };
 		8F75721B99AD389AEFA24318 /* EditorHarness.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorHarness.swift; sourceTree = "<group>"; };
 		907ECF183AD0A69658A04C3A /* AIMarks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIMarks.swift; sourceTree = "<group>"; };
 		90CC0B378983D3F5A7E49012 /* VersionHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VersionHistoryView.swift; sourceTree = "<group>"; };
@@ -786,6 +797,7 @@
 		C1C50C228D538B5E390EF49D /* TableGrid.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TableGrid.swift; sourceTree = "<group>"; };
 		C4C97E6585116F850850E7D8 /* E2EETests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = E2EETests.swift; sourceTree = "<group>"; };
 		C50F24771D014A8D43AD8481 /* EvernoteImport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EvernoteImport.swift; sourceTree = "<group>"; };
+		C55C10553460868D451E9230 /* FolderFilesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderFilesTests.swift; sourceTree = "<group>"; };
 		C561D2BC7327C8F950CD3504 /* AppleSignInTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSignInTests.swift; sourceTree = "<group>"; };
 		C5BB88BE25221CC7CD3B1FF1 /* ShareAskTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareAskTests.swift; sourceTree = "<group>"; };
 		C7D3C041048DAAB22B2FC870 /* TypedTable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TypedTable.swift; sourceTree = "<group>"; };
@@ -808,6 +820,7 @@
 		D7CEFF21553A58628006C975 /* PaneApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaneApp.swift; sourceTree = "<group>"; };
 		D802554DDA691DB172FD65B2 /* SyncEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncEngine.swift; sourceTree = "<group>"; };
 		D82B1491DE222D4C7AFA3D82 /* MultiSelectTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MultiSelectTests.swift; sourceTree = "<group>"; };
+		DCE5233DC533CE9F350228FC /* FolderFileViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderFileViews.swift; sourceTree = "<group>"; };
 		DD2215C26D58DF6E72E7C3A9 /* LineStyleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LineStyleTests.swift; sourceTree = "<group>"; };
 		DD2C6D6DA42D4F544B0E7737 /* LockLeakProbeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockLeakProbeTests.swift; sourceTree = "<group>"; };
 		DD3E85445C5520F24FAA2DD1 /* Pane.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Pane.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -978,6 +991,7 @@
 				97BBCF0A4A8EA967BB4FAE0E /* ENMLToMarkdown.swift */,
 				C50F24771D014A8D43AD8481 /* EvernoteImport.swift */,
 				D3E39767B1556B484757CE36 /* Files.swift */,
+				8F4CFF72D9674A50F39589DE /* FolderFiles.swift */,
 				025496AD1008785E931A6425 /* HeardFrom.swift */,
 				AF617FC2BCA1C1A89CE29D77 /* ImportPipeline.swift */,
 				99F11FB36958597987AD023E /* Inbox.swift */,
@@ -1065,6 +1079,7 @@
 				8960C267A4A73E8377D155D6 /* EmailSignInFlow.swift */,
 				9675E1E6CE2A9DBBE319BDF4 /* Encryption.swift */,
 				BE58FBFB7169CFFC6987E06D /* FirstOpen.swift */,
+				DCE5233DC533CE9F350228FC /* FolderFileViews.swift */,
 				730B7663C46D3F18F6A80738 /* HeardFromView.swift */,
 				667CEECC88AA6BC01F0C08BE /* ImportSheet.swift */,
 				E43C8835EE05529FC6C66B17 /* LegalLinks.swift */,
@@ -1089,6 +1104,7 @@
 				FFB712C0AD9C55B685303BA9 /* ShareLinkMenu.swift */,
 				FDA33BB2FFE541AC66F2A224 /* SidebarView.swift */,
 				508D7FDAAB7702C132913D85 /* SignInView.swift */,
+				587AD0188BB0C85D166B7656 /* StorageViews.swift */,
 				FD35A6994110D17D56D7D8D7 /* ToolbarGlyph.swift */,
 				90CC0B378983D3F5A7E49012 /* VersionHistoryView.swift */,
 				29275F9A6205F10924E14DE2 /* WelcomeView.swift */,
@@ -1205,6 +1221,7 @@
 				C4C97E6585116F850850E7D8 /* E2EETests.swift */,
 				9C135694A380C4DFF429CB79 /* EmailSignInFlowTests.swift */,
 				F0FD3EFDF28989E46C2DEBCE /* EvernoteImportTests.swift */,
+				C55C10553460868D451E9230 /* FolderFilesTests.swift */,
 				A795AFE915EEF15B005EC8F1 /* GoogleSignInTests.swift */,
 				14CD141158D5B7F6272D4DA9 /* GridTableTests.swift */,
 				787F5668426144E8B28D3830 /* HeardFromTests.swift */,
@@ -1406,6 +1423,7 @@
 				338A90129ABA3668433D376B /* BlogSnapshots.swift */,
 				2C13E00C01A59783D2FD1B04 /* CollabMacShots.swift */,
 				A8786C7B228ED2A8B4BF620A /* ConnectJourneySnapshots.swift */,
+				6BD1216B6D4DCB8FA429A9E9 /* FolderFilesMacShots.swift */,
 				449E501D19F7AB860CA38215 /* HeardFromSnapshots.swift */,
 				EFCF2559532191C12C06E031 /* ImportSheetSnapshots.swift */,
 				FC894B0D3C73CC7040468483 /* KeyFlowSnapshots.swift */,
@@ -1810,6 +1828,8 @@
 				1E19A90801FFFD1FDEBB3653 /* EvernoteImportTests.swift in Sources */,
 				7E2EA31EB61B678C8D93773D /* ExtremesTests.swift in Sources */,
 				D54EF97A937C2B31891FD4CC /* Fixtures.swift in Sources */,
+				08ABB77C92ED699EACC5139B /* FolderFilesMacShots.swift in Sources */,
+				1CE6B672D7A30D70F5913750 /* FolderFilesTests.swift in Sources */,
 				E54F1A66B34845118D188553 /* GalleryTests.swift in Sources */,
 				2CD1569E0525C670FF8224CE /* GoogleSignInTests.swift in Sources */,
 				D8E460522E8DD23119115323 /* GridTableTests.swift in Sources */,
@@ -1933,6 +1953,8 @@
 				302278DA16D32BC03E132AB7 /* EvernoteImport.swift in Sources */,
 				E269E6CE6C29AD8F633022CE /* Files.swift in Sources */,
 				3A3DAEC48AF505CF975F0F86 /* FirstOpen.swift in Sources */,
+				BFA444849B687C47057C7C56 /* FolderFileViews.swift in Sources */,
+				3C5726BD6097194CCFDF8831 /* FolderFiles.swift in Sources */,
 				40DDF5DDC2A49131D20E5937 /* FormatBar.swift in Sources */,
 				24EF9254B276F270C741DD8D /* GoogleSignIn.swift in Sources */,
 				A9FA9DE6BBFF0012FCEABF22 /* HeardFrom.swift in Sources */,
@@ -1999,6 +2021,7 @@
 				5412BD9D4BB407C05DA2D720 /* SharedItem.swift in Sources */,
 				4430BD8F09B8AF0C608223C2 /* SidebarView.swift in Sources */,
 				DE9535A124D745998C35A4FA /* SignInView.swift in Sources */,
+				1B775534C534B91815A40306 /* StorageViews.swift in Sources */,
 				C9D0E2AA403DB799EAD7F7FD /* SyncEngine.swift in Sources */,
 				D14C6D2DBF7C50C88BC145EE /* TableChart.swift in Sources */,
 				17F5C4C03D14547F0527AF27 /* TableGrid.swift in Sources */,
@@ -2118,6 +2141,8 @@
 				85B167443F5306A56A6853A5 /* EvernoteImport.swift in Sources */,
 				C23E87D238AFF3935F64E24B /* Files.swift in Sources */,
 				AFDFBCB7E53C94E109A21B60 /* FirstOpen.swift in Sources */,
+				B3A35F855326D7C579373AF0 /* FolderFileViews.swift in Sources */,
+				09512A465EB52DDF7EDBB653 /* FolderFiles.swift in Sources */,
 				BC8F6F8C8E7ED9F06766A538 /* FormatBar.swift in Sources */,
 				0E40673C6FEC277FC8BB63C4 /* GoogleSignIn.swift in Sources */,
 				7787C605AEF964F597ED6307 /* HeardFrom.swift in Sources */,
@@ -2184,6 +2209,7 @@
 				3C7F2854475BF1AEADCC82A7 /* SharedItem.swift in Sources */,
 				B7A72D933239B040CC00665E /* SidebarView.swift in Sources */,
 				815A3505A0A85B6330FB1B7E /* SignInView.swift in Sources */,
+				207BE6B30770B3478899C1FA /* StorageViews.swift in Sources */,
 				50EEC0C14E3E1F9EB2A3142F /* SyncEngine.swift in Sources */,
 				553F154D89EA2D3D0072301A /* TableChart.swift in Sources */,
 				9A931A983A0828FAF1A3E667 /* TableGrid.swift in Sources */,
