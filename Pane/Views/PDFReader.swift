@@ -142,7 +142,7 @@ struct PDFReader: View {
     @State private var pageDraft = ""
     @FocusState private var pageFocused: Bool
 
-    init(url: URL, sidebar: Bool = PDFReader.captureSidebar, contents: Bool = false, find: String? = PDFReader.captureFind) {
+    init(url: URL, sidebar: Bool = PDFReader.captureSidebar, contents: Bool = PDFReader.captureContents, find: String? = PDFReader.captureFind) {
         let m = PDFReaderModel(url: url)
         m.showsSidebar = sidebar
         if contents, !m.outline.isEmpty { m.sidebar = .contents }
@@ -150,7 +150,8 @@ struct PDFReader: View {
         _model = State(initialValue: m)
     }
 
-    /// Captures: `-uitest -pdfSidebar` opens the sidebar, `-pdfFind <words>` starts a find.
+    /// Captures: `-uitest -pdfSidebar` opens the sidebar (`-pdfContents` on Contents), `-pdfFind <words>` starts a find.
+    static var captureContents: Bool { ProcessInfo.processInfo.arguments.contains("-uitest") && ProcessInfo.processInfo.arguments.contains("-pdfContents") }
     static var captureSidebar: Bool { ProcessInfo.processInfo.arguments.contains("-uitest") && ProcessInfo.processInfo.arguments.contains("-pdfSidebar") }
     static var captureFind: String? {
         let a = ProcessInfo.processInfo.arguments
@@ -163,17 +164,31 @@ struct PDFReader: View {
             bar
             Divider()
             HStack(spacing: 0) {
+                #if os(macOS)
                 if model.showsSidebar {
                     sidebar
                         .frame(width: PDFReaderMetrics.sidebarWidth)
                         .transition(.move(edge: .leading).combined(with: .opacity))
                     Divider()
                 }
+                #endif
                 PDFKitView(model: model)
                     .accessibilityIdentifier("file.pdf")
             }
         }
         .animation(.snappy(duration: 0.22), value: model.showsSidebar)
+        #if os(iOS)
+        // iPhone: pages and contents in a sheet, wide enough to read the chapter names.
+        .sheet(isPresented: $model.showsSidebar) {
+            NavigationStack {
+                sidebar
+                    .navigationTitle(model.sidebar == .contents ? "Contents" : "Pages")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { model.showsSidebar = false } } }
+            }
+            .presentationDetents([.medium, .large])
+        }
+        #endif
         .task { if !model.query.isEmpty { try? await Task.sleep(for: .milliseconds(300)); model.find() } }
         .background(Color.notePage)
     }
@@ -310,7 +325,12 @@ struct PDFReader: View {
             if model.sidebar == .contents && !model.outline.isEmpty {
                 List {
                     OutlineGroup(model.outline.map(OutlineItem.init), children: \.children) { item in
-                        Button(item.title) { model.go(to: item.outline) }
+                        Button(item.title) {
+                            model.go(to: item.outline)
+                            #if os(iOS)
+                            model.showsSidebar = false
+                            #endif
+                        }
                             .buttonStyle(.plain)
                             .foregroundStyle(Color.ink)
                             .lineLimit(2)
@@ -342,7 +362,7 @@ enum PDFReaderMetrics {
     static let sidebarWidth: CGFloat = 150
     static let findWidth: CGFloat = 150
     #else
-    static let sidebarWidth: CGFloat = 110
+    static let sidebarWidth: CGFloat = 0
     static let findWidth: CGFloat = 110
     #endif
 }
@@ -409,7 +429,7 @@ struct PDFThumbnails: UIViewRepresentable {
     func makeUIView(context: Context) -> PDFThumbnailView {
         let t = PDFThumbnailView()
         t.layoutMode = .vertical
-        t.thumbnailSize = CGSize(width: 72, height: 96)
+        t.thumbnailSize = CGSize(width: 120, height: 160)
         t.backgroundColor = .clear
         t.pdfView = model.view
         return t
