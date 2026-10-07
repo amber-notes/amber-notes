@@ -218,25 +218,18 @@ struct NoteListView: View {
                     .listRowSeparator(.hidden)
                     .selectionDisabled()
             }
-            ForEach(DateBucket.sections(visible.map(ListItem.note) + visibleFiles.map(ListItem.file)), id: \.0) { section in
-                Section(isExpanded: Binding(
-                    get: { !collapsed.contains(section.0) },
-                    set: { open in withAnimation(.snappy(duration: 0.22)) { if open { collapsed.remove(section.0) } else { collapsed.insert(section.0) } } }
-                )) {
-                    ForEach(section.1) { item in
+            // Without files the notes go straight in: wrapping each one as a list item, and sorting
+            // them again as items, was about a third of each save with 5,000 notes.
+            if visibleFiles.isEmpty {
+                ForEach(DateBucket.sections(visible), id: \.0) { section in
+                    dateSection(section) { noteRow($0) }
+                }
+            } else {
+                ForEach(DateBucket.sections(visible.map(ListItem.note) + visibleFiles.map(ListItem.file)), id: \.0) { section in
+                    dateSection(section) { item in
                         switch item {
                         case .note(let note):
-                            // Its own equatable view: when one note changes, the others' rows (and their
-                            // drag and swipe setup) are left alone instead of rebuilt.
-                            ListRow(note: note, query: search, showFolder: scope == .all || !search.isEmpty,
-                                    dragWith: dragOthers(for: note), selectedCount: selection.count,
-                                    togglePin: { withAnimation(.snappy) { context.togglePin(note) } },
-                                    remove: { remove(note) })
-                                .equatable()
-                                .tag(note.id)
-                                #if os(iOS)
-                                .listRowBackground(Color(Palette.row))
-                                #endif
+                            noteRow(note)
                         case .file(let file):
                             FileListRow(file: file, query: search, showFolder: scope == .all || !search.isEmpty, remove: { remove([file.id]) })
                                 .tag(file.id)
@@ -245,22 +238,7 @@ struct NoteListView: View {
                                 #endif
                         }
                     }
-                } header: {
-                    // One step lighter than the display type: bold, in the warm ink.
-                    #if os(iOS)
-                    // The system's prominent header: large and bold, as in Notes.
-                    Text(section.0)
-                        .foregroundStyle(Color.ink)
-                    #else
-                    Text(section.0)
-                        .font(.title3.weight(.bold))
-                        .foregroundStyle(Color.ink)
-                        .textCase(nil)
-                    #endif
                 }
-                #if os(iOS)
-                .headerProminence(.increased)
-                #endif
             }
             #if os(iOS)
             // The count, quietly at the end of the list, as in Notes.
@@ -470,6 +448,45 @@ struct NoteListView: View {
             }
             #endif
         }
+    }
+
+    /// One date's notes (and files), collapsible, under its heading.
+    private func dateSection<Item: Identifiable, Row: View>(_ section: (String, [Item]), @ViewBuilder row: @escaping (Item) -> Row) -> some View {
+        Section(isExpanded: Binding(
+            get: { !collapsed.contains(section.0) },
+            set: { open in withAnimation(.snappy(duration: 0.22)) { if open { collapsed.remove(section.0) } else { collapsed.insert(section.0) } } }
+        )) {
+            ForEach(section.1) { row($0) }
+        } header: {
+            // One step lighter than the display type: bold, in the warm ink.
+            #if os(iOS)
+            // The system's prominent header: large and bold, as in Notes.
+            Text(section.0)
+                .foregroundStyle(Color.ink)
+            #else
+            Text(section.0)
+                .font(.title3.weight(.bold))
+                .foregroundStyle(Color.ink)
+                .textCase(nil)
+            #endif
+        }
+        #if os(iOS)
+        .headerProminence(.increased)
+        #endif
+    }
+
+    private func noteRow(_ note: Note) -> some View {
+        // Its own equatable view: when one note changes, the others' rows (and their
+        // drag and swipe setup) are left alone instead of rebuilt.
+        ListRow(note: note, query: search, showFolder: scope == .all || !search.isEmpty,
+                dragWith: dragOthers(for: note), selectedCount: selection.count,
+                togglePin: { withAnimation(.snappy) { context.togglePin(note) } },
+                remove: { remove(note) })
+            .equatable()
+            .tag(note.id)
+            #if os(iOS)
+            .listRowBackground(Color(Palette.row))
+            #endif
     }
 
     #if os(iOS)
