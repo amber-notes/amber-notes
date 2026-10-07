@@ -22,6 +22,8 @@ struct NoteListView: View {
     /// "Add File": the picker, and a file being renamed.
     @State private var addingFiles = false
     @State private var renamingFile: Attachment?
+    /// Export… (Mac) or Save to Files (iPhone) from a file's menu.
+    @State private var exportingFile: Attachment?
     @State private var fileNameDraft = ""
     @State private var fileDropTargeted = false
     @State private var collapsed: Set<String> = []
@@ -339,6 +341,7 @@ struct NoteListView: View {
             let made = context.addFiles(urls, to: context.folderForFiles(scope))
             if let first = made.first { selection = [first.id] }
         }
+        .fileExport(exportingFile, isPresented: Binding(get: { exportingFile != nil }, set: { if !$0 { exportingFile = nil } }))
         .alert("Rename File", isPresented: Binding(get: { renamingFile != nil }, set: { if !$0 { renamingFile = nil } })) {
             TextField("Name", text: $fileNameDraft)
             Button("Cancel", role: .cancel) {}
@@ -674,6 +677,7 @@ struct NoteListView: View {
             }
             if FileStore.exists(file) {
                 ShareLink(item: FileStore.url(for: file.id, filename: file.filename))
+                Button(FileOut.exportTitle, systemImage: FileOut.exportSymbol) { exportingFile = file }
             }
             Divider()
             Button("Delete", systemImage: "trash", role: .destructive) { remove([file.id]) }

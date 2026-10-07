@@ -172,18 +172,44 @@ struct FileRefusal: Equatable, Identifiable {
         NotificationCenter.default.post(name: notification, object: FileRefusal(unsupported: unsupported, tooBig: tooBig))
     }
 
-    var title: String { (unsupported.count + tooBig.count) == 1 ? "Can't add this file" : "Can't add these files" }
-
-    var message: String {
-        var parts: [String] = []
-        if !unsupported.isEmpty {
-            parts.append("\(Self.list(unsupported)): Amber Notes can't show \(unsupported.count == 1 ? "this kind of file" : "these kinds of files") yet. It takes PDFs, pictures, text, CSV, JSON and code, and Word, Excel, PowerPoint, Pages, Numbers and Keynote documents.")
+    /// What the refused files are, by ending, for the title.
+    enum Kind: Equatable {
+        case videos, audio, ebooks, archives, other
+        static func of(_ name: String) -> Kind {
+            switch (name as NSString).pathExtension.lowercased() {
+            case "mov", "mp4", "m4v", "avi", "mkv", "webm", "wmv", "mpg", "mpeg": .videos
+            case "mp3", "m4a", "wav", "aac", "flac", "ogg", "aiff", "aif", "caf": .audio
+            case "epub", "mobi", "azw", "azw3": .ebooks
+            case "zip", "rar", "7z", "gz", "tar", "dmg": .archives
+            default: .other
+            }
         }
-        if !tooBig.isEmpty { parts.append("\(Self.list(tooBig)): files can be up to 100 MB.") }
-        return parts.joined(separator: "\n\n")
     }
 
-    static func list(_ names: [String]) -> String {
-        names.count <= 3 ? names.map { "\u{201C}\($0)\u{201D}" }.joined(separator: ", ") : "\u{201C}\(names[0])\u{201D} and \(names.count - 1) more"
+    /// Short, by kind: "Can't add videos yet", "File too large".
+    var title: String {
+        if unsupported.isEmpty { return tooBig.count == 1 ? "File too large" : "Files too large" }
+        let kinds = Set(unsupported.map(Kind.of))
+        guard kinds.count == 1, tooBig.isEmpty, let kind = kinds.first else { return "Can't add these files" }
+        switch kind {
+        case .videos: return "Can't add videos yet"
+        case .audio: return "Can't add audio yet"
+        case .ebooks: return "Can't add e-books yet"
+        case .archives: return unsupported.count == 1 ? "Can't add this archive" : "Can't add archives"
+        case .other: return unsupported.count == 1 ? "Can't add this kind of file" : "Can't add these kinds of files"
+        }
+    }
+
+    /// The files by name, one a line, then one line on what works.
+    var message: String {
+        var lines = Self.names(unsupported + tooBig)
+        if !unsupported.isEmpty { lines.append("Amber Notes takes PDFs, pictures, text, CSV and Office files.") }
+        if !tooBig.isEmpty { lines.append("Files can be up to 100 MB.") }
+        return lines.joined(separator: "\n")
+    }
+
+    static func names(_ names: [String]) -> [String] {
+        let shown = names.prefix(names.count > 5 ? 4 : 5).map { "\u{201C}\($0)\u{201D}" }
+        return names.count > 5 ? shown + ["and \(names.count - 4) more"] : shown
     }
 }
