@@ -12,6 +12,18 @@ import Testing
 @MainActor @Suite(.serialized) struct AppSnapshotTests {
     static var dir: URL? { ProcessInfo.processInfo.environment["AMBER_HIG_SHOTS"].map { URL(fileURLWithPath: $0) } }
 
+    /// Shots that need a real window on screen (a toolbar, a key window, a capture by window id)
+    /// run only where nobody is using the screen: with AMBER_DEMO_FRAMES set, which only CI's
+    /// snapshots workflow sets (WarmGreySnapshots.dir). Everywhere else every test window is
+    /// borderless, at -20000,-20000, and never ordered front or made key.
+    static var onScreenAllowed: Bool { WarmGreySnapshots.dir != nil }
+
+    /// `variable`'s path, for a shot that needs an on-screen window: nil unless on-screen shots run.
+    static func onScreenDir(_ variable: String) -> URL? {
+        guard onScreenAllowed else { return nil }
+        return ProcessInfo.processInfo.environment[variable].map { URL(fileURLWithPath: $0) }
+    }
+
     /// A demo library in memory.
     static func container() throws -> ModelContainer {
         let c = try ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
@@ -20,24 +32,26 @@ import Testing
         return c
     }
 
-    /// Draws `view` in a real titled window (toolbar included) and writes `name`.png.
-    static func shoot(_ view: some View, name: String, size: CGSize, dark: Bool, toolbar: Bool = true, wait: Double = 0.8) async throws {
+    /// Draws `view` at `size` and writes `name`.png. The window is borderless, far off every
+    /// screen (-20000, -20000) and never ordered front or made key: a titled window placed off
+    /// screen gets pulled back onto the display, where it showed up on a developer's Mac.
+    /// No window chrome is drawn. `card`: edge to edge, as the signed-out window shows it.
+    /// `toolbar` is kept for the callers; nothing draws a toolbar any more.
+    static func shoot(_ view: some View, name: String, size: CGSize, dark: Bool, toolbar: Bool = true, card: Bool = false, wait: Double = 0.8) async throws {
         guard let dir else { return }
-        let window = NSWindow(contentRect: CGRect(x: -30000, y: -30000, width: size.width, height: size.height),
-                              styleMask: toolbar ? [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView] : [.titled, .closable, .fullSizeContentView],
-                              backing: .buffered, defer: false)
+        let window = NSWindow(contentRect: CGRect(x: -20000, y: -20000, width: size.width, height: size.height),
+                              styleMask: [.borderless], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         window.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
-        window.contentViewController = NSHostingController(rootView: view)
-        window.setContentSize(size)
-        window.setFrameOrigin(CGPoint(x: -30000, y: -30000))
-        window.orderFrontRegardless()
+        let host = NSHostingView(rootView: AnyView(card ? AnyView(view.ignoresSafeArea()) : AnyView(view)))
+        host.appearance = window.appearance
+        host.frame = CGRect(origin: .zero, size: size)
+        window.contentView = host
         try? await Task.sleep(for: .seconds(wait))
-        defer { window.orderOut(nil); window.close() }
-        guard let frame = window.contentView?.superview else { return }
-        let rect = frame.bounds
-        let rep = try #require(frame.bitmapImageRepForCachingDisplay(in: rect))
-        frame.cacheDisplay(in: rect, to: rep)
+        defer { window.close() }
+        host.layoutSubtreeIfNeeded()
+        let rep = try #require(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+        host.cacheDisplay(in: host.bounds, to: rep)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         try #require(rep.representation(using: .png, properties: [:])).write(to: dir.appending(path: "\(name).png"))
     }
@@ -47,7 +61,7 @@ import Testing
         guard let dir else { return }
         let host = NSHostingView(rootView: view.background(Color(nsColor: .windowBackgroundColor)))
         host.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
-        let window = NSWindow(contentRect: CGRect(x: -30000, y: -30000, width: 600, height: 900), styleMask: [.borderless], backing: .buffered, defer: false)
+        let window = NSWindow(contentRect: CGRect(x: -20000, y: -20000, width: 600, height: 900), styleMask: [.borderless], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         window.contentView = host
         host.frame = CGRect(origin: .zero, size: host.fittingSize)
@@ -105,22 +119,30 @@ import Testing
             let flow = EmailSignInFlow(step: step, email: "you@example.com", password: step == .create ? "correct horse battery" : "")
             try await Self.shoot(SignInView(backend: backend, flow: flow).fixedSize().containerBackground(for: .window) { Backdrop() }, name: "mac-signin-\(name)-\(mode)", size: CGSize(width: 380, height: 520), dark: dark, toolbar: false)
         }
+        // The code boxes part typed and full, and after a wrong code.
+        for (name, code) in [("confirm-typed", "704"), ("confirm-full", "704494")] {
+            try await Self.shoot(WelcomeFlow(backend: backend, stage: .signIn(returning: false), flow: EmailSignInFlow(step: .confirm, email: "sara@example.com", code: code)),
+                                 name: "mac-welcome-\(name)-\(mode)", size: WelcomeFlow.size, dark: dark, toolbar: false, card: true)
+        }
+        try await Self.shoot(WelcomeFlow(backend: backend, stage: .signIn(returning: false), flow: EmailSignInFlow(step: .confirm, email: "sara@example.com"),
+                                         error: "That code didn't work. Check the newest email from Amber Notes, or press Resend code."),
+                             name: "mac-welcome-confirm-wrong-\(mode)", size: WelcomeFlow.size, dark: dark, toolbar: false, card: true)
         // Email confirmation: Check your email, fresh and just after a code went out.
         for (name, sent) in [("confirm", nil), ("confirm-wait", Date.now)] as [(String, Date?)] {
             try await Self.shoot(WelcomeFlow(backend: backend, stage: .signIn(returning: false), flow: EmailSignInFlow(step: .confirm, email: "sara@example.com", codeSentAt: sent)),
-                                 name: "mac-welcome-\(name)-\(mode)", size: WelcomeFlow.size, dark: dark, toolbar: false)
+                                 name: "mac-welcome-\(name)-\(mode)", size: WelcomeFlow.size, dark: dark, toolbar: false, card: true)
         }
         try await Self.shoot(WelcomeFlow(backend: backend, stage: .signIn(returning: false), flow: EmailSignInFlow(step: .create, email: "sara@example.com", password: "correct horse battery")),
-                             name: "mac-welcome-signin-new-\(mode)", size: WelcomeFlow.size, dark: dark, toolbar: false)
+                             name: "mac-welcome-signin-new-\(mode)", size: WelcomeFlow.size, dark: dark, toolbar: false, card: true)
         // Before the email is checked: neutral words.
         try await Self.shoot(WelcomeFlow(backend: backend, stage: .signIn(returning: false)),
-                             name: "mac-welcome-signin-start-\(mode)", size: WelcomeFlow.size, dark: dark, toolbar: false)
+                             name: "mac-welcome-signin-start-\(mode)", size: WelcomeFlow.size, dark: dark, toolbar: false, card: true)
         // The heading once the email is known: an existing account.
         try await Self.shoot(WelcomeFlow(backend: backend, stage: .signIn(returning: false), flow: EmailSignInFlow(step: .signIn(fallback: false), email: "sara@example.com", password: "secret")),
-                             name: "mac-welcome-signin-existing-\(mode)", size: WelcomeFlow.size, dark: dark, toolbar: false)
+                             name: "mac-welcome-signin-existing-\(mode)", size: WelcomeFlow.size, dark: dark, toolbar: false, card: true)
         // Open your notes on this Mac: why, the QR code and the code to type.
         try await Self.shoot(AddDeviceCapture(name: "new-device").frame(width: 520, height: 760).containerBackground(for: .window) { Backdrop() },
-                             name: "mac-new-device-\(mode)", size: CGSize(width: 520, height: 760), dark: dark, toolbar: false, wait: 2.0)
+                             name: "mac-new-device-\(mode)", size: CGSize(width: 520, height: 760), dark: dark, toolbar: false, card: true, wait: 2.0)
         try await Self.render(SettingsView(backend: backend, sync: nil), name: "mac-settings-\(mode)", dark: dark)
         backend.showSignedInForPreview(email: "you@example.com")
         try await Self.render(SettingsView(backend: backend, sync: nil), name: "mac-settings-signedin-\(mode)", dark: dark)

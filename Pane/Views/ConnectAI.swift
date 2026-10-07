@@ -1434,6 +1434,7 @@ struct ConnectAISection: View {
     @Environment(ConnectGuideRoute.self) private var route: ConnectGuideRoute?
     @State private var removing: Connection?
     @State private var error: String?
+    @Environment(\.networkReach) private var reach
 
     enum Guide: String, Identifiable, CaseIterable {
         case chatgpt, claude, claudeCode, codex, incredible
@@ -1499,11 +1500,15 @@ struct ConnectAISection: View {
                 .accessibilityLabel("Connect \(g.title)")
                 .accessibilityHint(g.subtitle)
                 .accessibilityIdentifier("connect.guide.\(g.rawValue)")
+                .disabled(reach != .online)
             }
         } header: {
             Text("Connect an AI")
         } footer: {
             VStack(alignment: .leading, spacing: 6) {
+                if reach != .online {
+                    Text(OfflineCopy.needsNetwork("connect an AI")).padding(.bottom, 4)
+                }
                 promise("You approve every AI.")
                 promise("Disconnect anytime.")
                 promise("Every change an AI makes can be undone.")
@@ -1530,10 +1535,17 @@ struct ConnectAISection: View {
                 Text("Nothing is connected yet.").foregroundStyle(.secondary)
             }
             ForEach(active) { c in row(c) }
-            if let error { Text(error).font(.footnote).foregroundStyle(.red) }
+            if let error {
+                // Offline isn't a failure: the list is shown again once the server answers.
+                if reach != .online {
+                    Text("Shown when you\u{2019}re online.").foregroundStyle(.secondary)
+                } else {
+                    Text(error).font(.footnote).foregroundStyle(.red)
+                }
+            }
         }
-        // Loads again when a guide closes: it may have connected something.
-        .task(id: route?.closed ?? 0) { await load() }
+        // Loads again when a guide closes (it may have connected something) and when back online.
+        .task(id: "\(route?.closed ?? 0)\(reach == .online)") { await load() }
         .confirmationDialog("Disconnect \(removing?.title ?? "")?", isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } }), titleVisibility: .visible) {
             Button("Disconnect", role: .destructive) { if let r = removing { Task { await revoke(r) } } }
         } message: {

@@ -87,6 +87,7 @@ struct PrivacySecuritySection: View {
     @State private var removing: KeyDevice?
     @State private var showsHowToCheck = false
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.networkReach) private var reach
 
     var body: some View {
         Section {
@@ -181,6 +182,7 @@ struct PrivacySecuritySection: View {
             // The sheet hangs on its button: on a Section it isn't presented.
             Button(PrivacyCopy.addDevice) { adding = true }
                 .accessibilityIdentifier("privacy.addDevice")
+                .disabled(reach != .online)
                 .sheet(isPresented: $adding) {
                     AddDeviceSheet(crypto: crypto, server: addDeviceServer)
                         .onDisappear { Task { await devices.refresh(crypto) } }
