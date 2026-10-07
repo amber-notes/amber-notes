@@ -11,7 +11,7 @@ enum Hover {
     /// In and out quickly, so the fill follows the pointer without trailing it.
     static let animation = Animation.easeOut(duration: 0.12)
     /// A hovered row: a light fill, well under the selection's.
-    static let row = AnyShapeStyle(.fill.quinary)
+    static let row = AnyShapeStyle(.fill.quaternary)
     /// A hovered icon button or plain button with its own shape.
     static let fill = AnyShapeStyle(.fill.tertiary)
     /// The same button while pressed.
