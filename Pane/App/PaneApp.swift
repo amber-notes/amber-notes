@@ -284,6 +284,44 @@ enum CardWindow {
     static func frameSize(_ window: NSWindow, card size: CGSize) -> CGSize {
         CGSize(width: size.width, height: size.height + max(0, window.frame.height - window.contentLayoutRect.height))
     }
+
+    /// One window from the welcome to the notes: each change of size keeps the window's top edge
+    /// and centre where they are, so it grows and shrinks in place and never jumps to the middle
+    /// of the screen. Only a window that would run off the screen is moved, just enough.
+    static func resized(_ frame: CGRect, to size: CGSize, on screen: CGRect?) -> CGRect {
+        var size = size
+        if let screen { size = CGSize(width: min(size.width, screen.width), height: min(size.height, screen.height)) }
+        var r = CGRect(x: frame.midX - size.width / 2, y: frame.maxY - size.height, width: size.width, height: size.height)
+        if let screen {
+            r.origin.x = min(max(r.minX, screen.minX), screen.maxX - r.width)
+            r.origin.y = min(max(r.minY, screen.minY), screen.maxY - r.height)
+        }
+        return r
+    }
+
+    /// The notes window that grows out of the card after signing in: where the card is, at the
+    /// notes window's remembered size (or the default).
+    static func notesFrame(from card: CGRect, saved: CGRect?, screen: CGRect?) -> CGRect {
+        let fits = saved.map { $0.width >= WindowFrameMemory.minimum.width && $0.height >= WindowFrameMemory.minimum.height } ?? false
+        return resized(card, to: fits ? saved!.size : WindowFrameMemory.defaultSize, on: screen)
+    }
+}
+
+/// Every frame the window is given on the way between the card and the notes, in the log
+/// (`-windowProbe`, or any DEBUG build): "window card {{x, y}, {w, h}} -> {{x, y}, {w, h}}".
+enum WindowProbe {
+    static let enabled: Bool = {
+        #if DEBUG
+        true
+        #else
+        ProcessInfo.processInfo.arguments.contains("-windowProbe")
+        #endif
+    }()
+
+    static func log(_ step: String, from: CGRect, to: CGRect) {
+        guard enabled else { return }
+        NSLog("window %@ %@ -> %@", step, NSStringFromRect(from), NSStringFromRect(to))
+    }
 }
 
 /// Signed out, the window is just the sign-in card: small, no title bar.
@@ -321,8 +359,11 @@ private struct WindowShaper: NSViewRepresentable {
                 return
             }
             // At launch (including a signed-in launch that briefly looked signed out) the window
-            // just appears in place; only a real sign-in or sign-out animates.
-            let animate = Date().timeIntervalSince(coordinator.created) > 1.5
+            // just appears in place, the notes where you left them; only a real sign-in or
+            // sign-out animates, and grows or shrinks the window where it is.
+            let launching = Date().timeIntervalSince(coordinator.created) <= 1.5
+            let animate = !launching
+            let wasCard = coordinator.applied
             coordinator.applied = compact
             coordinator.remembering = false
             // No system title bar or toolbar while signed out: just the card and the window buttons.
@@ -339,14 +380,18 @@ private struct WindowShaper: NSViewRepresentable {
             if compact {
                 CardWindow.lock(window)
                 coordinator.fittedCard = nil
-                fitCard(window, coordinator, placeOnScreen: true)
+                fitCard(window, coordinator, animate: animate)
             } else {
                 CardWindow.unlock(window)
             }
             if !compact, WindowFrameMemory.enabled {
-                let frame = WindowFrameMemory.frame(saved: WindowFrameMemory.saved,
-                                                    screens: NSScreen.screens.map(\.visibleFrame),
-                                                    main: (window.screen ?? NSScreen.main)?.visibleFrame ?? window.frame)
+                let screen = (window.screen ?? NSScreen.main)?.visibleFrame
+                // Launching signed in: the notes where you left them. Just signed in: the notes
+                // grow out of the card, which stays where you put it.
+                let frame = launching || wasCard != true
+                    ? WindowFrameMemory.frame(saved: WindowFrameMemory.saved, screens: NSScreen.screens.map(\.visibleFrame), main: screen ?? window.frame)
+                    : CardWindow.notesFrame(from: window.frame, saved: WindowFrameMemory.saved, screen: screen)
+                WindowProbe.log("notes", from: window.frame, to: frame)
                 window.setFrame(frame, display: true, animate: animate)
                 coordinator.remembering = true
             }
@@ -358,21 +403,16 @@ private struct WindowShaper: NSViewRepresentable {
     /// It's fitted only when the card's own size changes, and never while you're dragging the
     /// window: moving it (across screens too) is left entirely to macOS. A size change keeps the
     /// top edge and centre-x where they are, so the window grows or shrinks downward in place.
-    /// Only the first fit after switching to the card keeps it on screen.
-    private func fitCard(_ window: NSWindow, _ coordinator: Coordinator, placeOnScreen: Bool = false) {
+    /// The window is kept on the screen.
+    private func fitCard(_ window: NSWindow, _ coordinator: Coordinator, animate: Bool = true) {
         guard cardSize.width > 0, cardSize.height > 0 else { return }
         if let last = coordinator.fittedCard, abs(last.width - cardSize.width) < 1, abs(last.height - cardSize.height) < 1 { return }
         if NSEvent.pressedMouseButtons != 0 { return } // mid-drag: try again on the next update
         coordinator.fittedCard = cardSize
-        let size = CardWindow.frameSize(window, card: cardSize)
-        var frame = CGRect(x: window.frame.midX - size.width / 2, y: window.frame.maxY - size.height,
-                           width: size.width, height: size.height)
-        if placeOnScreen, let screen = window.screen?.visibleFrame {
-            frame.origin.x = min(max(frame.origin.x, screen.minX), screen.maxX - frame.width)
-            frame.origin.y = min(max(frame.origin.y, screen.minY), screen.maxY - frame.height)
-        }
-        guard abs(window.frame.width - frame.width) > 0.5 || abs(window.frame.height - frame.height) > 0.5 else { return }
-        window.setFrame(frame, display: true, animate: !placeOnScreen)
+        let frame = CardWindow.resized(window.frame, to: CardWindow.frameSize(window, card: cardSize), on: window.screen?.visibleFrame)
+        guard frame != window.frame else { return }
+        WindowProbe.log("card", from: window.frame, to: frame)
+        window.setFrame(frame, display: true, animate: animate)
     }
 
     /// Saves the notes window's frame whenever you move or resize it (never the card's).
