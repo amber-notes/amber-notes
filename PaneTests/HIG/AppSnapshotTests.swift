@@ -105,6 +105,13 @@ import Testing
             let flow = EmailSignInFlow(step: step, email: "you@example.com", password: step == .create ? "correct horse battery" : "")
             try await Self.shoot(SignInView(backend: backend, flow: flow).fixedSize().containerBackground(for: .window) { Backdrop() }, name: "mac-signin-\(name)-\(mode)", size: CGSize(width: 380, height: 520), dark: dark, toolbar: false)
         }
+        // Email confirmation: Check your email, fresh and just after a code went out.
+        for (name, sent) in [("confirm", nil), ("confirm-wait", Date.now)] as [(String, Date?)] {
+            try await Self.shoot(WelcomeFlow(backend: backend, stage: .signIn(returning: false), flow: EmailSignInFlow(step: .confirm, email: "sara@example.com", codeSentAt: sent)),
+                                 name: "mac-welcome-\(name)-\(mode)", size: WelcomeFlow.size, dark: dark, toolbar: false)
+        }
+        try await Self.shoot(WelcomeFlow(backend: backend, stage: .signIn(returning: false), flow: EmailSignInFlow(step: .create, email: "sara@example.com", password: "correct horse battery")),
+                             name: "mac-welcome-signin-new-\(mode)", size: WelcomeFlow.size, dark: dark, toolbar: false)
         try await Self.render(SettingsView(backend: backend, sync: nil), name: "mac-settings-\(mode)", dark: dark)
         backend.showSignedInForPreview(email: "you@example.com")
         try await Self.render(SettingsView(backend: backend, sync: nil), name: "mac-settings-signedin-\(mode)", dark: dark)

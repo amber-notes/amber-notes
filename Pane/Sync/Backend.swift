@@ -339,6 +339,7 @@ final class Backend {
         if error is URLError { return "Can't reach the server. Check your connection and try again." }
         let code = (error as? AuthError)?.errorCode.rawValue
         let lower = ((error as? AuthError)?.message ?? error.localizedDescription).lowercased()
+        if lower.contains("error sending") { return "Couldn't send the email with your code. Try again in a minute." }
         if code == "over_email_send_rate_limit" || code == "over_request_rate_limit" || lower.contains("rate limit") || lower.contains("only request this after") {
             return "We just sent a code. Wait a minute, then press Resend code."
         }
@@ -370,10 +371,11 @@ final class Backend {
     }
 
     /// Words a person can act on, instead of raw server errors.
-    static func message(for error: Error, signingUp: Bool) -> String {
+    nonisolated static func message(for error: Error, signingUp: Bool) -> String {
         if error is URLError { return "Can't reach the server. Check your connection." }
         let raw = (error as? AuthError)?.message ?? error.localizedDescription
         let lower = raw.lowercased()
+        if lower.contains("error sending") { return "Couldn't send the email with your code. Try again in a minute." }
         if lower.contains("already") { return "That email already has an account. Sign in instead." }
         if lower.contains("invalid login") || lower.contains("invalid credentials") { return "That email and password didn't match." }
         if lower.contains("password") && signingUp { return "Pick a longer password: at least 12 characters." }

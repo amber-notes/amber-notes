@@ -257,6 +257,9 @@ import Testing
         #expect(Backend.confirmMessage(for: api("otp_expired", "Token has expired or is invalid")).contains("Resend code"))
         #expect(Backend.confirmMessage(for: api("over_email_send_rate_limit", "For security purposes, you can only request this after 42 seconds.")).contains("Wait a minute"))
         #expect(Backend.confirmMessage(for: URLError(.notConnectedToInternet)).contains("connection"))
+        let unsent = api("unexpected_failure", "Error sending confirmation email")
+        #expect(Backend.message(for: unsent, signingUp: true) == "Couldn't send the email with your code. Try again in a minute.")
+        #expect(Backend.confirmMessage(for: unsent) == "Couldn't send the email with your code. Try again in a minute.")
         for m in [Backend.confirmMessage(for: api("otp_expired", "")), Backend.confirmMessage(for: api("x", "y")), SignInView.confirmLine, SignInView.confirmTitle] {
             #expect(!m.contains("\u{2014}") && !m.contains("\u{2013}"), "no dashes in what people read")
         }

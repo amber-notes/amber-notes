@@ -9,6 +9,8 @@ struct WelcomeFlow: View {
     let backend: Backend
     /// Captures: sign-in opens with the cursor in the email field.
     var focusEmail = false
+    /// Captures: the sign-in form at a given step (the code screen, say).
+    var flow = EmailSignInFlow()
     @State private var stage: Stage
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var typeSize
@@ -25,9 +27,10 @@ struct WelcomeFlow: View {
         }
     }
 
-    init(backend: Backend, stage: Stage = .first(), focusEmail: Bool = false) {
+    init(backend: Backend, stage: Stage = .first(), focusEmail: Bool = false, flow: EmailSignInFlow = EmailSignInFlow()) {
         self.backend = backend
         self.focusEmail = focusEmail
+        self.flow = flow
         _stage = State(initialValue: stage)
     }
 
@@ -175,7 +178,7 @@ struct WelcomeFlow: View {
             .keyboardShortcut(.cancelAction)
             .accessibilityIdentifier("welcome.back")
             #endif
-            SignInView(backend: backend, heading: returning
+            SignInView(backend: backend, flow: flow, heading: returning
                        ? .beside(title: "Welcome back", line: "Sign in with Apple, Google or your email.")
                        : .beside(title: "Sign in or create your account", line: "Use Apple, Google or your email."),
                        focusEmail: focusEmail)

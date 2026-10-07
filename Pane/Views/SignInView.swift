@@ -371,8 +371,9 @@ struct SignInView: View {
                     .keyboardType(.numberPad)
                     #endif
                     .autocorrectionDisabled()
-                    .font(.system(size: Row.text + 4, weight: .semibold, design: .monospaced))
-                    .tracking(4)
+                    // The prompt in the form's own type; only typed digits are large and spaced.
+                    .font(flow.code.isEmpty ? .system(size: Row.text) : .system(size: Row.text + 4, weight: .semibold, design: .monospaced))
+                    .tracking(flow.code.isEmpty ? 0 : 4)
                     .multilineTextAlignment(.center)
                     .focused($focus, equals: .code)
                     .submitLabel(.go)
