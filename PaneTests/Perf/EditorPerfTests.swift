@@ -86,9 +86,15 @@ extension EditorPerfTests {
     /// Hiding or showing the sidebar widens or narrows the note a little every frame for a quarter
     /// of a second. Each of those frames has to fit in a frame's time, or the sidebar stutters.
     /// A note of tables and link cards lays each of them out at the new width every frame: about
-    /// 54 ms a frame on CI in Debug (it was 72 ms when each card was also given its view again).
+    /// 50 ms a frame on CI in Debug (it was 72 ms when each card was also given its view again).
+    ///
+    /// CI runners differ in speed from run to run (every editor timing in a run can double), so
+    /// there the long notes are held to a multiple of the same run's 80-line note, which a slow
+    /// runner slows just as much, and to a wide absolute ceiling that still fails if everything
+    /// got slower. Locally (no PANE_PERF_SLACK) the strict frame budgets apply.
     @Test func widthChangeLikeTheSidebar() async {
-        for (name, text, budget) in [("blocks", PerfFixtures.blockyNote(), 16.0), ("5000 lines", PerfFixtures.longNote(), 8.0), ("80 lines", PerfFixtures.longNote(lines: 80), 4.0)] {
+        var medians: [String: Double] = [:]
+        for (name, text) in [("80 lines", PerfFixtures.longNote(lines: 80)), ("5000 lines", PerfFixtures.longNote()), ("blocks", PerfFixtures.blockyNote())] {
             let h = await EditorHarness(text, width: 760, focus: false)
             h.window.displayIfNeeded()
             await h.settle(0.3)
@@ -107,10 +113,22 @@ extension EditorPerfTests {
                 }))
             }
             steps.sort()
-            let median = steps[steps.count / 2]
-            print("PERF sidebar-like width change [\(name)]: median \(String(format: "%.2f", median)) ms, max \(String(format: "%.2f", steps.last!)) ms a frame")
-            #expect(median < budget * PerfBudget.slack, "each frame of the sidebar's animation fits in a frame")
+            medians[name] = steps[steps.count / 2]
+            print("PERF sidebar-like width change [\(name)]: median \(String(format: "%.2f", steps[steps.count / 2])) ms, max \(String(format: "%.2f", steps.last!)) ms a frame")
             h.close()
+        }
+        let reference = medians["80 lines"] ?? 0
+        // (name, a frame's budget on a developer's Mac, at most this many times the 80-line note)
+        for (name, budget, ratio) in [("80 lines", 4.0, 1.0), ("5000 lines", 8.0, 4.0), ("blocks", 16.0, 12.0)] {
+            let median = medians[name] ?? .infinity
+            if PerfBudget.slack > 1 {
+                if name != "80 lines" {
+                    #expect(median < ratio * reference, "[\(name)] stays within \(ratio)× the 80-line note in the same run")
+                }
+                #expect(median < 2 * budget * PerfBudget.slack, "[\(name)] under the ceiling even on a slow runner")
+            } else {
+                #expect(median < budget, "[\(name)] each frame of the sidebar's animation fits in a frame")
+            }
         }
     }
 }
