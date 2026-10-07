@@ -118,6 +118,34 @@ import Testing
         #expect(context.backlinks(to: workIndex).map(\.id) == [fromWork.id])
     }
 
+    /// Backlinks come from the notes the store picks (those with a wiki link or a note link):
+    /// both kinds count, newest first, unsaved ones included; trashed and locked notes, and the
+    /// parent's link to its sub-note, don't.
+    @Test func backlinksFromWikiLinksAndNoteLinksNewestFirst() throws {
+        let c = try Self.container()
+        let context = c.mainContext
+        let recipes = context.createNote(in: .all, body: "Recipes\nall of them")
+        let link = "pane-note:\(recipes.id.uuidString.lowercased())"
+        let byWiki = context.createNote(in: .all, body: "Dinner\nSee [[Recipes]].")
+        byWiki.updatedAt = .now.addingTimeInterval(-100)
+        let byLink = context.createNote(in: .all, body: "Shopping\n[Recipes](\(link))")
+        byLink.updatedAt = .now.addingTimeInterval(-10)
+        _ = context.createNote(in: .all, body: "Unrelated\n[[Something else]] and recipes")
+        let trashed = context.createNote(in: .all, body: "Old\n[[Recipes]]")
+        trashed.trashedAt = .now
+        let locked = context.createNote(in: .all, body: "Diary\n[[Recipes]]")
+        locked.lockedBody = "sealed"
+        let parent = context.createNote(in: .all, body: "Kitchen\n[Recipes](\(link))")
+        recipes.parentID = parent.id
+        try context.save()
+        WikiDirectory.invalidate()
+        #expect(context.backlinks(to: recipes).map(\.id) == [byLink.id, byWiki.id])
+
+        let unsaved = context.createNote(in: .all, body: "Lunch\n[[Recipes]]")
+        WikiDirectory.invalidate()
+        #expect(context.backlinks(to: recipes).map(\.id) == [unsaved.id, byLink.id, byWiki.id], "a note not saved yet counts too")
+    }
+
     @Test func linkPolicyCarriesTheTarget() {
         let url = LinkPolicy.wikiURL("Projects/Kitchen remodel & co")!
         #expect(LinkPolicy.action(for: url) == .wiki("Projects/Kitchen remodel & co"))

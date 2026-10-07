@@ -110,7 +110,22 @@ struct SidebarView: View {
     let onNewNote: () -> Void
 
     @Query(filter: #Predicate<Folder> { $0.deletedAt == nil }, sort: \Folder.sortIndex) private var folders: [Folder]
-    @Query private var notes: [Note]
+    /// At most one note: this query is here so the sidebar updates whenever any note changes, as a
+    /// query of every note did. The counts come from the store (`counts`). A query of every note
+    /// fetched and sorted all of them again on every save while you type.
+    @Query(SidebarView.anyNote) private var noteChanges: [Note]
+    /// The same for files kept in folders.
+    @Query(SidebarView.anyFile) private var fileChanges: [Attachment]
+    private static var anyFile: FetchDescriptor<Attachment> {
+        var d = FetchDescriptor<Attachment>()
+        d.fetchLimit = 1
+        return d
+    }
+    private static var anyNote: FetchDescriptor<Note> {
+        var d = FetchDescriptor<Note>()
+        d.fetchLimit = 1
+        return d
+    }
 
     @State private var renaming: Folder?
     @State private var newFolderParent: Folder??
@@ -118,37 +133,62 @@ struct SidebarView: View {
     @State private var dropTarget: UUID?
     @State private var deletingFolder: Folder?
     @State private var showSettings = false
-    @FocusedValue(\.importSheetAction) private var importSheet
-    @FocusedValue(\.importFromAction) private var importFrom
+    @Environment(\.importActions) private var imports
     @Environment(Backend.self) private var backend: Backend?
     @Environment(SyncEngine.self) private var sync: SyncEngine?
 
-    private var live: [Note] { notes.filter { $0.trashedAt == nil && $0.deletedAt == nil } }
-    private var trashed: [Note] { notes.filter { $0.trashedAt != nil && $0.deletedAt == nil } }
-    /// Files kept in folders count with their folder's notes.
-    @Query(filter: #Predicate<Attachment> { $0.folderID != nil && $0.deletedAt == nil }) private var folderFiles: [Attachment]
-    private var fileCounts: [UUID: Int] {
-        var counts: [UUID: Int] = [:]
-        for f in folderFiles where f.trashedAt == nil { if let id = f.folderID { counts[id, default: 0] += 1 } }
-        return counts
+    private var counts: (live: Int, trashed: Int) {
+        _ = noteChanges
+        return Self.counts(in: context)
+    }
+
+    /// All Notes and Recently Deleted, counted by the store (unsaved changes included).
+    static func counts(in context: ModelContext) -> (live: Int, trashed: Int) {
+        let live = (try? context.fetchCount(FetchDescriptor<Note>(predicate: #Predicate { $0.deletedAt == nil && $0.trashedAt == nil }))) ?? 0
+        let trashed = (try? context.fetchCount(FetchDescriptor<Note>(predicate: #Predicate { $0.deletedAt == nil && $0.trashedAt != nil }))) ?? 0
+        return (live, trashed)
+    }
+
+    private var files: (live: Int, trashed: Int, byFolder: [UUID: Int]) {
+        _ = fileChanges
+        return Self.fileCounts(in: context)
+    }
+
+    /// Files kept in folders: how many are live and in Recently Deleted, and how many live ones each
+    /// folder holds. Counted by the store; only when there are files are their folders looked up,
+    /// so a library without folder files pays for two counts.
+    static func fileCounts(in context: ModelContext) -> (live: Int, trashed: Int, byFolder: [UUID: Int]) {
+        let liveFile = #Predicate<Attachment> { (f: Attachment) -> Bool in f.folderID != nil && f.deletedAt == nil && f.trashedAt == nil }
+        let trashedFile = #Predicate<Attachment> { (f: Attachment) -> Bool in f.folderID != nil && f.deletedAt == nil && f.trashedAt != nil }
+        let live = (try? context.fetchCount(FetchDescriptor<Attachment>(predicate: liveFile))) ?? 0
+        let trashed = (try? context.fetchCount(FetchDescriptor<Attachment>(predicate: trashedFile))) ?? 0
+        guard live > 0 else { return (0, trashed, [:]) }
+        var d = FetchDescriptor<Attachment>(predicate: liveFile)
+        d.propertiesToFetch = [\Attachment.folderID]
+        var byFolder: [UUID: Int] = [:]
+        let found: [Attachment] = (try? context.fetch(d)) ?? []
+        for f in found { if let id = f.folderID { byFolder[id, default: 0] += 1 } }
+        return (live, trashed, byFolder)
     }
     private var roots: [Folder] { folders.filter { $0.parent == nil || $0.parent?.deletedAt != nil } }
 
     var body: some View {
-        List(selection: $scope) {
+        let counts = self.counts
+        let files = self.files
+        return List(selection: $scope) {
             Section {
                 // "All Notes" only earns its row once there's more than one folder.
                 if folders.count > 1 {
-                    row("All Notes", icon: "tray.full", count: live.count, files: folderFiles.filter { $0.trashedAt == nil }.count)
+                    row("All Notes", icon: "tray.full", count: counts.live, files: files.live)
                         .tag(Scope.all)
                         .accessibilityIdentifier("sidebar.all")
                 }
-                let files = fileCounts
                 ForEach(roots) { folder in
-                    FolderTree(folder: folder, files: files, dropTarget: $dropTarget, rename: startRename, newSub: startNewFolder, delete: deleteFolder)
+                    FolderTree(folder: folder, files: files.byFolder, dropTarget: dropTarget, targeted: folderTargeted, rename: startRename, newSub: startNewFolder, delete: deleteFolder)
+                        .equatable()
                 }
                 // Last in the same list, like Notes.
-                row("Recently Deleted", icon: "trash", count: trashed.count, files: folderFiles.filter { $0.trashedAt != nil }.count)
+                row("Recently Deleted", icon: "trash", count: counts.trashed, files: files.trashed)
                     .tag(Scope.trash)
                     .accessibilityIdentifier("sidebar.trash")
             } header: {
@@ -194,9 +234,9 @@ struct SidebarView: View {
             ToolbarItem(placement: .bottomBar) {
                 Menu {
                     Button("New Folder", systemImage: "folder.badge.plus") { startNewFolder(nil) }
-                    Button("Import Spreadsheet as Table", systemImage: "tablecells.badge.ellipsis") { importSheet?() }
+                    Button("Import Spreadsheet as Table", systemImage: "tablecells.badge.ellipsis") { imports?.spreadsheet() }
                     ForEach(ImportKind.allCases) { kind in
-                        Button(kind.title, systemImage: kind.symbol) { importFrom?(kind) }
+                        Button(kind.title, systemImage: kind.symbol) { imports?.from(kind) }
                     }
                 } label: {
                     Label("New Folder", systemImage: "folder.badge.plus")
@@ -284,6 +324,11 @@ struct SidebarView: View {
         if settled != scope { scope = settled }
     }
 
+    /// A drag is over a folder's row, or has left it.
+    private func folderTargeted(_ over: Bool, _ id: UUID) {
+        withAnimation(.snappy(duration: 0.18)) { dropTarget = over ? id : (dropTarget == id ? nil : dropTarget) }
+    }
+
     private func startRename(_ f: Folder) { nameDraft = f.name; renaming = f }
     private func startNewFolder(_ parent: Folder?) { nameDraft = ""; newFolderParent = .some(parent) }
 
@@ -312,17 +357,25 @@ struct SidebarView: View {
     }
 }
 
-/// A folder row with its sub-folders; accepts dropped notes and folders.
-private struct FolderTree: View {
+/// A folder row with its sub-folders; accepts dropped notes and folders. Its own equatable view:
+/// the sidebar is worked out again on every save, and each row then counted its folder's notes
+/// again; now a row updates when its folder, its notes or the drop target change.
+private struct FolderTree: View, @MainActor Equatable {
     @Environment(\.modelContext) private var context
     let folder: Folder
     /// Live files per folder, counted once for the whole tree.
     let files: [UUID: Int]
-    @Binding var dropTarget: UUID?
+    /// The folder a drag is over, if any.
+    let dropTarget: UUID?
+    let targeted: (Bool, UUID) -> Void
     let rename: (Folder) -> Void
     let newSub: (Folder) -> Void
     let delete: (Folder) -> Void
     @State private var expanded = true
+
+    static func == (a: FolderTree, b: FolderTree) -> Bool {
+        a.folder.id == b.folder.id && a.dropTarget == b.dropTarget && a.files == b.files
+    }
 
     var body: some View {
         if folder.liveChildren.isEmpty {
@@ -330,7 +383,8 @@ private struct FolderTree: View {
         } else {
             DisclosureGroup(isExpanded: $expanded) {
                 ForEach(folder.liveChildren) { child in
-                    FolderTree(folder: child, files: files, dropTarget: $dropTarget, rename: rename, newSub: newSub, delete: delete)
+                    FolderTree(folder: child, files: files, dropTarget: dropTarget, targeted: targeted, rename: rename, newSub: newSub, delete: delete)
+                        .equatable()
                 }
             } label: { label }
         }
@@ -357,9 +411,7 @@ private struct FolderTree: View {
         }
         // Notes, folders and files from inside the app, and files and folders from Finder, Mail or
         // Safari: they land in this folder.
-        .onDrop(of: [.paneItem, .fileURL], isTargeted: Binding(get: { dropTarget == folder.id }, set: { over in
-            withAnimation(.snappy(duration: 0.18)) { dropTarget = over ? folder.id : (dropTarget == folder.id ? nil : dropTarget) }
-        })) { providers in
+        .onDrop(of: [.paneItem, .fileURL], isTargeted: Binding(get: { dropTarget == folder.id }, set: { over in targeted(over, folder.id) })) { providers in
             DropLoader.load(providers) { items, urls in
                 var moved = false
                 for item in items {

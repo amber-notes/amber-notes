@@ -13,7 +13,9 @@ struct NoteListView: View {
     @State private var editMode: EditMode = .inactive
     #endif
 
-    @Query(sort: \Note.updatedAt, order: .reverse) private var notes: [Note]
+    /// Every note, fetched again only when a save adds or deletes one (see LibraryNotes).
+    @State private var library = LibraryNotes()
+    private var notes: [Note] { library.notes(in: context) }
     /// Files kept in folders on their own, listed with the notes.
     @Query(filter: #Predicate<Attachment> { $0.folderID != nil && $0.deletedAt == nil }) private var folderFiles: [Attachment]
     @State private var search = ""
@@ -25,9 +27,7 @@ struct NoteListView: View {
     @State private var collapsed: Set<String> = []
     /// Notes waiting for "Delete Forever" to be confirmed.
     @State private var pendingForever: Set<UUID>?
-    @FocusedValue(\.importAction) private var importNotes
-    @FocusedValue(\.importSheetAction) private var importSheet
-    @FocusedValue(\.importFromAction) private var importFrom
+    @Environment(\.importActions) private var imports
     @Environment(SetupStore.self) private var setup: SetupStore?
     @Environment(Backend.self) private var backend: Backend?
     @Environment(SyncEngine.self) private var sync: SyncEngine?
@@ -61,8 +61,13 @@ struct NoteListView: View {
         return settled && !whatsNew.held && !connecting && !sharingHowTo
     }
 
-    private var scoped: [Note] {
-        notes.filter { n in
+    /// Every note, last edited first; each date read once.
+    private var newestFirst: [Note] {
+        notes.map { ($0, $0.updatedAt) }.sorted { $0.1 > $1.1 }.map(\.0)
+    }
+
+    private func scoped(from all: [Note]) -> [Note] {
+        all.filter { n in
             guard n.deletedAt == nil else { return false }
             // Sub-notes live inside their parent, not in the list. (Few notes have a
             // parent, so looking each one up is cheaper than indexing every note.)
@@ -75,7 +80,10 @@ struct NoteListView: View {
         }
     }
 
-    private var filtered: [Note] { filtered(from: scoped) }
+    private var filtered: [Note] {
+        let all = newestFirst
+        return filtered(from: scoped(from: all), all: all)
+    }
 
     private var scopedFiles: [Attachment] {
         folderFiles.filter { f in
@@ -108,10 +116,11 @@ struct NoteListView: View {
         return notes == 0 ? f : n + ", " + f
     }
 
-    private func filtered(from scoped: [Note]) -> [Note] {
+    /// `all` is every note, newest first: sorted once and shared with `scoped`.
+    private func filtered(from scoped: [Note], all: [Note]) -> [Note] {
         let q = search.trimmingCharacters(in: .whitespaces)
         guard !q.isEmpty else { return scoped }
-        let base = scope == .trash ? scoped : notes.filter { $0.deletedAt == nil && $0.trashedAt == nil }
+        let base = scope == .trash ? scoped : all.filter { $0.deletedAt == nil && $0.trashedAt == nil }
         return base.filter { $0.body.localizedStandardContains(q) }
     }
 
@@ -125,8 +134,9 @@ struct NoteListView: View {
 
     var body: some View {
         // Worked out once per update and handed down: the list asks many times.
-        let scopedNotes = scoped
-        let visible = filtered(from: scopedNotes)
+        let all = newestFirst
+        let scopedNotes = scoped(from: all)
+        let visible = filtered(from: scopedNotes, all: all)
         let files = scopedFiles
         let visibleFiles = filteredFiles(from: files)
         let folders = context.allFolders().sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
@@ -208,25 +218,18 @@ struct NoteListView: View {
                     .listRowSeparator(.hidden)
                     .selectionDisabled()
             }
-            ForEach(DateBucket.sections(visible.map(ListItem.note) + visibleFiles.map(ListItem.file)), id: \.0) { section in
-                Section(isExpanded: Binding(
-                    get: { !collapsed.contains(section.0) },
-                    set: { open in withAnimation(.snappy(duration: 0.22)) { if open { collapsed.remove(section.0) } else { collapsed.insert(section.0) } } }
-                )) {
-                    ForEach(section.1) { item in
+            // Without files the notes go straight in: wrapping each one as a list item, and sorting
+            // them again as items, was about a third of each save with 5,000 notes.
+            if visibleFiles.isEmpty {
+                ForEach(DateBucket.sections(visible), id: \.0) { section in
+                    dateSection(section) { noteRow($0) }
+                }
+            } else {
+                ForEach(DateBucket.sections(visible.map(ListItem.note) + visibleFiles.map(ListItem.file)), id: \.0) { section in
+                    dateSection(section) { item in
                         switch item {
                         case .note(let note):
-                            // Its own equatable view: when one note changes, the others' rows (and their
-                            // drag and swipe setup) are left alone instead of rebuilt.
-                            ListRow(note: note, query: search, showFolder: scope == .all || !search.isEmpty,
-                                    dragWith: dragOthers(for: note), selectedCount: selection.count,
-                                    togglePin: { withAnimation(.snappy) { context.togglePin(note) } },
-                                    remove: { remove(note) })
-                                .equatable()
-                                .tag(note.id)
-                                #if os(iOS)
-                                .listRowBackground(Color(Palette.row))
-                                #endif
+                            noteRow(note)
                         case .file(let file):
                             FileListRow(file: file, query: search, showFolder: scope == .all || !search.isEmpty, remove: { remove([file.id]) })
                                 .tag(file.id)
@@ -235,22 +238,7 @@ struct NoteListView: View {
                                 #endif
                         }
                     }
-                } header: {
-                    // One step lighter than the display type: bold, in the warm ink.
-                    #if os(iOS)
-                    // The system's prominent header: large and bold, as in Notes.
-                    Text(section.0)
-                        .foregroundStyle(Color.ink)
-                    #else
-                    Text(section.0)
-                        .font(.title3.weight(.bold))
-                        .foregroundStyle(Color.ink)
-                        .textCase(nil)
-                    #endif
                 }
-                #if os(iOS)
-                .headerProminence(.increased)
-                #endif
             }
             #if os(iOS)
             // The count, quietly at the end of the list, as in Notes.
@@ -444,11 +432,11 @@ struct NoteListView: View {
                         .disabled(scope == .trash)
                         .accessibilityIdentifier("list.addFile")
                     Divider()
-                    Button("Import from Apple Notes…", systemImage: "square.and.arrow.down") { importNotes?() }
+                    Button("Import from Apple Notes…", systemImage: "square.and.arrow.down") { imports?.appleNotes() }
                     ForEach(ImportKind.allCases) { kind in
-                        Button(kind.menuTitle, systemImage: kind.symbol) { importFrom?(kind) }
+                        Button(kind.menuTitle, systemImage: kind.symbol) { imports?.from(kind) }
                     }
-                    Button("Import Spreadsheet as Table…", systemImage: "tablecells") { importSheet?() }
+                    Button("Import Spreadsheet as Table…", systemImage: "tablecells") { imports?.spreadsheet() }
                     Divider()
                     SettingsLink { Label("Settings…", systemImage: "gearshape") }
                 } label: {
@@ -460,6 +448,45 @@ struct NoteListView: View {
             }
             #endif
         }
+    }
+
+    /// One date's notes (and files), collapsible, under its heading.
+    private func dateSection<Item: Identifiable, Row: View>(_ section: (String, [Item]), @ViewBuilder row: @escaping (Item) -> Row) -> some View {
+        Section(isExpanded: Binding(
+            get: { !collapsed.contains(section.0) },
+            set: { open in withAnimation(.snappy(duration: 0.22)) { if open { collapsed.remove(section.0) } else { collapsed.insert(section.0) } } }
+        )) {
+            ForEach(section.1) { row($0) }
+        } header: {
+            // One step lighter than the display type: bold, in the warm ink.
+            #if os(iOS)
+            // The system's prominent header: large and bold, as in Notes.
+            Text(section.0)
+                .foregroundStyle(Color.ink)
+            #else
+            Text(section.0)
+                .font(.title3.weight(.bold))
+                .foregroundStyle(Color.ink)
+                .textCase(nil)
+            #endif
+        }
+        #if os(iOS)
+        .headerProminence(.increased)
+        #endif
+    }
+
+    private func noteRow(_ note: Note) -> some View {
+        // Its own equatable view: when one note changes, the others' rows (and their
+        // drag and swipe setup) are left alone instead of rebuilt.
+        ListRow(note: note, query: search, showFolder: scope == .all || !search.isEmpty,
+                dragWith: dragOthers(for: note), selectedCount: selection.count,
+                togglePin: { withAnimation(.snappy) { context.togglePin(note) } },
+                remove: { remove(note) })
+            .equatable()
+            .tag(note.id)
+            #if os(iOS)
+            .listRowBackground(Color(Palette.row))
+            #endif
     }
 
     #if os(iOS)
@@ -484,7 +511,7 @@ struct NoteListView: View {
 
     private func setupCard(_ setup: SetupStore, _ progress: SetupProgress) -> some View {
         #if os(macOS)
-        let onImport: (() -> Void)? = { importNotes?() }
+        let onImport: (() -> Void)? = { imports?.appleNotes() }
         let onShareHowTo: (() -> Void)? = nil
         #else
         let onImport: (() -> Void)? = nil
@@ -494,7 +521,7 @@ struct NoteListView: View {
             progress: progress,
             celebrating: setup.showingCelebration,
             onImport: onImport,
-            onImportFrom: { kind in importFrom?(kind) },
+            onImportFrom: { kind in imports?.from(kind) },
             onStartFresh: { Task { await setup.mark("imported") } },
             onConnect: { connecting = true },
             onShareHowTo: onShareHowTo,
@@ -735,6 +762,45 @@ struct NoteListView: View {
                 }
             }
         }
+    }
+}
+
+/// Every note in the library, for the list. A query of every note fetched and wrapped all of them
+/// again after any change at all: each save while you type, and again when sync marks the note
+/// sent (with 2,000 notes about half of each save's time). Here they're fetched when the list
+/// first shows and again only when a save adds or deletes notes. Everything else the list shows
+/// (dates, folders, trash, pins) it reads from the notes themselves, so those changes still update
+/// it, through observation.
+@MainActor @Observable
+final class LibraryNotes {
+    /// Goes up with each new fetch; reading it is what updates the list.
+    private var generation = 0
+    @ObservationIgnored private var all: [Note] = []
+    @ObservationIgnored private weak var context: ModelContext?
+    @ObservationIgnored private var observer: NSObjectProtocol?
+
+    func notes(in context: ModelContext) -> [Note] {
+        if self.context !== context { start(context) }
+        _ = generation
+        return all
+    }
+
+    private func start(_ context: ModelContext) {
+        self.context = context
+        all = (try? context.fetch(FetchDescriptor<Note>())) ?? []
+        if let observer { NotificationCenter.default.removeObserver(observer) }
+        observer = NotificationCenter.default.addObserver(forName: ModelContext.didSave, object: context, queue: nil) { [weak self] n in
+            let keys = [ModelContext.NotificationKey.insertedIdentifiers, .deletedIdentifiers].map(\.rawValue)
+            let changed = keys.contains { !((n.userInfo?[$0] as? [PersistentIdentifier]) ?? []).isEmpty }
+            guard changed else { return }
+            MainActor.assumeIsolated { self?.refetch() }
+        }
+    }
+
+    private func refetch() {
+        guard let context else { return }
+        all = (try? context.fetch(FetchDescriptor<Note>())) ?? []
+        generation += 1
     }
 }
 

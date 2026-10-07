@@ -53,6 +53,8 @@ struct NoteDetailView: View {
     @State private var titleAtOpen: String?
     /// Notes that link here.
     @State private var backlinks: [Note] = []
+    /// The wiki index's generation when they were last looked for.
+    @State private var linksGeneration = -1
     /// Note pages (prototype): Page or Text, when the note has a page.
     @State private var mode: NoteMode = NoteDetailView.startMode
     /// Which side a note with an app opens on (Mac shots photograph both).
@@ -108,9 +110,9 @@ struct NoteDetailView: View {
                     createLinkedNote(name)
                 }
             }
-            .onReceive(NotificationCenter.default.publisher(for: ModelContext.didSave)) { _ in
-                WikiDirectory.invalidate()
-                refreshLinks()
+            .onReceive(NotificationCenter.default.publisher(for: ModelContext.didSave, object: context)) { saved in
+                WikiDirectory.take(saved)
+                refreshLinks(after: saved)
             }
             .shareLinkChrome(shareLinks, note: note)
             .focusedSceneValue(\.showHistoryAction, { if !note.isLocked { showHistory = true } })
@@ -797,6 +799,22 @@ struct NoteDetailView: View {
     private func refreshLinks() {
         controller.wiki = WikiDirectory.scope(for: note, in: context)
         backlinks = note.isLocked ? [] : context.backlinks(to: note)
+        linksGeneration = WikiDirectory.generation
+    }
+
+    /// After a save, "Linked from" is looked for again only if the save could have changed it: a
+    /// title or folder changed, a note was deleted for good, or a note it changed links here or did.
+    /// Most saves are this note being typed in.
+    private func refreshLinks(after saved: Notification) {
+        let link = "pane-note:\(note.id.uuidString.lowercased())"
+        let mayLink: (Note) -> Bool = { other in
+            other.id != note.id && (backlinks.contains { $0.id == other.id } || other.body.contains("[[") || other.body.contains(link))
+        }
+        guard WikiDirectory.generation == linksGeneration, let changes = context.savedNotes(saved), !changes.notes.contains(where: mayLink) else {
+            refreshLinks()
+            return
+        }
+        controller.wiki = WikiDirectory.scope(for: note, in: context)
     }
 
     /// A wiki link was tapped: open its note, or offer to make it, as Obsidian does.
