@@ -17,7 +17,8 @@
 #   scripts/staging.sh dev-app [--wait]
 #                                      build Amber Notes Beta for this Mac from origin/dev and install it
 #                                      as /Applications/Amber Notes Beta.app (never opens it). If it's
-#                                      running, it stops before replacing it; --wait waits for it to quit
+#                                      running, it stops before replacing it; --wait waits for it to quit.
+#                                      DEV_APP_REF=origin/<branch> builds a branch instead (a PR to try)
 #   scripts/staging.sh all             db, functions, secrets, auth, app-config and web, in order
 #   scripts/staging.sh status          what's where
 #
@@ -277,9 +278,10 @@ cmd_dev_app() {
   local wait=${1:-}
   local tree="$ROOT/../AmberNotes-devapp" dest="/Applications/Amber Notes Beta.app"
   [[ -f $ROOT/Config/Backend.staging.local.xcconfig ]] || cmd_app_config
-  git -C "$ROOT" fetch -q origin dev
-  [[ -d $tree ]] || git -C "$ROOT" worktree add -q --detach "$tree" origin/dev
-  git -C "$tree" checkout -q -f --detach origin/dev
+  local ref=${DEV_APP_REF:-origin/dev}
+  git -C "$ROOT" fetch -q origin
+  [[ -d $tree ]] || git -C "$ROOT" worktree add -q --detach "$tree" "$ref"
+  git -C "$tree" checkout -q -f --detach "$ref"
   cp "$ROOT/Config/Backend.staging.local.xcconfig" "$tree/Config/"
   local commit; commit=$(git -C "$tree" rev-parse --short HEAD)
   local build; build=$(date +%y%m%d%H%M)
@@ -288,7 +290,7 @@ cmd_dev_app() {
   mkdir -p "$tree/build"
   (cd "$tree" && xcodegen generate >/dev/null)
   rm -rf "$app"
-  echo "→ Building Amber Notes Beta $build from dev $commit"
+  echo "→ Building Amber Notes Beta $build from ${ref#origin/} $commit"
   DEVELOPER_DIR=${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer} nice -n 10 xcodebuild \
     -project "$tree/Pane.xcodeproj" -scheme Pane -configuration Release -destination 'platform=macOS' \
     -derivedDataPath "$dd" -xcconfig "$tree/Config/Beta.xcconfig" \
@@ -316,7 +318,7 @@ cmd_dev_app() {
   fi
   rm -rf "$dest"
   ditto "$app" "$dest"
-  echo "✓ Installed $dest: build $build from dev $commit ($(codesign -dvv "$dest" 2>&1 | sed -n 's/^Authority=//p' | head -1)). Not opened."
+  echo "✓ Installed $dest: build $build from ${ref#origin/} $commit ($(codesign -dvv "$dest" 2>&1 | sed -n 's/^Authority=//p' | head -1)). Not opened."
 }
 
 cmd_status() {
