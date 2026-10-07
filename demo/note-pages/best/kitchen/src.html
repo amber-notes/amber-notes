@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="app-settings" content='{"settings":[{"key":"servings","label":"Usual servings","type":"number","default":2,"help":"For dinners you plan from here."},{"key":"pantry","label":"Always at home","type":"list","default":["salt","pepper","olive oil"],"help":"Left off the shopping list."},{"key":"groupAisles","label":"Group the list by aisle","type":"toggle","default":true}]}'>
+<title>Kitchen</title>
+<style>
+/*KIT_CSS*/
+:root { --serif: "New York", ui-serif, Georgia, serif; }
+.tile { position: relative; overflow: hidden; background: var(--g); color: #fff; display: flex; flex-direction: column; justify-content: flex-end; }
+.tile img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.tile .shade { position: absolute; inset: 0; background: linear-gradient(180deg, transparent 30%, rgba(20,10,0,.78)); }
+.tile b, .tile h2, .tile h3, .tile .k, .tile .m, .tile p, .tile span:not(.mono) { text-shadow: 0 1px 10px rgba(0,0,0,.45); }
+.tile .mono { position: absolute; right: -.08em; top: -.18em; font-family: var(--serif); font-size: 7rem; line-height: 1; opacity: .16; font-weight: 700; pointer-events: none; }
+
+.tonight { border-radius: var(--amber-radius); min-height: 15rem; padding: 1.1rem 1.2rem; box-shadow: var(--shadow); }
+.tonight > * { position: relative; }
+.tonight .k { font-size: .78rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; opacity: .85; }
+.tonight h2 { font-family: var(--serif); font-size: 1.9rem; line-height: 1.1; margin: .25rem 0 .35rem; font-weight: 600; }
+.tonight .m { font-size: .88rem; opacity: .9; display: flex; gap: .8rem; }
+.tonight .row2 { display: flex; gap: .5rem; margin-top: .9rem; }
+.tonight .btn { background: #fff; color: #2A1D10; }
+.tonight .btn.ghost { background: rgba(255,255,255,.2); color: #fff; }
+
+.week .row { min-height: 3.4rem; }
+.week .dd { width: 2.9rem; flex: none; line-height: 1.05; }
+.week .dd b { display: block; font-size: .95rem; }
+.week .dd span { font-size: .72rem; color: var(--amber-text-secondary); font-weight: 600; }
+.week .today .dd b { color: var(--amber-accent-text); }
+.week .dish { font-weight: 600; }
+.week .plan { color: var(--amber-text-secondary); font-weight: 500; }
+.week .sv { font-size: .78rem; color: var(--amber-text-secondary); }
+.week .sw { width: 2.4rem; height: 2.4rem; border-radius: .6rem; background: var(--g); flex: none; overflow: hidden; }
+.week .sw img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.week .sw.none { background: var(--amber-fill); }
+.mk { display: flex; gap: .6rem; align-items: center; margin-top: .8rem; }
+
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .7rem; }
+.rc { border: 0; padding: 0; text-align: left; border-radius: var(--amber-radius); aspect-ratio: 1 / 1.08; padding: .8rem; box-shadow: var(--shadow); font: inherit; transition: transform .2s var(--ease-out); }
+.rc:active { transform: scale(.97); }
+.rc b { position: relative; font-family: var(--serif); font-size: 1.08rem; line-height: 1.15; font-weight: 600; }
+.rc span { position: relative; font-size: .76rem; opacity: .9; margin-top: .2rem; }
+
+.groc .aisle { font-size: .74rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--amber-text-secondary); padding: .8rem 1rem .2rem; }
+.item { cursor: pointer; }
+.item .box { width: 1.5rem; height: 1.5rem; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--amber-text-secondary) 45%, transparent); display: grid; place-items: center; flex: none; color: var(--amber-on-accent); transition: background .2s, border-color .2s; }
+.item .box svg { width: .9rem; height: .9rem; stroke-width: 3.2; opacity: 0; }
+.item[aria-checked="true"] .box { background: var(--amber-accent); border-color: var(--amber-accent); }
+.item[aria-checked="true"] .box svg { opacity: 1; }
+.item[aria-checked="true"] .txt { color: var(--amber-text-secondary); text-decoration: line-through; }
+.gh { display: flex; align-items: center; gap: .6rem; padding: .9rem 1rem .3rem; }
+.gh b { font-size: 1.05rem; }
+.bar2 { height: .35rem; border-radius: 99px; background: var(--amber-fill); margin: .2rem 1rem .4rem; overflow: hidden; }
+.bar2 b { display: block; height: 100%; background: var(--amber-accent); border-radius: 99px; transition: width .5s var(--ease-out); }
+
+/* Sheets */
+.hero2 { border-radius: var(--amber-radius); min-height: 12rem; padding: 1rem; margin-bottom: 1rem; }
+.hero2 h3 { position: relative; font-family: var(--serif); font-size: 1.5rem; line-height: 1.1; }
+.hero2 p { position: relative; font-size: .85rem; opacity: .9; margin-top: .3rem; }
+.scale { display: flex; align-items: center; gap: .7rem; margin-bottom: .8rem; }
+.scale .grow { font-weight: 600; }
+.ing .row { font-size: .95rem; min-height: 2.5rem; }
+.ing .q { width: 5rem; flex: none; font-weight: 600; font-variant-numeric: tabular-nums; }
+.steps { counter-reset: s; display: grid; gap: .7rem; margin-top: .4rem; }
+.steps li { list-style: none; display: grid; grid-template-columns: 1.8rem 1fr; gap: .6rem; font-size: 1rem; line-height: 1.4; }
+.steps li::before { counter-increment: s; content: counter(s); width: 1.6rem; height: 1.6rem; border-radius: 50%; background: var(--amber-accent-soft); color: var(--amber-accent-text); font-weight: 800; font-size: .8rem; display: grid; place-items: center; }
+.tmr { border: 0; background: var(--amber-accent-soft); color: var(--amber-accent-text); font: inherit; font-weight: 700; border-radius: 99px; padding: 0 .5rem; display: inline-flex; align-items: center; gap: .2rem; min-height: 1.7rem; }
+.tmr svg { width: .9rem; height: .9rem; }
+.tmr.run { background: var(--amber-accent); color: var(--amber-on-accent); }
+.cook .big { font-family: var(--serif); font-size: 1.45rem; line-height: 1.35; min-height: 8rem; margin: .4rem 0 1rem; }
+.cook .stepn { font-size: .8rem; font-weight: 700; color: var(--amber-text-secondary); text-transform: uppercase; letter-spacing: .04em; }
+.cook .dots3 { display: flex; gap: .3rem; margin-bottom: 1rem; }
+.cook .dots3 i { flex: 1; height: .25rem; border-radius: 99px; background: var(--amber-fill); }
+.cook .dots3 i.on { background: var(--amber-accent); }
+.pick .row { min-height: 3rem; }
+.pick .sw { width: 2.4rem; height: 2.4rem; border-radius: .6rem; background: var(--g); flex: none; display: grid; place-items: center; color: #fff; font-family: var(--serif); font-weight: 700; }
+.preview .aisle { font-size: .72rem; font-weight: 700; text-transform: uppercase; color: var(--amber-text-secondary); padding: .6rem 1rem .1rem; letter-spacing: .04em; }
+.preview label.row { min-height: 2.6rem; font-size: .95rem; cursor: pointer; }
+.preview input { width: 1.2rem; height: 1.2rem; accent-color: var(--amber-accent); }
+.preview .for { font-size: .74rem; color: var(--amber-text-secondary); }
+@media (min-width: 600px) { .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 900px) { .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } .tonight { min-height: 14rem; } .tonight h2 { font-size: 2.3rem; } }
+</style>
+</head>
+<body>
+<main id="app" aria-live="polite"></main>
+<script>
+/*KIT_JS*/
+const { esc, ico, D, num, col, sheet, announce } = Kit;
+const S = { get: () => { const s = Kit.settings(); return { servings: Number(s.servings) || 2, pantry: (Array.isArray(s.pantry) ? s.pantry : String(s.pantry || "").split(",")).join(","), groupAisles: Kit.on(s.groupAisles) }; } };
+const hue = (s) => [...s].reduce((a, ch) => (a * 29 + ch.charCodeAt(0)) % 360, 23);
+const grad = (name) => { const h = (hue(name) % 70) + 5; return `linear-gradient(150deg, hsl(${h} 62% 52%), hsl(${(h + 330) % 360} 55% 34%))`; };
+const photo = (r, w) => r.photo ? (typeof r.photo === "string" ? r.photo : amber.files.url(r.photo, { width: w || 600 })) : "";
+const art = (r) => r.photo ? `<img src="${photo(r)}" alt="">` : `<span class="mono" aria-hidden="true">${esc(r.name[0])}</span>`;
+const recipes = () => (amber.data.collections.recipes || []);
+const byName = (n) => recipes().find((r) => r.name.toLowerCase() === String(n).trim().toLowerCase());
+const fmtQ = (q) => { if (!q) return ""; const w = Math.floor(q + 1e-9), f = Math.round((q - w) * 100) / 100; const fr = { 0.25: "¼", 0.5: "½", 0.75: "¾" }[f]; return f === 0 ? String(w) : fr ? (w ? w : "") + fr : String(Math.round(q * 10) / 10).replace(".", ","); };
+const qty = (i, k) => { const q = i.qty * k; const nice = i.unit === "g" ? Math.round(q / 5) * 5 : i.unit === "" ? Math.ceil(q * 2) / 2 : Math.round(q * 4) / 4; return `${fmtQ(nice)}${i.unit ? " " + i.unit : ""}`.trim(); };
+
+function model(note) {
+  const t = Kit.table(note, /^(day|date)$/i, /^(dinner|meal|recipe)$/i);
+  const c = t && { day: col(t, /^(day|date)$/i), dish: col(t, /^(dinner|meal|recipe)$/i), sv: col(t, /^servings?$/i) };
+  const plan = t ? t.rows.map((r, i) => ({ i, day: r[c.day].trim(), dish: r[c.dish].trim(), servings: c.sv >= 0 ? parseInt(r[c.sv]) || 0 : 0 })).filter((p) => D.parse(p.day)) : [];
+  const lines = note.markdown.split("\n");
+  let h = -1; lines.forEach((l, k) => { if (/^#{1,6}\s+(groceries|shopping)/i.test(l)) h = k; });
+  let end = lines.length; if (h >= 0) for (let k = h + 1; k < lines.length; k++) if (/^#{1,2}\s/.test(lines[k])) { end = k; break; }
+  const groc = note.checklists.filter((x) => h < 0 || (x.line - 1 > h && x.line - 1 < end));
+  // The aisle of each item: the ### heading above it, if any.
+  for (const g of groc) { for (let k = g.line - 2; k > h; k--) { const m = /^###\s+(.*)/.exec(lines[k]); if (m) { g.aisle = m[1].trim(); break; } } }
+  return { t, c, plan, groc, grocHeading: h >= 0 ? lines[h].replace(/^#+\s*/, "") : null };
+}
+
+function screens(note) {
+  const app = document.getElementById("app");
+  const m = model(note), today = note.today;
+  const tonight = m.plan.find((p) => p.day === today);
+  const tr = tonight && byName(tonight.dish);
+  const upcoming = m.plan.filter((p) => p.day >= today);
+  const planned = upcoming.filter((p) => p.dish).length;
+  const done = m.groc.filter((g) => g.checked).length;
+  const aisles = [...new Set(m.groc.map((g) => g.aisle || ""))];
+  const next = m.plan.filter((p) => p.day > today && p.dish).slice(0, 3);
+  return {
+    tonight: `  <header class="top"><div class="titles"><h1>${esc(note.title)}</h1><div class="sub">${planned} ${planned === 1 ? "dinner" : "dinners"} planned${m.groc.length ? ` · ${m.groc.length - done} to buy` : ""}</div></div>
+    </header>
+      ${tr ? `<section class="tile tonight" style="--g:${grad(tr.name)}">${art(tr)}<div class="shade" style="background:linear-gradient(180deg, rgba(20,10,0,0) 15%, rgba(20,10,0,.8))"></div>
+        <div class="k">Tonight</div><h2>${esc(tr.name)}</h2><div class="m"><span>${tr.minutes} min</span><span>${tonight.servings || tr.servings} servings</span></div>
+        <div class="row2"><button class="btn" data-cook="${esc(tr.id)}" data-sv="${tonight.servings || tr.servings}">${ico("pot")} Start cooking</button><button class="btn ghost" data-recipe="${esc(tr.id)}">Recipe</button></div></section>`
+      : `<section class="card empty" style="padding:1.6rem">${ico("pot")}<h3>Nothing planned tonight</h3><p>Pick something from your recipes.</p>${m.t ? `<button class="btn primary" data-plan="${today}">Plan tonight</button>` : ""}</section>`}
+${next.length ? `<div class="label"><span class="grow">Coming up</span><button data-go="week">The week</button></div><section class="card list week">${next.map((p) => { const r = byName(p.dish); return `<button class="row" data-plan="${p.day}"><span class="dd"><b>${D.fmt(p.day, { weekday: "short" })}</b><span>${+p.day.slice(8)} ${D.fmt(p.day, { month: "short" })}</span></span><span class="sw" style="--g:${grad(p.dish)}">${r && r.photo ? `<img src="${photo(r, 120)}" alt="">` : ""}</span><span class="grow"><span class="dish ellipsis" style="display:block">${esc(p.dish)}</span><span class="sv">${r ? `${r.minutes} min · ` : ""}${p.servings || "?"} servings</span></span>${ico("chevron", 'class="chev"')}</button>`; }).join("")}</section>` : ""}`,
+    week: `<header class="top"><div class="titles"><h1>This week</h1><div class="sub">${planned} ${planned === 1 ? "dinner" : "dinners"} planned</div></div></header>      ${m.t ? `<section class="card list week">${m.plan.filter((p) => p.day >= D.add(today, -1)).map((p) => { const r = byName(p.dish); return `<button class="row ${p.day === today ? "today" : ""}" data-plan="${p.day}">
+          <span class="dd"><b>${D.fmt(p.day, { weekday: "short" })}</b><span>${+p.day.slice(8)} ${D.fmt(p.day, { month: "short" })}</span></span><span class="sw ${p.dish ? "" : "none"}" style="--g:${p.dish ? grad(p.dish) : ""}">${r && r.photo ? `<img src="${photo(r, 120)}" alt="">` : ""}</span>
+          <span class="grow">${p.dish ? `<span class="dish ellipsis" style="display:block">${esc(p.dish)}</span><span class="sv">${r ? `${r.minutes} min · ` : ""}${p.servings || "?"} servings</span>` : `<span class="plan">Plan something</span>`}</span>${ico("chevron", 'class="chev"')}</button>`; }).join("")}</section>
+        <div class="mk"><button class="btn primary" id="make">${ico("cart")} Make grocery list</button><span class="muted small">From the dinners ahead</span></div>`
+      : `<div class="card empty"><p>Add a table with Day, Dinner and Servings under a "This week" heading to plan dinners.</p></div>`}
+`,
+    groc: `<header class="top"><div class="titles"><h1>Groceries</h1><div class="sub">${m.groc.length - done} to buy</div></div>${done ? `<button class="btn plain" id="clear">Clear ${done} bought</button>` : ""}</header>      <section class="card groc">${m.groc.length ? `<div class="gh"><b class="num">${done} of ${m.groc.length}</b><span class="muted small">in the basket</span></div><div class="bar2"><b style="width:${(done / m.groc.length) * 100}%"></b></div>
+        ${aisles.map((a) => `${a ? `<div class="aisle">${esc(a)}</div>` : ""}<div class="list">${m.groc.filter((g) => (g.aisle || "") === a).map((g) => `<div class="row item" role="checkbox" tabindex="0" aria-checked="${g.checked}" data-line="${g.line}"><span class="box">${ico("check")}</span><span class="txt grow">${esc(g.text)}</span></div>`).join("")}</div>`).join("")}`
+        : `<div class="empty" style="padding:1.4rem"><p style="margin:0">The list is empty. Make one from the week's dinners.</p></div>`}</section>
+`,
+    recipes: `<header class="top"><div class="titles"><h1>Recipes</h1><div class="sub">${recipes().length} recipes</div></div><button class="round accent" id="newr" aria-label="New recipe">${ico("plus")}</button></header>  <section class="grid">${recipes().map((r) => `<button class="tile rc" style="--g:${grad(r.name)}" data-recipe="${esc(r.id)}">${art(r)}<div class="shade"></div><b>${esc(r.name)}</b><span>${r.minutes} min · ${esc((r.tags || []).join(", "))}</span></button>`).join("")}</section>`,
+  };
+}
+
+let shell = null;
+function render(note = amber.note) {
+  if (!shell) shell = Kit.app({
+    tabs: [{ id: "tonight", label: "Tonight", icon: "pot" }, { id: "week", label: "Week", icon: "calendar" },
+      { id: "groc", label: "Groceries", icon: "cart", badge: (n) => model(n).groc.filter((g) => !g.checked).length || "" }, { id: "recipes", label: "Recipes", icon: "grid" }],
+    screen: (t, n) => screens(n)[t],
+  });
+  shell.draw(note);
+}
+
+function ingredientsHTML(r, k) {
+  return `<div class="card list ing">${r.ingredients.map((i) => `<div class="row"><span class="q">${esc(qty(i, k))}</span><span class="grow">${esc(i.item)}</span></div>`).join("")}</div>`;
+}
+// "for 9 minutes" in a step becomes a timer you can start.
+const withTimers = (s) => esc(s).replace(/(\d+)\s*(minutes?|min)\b/g, (x, n) => `<button class="tmr" data-timer="${n}" aria-label="Start a ${n} minute timer">${ico("timer")}${n} min</button>`);
+
+function recipeSheet(id) {
+  const r = recipes().find((x) => x.id === id); if (!r) return;
+  let sv = r.servings;
+  const body = () => `<div class="tile hero2" style="--g:${grad(r.name)}">${art(r)}<div class="shade"></div><h3>${esc(r.name)}</h3><p>${r.minutes} min · ${esc((r.tags || []).join(", "))}</p></div>
+    <div class="scale"><span class="grow">Servings</span><button class="round" data-sv="-1" aria-label="Fewer servings">−</button><b class="num" aria-live="polite">${sv}</b><button class="round" data-sv="1" aria-label="More servings">+</button></div>
+    ${ingredientsHTML(r, sv / r.servings)}
+    <div class="label">Method</div><ol class="steps" style="padding:0;margin:0">${r.steps.map((s) => `<li><span>${withTimers(s)}</span></li>`).join("")}</ol>
+    <div class="fields two" style="margin-top:1.2rem"><button class="btn tint" data-addplan="${esc(r.id)}">${ico("calendar")} Add to the week</button><button class="btn primary" data-cook="${esc(r.id)}" data-sv="${sv}">${ico("pot")} Cook</button></div>`;
+  sheet("Recipe", body(), {
+    mount(root, close) {
+      root.addEventListener("click", (e) => {
+        const b = e.target.closest("[data-sv]:not([data-cook])"); if (b) { sv = Math.max(1, Math.min(12, sv + Number(b.dataset.sv))); root.innerHTML = body(); return; }
+        const c = e.target.closest("[data-cook]"); if (c) { close(); setTimeout(() => cook(r.id, sv), 360); return; }
+        const a = e.target.closest("[data-addplan]"); if (a) { close(); setTimeout(() => dayPicker(r), 360); }
+      });
+    },
+  });
+}
+
+function dayPicker(r) {
+  const m = model(amber.note), today = amber.note.today;
+  const days = m.plan.filter((p) => p.day >= today);
+  sheet(`When?`, `<div class="card list pick">${days.map((p) => `<button class="row" data-d="${p.day}"><span class="grow"><b>${D.rel(p.day, today)}</b><div class="small muted">${p.dish ? esc(p.dish) : "Nothing yet"}</div></span>${ico("chevron", 'class="chev"')}</button>`).join("")}</div>`, {
+    mount(root, close) { root.addEventListener("click", async (e) => { const b = e.target.closest("[data-d]"); if (!b) return; await setDinner(b.dataset.d, r.name, r.servings); close(); }); },
+  });
+}
+
+async function setDinner(day, dish, servings) {
+  const m = model(amber.note); const p = m.plan.find((x) => x.day === day);
+  const name = (k) => m.t.columns[m.c[k]].name;
+  if (p) {
+    let r = await amber.update({ op: "set_cell", table: m.t.index, row: p.i, col: name("dish"), value: dish });
+    if (r.ok && m.c.sv >= 0) r = await amber.update({ op: "set_cell", table: m.t.index, row: p.i, col: name("sv"), value: dish ? String(servings || S.get().servings) : "" });
+    return r;
+  }
+  return amber.update({ op: "append_row", table: m.t.index, values: { [name("day")]: day, [name("dish")]: dish, ...(m.c.sv >= 0 ? { [name("sv")]: String(servings || S.get().servings) } : {}) } });
+}
+
+function planSheet(day) {
+  const m = model(amber.note), p = m.plan.find((x) => x.day === day);
+  sheet(D.fmt(day, { weekday: "long", day: "numeric", month: "long" }), `<div class="card list pick">${recipes().map((r) => `<button class="row" data-pick="${esc(r.id)}"><span class="sw" style="--g:${grad(r.name)}">${r.photo ? `<img src="${photo(r, 120)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">` : esc(r.name[0])}</span><span class="grow"><b style="font-weight:600">${esc(r.name)}</b><div class="small muted">${r.minutes} min · ${esc((r.tags || []).join(", "))}</div></span>${p && p.dish === r.name ? ico("check", 'style="width:1.1rem;color:var(--amber-accent-text)"') : ""}</button>`).join("")}</div>
+    ${p && p.dish ? `<button class="btn danger block" id="clearday" style="margin-top:.6rem">Clear this day</button>` : ""}`, {
+    mount(root, close) {
+      root.addEventListener("click", async (e) => {
+        const b = e.target.closest("[data-pick]");
+        if (b) { const r = recipes().find((x) => x.id === b.dataset.pick); await setDinner(day, r.name, r.servings > 2 && S.get().servings <= 2 ? S.get().servings : r.servings); close(); }
+        if (e.target.closest("#clearday")) { await setDinner(day, "", 0); close(); }
+      });
+    },
+  });
+}
+
+// The list: every ingredient of the dinners ahead, scaled to their servings, added up, minus the pantry.
+function groceryList() {
+  const m = model(amber.note), today = amber.note.today;
+  const pantry = S.get().pantry.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
+  const need = new Map();
+  for (const p of m.plan.filter((x) => x.day >= today && x.dish)) {
+    const r = byName(p.dish); if (!r) continue;
+    const k = (p.servings || r.servings) / r.servings;
+    for (const i of r.ingredients) {
+      if (pantry.some((x) => i.item.toLowerCase() === x || i.item.toLowerCase().startsWith(x + " "))) continue;
+      const id = `${i.item.toLowerCase().replace(/(es|s)$/, "")}|${i.unit}`;
+      const e = need.get(id) || { ...i, qty: 0, for: [] };
+      e.qty += i.qty * k; if (!e.for.includes(r.name)) e.for.push(r.name);
+      need.set(id, e);
+    }
+  }
+  const have = new Set(m.groc.filter((g) => !g.checked).map((g) => g.text.toLowerCase()));
+  const items = [...need.values()].map((e) => ({ ...e, text: `${e.qty ? qty(e, 1) + " " : ""}${e.item}`, use: true })).sort((a, b) => (a.aisle || "").localeCompare(b.aisle || "") || a.item.localeCompare(b.item));
+  const keep = m.groc.filter((g) => !g.checked && !items.some((i) => i.text.toLowerCase() === g.text.toLowerCase()));
+  const draw = () => { const aisles = [...new Set(items.map((i) => i.aisle || "Other"))]; return `<p class="muted small" style="margin:0 .2rem .7rem">${items.length} things for ${m.plan.filter((x) => x.day >= today && x.dish).length} dinners. Untick what you already have.</p>
+    <div class="card preview">${aisles.map((a) => `<div class="aisle">${esc(a)}</div><div class="list">${items.map((it, k) => (it.aisle || "Other") === a ? `<label class="row"><input type="checkbox" data-k="${k}" ${it.use ? "checked" : ""}><span class="grow">${esc(it.text)}<div class="for">${esc(it.for.join(", "))}</div></span></label>` : "").join("")}</div>`).join("")}</div>
+    ${keep.length ? `<p class="muted small" style="margin:.7rem .2rem 0">Also kept on the list: ${esc(keep.map((g) => g.text).join(", "))}.</p>` : ""}
+    <div class="sheet-foot"><div class="err" id="err" role="alert"></div><button class="btn primary block" id="write">${ico("cart")} Put it in the note</button></div>`; };
+  sheet("Grocery list", draw(), {
+    mount(root, close) {
+      root.addEventListener("change", (e) => { const c = e.target.closest("[data-k]"); if (c) items[+c.dataset.k].use = c.checked; });
+      root.addEventListener("click", async (e) => {
+        if (!e.target.closest("#write")) return;
+        const use = items.filter((i) => i.use);
+        const group = S.get().groupAisles;
+        let text = "";
+        if (group) {
+          const aisles = [...new Set(use.map((i) => i.aisle || "Other"))];
+          text = (keep.length ? keep.map((g) => `- [ ] ${g.text}`).join("\n") + "\n\n" : "") + aisles.map((a) => `### ${a}\n` + use.filter((i) => (i.aisle || "Other") === a).map((i) => `- [ ] ${i.text}`).join("\n")).join("\n\n");
+        } else text = [...keep.map((g) => g.text), ...use.map((i) => i.text)].map((t) => `- [ ] ${t}`).join("\n");
+        let r = await amber.update({ op: "set_text", heading: m.grocHeading || "Groceries", text: "\n" + text });
+        if (!r.ok) { root.querySelector("#err").textContent = "Add a heading named Groceries to the note, and the list goes under it."; return; }
+        close(); shell.tab = "groc"; announce(`${use.length} things on the list.`);
+      });
+    },
+  });
+}
+
+async function clearBought() {
+  const m = model(amber.note);
+  const lines = amber.note.markdown.split("\n");
+  const h = lines.findIndex((l) => /^#{1,6}\s+(groceries|shopping)/i.test(l)); if (h < 0) return;
+  let end = lines.length; for (let k = h + 1; k < lines.length; k++) if (/^#{1,2}\s/.test(lines[k])) { end = k; break; }
+  const bought = new Set(m.groc.filter((g) => g.checked).map((g) => g.line - 1));
+  let sec = lines.slice(h + 1, end).filter((_, k) => !bought.has(h + 1 + k));
+  // A heading left with nothing under it goes too.
+  sec = sec.filter((l, k) => !/^###\s/.test(l) || sec.slice(k + 1).find((x) => x.trim() && !/^###\s/.test(x)) && !/^###\s/.test(sec.slice(k + 1).find((x) => x.trim()) || "###"));
+  await amber.update({ op: "set_text", heading: lines[h].replace(/^#+\s*/, ""), text: sec.join("\n") });
+}
+
+// Cooking: one step at a time, big, with the screen's timers turned into real notifications.
+function cook(id, sv) {
+  const r = recipes().find((x) => x.id === id); let n = 0;
+  const body = () => `<div class="cook"><div class="dots3">${r.steps.map((_, k) => `<i class="${k <= n ? "on" : ""}"></i>`).join("")}</div>
+    ${n === 0 ? `<div class="label" style="margin-top:0">You need, for ${sv}</div>${ingredientsHTML(r, sv / r.servings)}<div style="height:1rem"></div>` : ""}
+    <div class="stepn">Step ${n + 1} of ${r.steps.length}</div><p class="big">${withTimers(r.steps[n])}</p>
+    <div class="sheet-foot fields two"><button class="btn" data-step="-1" ${n ? "" : "disabled"}>Back</button><button class="btn primary" data-step="1">${n === r.steps.length - 1 ? "Done" : "Next"}</button></div></div>`;
+  sheet(r.name, body(), {
+    wide: true,
+    mount(root, close) {
+      root.addEventListener("click", (e) => {
+        const b = e.target.closest("[data-step]"); if (!b) return;
+        if (+b.dataset.step > 0 && n === r.steps.length - 1) { close(); announce("Enjoy."); return; }
+        n = Math.max(0, Math.min(r.steps.length - 1, n + Number(b.dataset.step))); root.innerHTML = body();
+      });
+    },
+  });
+}
+
+async function timer(btn) {
+  const mins = +btn.dataset.timer;
+  if (btn.classList.contains("run")) return;
+  const r = await amber.device.notify({ title: "Timer done", body: `${mins} minutes are up.`, in: mins * 60 });
+  if (!r.ok) { announce(r.error); return; }
+  btn.classList.add("run");
+  const end = Date.now() + mins * 60000;
+  const tick = () => { const s = Math.max(0, Math.round((end - Date.now()) / 1000)); btn.lastChild.textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; if (s > 0 && btn.isConnected) setTimeout(tick, 1000); else btn.classList.remove("run"); };
+  tick();
+}
+
+function newRecipe() {
+  sheet("New recipe", `<form id="nf" class="fields"><label class="field">Name<input id="rn" required autofocus maxlength="60"></label>
+    <div class="fields two"><label class="field">Minutes<input id="rm" inputmode="numeric" value="30"></label><label class="field">Servings<input id="rs" inputmode="numeric" value="${S.get().servings}"></label></div>
+    <label class="field">Ingredients, one a line<textarea id="ri" rows="5" placeholder="200 g spaghetti&#10;1 lemon&#10;50 g parmesan"></textarea></label>
+    <label class="field">Steps, one a line<textarea id="rt" rows="5"></textarea></label><button class="btn primary block">Save recipe</button></form>`, {
+    mount(root, close) {
+      root.querySelector("#nf").onsubmit = async (e) => {
+        e.preventDefault();
+        const ing = root.querySelector("#ri").value.split("\n").map((l) => l.trim()).filter(Boolean).map((l) => { const m = /^([\d.,½¼¾]+)?\s*(g|kg|dl|ml|l|tbsp|tsp|pack|jar|bunch)?\s+(.*)$/i.exec(l); return m ? { qty: num((m[1] || "").replace("½", ".5")) || (m[1] ? 0 : 1), unit: m[2] || "", item: m[3], aisle: "" } : { qty: 1, unit: "", item: l, aisle: "" }; });
+        await amber.store.collection("recipes").add({ id: Kit.hash(root.querySelector("#rn").value + Date.now()), name: root.querySelector("#rn").value.trim(), minutes: parseInt(root.querySelector("#rm").value) || 30, servings: parseInt(root.querySelector("#rs").value) || 2, tags: [], ingredients: ing, steps: root.querySelector("#rt").value.split("\n").map((l) => l.trim()).filter(Boolean) });
+        close();
+      };
+    },
+  });
+}
+
+document.addEventListener("click", (e) => {
+  const tm = e.target.closest("[data-timer]"); if (tm) { timer(tm); return; }
+  const t = e.target.closest("#make,#clear,#newr,[data-go],[data-recipe],[data-cook],[data-plan],[data-line]"); if (!t || t.closest(".sheet")) return;
+  if (t.dataset.go) { shell.tab = t.dataset.go; scrollTo(0, 0); return; }
+  if (t.id === "make") groceryList();
+  else if (t.id === "clear") clearBought();
+  else if (t.id === "newr") newRecipe();
+  else if (t.dataset.recipe) recipeSheet(t.dataset.recipe);
+  else if (t.dataset.cook) cook(t.dataset.cook, +t.dataset.sv);
+  else if (t.dataset.plan) planSheet(t.dataset.plan);
+  else if (t.dataset.line) amber.update({ op: "toggle_checklist", line: +t.dataset.line });
+});
+document.addEventListener("keydown", (e) => { const t = e.target.closest("[data-line]"); if (t && (e.key === " " || e.key === "Enter")) { e.preventDefault(); amber.update({ op: "toggle_checklist", line: +t.dataset.line }); } });
+amber.onChange((note) => render(note));
+</script>
+</body>
+</html>

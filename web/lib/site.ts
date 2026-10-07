@@ -6,6 +6,7 @@ export const SITE_URL = "https://ambernotes.app";
 export const SITE_NAME = "Amber Notes";
 export const X_URL = "https://x.com/EmilWagman";
 export const X_HANDLE = "@EmilWagman";
+export const LINKEDIN_URL = "https://www.linkedin.com/in/emil-wagman-52a907287/";
 /// Emil's own site: where his name links, and the first place search engines should look for him.
 export const MAKER_URL = "https://emilwagman.com";
 export const MAKER_GITHUB = "https://github.com/emilwagman";

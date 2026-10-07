@@ -6,7 +6,7 @@ import type { PGlite } from "npm:@electric-sql/pglite@0.2.17";
 import { schemaDB, sqlFor } from "../mcp/pglite.ts";
 import { account, note } from "../mcp/sealed.ts";
 import { type Config, variantOf } from "./logic.ts";
-import { type Message, recordClick, run, type SendResult, stats } from "./run.ts";
+import { type Message, recordClick, run, type SendResult, stats, welcome } from "./run.ts";
 
 const H = 3_600_000, D = 24 * H;
 const NOW = new Date();
@@ -14,7 +14,7 @@ const at = (ms: number) => new Date(NOW.getTime() + ms);
 
 const cfg = (o: Partial<Config> = {}): Config => ({
   enabled: true, flags: { apps: false, appStore: false, sharing: false }, subjectTest: false, trackClicks: false, since: at(-60 * D), only: null, resendKey: "re_test", unsubscribeSecret: "u".repeat(40), cronSecret: "c".repeat(40),
-  from: "Emil at Amber Notes <emil@ambernotes.app>", replyTo: "emil@ambernotes.app", site: "https://ambernotes.app", ...o,
+  from: "Emil at Amber Notes <emil@ambernotes.app>", replyTo: "emil@ambernotes.app", site: "https://ambernotes.app", subjectPrefix: "", manualRounds: false, ...o,
 });
 
 /// A fake Resend that remembers what it was given.
@@ -312,4 +312,85 @@ Deno.test("clients can't read or write the email tables", async () => {
 Deno.test("lifecycle_tick does nothing without pg_net and the vault", async () => {
   const pg = await schemaDB();
   await pg.query(`select public.lifecycle_tick()`);
+});
+
+Deno.test("staging: subjects carry the prefix and links open the staging site", async () => {
+  const pg = await schemaDB();
+  await person(pg, { age: 2 * D, notes: 1, mac: true });
+  const box = outbox();
+  await run({ sql: sqlFor(pg), send: box.send, cfg: cfg({ site: "https://amber-notes-staging.vercel.app", subjectPrefix: "[Staging] " }), ...quick });
+  assertEquals(kinds(box), [`[Staging] ${S.import}`]);
+  assert(box.sent[0].html.includes("https://amber-notes-staging.vercel.app/open/import"));
+  assert(!box.sent[0].html.includes("https://ambernotes.app/open/"));
+  assert(box.sent[0].headers["List-Unsubscribe"].startsWith("<https://amber-notes-staging.vercel.app/unsubscribe/confirm?"));
+});
+
+const MIN = 60_000;
+
+Deno.test("welcome: once, a couple of minutes after sign-up, by any sign-up, never after an unsubscribe", async () => {
+  const pg = await schemaDB();
+  const sara = await person(pg, { age: 5 * MIN, iphone: true });
+  const early = await person(pg, { age: 1 * MIN });
+  const late = await person(pg, { age: 2 * H });
+  const gone = await person(pg, { age: 5 * MIN });
+  await pg.query(`insert into public.email_unsubscribes (user_id, source) values ($1, 'link')`, [gone.id]);
+  const box = outbox();
+  await welcome({ sql: sqlFor(pg), send: box.send, cfg: cfg(), pause: async () => {} });
+  await welcome({ sql: sqlFor(pg), send: box.send, cfg: cfg(), pause: async () => {} });
+  await Promise.all([1, 2, 3].map(() => welcome({ sql: sqlFor(pg), send: box.send, cfg: cfg(), pause: async () => {} })));
+  assertEquals(box.sent.map((m) => m.to), [sara.email]);
+  assertEquals(box.sent[0].subject, "Welcome to Amber Notes");
+  assertEquals(box.sent[0].idempotencyKey, `lifecycle-welcome-${sara.id}`);
+  assertStringIncludes(box.sent[0].html, "https://ambernotes.app/open/connect-ai");
+  assert(box.sent[0].headers["List-Unsubscribe"]);
+  assertEquals((await rows(pg)).map((r) => [r.user_id, r.kind, r.status]), [[sara.id, "welcome", "sent"]]);
+  assert(![early.id, late.id, gone.id].some((id) => box.sent.some((m) => m.idempotencyKey.endsWith(id))));
+});
+
+Deno.test("welcome: an account that connected its AI while signing up is told to get the app", async () => {
+  const pg = await schemaDB();
+  await person(pg, { age: 4 * MIN, ai: 2 * MIN });
+  const box = outbox();
+  await welcome({ sql: sqlFor(pg), send: box.send, cfg: cfg(), pause: async () => {} });
+  assertStringIncludes(box.sent[0].html, "https://ambernotes.app/download");
+});
+
+Deno.test("welcome: off with the kill switch, and only for LIFECYCLE_ONLY accounts when it's set", async () => {
+  const pg = await schemaDB();
+  const a = await person(pg, { age: 5 * MIN });
+  const b = await person(pg, { age: 5 * MIN });
+  const box = outbox();
+  const report = await welcome({ sql: sqlFor(pg), send: box.send, cfg: cfg({ enabled: false }), pause: async () => {} });
+  assertEquals([box.sent.length, report.due.welcome], [0, 2]);
+  await welcome({ sql: sqlFor(pg), send: box.send, cfg: cfg({ only: new Set([b.id]) }), pause: async () => {} });
+  assertEquals(box.sent.map((m) => m.to), [b.email]);
+  assert(a.id !== b.id);
+});
+
+Deno.test("welcome and the ladder: an unanswered welcome isn't part of the silence, and the ladder starts on day 3", async () => {
+  const pg = await schemaDB();
+  const sara = await person(pg, { age: 5 * MIN });
+  const box = outbox();
+  await welcome({ sql: sqlFor(pg), send: box.send, cfg: cfg(), pause: async () => {} });
+  const facts = async () => (await pg.query<{ sent_since_active: number; sent: string[] }>(
+    `select sent_since_active, sent from public.lifecycle_facts($1) where user_id = $2`, [at(-60 * D), sara.id])).rows[0];
+  assertEquals((await facts()).sent_since_active, 0);
+  assertEquals((await facts()).sent, ["welcome"]);
+  // A day later: the stuck rung is ready, but the gap after the welcome holds it.
+  await pg.query(`update auth.users set created_at = $2 where id = $1`, [sara.id, at(-1 * D - H)]);
+  await age(pg, 1);
+  await run({ sql: sqlFor(pg), send: box.send, cfg: cfg(), ...quick });
+  assertEquals(box.sent.length, 1);
+  // Day 3: the ladder's first email.
+  await pg.query(`update auth.users set created_at = $2 where id = $1`, [sara.id, at(-3 * D - H)]);
+  await age(pg, 2);
+  await run({ sql: sqlFor(pg), send: box.send, cfg: cfg(), ...quick });
+  assertEquals(box.sent.map((m) => m.subject), ["Welcome to Amber Notes", S.stuck]);
+});
+
+Deno.test("lifecycle_welcome_tick does nothing without a waiting account, pg_net or the vault", async () => {
+  const pg = await schemaDB();
+  await pg.query(`select public.lifecycle_welcome_tick()`);
+  await person(pg, { age: 5 * MIN });
+  await pg.query(`select public.lifecycle_welcome_tick()`);
 });

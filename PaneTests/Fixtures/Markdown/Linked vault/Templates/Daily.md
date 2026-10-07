@@ -1,0 +1,2 @@
+{{date}}
+Previous: [[{{yesterday}}]]

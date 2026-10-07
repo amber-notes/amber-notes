@@ -19,6 +19,26 @@ export function stripMarkup(line: string): string {
   return s.trim();
 }
 
+/**
+ * The notes a body links to with Obsidian-style wiki links ([[Title]], [[Folder/Title]],
+ * [[Title|shown text]], [[Title#Heading]]), as written, each once. Code is skipped.
+ * The app resolves them by title, so read_note({ title }) opens one.
+ */
+export function wikiLinks(body: string): string[] {
+  const out: string[] = [];
+  let fence: string | null = null;
+  for (const line of body.split("\n")) {
+    const t = line.trim();
+    if (fence) { if (t.startsWith(fence)) fence = null; continue; }
+    if (t.startsWith("```") || t.startsWith("~~~")) { fence = t.slice(0, 3); continue; }
+    for (const m of line.replace(/(`+)(?:(?!\1).)+?\1/g, "").matchAll(/!?\[\[([^\[\]\n]+?)\]\]/g)) {
+      const target = m[1].split("|")[0].split("#")[0].trim();
+      if (target && !out.includes(target)) out.push(target);
+    }
+  }
+  return out;
+}
+
 export function previewOf(body: string, max = 140): string {
   const lines = body.split("\n").map(stripMarkup).filter(Boolean);
   const text = lines.slice(1).join(" · ");

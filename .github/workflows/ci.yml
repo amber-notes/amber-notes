@@ -50,7 +50,7 @@ jobs:
             -only-testing:PaneTests -derivedDataPath build/ci -resultBundlePath build/ci-tests.xcresult \
             ENABLE_TESTABILITY=YES ENABLE_HARDENED_RUNTIME=NO \
             CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= PROVISIONING_PROFILE_SPECIFIER= \
-            | tee build/ci-test.log | grep -E "✔ Test run|✘|error:|\*\* TEST" || true
+            | tee build/ci-test.log | grep -E "✔ Test run|✘|error:|PERF|\*\* TEST" || true
           grep -q "\*\* TEST SUCCEEDED \*\*" build/ci-test.log
       # A failure keeps the whole log and the result bundle: a test host that hangs or crashes
       # records no issue in the filtered output above, only its name under "Failing tests".
@@ -90,7 +90,7 @@ jobs:
           supabase/functions/mcp/tips.pglite.test.ts supabase/functions/mcp/share_ask.pglite.test.ts supabase/functions/mcp/open_source_ask.pglite.test.ts supabase/functions/mcp/download_counts.pglite.test.ts
           supabase/functions/share-files/logic.test.ts scripts/e2ee-tool.test.ts
           supabase/functions/account/account.pglite.test.ts supabase/functions/_shared/hash.test.ts
-          supabase/functions/lifecycle/logic.test.ts supabase/functions/lifecycle/emails.test.ts supabase/functions/lifecycle/lifecycle.pglite.test.ts
+          supabase/functions/lifecycle/logic.test.ts supabase/functions/lifecycle/emails.test.ts supabase/functions/lifecycle/assets.test.ts supabase/functions/lifecycle/lifecycle.pglite.test.ts
 
   web:
     name: Share site

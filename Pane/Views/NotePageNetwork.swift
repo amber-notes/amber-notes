@@ -169,7 +169,7 @@ final class APIKeyStore {
     }
 
     static let shared = APIKeyStore(memory: ProcessInfo.processInfo.arguments.contains("-uitest") || PaneApp.isUnitTestHost)
-    private static let service = "dev.emilwagman.pane.apikey"
+    private static let service = AppIdentity.keychainPrefix + ".apikey"
 
     private(set) var keys: [Key] = []
     @ObservationIgnored private let memory: Bool

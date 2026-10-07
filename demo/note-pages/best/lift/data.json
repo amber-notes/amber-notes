@@ -1,0 +1,4376 @@
+{
+ "values": {
+  "settings": {
+   "unit": "kg",
+   "rest": 120,
+   "restWarmup": 60,
+   "showRpe": true,
+   "bar": 20,
+   "plates": [
+    25,
+    20,
+    15,
+    10,
+    5,
+    2.5,
+    1.25
+   ],
+   "notify": true,
+   "keepAwake": true
+  },
+  "routines": [
+   {
+    "id": "push",
+    "name": "Push",
+    "folder": "Push Pull Legs",
+    "exercises": [
+     {
+      "ex": "bench-press",
+      "rest": 150,
+      "sets": [
+       {
+        "type": "warmup",
+        "reps": 8
+       },
+       {
+        "type": "warmup",
+        "reps": 4
+       },
+       {
+        "type": "normal",
+        "reps": 6
+       },
+       {
+        "type": "normal",
+        "reps": 6
+       },
+       {
+        "type": "normal",
+        "reps": 6
+       },
+       {
+        "type": "normal",
+        "reps": 6
+       }
+      ]
+     },
+     {
+      "ex": "overhead-press",
+      "rest": 120,
+      "sets": [
+       {
+        "type": "normal",
+        "reps": 8
+       },
+       {
+        "type": "normal",
+        "reps": 8
+       },
+       {
+        "type": "normal",
+        "reps": 8
+       }
+      ]
+     },
+     {
+      "ex": "incline-db-press",
+      "rest": 90,
+      "sets": [
+       {
+        "type": "normal",
+        "reps": 10
+       },
+       {
+        "type": "normal",
+        "reps": 10
+       },
+       {
+        "type": "normal",
+        "reps": 10
+       }
+      ]
+     },
+     {
+      "ex": "lateral-raise",
+      "rest": 60,
+      "superset": 1,
+      "sets": [
+       {
+        "type": "normal",
+        "reps": 15
+       },
+       {
+        "type": "normal",
+        "reps": 15
+       },
+       {
+        "type": "normal",
+        "reps": 15
+       }
+      ]
+     },
+     {
+      "ex": "rope-pushdown",
+      "rest": 60,
+      "superset": 1,
+      "sets": [
+       {
+        "type": "normal",
+        "reps": 12
+       },
+       {
+        "type": "normal",
+        "reps": 12
+       },
+       {
+        "type": "normal",
+        "reps": 12
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "id": "pull",
+    "name": "Pull",
+    "folder": "Push Pull Legs",
+    "exercises": [
+     {
+      "ex": "deadlift",
+      "rest": 180,
+      "sets": [
+       {
+        "type": "warmup",
+        "reps": 8
+       },
+       {
+        "type": "warmup",
+        "reps": 4
+       },
+       {
+        "type": "normal",
+        "reps": 5
+       },
+       {
+        "type": "normal",
+        "reps": 5
+       },
+       {
+        "type": "normal",
+        "reps": 5
+       }
+      ]
+     },
+     {
+      "ex": "pull-up",
+      "rest": 120,
+      "sets": [
+       {
+        "type": "normal",
+        "reps": 8
+       },
+       {
+        "type": "normal",
+        "reps": 8
+       },
+       {
+        "type": "normal",
+        "reps": 8
+       },
+       {
+        "type": "normal",
+        "reps": 8
+       }
+      ]
+     },
+     {
+      "ex": "barbell-row",
+      "rest": 120,
+      "sets": [
+       {
+        "type": "normal",
+        "reps": 8
+       },
+       {
+        "type": "normal",
+        "reps": 8
+       },
+       {
+        "type": "normal",
+        "reps": 8
+       }
+      ]
+     },
+     {
+      "ex": "face-pull",
+      "rest": 60,
+      "superset": 2,
+      "sets": [
+       {
+        "type": "normal",
+        "reps": 15
+       },
+       {
+        "type": "normal",
+        "reps": 15
+       },
+       {
+        "type": "normal",
+        "reps": 15
+       }
+      ]
+     },
+     {
+      "ex": "hammer-curl",
+      "rest": 60,
+      "superset": 2,
+      "sets": [
+       {
+        "type": "normal",
+        "reps": 12
+       },
+       {
+        "type": "normal",
+        "reps": 12
+       },
+       {
+        "type": "normal",
+        "reps": 12
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "id": "legs",
+    "name": "Legs",
+    "folder": "Push Pull Legs",
+    "exercises": [
+     {
+      "ex": "back-squat",
+      "rest": 180,
+      "sets": [
+       {
+        "type": "warmup",
+        "reps": 8
+       },
+       {
+        "type": "warmup",
+        "reps": 4
+       },
+       {
+        "type": "normal",
+        "reps": 6
+       },
+       {
+        "type": "normal",
+        "reps": 6
+       },
+       {
+        "type": "normal",
+        "reps": 6
+       },
+       {
+        "type": "normal",
+        "reps": 6
+       }
+      ]
+     },
+     {
+      "ex": "romanian-deadlift",
+      "rest": 120,
+      "sets": [
+       {
+        "type": "normal",
+        "reps": 8
+       },
+       {
+        "type": "normal",
+        "reps": 8
+       },
+       {
+        "type": "normal",
+        "reps": 8
+       }
+      ]
+     },
+     {
+      "ex": "leg-press",
+      "rest": 90,
+      "sets": [
+       {
+        "type": "normal",
+        "reps": 12
+       },
+       {
+        "type": "normal",
+        "reps": 12
+       },
+       {
+        "type": "normal",
+        "reps": 12
+       }
+      ]
+     },
+     {
+      "ex": "leg-curl",
+      "rest": 60,
+      "sets": [
+       {
+        "type": "normal",
+        "reps": 12
+       },
+       {
+        "type": "normal",
+        "reps": 12
+       },
+       {
+        "type": "normal",
+        "reps": 12
+       }
+      ]
+     },
+     {
+      "ex": "standing-calf-raise",
+      "rest": 60,
+      "sets": [
+       {
+        "type": "normal",
+        "reps": 12
+       },
+       {
+        "type": "normal",
+        "reps": 12
+       },
+       {
+        "type": "normal",
+        "reps": 12
+       },
+       {
+        "type": "normal",
+        "reps": 12
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "id": "full",
+    "name": "Full body, 40 minutes",
+    "folder": "Travel",
+    "exercises": [
+     {
+      "ex": "goblet-squat",
+      "rest": 60,
+      "sets": [
+       {
+        "type": "normal",
+        "reps": 12
+       },
+       {
+        "type": "normal",
+        "reps": 12
+       },
+       {
+        "type": "normal",
+        "reps": 12
+       }
+      ]
+     },
+     {
+      "ex": "push-up",
+      "rest": 60,
+      "sets": [
+       {
+        "type": "normal",
+        "reps": 15
+       },
+       {
+        "type": "normal",
+        "reps": 15
+       },
+       {
+        "type": "normal",
+        "reps": 15
+       }
+      ]
+     },
+     {
+      "ex": "db-row",
+      "rest": 60,
+      "sets": [
+       {
+        "type": "normal",
+        "reps": 10
+       },
+       {
+        "type": "normal",
+        "reps": 10
+       },
+       {
+        "type": "normal",
+        "reps": 10
+       }
+      ]
+     },
+     {
+      "ex": "plank",
+      "rest": 45,
+      "sets": [
+       {
+        "type": "normal",
+        "reps": 45
+       },
+       {
+        "type": "normal",
+        "reps": 45
+       },
+       {
+        "type": "normal",
+        "reps": 45
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "folders": [
+   "Push Pull Legs",
+   "Travel"
+  ]
+ },
+ "collections": {
+  "workouts": [
+   {
+    "id": "w00",
+    "routine": "push",
+    "name": "Push",
+    "start": "{{t-64@07:50}}",
+    "minutes": 51,
+    "exercises": [
+     {
+      "ex": "bench-press",
+      "sets": [
+       {
+        "type": "warmup",
+        "kg": 37.5,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "warmup",
+        "kg": 55,
+        "reps": 4,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 72.5,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 72.5,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 72.5,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 72.5,
+        "reps": 5,
+        "done": true,
+        "rpe": 9
+       }
+      ],
+      "rest": 150
+     },
+     {
+      "ex": "overhead-press",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 42.5,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 42.5,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 42.5,
+        "reps": 7,
+        "done": true
+       }
+      ],
+      "rest": 120
+     },
+     {
+      "ex": "incline-db-press",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 24,
+        "reps": 10,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 24,
+        "reps": 10,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 24,
+        "reps": 9,
+        "done": true,
+        "rpe": 9
+       }
+      ],
+      "rest": 90
+     },
+     {
+      "ex": "lateral-raise",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 9,
+        "reps": 15,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 9,
+        "reps": 15,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 9,
+        "reps": 15,
+        "done": true,
+        "rpe": 9
+       }
+      ],
+      "superset": 1,
+      "rest": 60
+     },
+     {
+      "ex": "rope-pushdown",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 22.5,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 22.5,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 22.5,
+        "reps": 12,
+        "done": true
+       }
+      ],
+      "superset": 1,
+      "rest": 60
+     }
+    ],
+    "created": "{{t-64@08:00}}"
+   },
+   {
+    "id": "w02",
+    "routine": "pull",
+    "name": "Pull",
+    "start": "{{t-62@07:20}}",
+    "minutes": 49,
+    "exercises": [
+     {
+      "ex": "deadlift",
+      "sets": [
+       {
+        "type": "warmup",
+        "kg": 67.5,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "warmup",
+        "kg": 100,
+        "reps": 4,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 132.5,
+        "reps": 5,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 132.5,
+        "reps": 5,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 132.5,
+        "reps": 5,
+        "done": true
+       }
+      ],
+      "rest": 180
+     },
+     {
+      "ex": "pull-up",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 0,
+        "reps": 5,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 0,
+        "reps": 5,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 0,
+        "reps": 4,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 0,
+        "reps": 4,
+        "done": true
+       }
+      ],
+      "rest": 120
+     },
+     {
+      "ex": "barbell-row",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 65,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 65,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 65,
+        "reps": 7,
+        "done": true,
+        "rpe": 9
+       }
+      ],
+      "rest": 120
+     },
+     {
+      "ex": "face-pull",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 20,
+        "reps": 15,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 20,
+        "reps": 15,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 20,
+        "reps": 15,
+        "done": true
+       }
+      ],
+      "superset": 2,
+      "rest": 60
+     },
+     {
+      "ex": "hammer-curl",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 14,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 14,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 14,
+        "reps": 12,
+        "done": true
+       }
+      ],
+      "superset": 2,
+      "rest": 60
+     }
+    ],
+    "created": "{{t-62@08:00}}"
+   },
+   {
+    "id": "w05",
+    "routine": "legs",
+    "name": "Legs",
+    "start": "{{t-59@06:50}}",
+    "minutes": 52,
+    "exercises": [
+     {
+      "ex": "back-squat",
+      "sets": [
+       {
+        "type": "warmup",
+        "kg": 50,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "warmup",
+        "kg": 72.5,
+        "reps": 4,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 97.5,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 97.5,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 97.5,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 97.5,
+        "reps": 5,
+        "done": true,
+        "rpe": 9
+       }
+      ],
+      "rest": 180
+     },
+     {
+      "ex": "romanian-deadlift",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 80,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 80,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 80,
+        "reps": 8,
+        "done": true
+       }
+      ],
+      "rest": 120
+     },
+     {
+      "ex": "leg-press",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 160,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 160,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 160,
+        "reps": 11,
+        "done": true
+       }
+      ],
+      "rest": 90
+     },
+     {
+      "ex": "leg-curl",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 40,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 40,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 40,
+        "reps": 12,
+        "done": true
+       }
+      ],
+      "rest": 60
+     },
+     {
+      "ex": "standing-calf-raise",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 60,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 60,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 60,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 60,
+        "reps": 12,
+        "done": true
+       }
+      ],
+      "rest": 60
+     }
+    ],
+    "created": "{{t-59@07:00}}"
+   },
+   {
+    "id": "w07",
+    "routine": "push",
+    "name": "Push",
+    "start": "{{t-57@07:35}}",
+    "minutes": 45,
+    "exercises": [
+     {
+      "ex": "bench-press",
+      "sets": [
+       {
+        "type": "warmup",
+        "kg": 37.5,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "warmup",
+        "kg": 57.5,
+        "reps": 4,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 75,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 75,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 75,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 75,
+        "reps": 5,
+        "done": true
+       }
+      ],
+      "rest": 150
+     },
+     {
+      "ex": "overhead-press",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 42.5,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 42.5,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 42.5,
+        "reps": 8,
+        "done": true
+       }
+      ],
+      "rest": 120
+     },
+     {
+      "ex": "incline-db-press",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 24,
+        "reps": 10,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 24,
+        "reps": 10,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 24,
+        "reps": 10,
+        "done": true
+       }
+      ],
+      "rest": 90
+     },
+     {
+      "ex": "lateral-raise",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 9,
+        "reps": 15,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 9,
+        "reps": 15,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 9,
+        "reps": 15,
+        "done": true,
+        "rpe": 9
+       }
+      ],
+      "superset": 1,
+      "rest": 60
+     },
+     {
+      "ex": "rope-pushdown",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 22.5,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 22.5,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 22.5,
+        "reps": 11,
+        "done": true
+       }
+      ],
+      "superset": 1,
+      "rest": 60
+     }
+    ],
+    "created": "{{t-57@08:00}}"
+   },
+   {
+    "id": "w09",
+    "routine": "pull",
+    "name": "Pull",
+    "start": "{{t-55@06:35}}",
+    "minutes": 47,
+    "exercises": [
+     {
+      "ex": "deadlift",
+      "sets": [
+       {
+        "type": "warmup",
+        "kg": 67.5,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "warmup",
+        "kg": 100,
+        "reps": 4,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 132.5,
+        "reps": 5,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 132.5,
+        "reps": 5,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 132.5,
+        "reps": 5,
+        "done": true
+       }
+      ],
+      "rest": 180
+     },
+     {
+      "ex": "pull-up",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 0,
+        "reps": 5,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 0,
+        "reps": 5,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 0,
+        "reps": 4,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 0,
+        "reps": 4,
+        "done": true
+       }
+      ],
+      "rest": 120
+     },
+     {
+      "ex": "barbell-row",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 65,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 65,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 65,
+        "reps": 8,
+        "done": true,
+        "rpe": 9
+       }
+      ],
+      "rest": 120
+     },
+     {
+      "ex": "face-pull",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 20,
+        "reps": 15,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 20,
+        "reps": 15,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 20,
+        "reps": 15,
+        "done": true
+       }
+      ],
+      "superset": 2,
+      "rest": 60
+     },
+     {
+      "ex": "hammer-curl",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 14,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 14,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 14,
+        "reps": 11,
+        "done": true,
+        "rpe": 9
+       }
+      ],
+      "superset": 2,
+      "rest": 60
+     }
+    ],
+    "created": "{{t-55@07:00}}"
+   },
+   {
+    "id": "w12",
+    "routine": "legs",
+    "name": "Legs",
+    "start": "{{t-52@07:35}}",
+    "minutes": 49,
+    "exercises": [
+     {
+      "ex": "back-squat",
+      "sets": [
+       {
+        "type": "warmup",
+        "kg": 50,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "warmup",
+        "kg": 72.5,
+        "reps": 4,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 97.5,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 97.5,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 97.5,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 97.5,
+        "reps": 5,
+        "done": true,
+        "rpe": 9
+       }
+      ],
+      "rest": 180
+     },
+     {
+      "ex": "romanian-deadlift",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 82.5,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 82.5,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 82.5,
+        "reps": 7,
+        "done": true
+       }
+      ],
+      "rest": 120
+     },
+     {
+      "ex": "leg-press",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 165,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 165,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 165,
+        "reps": 12,
+        "done": true
+       }
+      ],
+      "rest": 90
+     },
+     {
+      "ex": "leg-curl",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 40,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 40,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 40,
+        "reps": 12,
+        "done": true
+       }
+      ],
+      "rest": 60
+     },
+     {
+      "ex": "standing-calf-raise",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 60,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 60,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 60,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 60,
+        "reps": 11,
+        "done": true
+       }
+      ],
+      "rest": 60
+     }
+    ],
+    "created": "{{t-52@08:00}}"
+   },
+   {
+    "id": "w14",
+    "routine": "push",
+    "name": "Push",
+    "start": "{{t-50@07:05}}",
+    "minutes": 50,
+    "exercises": [
+     {
+      "ex": "bench-press",
+      "sets": [
+       {
+        "type": "warmup",
+        "kg": 37.5,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "warmup",
+        "kg": 57.5,
+        "reps": 4,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 75,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 75,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 75,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 75,
+        "reps": 6,
+        "done": true
+       }
+      ],
+      "rest": 150
+     },
+     {
+      "ex": "overhead-press",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 45,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 45,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 45,
+        "reps": 8,
+        "done": true,
+        "rpe": 9
+       }
+      ],
+      "rest": 120
+     },
+     {
+      "ex": "incline-db-press",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 24,
+        "reps": 10,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 24,
+        "reps": 10,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 24,
+        "reps": 10,
+        "done": true
+       }
+      ],
+      "rest": 90
+     },
+     {
+      "ex": "lateral-raise",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 9,
+        "reps": 15,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 9,
+        "reps": 15,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 9,
+        "reps": 15,
+        "done": true
+       }
+      ],
+      "superset": 1,
+      "rest": 60
+     },
+     {
+      "ex": "rope-pushdown",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 22.5,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 22.5,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 22.5,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "drop",
+        "kg": 15,
+        "reps": 10,
+        "done": true
+       }
+      ],
+      "superset": 1,
+      "rest": 60
+     }
+    ],
+    "created": "{{t-50@08:00}}"
+   },
+   {
+    "id": "w16",
+    "routine": "pull",
+    "name": "Pull",
+    "start": "{{t-48@07:50}}",
+    "minutes": 50,
+    "exercises": [
+     {
+      "ex": "deadlift",
+      "sets": [
+       {
+        "type": "warmup",
+        "kg": 67.5,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "warmup",
+        "kg": 102.5,
+        "reps": 4,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 135,
+        "reps": 5,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 135,
+        "reps": 5,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 135,
+        "reps": 4,
+        "done": true,
+        "rpe": 9
+       }
+      ],
+      "rest": 180
+     },
+     {
+      "ex": "pull-up",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 0,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 0,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 0,
+        "reps": 5,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 0,
+        "reps": 5,
+        "done": true
+       }
+      ],
+      "rest": 120
+     },
+     {
+      "ex": "barbell-row",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 67.5,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 67.5,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 67.5,
+        "reps": 8,
+        "done": true,
+        "rpe": 9
+       }
+      ],
+      "rest": 120
+     },
+     {
+      "ex": "face-pull",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 20,
+        "reps": 15,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 20,
+        "reps": 15,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 20,
+        "reps": 14,
+        "done": true,
+        "rpe": 9
+       }
+      ],
+      "superset": 2,
+      "rest": 60
+     },
+     {
+      "ex": "hammer-curl",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 14,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 14,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 14,
+        "reps": 12,
+        "done": true
+       }
+      ],
+      "superset": 2,
+      "rest": 60
+     }
+    ],
+    "created": "{{t-48@08:00}}"
+   },
+   {
+    "id": "w19",
+    "routine": "legs",
+    "name": "Legs",
+    "start": "{{t-45@07:20}}",
+    "minutes": 48,
+    "exercises": [
+     {
+      "ex": "back-squat",
+      "sets": [
+       {
+        "type": "warmup",
+        "kg": 50,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "warmup",
+        "kg": 75,
+        "reps": 4,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 100,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 100,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 100,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 100,
+        "reps": 6,
+        "done": true,
+        "rpe": 9
+       }
+      ],
+      "rest": 180
+     },
+     {
+      "ex": "romanian-deadlift",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 82.5,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 82.5,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 82.5,
+        "reps": 8,
+        "done": true,
+        "rpe": 9
+       }
+      ],
+      "rest": 120
+     },
+     {
+      "ex": "leg-press",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 165,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 165,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 165,
+        "reps": 12,
+        "done": true,
+        "rpe": 9
+       }
+      ],
+      "rest": 90
+     },
+     {
+      "ex": "leg-curl",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 40,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 40,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 40,
+        "reps": 12,
+        "done": true
+       }
+      ],
+      "rest": 60
+     },
+     {
+      "ex": "standing-calf-raise",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 60,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 60,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 60,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 60,
+        "reps": 12,
+        "done": true
+       }
+      ],
+      "rest": 60
+     }
+    ],
+    "created": "{{t-45@08:00}}"
+   },
+   {
+    "id": "w21",
+    "routine": "push",
+    "name": "Push",
+    "start": "{{t-43@06:35}}",
+    "minutes": 46,
+    "exercises": [
+     {
+      "ex": "bench-press",
+      "sets": [
+       {
+        "type": "warmup",
+        "kg": 37.5,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "warmup",
+        "kg": 57.5,
+        "reps": 4,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 75,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 75,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 75,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 75,
+        "reps": 5,
+        "done": true,
+        "rpe": 9
+       }
+      ],
+      "rest": 150
+     },
+     {
+      "ex": "overhead-press",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 45,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 45,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 45,
+        "reps": 7,
+        "done": true
+       }
+      ],
+      "rest": 120
+     },
+     {
+      "ex": "incline-db-press",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 26,
+        "reps": 10,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 26,
+        "reps": 10,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 26,
+        "reps": 9,
+        "done": true,
+        "rpe": 9
+       }
+      ],
+      "rest": 90
+     },
+     {
+      "ex": "lateral-raise",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 9,
+        "reps": 15,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 9,
+        "reps": 15,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 9,
+        "reps": 15,
+        "done": true
+       }
+      ],
+      "superset": 1,
+      "rest": 60
+     },
+     {
+      "ex": "rope-pushdown",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 22.5,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 22.5,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 22.5,
+        "reps": 12,
+        "done": true
+       }
+      ],
+      "superset": 1,
+      "rest": 60
+     }
+    ],
+    "created": "{{t-43@07:00}}"
+   },
+   {
+    "id": "w23",
+    "routine": "pull",
+    "name": "Pull",
+    "start": "{{t-41@06:50}}",
+    "minutes": 45,
+    "exercises": [
+     {
+      "ex": "deadlift",
+      "sets": [
+       {
+        "type": "warmup",
+        "kg": 70,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "warmup",
+        "kg": 102.5,
+        "reps": 4,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 137.5,
+        "reps": 5,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 137.5,
+        "reps": 5,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 137.5,
+        "reps": 5,
+        "done": true
+       }
+      ],
+      "rest": 180
+     },
+     {
+      "ex": "pull-up",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 0,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 0,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 0,
+        "reps": 5,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 0,
+        "reps": 5,
+        "done": true
+       }
+      ],
+      "rest": 120
+     },
+     {
+      "ex": "barbell-row",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 67.5,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 67.5,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 67.5,
+        "reps": 8,
+        "done": true
+       }
+      ],
+      "rest": 120
+     },
+     {
+      "ex": "face-pull",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 20,
+        "reps": 15,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 20,
+        "reps": 15,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 20,
+        "reps": 15,
+        "done": true
+       }
+      ],
+      "superset": 2,
+      "rest": 60
+     },
+     {
+      "ex": "hammer-curl",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 14,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 14,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 14,
+        "reps": 12,
+        "done": true
+       }
+      ],
+      "superset": 2,
+      "rest": 60
+     }
+    ],
+    "created": "{{t-41@07:00}}"
+   },
+   {
+    "id": "w32",
+    "routine": "legs",
+    "name": "Legs",
+    "start": "{{t-32@07:35}}",
+    "minutes": 52,
+    "exercises": [
+     {
+      "ex": "back-squat",
+      "sets": [
+       {
+        "type": "warmup",
+        "kg": 50,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "warmup",
+        "kg": 75,
+        "reps": 4,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 100,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 100,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 100,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 100,
+        "reps": 5,
+        "done": true,
+        "rpe": 9
+       }
+      ],
+      "rest": 180
+     },
+     {
+      "ex": "romanian-deadlift",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 82.5,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 82.5,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 82.5,
+        "reps": 8,
+        "done": true
+       }
+      ],
+      "rest": 120
+     },
+     {
+      "ex": "leg-press",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 170,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 170,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 170,
+        "reps": 11,
+        "done": true,
+        "rpe": 9
+       }
+      ],
+      "rest": 90
+     },
+     {
+      "ex": "leg-curl",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 40,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 40,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 40,
+        "reps": 11,
+        "done": true
+       }
+      ],
+      "rest": 60
+     },
+     {
+      "ex": "standing-calf-raise",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 62.5,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 62.5,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 62.5,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 62.5,
+        "reps": 11,
+        "done": true
+       }
+      ],
+      "rest": 60
+     }
+    ],
+    "created": "{{t-32@08:00}}"
+   },
+   {
+    "id": "w34",
+    "routine": "push",
+    "name": "Push",
+    "start": "{{t-30@06:05}}",
+    "minutes": 51,
+    "exercises": [
+     {
+      "ex": "bench-press",
+      "sets": [
+       {
+        "type": "warmup",
+        "kg": 40,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "warmup",
+        "kg": 57.5,
+        "reps": 4,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 77.5,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 77.5,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 77.5,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 77.5,
+        "reps": 6,
+        "done": true,
+        "rpe": 9
+       }
+      ],
+      "rest": 150
+     },
+     {
+      "ex": "overhead-press",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 45,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 45,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 45,
+        "reps": 8,
+        "done": true
+       }
+      ],
+      "rest": 120
+     },
+     {
+      "ex": "incline-db-press",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 26,
+        "reps": 10,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 26,
+        "reps": 10,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 26,
+        "reps": 10,
+        "done": true,
+        "rpe": 9
+       }
+      ],
+      "rest": 90
+     },
+     {
+      "ex": "lateral-raise",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 10,
+        "reps": 15,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 10,
+        "reps": 15,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 10,
+        "reps": 14,
+        "done": true,
+        "rpe": 9
+       }
+      ],
+      "superset": 1,
+      "rest": 60
+     },
+     {
+      "ex": "rope-pushdown",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 22.5,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 22.5,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 22.5,
+        "reps": 11,
+        "done": true,
+        "rpe": 9
+       }
+      ],
+      "superset": 1,
+      "rest": 60
+     }
+    ],
+    "created": "{{t-30@07:00}}"
+   },
+   {
+    "id": "w36",
+    "routine": "pull",
+    "name": "Pull",
+    "start": "{{t-28@06:35}}",
+    "minutes": 51,
+    "exercises": [
+     {
+      "ex": "deadlift",
+      "sets": [
+       {
+        "type": "warmup",
+        "kg": 70,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "warmup",
+        "kg": 102.5,
+        "reps": 4,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 137.5,
+        "reps": 5,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 137.5,
+        "reps": 5,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 137.5,
+        "reps": 4,
+        "done": true
+       }
+      ],
+      "rest": 180
+     },
+     {
+      "ex": "pull-up",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 0,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 0,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 0,
+        "reps": 5,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 0,
+        "reps": 5,
+        "done": true
+       }
+      ],
+      "rest": 120
+     },
+     {
+      "ex": "barbell-row",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 67.5,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 67.5,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 67.5,
+        "reps": 7,
+        "done": true,
+        "rpe": 9
+       }
+      ],
+      "rest": 120
+     },
+     {
+      "ex": "face-pull",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 20,
+        "reps": 15,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 20,
+        "reps": 15,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 20,
+        "reps": 14,
+        "done": true
+       }
+      ],
+      "superset": 2,
+      "rest": 60
+     },
+     {
+      "ex": "hammer-curl",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 14,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 14,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 14,
+        "reps": 11,
+        "done": true,
+        "rpe": 9
+       }
+      ],
+      "superset": 2,
+      "rest": 60
+     }
+    ],
+    "created": "{{t-28@07:00}}"
+   },
+   {
+    "id": "w39",
+    "routine": "legs",
+    "name": "Legs",
+    "start": "{{t-25@07:35}}",
+    "minutes": 46,
+    "exercises": [
+     {
+      "ex": "back-squat",
+      "sets": [
+       {
+        "type": "warmup",
+        "kg": 52.5,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "warmup",
+        "kg": 77.5,
+        "reps": 4,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 102.5,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 102.5,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 102.5,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 102.5,
+        "reps": 5,
+        "done": true
+       }
+      ],
+      "rest": 180
+     },
+     {
+      "ex": "romanian-deadlift",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 85,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 85,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 85,
+        "reps": 8,
+        "done": true
+       }
+      ],
+      "rest": 120
+     },
+     {
+      "ex": "leg-press",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 170,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 170,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 170,
+        "reps": 11,
+        "done": true,
+        "rpe": 9
+       }
+      ],
+      "rest": 90
+     },
+     {
+      "ex": "leg-curl",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 42.5,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 42.5,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 42.5,
+        "reps": 11,
+        "done": true
+       }
+      ],
+      "rest": 60
+     },
+     {
+      "ex": "standing-calf-raise",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 62.5,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 62.5,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 62.5,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 62.5,
+        "reps": 11,
+        "done": true,
+        "rpe": 9
+       }
+      ],
+      "rest": 60
+     }
+    ],
+    "created": "{{t-25@08:00}}"
+   },
+   {
+    "id": "w41",
+    "routine": "push",
+    "name": "Push",
+    "start": "{{t-23@06:35}}",
+    "minutes": 51,
+    "exercises": [
+     {
+      "ex": "bench-press",
+      "sets": [
+       {
+        "type": "warmup",
+        "kg": 40,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "warmup",
+        "kg": 57.5,
+        "reps": 4,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 77.5,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 77.5,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 77.5,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 77.5,
+        "reps": 5,
+        "done": true,
+        "rpe": 9
+       }
+      ],
+      "rest": 150
+     },
+     {
+      "ex": "overhead-press",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 45,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 45,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 45,
+        "reps": 8,
+        "done": true
+       }
+      ],
+      "rest": 120
+     },
+     {
+      "ex": "incline-db-press",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 26,
+        "reps": 10,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 26,
+        "reps": 10,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 26,
+        "reps": 10,
+        "done": true,
+        "rpe": 9
+       }
+      ],
+      "rest": 90
+     },
+     {
+      "ex": "lateral-raise",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 10,
+        "reps": 15,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 10,
+        "reps": 15,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 10,
+        "reps": 15,
+        "done": true
+       }
+      ],
+      "superset": 1,
+      "rest": 60
+     },
+     {
+      "ex": "rope-pushdown",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 22.5,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 22.5,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 22.5,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "drop",
+        "kg": 15,
+        "reps": 10,
+        "done": true
+       }
+      ],
+      "superset": 1,
+      "rest": 60
+     }
+    ],
+    "created": "{{t-23@07:00}}"
+   },
+   {
+    "id": "w43",
+    "routine": "pull",
+    "name": "Pull",
+    "start": "{{t-21@06:50}}",
+    "minutes": 45,
+    "exercises": [
+     {
+      "ex": "deadlift",
+      "sets": [
+       {
+        "type": "warmup",
+        "kg": 70,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "warmup",
+        "kg": 105,
+        "reps": 4,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 140,
+        "reps": 5,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 140,
+        "reps": 5,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 140,
+        "reps": 5,
+        "done": true
+       }
+      ],
+      "rest": 180
+     },
+     {
+      "ex": "pull-up",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 0,
+        "reps": 7,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 0,
+        "reps": 7,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 0,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 0,
+        "reps": 6,
+        "done": true
+       }
+      ],
+      "rest": 120
+     },
+     {
+      "ex": "barbell-row",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 67.5,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 67.5,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 67.5,
+        "reps": 7,
+        "done": true,
+        "rpe": 9
+       }
+      ],
+      "rest": 120
+     },
+     {
+      "ex": "face-pull",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 20,
+        "reps": 15,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 20,
+        "reps": 15,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 20,
+        "reps": 14,
+        "done": true,
+        "rpe": 9
+       }
+      ],
+      "superset": 2,
+      "rest": 60
+     },
+     {
+      "ex": "hammer-curl",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 14,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 14,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 14,
+        "reps": 12,
+        "done": true,
+        "rpe": 9
+       }
+      ],
+      "superset": 2,
+      "rest": 60
+     }
+    ],
+    "created": "{{t-21@07:00}}"
+   },
+   {
+    "id": "w46",
+    "routine": "legs",
+    "name": "Legs",
+    "start": "{{t-18@06:50}}",
+    "minutes": 50,
+    "exercises": [
+     {
+      "ex": "back-squat",
+      "sets": [
+       {
+        "type": "warmup",
+        "kg": 52.5,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "warmup",
+        "kg": 77.5,
+        "reps": 4,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 102.5,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 102.5,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 102.5,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 102.5,
+        "reps": 6,
+        "done": true
+       }
+      ],
+      "rest": 180
+     },
+     {
+      "ex": "romanian-deadlift",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 85,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 85,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 85,
+        "reps": 8,
+        "done": true
+       }
+      ],
+      "rest": 120
+     },
+     {
+      "ex": "leg-press",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 170,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 170,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 170,
+        "reps": 11,
+        "done": true
+       }
+      ],
+      "rest": 90
+     },
+     {
+      "ex": "leg-curl",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 42.5,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 42.5,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 42.5,
+        "reps": 12,
+        "done": true
+       }
+      ],
+      "rest": 60
+     },
+     {
+      "ex": "standing-calf-raise",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 62.5,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 62.5,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 62.5,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 62.5,
+        "reps": 12,
+        "done": true
+       }
+      ],
+      "rest": 60
+     }
+    ],
+    "created": "{{t-18@07:00}}"
+   },
+   {
+    "id": "w48",
+    "routine": "push",
+    "name": "Push",
+    "start": "{{t-16@07:05}}",
+    "minutes": 49,
+    "exercises": [
+     {
+      "ex": "bench-press",
+      "sets": [
+       {
+        "type": "warmup",
+        "kg": 40,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "warmup",
+        "kg": 60,
+        "reps": 4,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 80,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 80,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 80,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 80,
+        "reps": 5,
+        "done": true
+       }
+      ],
+      "rest": 150
+     },
+     {
+      "ex": "overhead-press",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 45,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 45,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 45,
+        "reps": 8,
+        "done": true
+       }
+      ],
+      "rest": 120
+     },
+     {
+      "ex": "incline-db-press",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 26,
+        "reps": 10,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 26,
+        "reps": 10,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 26,
+        "reps": 9,
+        "done": true
+       }
+      ],
+      "rest": 90
+     },
+     {
+      "ex": "lateral-raise",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 10,
+        "reps": 15,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 10,
+        "reps": 15,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 10,
+        "reps": 14,
+        "done": true,
+        "rpe": 9
+       }
+      ],
+      "superset": 1,
+      "rest": 60
+     },
+     {
+      "ex": "rope-pushdown",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 25,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 25,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 25,
+        "reps": 12,
+        "done": true
+       }
+      ],
+      "superset": 1,
+      "rest": 60
+     }
+    ],
+    "created": "{{t-16@08:00}}"
+   },
+   {
+    "id": "w50",
+    "routine": "pull",
+    "name": "Pull",
+    "start": "{{t-14@06:20}}",
+    "minutes": 48,
+    "exercises": [
+     {
+      "ex": "deadlift",
+      "sets": [
+       {
+        "type": "warmup",
+        "kg": 70,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "warmup",
+        "kg": 105,
+        "reps": 4,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 140,
+        "reps": 5,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 140,
+        "reps": 5,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 140,
+        "reps": 4,
+        "done": true
+       }
+      ],
+      "rest": 180
+     },
+     {
+      "ex": "pull-up",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 0,
+        "reps": 7,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 0,
+        "reps": 7,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 0,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 0,
+        "reps": 6,
+        "done": true
+       }
+      ],
+      "rest": 120
+     },
+     {
+      "ex": "barbell-row",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 70,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 70,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 70,
+        "reps": 8,
+        "done": true,
+        "rpe": 9
+       }
+      ],
+      "rest": 120
+     },
+     {
+      "ex": "face-pull",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 20,
+        "reps": 15,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 20,
+        "reps": 15,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 20,
+        "reps": 14,
+        "done": true
+       }
+      ],
+      "superset": 2,
+      "rest": 60
+     },
+     {
+      "ex": "hammer-curl",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 14,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 14,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 14,
+        "reps": 12,
+        "done": true,
+        "rpe": 9
+       }
+      ],
+      "superset": 2,
+      "rest": 60
+     }
+    ],
+    "created": "{{t-14@07:00}}"
+   },
+   {
+    "id": "w53",
+    "routine": "legs",
+    "name": "Legs",
+    "start": "{{t-11@06:20}}",
+    "minutes": 51,
+    "exercises": [
+     {
+      "ex": "back-squat",
+      "sets": [
+       {
+        "type": "warmup",
+        "kg": 52.5,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "warmup",
+        "kg": 80,
+        "reps": 4,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 105,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 105,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 105,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 105,
+        "reps": 6,
+        "done": true,
+        "rpe": 9
+       }
+      ],
+      "rest": 180
+     },
+     {
+      "ex": "romanian-deadlift",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 85,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 85,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 85,
+        "reps": 7,
+        "done": true,
+        "rpe": 9
+       }
+      ],
+      "rest": 120
+     },
+     {
+      "ex": "leg-press",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 175,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 175,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 175,
+        "reps": 11,
+        "done": true,
+        "rpe": 9
+       }
+      ],
+      "rest": 90
+     },
+     {
+      "ex": "leg-curl",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 42.5,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 42.5,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 42.5,
+        "reps": 12,
+        "done": true
+       }
+      ],
+      "rest": 60
+     },
+     {
+      "ex": "standing-calf-raise",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 62.5,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 62.5,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 62.5,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 62.5,
+        "reps": 12,
+        "done": true,
+        "rpe": 9
+       }
+      ],
+      "rest": 60
+     }
+    ],
+    "created": "{{t-11@07:00}}"
+   },
+   {
+    "id": "w55",
+    "routine": "push",
+    "name": "Push",
+    "start": "{{t-9@06:35}}",
+    "minutes": 48,
+    "exercises": [
+     {
+      "ex": "bench-press",
+      "sets": [
+       {
+        "type": "warmup",
+        "kg": 40,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "warmup",
+        "kg": 60,
+        "reps": 4,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 80,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 80,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 80,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 80,
+        "reps": 6,
+        "done": true,
+        "rpe": 9
+       }
+      ],
+      "rest": 150
+     },
+     {
+      "ex": "overhead-press",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 45,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 45,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 45,
+        "reps": 8,
+        "done": true,
+        "rpe": 9
+       }
+      ],
+      "rest": 120
+     },
+     {
+      "ex": "incline-db-press",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 26,
+        "reps": 10,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 26,
+        "reps": 10,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 26,
+        "reps": 9,
+        "done": true
+       }
+      ],
+      "rest": 90
+     },
+     {
+      "ex": "lateral-raise",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 10,
+        "reps": 15,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 10,
+        "reps": 15,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 10,
+        "reps": 15,
+        "done": true
+       }
+      ],
+      "superset": 1,
+      "rest": 60
+     },
+     {
+      "ex": "rope-pushdown",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 25,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 25,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 25,
+        "reps": 11,
+        "done": true
+       }
+      ],
+      "superset": 1,
+      "rest": 60
+     }
+    ],
+    "created": "{{t-9@07:00}}"
+   },
+   {
+    "id": "w57",
+    "routine": "pull",
+    "name": "Pull",
+    "start": "{{t-7@06:50}}",
+    "minutes": 45,
+    "exercises": [
+     {
+      "ex": "deadlift",
+      "sets": [
+       {
+        "type": "warmup",
+        "kg": 72.5,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "warmup",
+        "kg": 107.5,
+        "reps": 4,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 142.5,
+        "reps": 5,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 142.5,
+        "reps": 5,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 142.5,
+        "reps": 4,
+        "done": true
+       }
+      ],
+      "rest": 180
+     },
+     {
+      "ex": "pull-up",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 0,
+        "reps": 7,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 0,
+        "reps": 7,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 0,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 0,
+        "reps": 6,
+        "done": true
+       }
+      ],
+      "rest": 120
+     },
+     {
+      "ex": "barbell-row",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 70,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 70,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 70,
+        "reps": 7,
+        "done": true
+       }
+      ],
+      "rest": 120
+     },
+     {
+      "ex": "face-pull",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 20,
+        "reps": 15,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 20,
+        "reps": 15,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 20,
+        "reps": 15,
+        "done": true,
+        "rpe": 9
+       }
+      ],
+      "superset": 2,
+      "rest": 60
+     },
+     {
+      "ex": "hammer-curl",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 14,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 14,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 14,
+        "reps": 12,
+        "done": true,
+        "rpe": 9
+       }
+      ],
+      "superset": 2,
+      "rest": 60
+     }
+    ],
+    "created": "{{t-7@07:00}}"
+   },
+   {
+    "id": "w60",
+    "routine": "legs",
+    "name": "Legs",
+    "start": "{{t-4@07:50}}",
+    "minutes": 50,
+    "exercises": [
+     {
+      "ex": "back-squat",
+      "sets": [
+       {
+        "type": "warmup",
+        "kg": 52.5,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "warmup",
+        "kg": 80,
+        "reps": 4,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 105,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 105,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 105,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 105,
+        "reps": 6,
+        "done": true,
+        "rpe": 9
+       }
+      ],
+      "rest": 180
+     },
+     {
+      "ex": "romanian-deadlift",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 87.5,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 87.5,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 87.5,
+        "reps": 8,
+        "done": true,
+        "rpe": 9
+       }
+      ],
+      "rest": 120
+     },
+     {
+      "ex": "leg-press",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 175,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 175,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 175,
+        "reps": 11,
+        "done": true
+       }
+      ],
+      "rest": 90
+     },
+     {
+      "ex": "leg-curl",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 42.5,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 42.5,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 42.5,
+        "reps": 12,
+        "done": true,
+        "rpe": 9
+       }
+      ],
+      "rest": 60
+     },
+     {
+      "ex": "standing-calf-raise",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 62.5,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 62.5,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 62.5,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 62.5,
+        "reps": 11,
+        "done": true
+       }
+      ],
+      "rest": 60
+     }
+    ],
+    "created": "{{t-4@08:00}}"
+   },
+   {
+    "id": "w62",
+    "routine": "push",
+    "name": "Push",
+    "start": "{{t-2@06:05}}",
+    "minutes": 51,
+    "exercises": [
+     {
+      "ex": "bench-press",
+      "sets": [
+       {
+        "type": "warmup",
+        "kg": 40,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "warmup",
+        "kg": 60,
+        "reps": 4,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 80,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 80,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 80,
+        "reps": 6,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 80,
+        "reps": 5,
+        "done": true
+       }
+      ],
+      "rest": 150
+     },
+     {
+      "ex": "overhead-press",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 47.5,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 47.5,
+        "reps": 8,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 47.5,
+        "reps": 7,
+        "done": true
+       }
+      ],
+      "rest": 120
+     },
+     {
+      "ex": "incline-db-press",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 26,
+        "reps": 10,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 26,
+        "reps": 10,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 26,
+        "reps": 10,
+        "done": true
+       }
+      ],
+      "rest": 90
+     },
+     {
+      "ex": "lateral-raise",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 10,
+        "reps": 15,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 10,
+        "reps": 15,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 10,
+        "reps": 15,
+        "done": true
+       }
+      ],
+      "superset": 1,
+      "rest": 60
+     },
+     {
+      "ex": "rope-pushdown",
+      "sets": [
+       {
+        "type": "normal",
+        "kg": 25,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 25,
+        "reps": 12,
+        "done": true
+       },
+       {
+        "type": "normal",
+        "kg": 25,
+        "reps": 12,
+        "done": true,
+        "rpe": 9
+       },
+       {
+        "type": "drop",
+        "kg": 17.5,
+        "reps": 10,
+        "done": true
+       }
+      ],
+      "superset": 1,
+      "rest": 60
+     }
+    ],
+    "created": "{{t-2@07:00}}"
+   }
+  ],
+  "bodyweight": [
+   {
+    "id": "b63",
+    "date": "{{d-63}}",
+    "kg": 81.5
+   },
+   {
+    "id": "b59",
+    "date": "{{d-59}}",
+    "kg": 81.4
+   },
+   {
+    "id": "b55",
+    "date": "{{d-55}}",
+    "kg": 81.7
+   },
+   {
+    "id": "b51",
+    "date": "{{d-51}}",
+    "kg": 81.2
+   },
+   {
+    "id": "b47",
+    "date": "{{d-47}}",
+    "kg": 81.2
+   },
+   {
+    "id": "b44",
+    "date": "{{d-44}}",
+    "kg": 81.5
+   },
+   {
+    "id": "b39",
+    "date": "{{d-39}}",
+    "kg": 80.9
+   },
+   {
+    "id": "b34",
+    "date": "{{d-34}}",
+    "kg": 81.2
+   },
+   {
+    "id": "b30",
+    "date": "{{d-30}}",
+    "kg": 80.5
+   },
+   {
+    "id": "b27",
+    "date": "{{d-27}}",
+    "kg": 81
+   },
+   {
+    "id": "b22",
+    "date": "{{d-22}}",
+    "kg": 80.9
+   },
+   {
+    "id": "b19",
+    "date": "{{d-19}}",
+    "kg": 80.6
+   },
+   {
+    "id": "b14",
+    "date": "{{d-14}}",
+    "kg": 80.1
+   },
+   {
+    "id": "b9",
+    "date": "{{d-9}}",
+    "kg": 80.5
+   },
+   {
+    "id": "b6",
+    "date": "{{d-6}}",
+    "kg": 80.4
+   },
+   {
+    "id": "b1",
+    "date": "{{d-1}}",
+    "kg": 80
+   }
+  ]
+ }
+}

@@ -1,6 +1,6 @@
 // deno test -A supabase/functions/lifecycle/logic.test.ts
 import { assert, assertEquals } from "jsr:@std/assert@1";
-import { clickable, config, decide, type Facts, gapAfter, LADDER, linkName, localMorning, sameSecret, sortable, trackedLink, unsubscribeLinks, unsubscribeToken, validClick, validUnsubscribe, variantOf } from "./logic.ts";
+import { clickable, config, decide, type Facts, gapAfter, LADDER, ladderSent, linkName, localMorning, sameSecret, sortable, trackedLink, unsubscribeLinks, unsubscribeToken, validClick, validUnsubscribe, variantOf, welcomeDue, welcomeStep } from "./logic.ts";
 
 const H = 3_600_000, D = 24 * H;
 const NOW = new Date("2026-10-20T08:00:00Z");
@@ -163,9 +163,44 @@ Deno.test("settings: off unless LIFECYCLE_ENABLED is exactly true; missing secre
   assert(c.ok && c.config.only?.has("0b6f6a5e-1d2c-4a8e-9f3b-2c1d0e9f8a7b") && c.config.only.size === 1);
 });
 
+Deno.test("settings: production by default; staging sets its site, a subject prefix and manual rounds", () => {
+  const env = (o: Record<string, string>) => ({ get: (k: string) => o[k] });
+  const full = { LIFECYCLE_SINCE: "2026-10-06", RESEND_LIFECYCLE_KEY: "re_x", LIFECYCLE_UNSUBSCRIBE_SECRET: "u".repeat(32), LIFECYCLE_CRON_SECRET: "c".repeat(32) };
+  const cfg = (o: Record<string, string>) => { const c = config(env({ ...full, ...o })); if (!c.ok) throw new Error(c.reason); return c.config; };
+  assertEquals([cfg({}).site, cfg({}).subjectPrefix, cfg({}).manualRounds], ["https://ambernotes.app", "", false]);
+  const s = cfg({ LIFECYCLE_SITE: "https://amber-notes-staging.vercel.app/", LIFECYCLE_SUBJECT_PREFIX: "[Staging] ", LIFECYCLE_MANUAL_ROUNDS: "true" });
+  assertEquals([s.site, s.subjectPrefix, s.manualRounds], ["https://amber-notes-staging.vercel.app", "[Staging] ", true]);
+  assertEquals(cfg({ LIFECYCLE_SITE: "javascript:alert(1)" }).site, "https://ambernotes.app");
+});
+
 Deno.test("secrets compare whole", () => {
   assert(sameSecret("abc", "abc"));
   assert(!sameSecret("abc", "abd"));
   assert(!sameSecret("abc", "ab"));
   assert(!sameSecret("", ""));
+});
+
+Deno.test("welcome: 2 to 60 minutes after sign-up, once, never after unsubscribing or without an address", () => {
+  const M = 60_000;
+  assertEquals(welcomeDue(facts({ ageMs: 1 * M }), NOW), false);
+  assertEquals(welcomeDue(facts({ ageMs: 3 * M }), NOW), true);
+  assertEquals(welcomeDue(facts({ ageMs: 61 * M }), NOW), false);
+  assertEquals(welcomeDue(facts({ ageMs: 3 * M, sent: ["welcome"] }), NOW), false);
+  assertEquals(welcomeDue(facts({ ageMs: 3 * M, unsubscribed: true }), NOW), false);
+  assertEquals(welcomeDue(facts({ ageMs: 3 * M, email: null }), NOW), false);
+});
+
+Deno.test("welcome: its one step fits where the person is", () => {
+  assertEquals(welcomeStep(facts()), "connect");
+  assertEquals(welcomeStep(facts({ on_mac: false, ai_connected_at: ago(H) })), "app");
+  assertEquals(welcomeStep(facts({ on_mac: false, on_iphone: true, ai_connected_at: ago(H) })), "try");
+});
+
+Deno.test("welcome: outside the ladder's cap, and the ladder's first email waits its usual gap after it", () => {
+  // Six ladder emails plus the welcome: the cap counts the six.
+  assertEquals(ladderSent(facts({ sent: ["welcome", "stuck", "import"] })), 2);
+  // A welcome two days ago (an hour after sign-up), unanswered: no ladder email until day 3.
+  const welcomed = { sent: ["welcome"], sent_since_active: 0, note_count: 0 };
+  assertEquals(decide(facts({ ...welcomed, ageMs: 2 * D, last_sent_at: ago(2 * D - H) }), NOW), null);
+  assertEquals(decide(facts({ ...welcomed, ageMs: 3 * D + H, last_sent_at: ago(3 * D) }), NOW), "stuck");
 });

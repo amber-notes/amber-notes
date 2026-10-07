@@ -143,7 +143,8 @@ enum NoteText {
             let cleaned = stripMarkup(String(line))
             guard !cleaned.isEmpty else { continue }
             let capped = String(String(cleaned.unicodeScalars.prefix(600)).prefix(300))
-            if let title { return (title, capped) }
+            // The preview reads wiki links as their text; the title keeps the server's rules.
+            if let title { return (title, WikiLinks.plain(capped)) }
             title = capped
         }
         return (title ?? "New Note", tablePreview(table))

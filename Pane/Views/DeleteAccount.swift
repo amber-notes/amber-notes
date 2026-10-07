@@ -151,7 +151,7 @@ struct ExportNotesButton: View {
         defer { working = false }
         DebouncedSave.flushAll()
         do {
-            made = try await NoteExport.make(context, fetch: { a in await sync?.download(a) ?? false })
+            made = try await NoteExport.make(context, sharing: CollabStore.shared?.exportSharing() ?? .init(), fetch: { a in await sync?.download(a) ?? false })
             saving = true
         } catch {
             message = "Couldn't export your notes: \(error.localizedDescription)"

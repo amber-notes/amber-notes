@@ -314,3 +314,45 @@ html[data-theme] ::selection { background: var(--mark); }
 .pi-dev button { height: 24px; padding: 0 10px; border: 0; border-radius: 12px; cursor: pointer; background: rgba(251, 238, 221, 0.16); color: inherit; font: inherit; }
 .pi-dev button:focus-visible { outline: 2px solid #f5a53a; outline-offset: 2px; }
 @media (hover: hover) { .pi-dev button:hover { background: rgba(251, 238, 221, 0.28); } }
+
+/* The cookie banner (app/ConsentBanner.tsx): a small note in the bottom corner, the leaf mark, one
+   sentence and two buttons that look the same. Phones get it across the bottom, inside the gutter.
+   It sits over the page's foot without dimming or blocking anything else. */
+.consent {
+  position: fixed; z-index: 50; left: var(--gutter); bottom: calc(16px + env(safe-area-inset-bottom));
+  width: min(440px, calc(100vw - 2 * var(--gutter)));
+  display: grid; grid-template-columns: 28px 1fr; gap: 10px 12px; align-items: start;
+  padding: 14px 14px 14px 16px; border-radius: 16px;
+  background: var(--card); color: var(--ink); border: 1px solid var(--line);
+  box-shadow: 0 10px 30px rgba(var(--shade), 0.14), 0 1px 3px rgba(var(--shade), 0.08);
+  font-size: 14px; line-height: 1.45;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .consent { animation: consent-in 0.42s cubic-bezier(0.2, 0.8, 0.2, 1) 0.6s both; }
+}
+@keyframes consent-in { from { opacity: 0; transform: translateY(10px) rotate(-0.6deg); } to { opacity: 1; transform: none; } }
+.consent-mark { margin-top: 1px; border-radius: 7px; }
+.consent-text { margin: 0; text-wrap: pretty; }
+.consent-text a { color: var(--link); text-underline-offset: 3px; }
+.consent-now { color: var(--muted); }
+.consent-actions { grid-column: 2; display: flex; gap: 8px; }
+.consent-button {
+  flex: 1; min-height: 40px; padding: 0 16px; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--soft); color: var(--ink); font: inherit; font-weight: 600; cursor: pointer;
+  transition-property: background-color, transform; transition-duration: 120ms;
+}
+@media (hover: hover) { .consent-button:hover { background: color-mix(in srgb, var(--soft) 80%, var(--amber) 20%); } }
+.consent-button:active { transform: scale(0.97); }
+.consent-accept { background: var(--cta-bg); color: var(--cta-ink); border-color: var(--cta-bg); }
+@media (hover: hover) { .consent-accept:hover { background: color-mix(in srgb, var(--cta-bg) 88%, var(--amber) 12%); } }
+.consent-button:focus-visible, .consent-text a:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.consent-button[aria-pressed="true"] { box-shadow: inset 0 0 0 1.5px var(--amber); }
+@media (max-width: 480px) { .consent { left: var(--gutter); right: var(--gutter); width: auto; } }
+
+/* The footer's Cookie settings: a button that reads as one of the footer's links. */
+.site-footer button.site-footlink {
+  appearance: none; border: 0; background: none; padding: 0; cursor: pointer;
+  color: var(--muted); font: inherit; font-weight: 600; font-size: 14px; min-height: 36px;
+}
+@media (hover: hover) { .site-footer button.site-footlink:hover { color: var(--ink); } }
+.site-footer button.site-footlink:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; border-radius: 6px; }

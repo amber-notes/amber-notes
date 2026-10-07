@@ -9,10 +9,17 @@
 import type { PendingQuery, Row, Sql, TransactionSql } from "npm:postgres@3.4.5";
 import { toBase64, type Head, type Vault } from "../_shared/e2ee.ts";
 import { errorKind, log } from "../_shared/log.ts";
-import { MAX_PAGE_BYTES, PAGE_CONTRACT, PAGE_REWRITE, pageDataView, pageProblems } from "./page.ts";
-import { appendText, applyEdits, coerce, findTables, fitLines, isTextType, mimeOf, outline, previewOf, replaceTable, searchFilter, searchInMemory, setChecklistItem, sliceLines, titleOf, typeSpec, type Edit, type Table } from "./notes.ts";
+import { MAX_PAGE_BYTES, PAGE_REWRITE, pageDataView, pageProblems } from "./page.ts";
+import { PAGE_API } from "./page_guide.ts";
+import { pageWarnings } from "./page_lint.ts";
+import { dataHandlers, dataTools, pageExtras } from "./data_tools.ts";
+import { parseStored } from "./app_project.ts";
+const isProject = (stored: string) => { const p = parseStored(stored); return Object.keys(p.files).length > 1 || Object.keys(p.compiled).length > 0; };
+import { appendText, applyEdits, coerce, findTables, fitLines, isTextType, mimeOf, outline, previewOf, replaceTable, searchFilter, searchInMemory, setChecklistItem, sliceLines, titleOf, typeSpec, wikiLinks, type Edit, type Table } from "./notes.ts";
 
-export type ToolContext = { sql: Sql; userId: string; client: string; canWrite: boolean; vault: Vault };
+/** session: the client's MCP session (its Mcp-Session-Id, or a hash of its token), for what it has read.
+ *  timing: where a call's time went, sent back in the Server-Timing header. */
+export type ToolContext = { sql: Sql; userId: string; client: string; canWrite: boolean; vault: Vault; session?: string; timing?: Record<string, number>; cold?: boolean };
 export class ToolError extends Error {}
 
 /** A result that is MCP content blocks (a file's text, an image, a PDF), sent as they are. */
@@ -20,15 +27,15 @@ export class Content {
   constructor(readonly content: Record<string, unknown>[], readonly structured?: Record<string, unknown>) {}
 }
 
-type Tx = TransactionSql;
+export type Tx = TransactionSql;
 type Args = Record<string, unknown>;
-type Tool = {
+export type Tool = {
   name: string;
   title: string;
   description: string;
   inputSchema: Record<string, unknown>;
   // title is repeated here because Claude's directory reads annotations.title.
-  annotations: { title?: string; readOnlyHint: boolean; destructiveHint: boolean; idempotentHint?: boolean; openWorldHint: false };
+  annotations: { title?: string; readOnlyHint: boolean; destructiveHint: boolean; idempotentHint?: boolean; openWorldHint: boolean };
   // ChatGPT reads this per tool: which OAuth scope the call needs.
   securitySchemes?: { type: "oauth2"; scopes: string[] }[];
 };
@@ -78,7 +85,7 @@ export const tools: Tool[] = ([
   },
   {
     name: "read_note", title: "Read a note",
-    description: "Returns a note's markdown with its folder, dates, version and outline. For long notes, read a line range; set line_numbers to see where headings are.",
+    description: "Returns a note's markdown with its folder, dates, version and outline, and the notes it links to with [[wiki links]] (open one with read_note and its title). For long notes, read a line range; set line_numbers to see where headings are.",
     inputSchema: { type: "object", properties: { ...noteRef, start_line: int("First line, 1-based."), end_line: int("Last line, inclusive."), line_numbers: bool("Prefix each line with its number.") } },
     annotations: read,
   },
@@ -226,16 +233,16 @@ export const tools: Tool[] = ([
   // Note pages (prototype): a view over a note's data, see page.ts.
   {
     name: "set_note_page", title: "Make a page for a note",
-    description: "Gives a note a page: a custom view of its data (a habit grid with streaks, a budget with totals, a reading log), shown in Amber Notes with a Page / Text switch. " +
-      "The note's markdown stays the data and the source of truth: this tool never changes it. Keep the note's table or checklist as it is (fix it first with the other tools if needed) and make the page read and change it. " +
-      "Replaces the note's current page, if any; an empty html removes it. The last 10 pages are kept, so nothing is lost.\n" + PAGE_REWRITE + "\n" + PAGE_CONTRACT +
-      `\nOne self-contained HTML document, at most ${MAX_PAGE_BYTES / 1024} KB. Pages with external addresses or network calls are refused.`,
+    description: "The note's app (what people see on its App side; call it \"the note's app\" with them, never \"page\"). Gives a note a page: a custom view of its data (a habit grid with streaks, a budget with totals, a reading log), shown in Amber Notes with a Page / Text switch. " +
+      "The note's markdown stays the data and the source of truth: this tool never changes it. Keep the note's table or checklist as it is (fix it first with the data tools if needed) and make the page read and change it. " +
+      "Replaces the note's current page, if any; an empty html removes it. The last 10 pages are kept, and the page's data (amber.data) stays, so nothing is lost. " +
+      "Call get_page_guide first. Pages with external addresses or network calls are refused; the result lists warnings to fix (dark mode, labels, overflow, copied data).\n" + PAGE_REWRITE + "\n" + PAGE_API,
     inputSchema: { type: "object", properties: { ...noteRef, html: str("The whole page: one HTML document with inline CSS and JS. Empty string removes the page.") }, required: ["html"] },
     annotations: { ...write, destructiveHint: true, idempotentHint: true },
   },
   {
     name: "edit_note_page", title: "Edit a note's page",
-    description: "Precise edits to a note's current page, like edit_note for notes: each old_text must match the page's HTML exactly once (copy it from get_note_page) and is replaced by new_text. " +
+    description: "The note's app (what people see on its App side; call it \"the note's app\" with them, never \"page\"). Precise edits to a note's current page, like edit_note for notes: each old_text must match the page's HTML exactly once (copy it from get_note_page) and is replaced by new_text. " +
       "Edits apply in order; if one doesn't match, or the result breaks the page rules, nothing changes. The page before the edit is kept (the last 10 are). The note's markdown is never changed.",
     inputSchema: {
       type: "object",
@@ -249,7 +256,7 @@ export const tools: Tool[] = ([
   },
   {
     name: "get_note_page", title: "Read a note's page",
-    description: "Returns a note's page (its HTML), the rules a page follows, and the earlier pages kept (the last 10, newest first). Pass version_id to read an earlier page; to bring it back, send its html to set_note_page. A note without a page returns has_page: false.",
+    description: "The note's app (what people see on its App side; call it \"the note's app\" with them, never \"page\"). Returns a note's page (its HTML), the rules a page follows, page_input (what the page is handed: amber.note with the first rows of each table, and amber.data), and the earlier pages kept (the last 10, newest first). Read it before changing a page. Pass version_id to read an earlier page; to bring it back, send its html to set_note_page. A note without a page returns has_page: false.",
     inputSchema: { type: "object", properties: { ...noteRef, version_id: int("An earlier page, from versions.") } },
     annotations: read,
   },
@@ -259,6 +266,7 @@ export const tools: Tool[] = ([
     inputSchema: { type: "object", properties: {} },
     annotations: read,
   },
+  ...dataTools,
   // ChatGPT's connector conventions.
   {
     name: "search", title: "Search",
@@ -289,21 +297,27 @@ export function servedTools(set: string | undefined = Deno.env.get("AMBER_MCP_TO
   return set === "pages" ? tools : tools.filter((t) => PRODUCTION_TOOL_NAMES.includes(t.name));
 }
 
-const writeTools = new Set(tools.filter((t) => !t.annotations.readOnlyHint).map((t) => t.name));
 
 /** One tool call: the vault, and how much scan time it spent (charged when it ends). */
-type Call = { v: Vault; ctx: ToolContext; scanMs: number };
+export type Call = { v: Vault; ctx: ToolContext; scanMs: number };
 
 export async function runTool(name: string, args: Args, ctx: ToolContext): Promise<unknown> {
-  if (!servedTools().some((t) => t.name === name)) throw new ToolError(`Unknown tool ${name}.`);
-  if (writeTools.has(name) && !ctx.canWrite) throw new ToolError("This access token is read-only.");
+  return await runIn(servedTools(), handlers, name, args, ctx);
+}
+
+/** One call of a tool from a tool set (the classic one above, or the file-like one in files_tools.ts). */
+export async function runIn(list: Tool[], impl: Record<string, (tx: Tx, a: Args, c: Call) => Promise<unknown>>, name: string, args: Args, ctx: ToolContext): Promise<unknown> {
+  if (!list.some((t) => t.name === name)) throw new ToolError(`Unknown tool ${name}.`);
+  if (list.some((t) => t.name === name && !t.annotations.readOnlyHint) && !ctx.canWrite) throw new ToolError("This access token is read-only.");
   const claims = JSON.stringify({ sub: ctx.userId, role: "authenticated" });
   // Every call costs one from the account's MCP bucket (600, then 5 a second). Taken in its
   // own transaction so a call that fails still counts: failures are no free way to hammer.
-  await ctx.sql.begin(async (tx) => {
-    await tx`select set_config('request.jwt.claims', ${claims}, true)`;
-    await tx`select public.pane_take('mcp')`;
-  }).catch((e) => { throw new ToolError((e as Error).message); });
+  // One statement, one round trip, in its own transaction: the claims are set (from the subquery,
+  // which runs first) for the take in the same statement.
+  const tTake = performance.now();
+  await ctx.sql`select public.pane_take('mcp') from (select set_config('request.jwt.claims', ${claims}, true)) as claims`
+    .catch((e) => { throw new ToolError((e as Error).message); });
+  if (ctx.timing) ctx.timing.rate_take = performance.now() - tTake;
   const call: Call = { v: ctx.vault, ctx, scanMs: 0 };
   try {
     return await ctx.sql.begin(async (tx) => {
@@ -312,42 +326,40 @@ export async function runTool(name: string, args: Args, ctx: ToolContext): Promi
                       set_config('pane.source', 'mcp', true),
                       set_config('pane.agent', 'mcp', true),
                       set_config('pane.client', ${ctx.client}, true)`;
-      return await handlers[name](tx, args, call);
+      return await impl[name](tx, args, call);
     });
   } finally {
     // Scan time is charged on its own too, so a call that fails after scanning still pays.
     if (call.scanMs > 0) {
-      await ctx.sql.begin(async (tx) => {
-        await tx`select set_config('request.jwt.claims', ${claims}, true)`;
-        await tx`select public.pane_scan_budget(${call.scanMs}::double precision)`;
-      }).catch((e) => log("scan_charge_failed", { tool: name, ...errorKind(e) }));
+      await ctx.sql`select public.pane_scan_budget(${call.scanMs}::double precision) from (select set_config('request.jwt.claims', ${claims}, true)) as claims`
+        .catch((e) => log("scan_charge_failed", { tool: name, ...errorKind(e) }));
     }
   }
 }
 
 // MARK: Rows and what they hold
 
-type NoteRow = {
+export type NoteRow = {
   id: string; body_ct?: string | null; head_ct: string; locked_body: string | null; folder_id: string | null; parent_id: string | null;
   is_pinned: boolean; created_at: Date; updated_at: Date; trashed_at: Date | null; version: string;
 };
 /** A note with its head (title and preview) opened. */
-type Note = NoteRow & { title: string; preview?: string };
-type FolderRow = { id: string; name: string; parent_id: string | null; sort_index: number };
+export type Note = NoteRow & { title: string; preview?: string };
+export type FolderRow = { id: string; name: string; parent_id: string | null; sort_index: number };
 
 /** Everything but the body, for lists: bodies can be megabytes. */
-const HEAD_COLUMNS = (tx: Tx) => tx`id, head_ct, locked_body, folder_id, parent_id, is_pinned, created_at, updated_at, trashed_at, version`;
+export const HEAD_COLUMNS = (tx: Tx) => tx`id, head_ct, locked_body, folder_id, parent_id, is_pinned, created_at, updated_at, trashed_at, version`;
 
 const UNREADABLE = "(this note can't be opened here)";
 
 /** A note's title and preview. One that won't open (written with another key) still lists. */
-async function withHead(v: Vault, n: NoteRow): Promise<Note> {
+export async function withHead(v: Vault, n: NoteRow): Promise<Note> {
   let h: Head;
   try { h = await v.openHead(n.id, n.head_ct); } catch { h = { title: UNREADABLE }; }
   return { ...n, title: h.title, ...(h.preview !== undefined ? { preview: h.preview } : {}) };
 }
 
-async function bodyOf(v: Vault, n: { id: string; body_ct?: string | null }): Promise<string> {
+export async function bodyOf(v: Vault, n: { id: string; body_ct?: string | null }): Promise<string> {
   if (!n.body_ct) throw new ToolError(LOCKED);
   try {
     return await v.openBody(n.id, n.body_ct);
@@ -357,7 +369,7 @@ async function bodyOf(v: Vault, n: { id: string; body_ct?: string | null }): Pro
 }
 
 /** Sub-notes the app doesn't list: those a live parent's text links (pane-note:<id>). */
-class Parents {
+export class Parents {
   private bodies = new Map<string, string | null>();
   /** Some parents weren't opened because the scan ran out of time. */
   incomplete = false;
@@ -392,7 +404,7 @@ const SPENT = "Your AI has searched a lot in the last minute. Try again shortly.
  * (pane_scan_budget), and at most 1.5 seconds. Notes are looked at newest first; when time runs
  * out the scan stops and says how far it got.
  */
-class Scan {
+export class Scan {
   private started = 0;
   private cap = 0;
   private worked = false;
@@ -465,7 +477,7 @@ class Scan {
 
 /** Live notes in the main list, per folder, and all of them newest first. Sub-notes a live parent
  *  links are left out, as in the app. */
-async function listedNotes(tx: Tx, call: Call) {
+export async function listedNotes(tx: Tx, call: Call) {
   const scan = await Scan.start(tx, call);
   const live = await tx<{ id: string; folder_id: string | null; parent_id: string | null }[]>`
     select id, folder_id, parent_id from public.notes where deleted_at is null and trashed_at is null order by updated_at desc, id desc`;
@@ -480,7 +492,7 @@ async function listedNotes(tx: Tx, call: Call) {
 // MARK: Helpers
 
 /** A note's sub-notes, their sub-notes, and so on. */
-async function descendants(tx: Tx, id: string): Promise<string[]> {
+export async function descendants(tx: Tx, id: string): Promise<string[]> {
   const rows = await tx<{ id: string }[]>`
     with recursive d as (
       select id from public.notes where parent_id = ${id} and deleted_at is null
@@ -493,19 +505,19 @@ async function descendants(tx: Tx, id: string): Promise<string[]> {
 /** A locked note's text is sealed with the user's notes password; here only its title opens. */
 export const LOCKED = "This note is locked. Its text is encrypted on the user's devices: it can't be read, searched or changed here. The user can open it in Amber Notes.";
 
-function refuseLocked(n: Note) {
+export function refuseLocked(n: Note) {
   if (n.locked_body !== null && n.locked_body !== undefined) throw new ToolError(`"${n.title}": ${LOCKED}`);
 }
 
 /** A whole number the model sent, or a clear error naming the argument. */
-function wholeNumber(v: unknown, name: string): number {
+export function wholeNumber(v: unknown, name: string): number {
   const n = typeof v === "string" && v.trim() !== "" ? Number(v) : v;
   if (typeof n !== "number" || !Number.isInteger(n)) throw new ToolError(`${name} must be a whole number (got ${JSON.stringify(v)}).`);
   return n;
 }
 
 /** Long text quoted back in an error, cut to something readable. */
-const quote = (s: string) => JSON.stringify(s.length > 80 ? s.slice(0, 79) + "…" : s);
+export const quote = (s: string) => JSON.stringify(s.length > 80 ? s.slice(0, 79) + "…" : s);
 
 const bytes = (s: string) => new TextEncoder().encode(s).length;
 // About 15k tokens: well inside what Claude and ChatGPT take from one tool call. Longer notes are read in parts.
@@ -514,15 +526,15 @@ const MAX_NOTE_BYTES = 5_000_000;
 // What get_file sends inline: the file itself goes into the model's context.
 export const MAX_FILE_BYTES = 8 * 1024 * 1024;
 
-function checkSize(body: string) {
+export function checkSize(body: string) {
   if (bytes(body) > MAX_NOTE_BYTES) throw new ToolError(`That note would be ${(bytes(body) / 1e6).toFixed(1)} MB; the limit is 5 MB. Split it into several notes.`);
 }
 
-function checkFolderName(name: string) {
+export function checkFolderName(name: string) {
   if ([...name].length > 200) throw new ToolError("Folder names can be at most 200 characters.");
 }
 
-async function folders(tx: Tx, v: Vault): Promise<FolderRow[]> {
+export async function folders(tx: Tx, v: Vault): Promise<FolderRow[]> {
   const rows = await tx<{ id: string; name_ct: string; parent_id: string | null; sort_index: number }[]>`
     select id, name_ct, parent_id, sort_index from public.folders where deleted_at is null`;
   const out = await Promise.all(rows.map(async (r) => ({
@@ -532,7 +544,7 @@ async function folders(tx: Tx, v: Vault): Promise<FolderRow[]> {
   return out.sort((a, b) => a.sort_index - b.sort_index || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
 }
 
-function pathOf(id: string | null, all: FolderRow[]): string {
+export function pathOf(id: string | null, all: FolderRow[]): string {
   const parts: string[] = [];
   let cur = all.find((f) => f.id === id);
   let guard = 0;
@@ -543,7 +555,7 @@ function pathOf(id: string | null, all: FolderRow[]): string {
   return parts.join("/");
 }
 
-async function findFolder(tx: Tx, v: Vault, ref: string, create: boolean): Promise<FolderRow> {
+export async function findFolder(tx: Tx, v: Vault, ref: string, create: boolean): Promise<FolderRow> {
   // Two requests creating the same folder at once would otherwise make two of it.
   if (create) await tx`select pg_advisory_xact_lock(hashtextextended('pane-folders:' || auth.uid()::text, 0))`;
   const all = await folders(tx, v);
@@ -580,9 +592,9 @@ async function findFolder(tx: Tx, v: Vault, ref: string, create: boolean): Promi
   return parent!;
 }
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-async function findNote(tx: Tx, c: Call, args: Args, includeTrashed = false): Promise<Note> {
+export async function findNote(tx: Tx, c: Call, args: Args, includeTrashed = false): Promise<Note> {
   const id = typeof args.id === "string" ? args.id : undefined;
   const title = typeof args.title === "string" ? args.title.trim() : undefined;
   if (id) {
@@ -621,7 +633,7 @@ async function findNote(tx: Tx, c: Call, args: Args, includeTrashed = false): Pr
     : `No note titled ${quote(title)}. Try search_notes.${partly}`);
 }
 
-function summary(n: Note, all: FolderRow[]) {
+export function summary(n: Note, all: FolderRow[]) {
   return {
     id: n.id, title: n.title, folder: pathOf(n.folder_id, all), pinned: n.is_pinned, updated: iso(n.updated_at),
     ...(n.locked_body ? { locked: true } : { preview: n.preview ?? "" }),
@@ -629,11 +641,11 @@ function summary(n: Note, all: FolderRow[]) {
   };
 }
 
-const iso = (d: Date | null) => (d ? new Date(d).toISOString() : null);
-const clampInt = (v: unknown, def: number, max: number) => Math.max(0, Math.min(max, Number.isFinite(Number(v)) ? Math.floor(Number(v)) : def));
+export const iso = (d: Date | null) => (d ? new Date(d).toISOString() : null);
+export const clampInt = (v: unknown, def: number, max: number) => Math.max(0, Math.min(max, Number.isFinite(Number(v)) ? Math.floor(Number(v)) : def));
 
 /** Heads of notes by id, in the order given. */
-async function notesById(tx: Tx, v: Vault, ids: string[]): Promise<Note[]> {
+export async function notesById(tx: Tx, v: Vault, ids: string[]): Promise<Note[]> {
   if (!ids.length) return [];
   const rows = await tx<NoteRow[]>`select ${HEAD_COLUMNS(tx)} from public.notes where id = any(${ids}::uuid[])`;
   const byId = new Map(rows.map((r) => [r.id, r]));
@@ -645,7 +657,7 @@ async function notesById(tx: Tx, v: Vault, ids: string[]): Promise<Note[]> {
  * to the database, which would make a version. A shared note's public copy is rewritten in the
  * same transaction.
  */
-async function save(tx: Tx, c: Call, note: Note, before: string, body: string, expected?: unknown) {
+export async function save(tx: Tx, c: Call, note: Note, before: string, body: string, expected?: unknown) {
   checkSize(body);
   const want = expected !== undefined && expected !== null ? wholeNumber(expected, "expected_version") : undefined;
   if (body === before) {
@@ -708,7 +720,7 @@ function pickTable(body: string, which: unknown): Table {
 type Found = Note & { body: string };
 
 /** Search every open note (not locked, not deleted) for `q`, in memory. */
-async function searchAll(tx: Tx, c: Call, q: string, limit: number) {
+export async function searchAll(tx: Tx, c: Call, q: string, limit: number) {
   const keep = searchFilter(q);
   const docs: Found[] = [];
   const scan = await Scan.start(tx, c);
@@ -743,13 +755,16 @@ async function savePage(tx: Tx, c: Call, n: Note, html: string) {
     insert into public.note_pages (note_id, page_ct) values (${n.id}, ${sealed})
     on conflict (note_id) do update set page_ct = excluded.page_ct
     returning (xmax = 0) as created`;
+  const warnings = pageWarnings(html, await bodyOf(c.v, n));
   return { id: n.id, title: n.title, page: created ? "created" : "replaced", bytes: new TextEncoder().encode(html).length,
-    note: "The person sees it in Amber Notes under Page. The note's markdown is unchanged." + (created ? "" : " The previous page is kept (get_note_page lists it).") };
+    note: "The person sees it on the note's App side (call it the note's app, not a page). The note's text is unchanged." + (created ? "" : " The previous version is kept (get_note_page lists it).") + " Next: run check_app and fix what it finds.",
+    ...(warnings.length ? { warnings, fix_warnings: "Saved. Fix these with edit_note_page, then run check_app, before you reply." } : {}) };
 }
 
 // MARK: Handlers
 
-const handlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<unknown>> = {
+export const handlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<unknown>> = {
+  ...dataHandlers,
   async get_overview(tx, _a, c) {
     const all = await folders(tx, c.v);
     const { listed, counts, approximate } = await listedNotes(tx, c);
@@ -838,6 +853,7 @@ const handlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<unknown>> =
     const body = await bodyOf(c.v, n);
     const all = await folders(tx, c.v);
     const o = outline(body);
+    const links = wikiLinks(body);
     const ranged = a.start_line !== undefined || a.end_line !== undefined;
     const start = a.start_line === undefined ? undefined : wholeNumber(a.start_line, "start_line");
     const end = a.end_line === undefined ? undefined : wholeNumber(a.end_line, "end_line");
@@ -854,6 +870,7 @@ const handlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<unknown>> =
       in_recently_deleted: n.trashed_at !== null,
       parent: parentRow ? { id: parentRow.id, title: parentRow.title } : null,
       sub_notes: subs,
+      ...(links.length ? { links } : {}),
       ...((await tx`select 1 from public.note_pages where note_id = ${n.id} and page_ct is not null`).length ? { has_page: true } : {}),
       outline: o,
       ...(shown.truncated
@@ -1182,6 +1199,7 @@ const handlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<unknown>> =
     const n = await findNote(tx, c, a);
     const current = await pageOf(tx, c, n.id);
     if (current === null) throw new ToolError(`"${n.title}" has no page. Make one with set_note_page.`);
+    if (isProject(current)) throw new ToolError(`"${n.title}"'s app is a project of files: change it with edit_app_file or write_app_file (list_app_files shows them).`);
     if (!Array.isArray(a.edits) || !a.edits.length) throw new ToolError("edits must be a non-empty list of { old_text, new_text }.");
     let html: string;
     try { html = applyEdits(current, a.edits as Edit[]); } catch (e) { throw new ToolError((e as Error).message.replace("Read the note again", "Read the page again (get_note_page)").replace("append_to_note", "set_note_page")); }
@@ -1206,14 +1224,20 @@ const handlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<unknown>> =
       let html: string | null = null;
       if (v.page_ct) try { html = await c.v.openPage(n.id, v.page_ct); } catch { throw new ToolError("That page can't be opened with this connection's key."); }
       return { id: n.id, title: n.title, version_id: want, made_by: v.client, made: iso(v.made_at), html, ...(await data(v.data_ct)),
-        note: "An earlier version. To bring the page back, send its html to set_note_page; the data with set_page_data." };
+        note: "An earlier version. To bring the page back, send its html to set_note_page; the data with update_page_data { replace }." };
     }
     const [row] = await tx<{ page_ct: string | null; data_ct: string | null; client: string | null; updated_at: Date }[]>`
       select page_ct, data_ct, client, updated_at from public.note_pages where note_id = ${n.id}`;
-    if (!row?.page_ct) return { id: n.id, title: n.title, has_page: false, rules: PAGE_CONTRACT, ...(await data(row?.data_ct ?? null)), versions: list };
+    const extras = n.body_ct ? pageExtras(await bodyOf(c.v, n)) : {};
+    if (!row?.page_ct) return { id: n.id, title: n.title, has_page: false, rules: PAGE_API, ...extras, ...(await data(row?.data_ct ?? null)), versions: list };
     let html: string;
     try { html = await c.v.openPage(n.id, row.page_ct); } catch { throw new ToolError("This note's page can't be opened with this connection's key."); }
-    return { id: n.id, title: n.title, has_page: true, made_by: row.client, updated: iso(row.updated_at), rules: PAGE_CONTRACT, html, ...(await data(row.data_ct)), versions: list };
+    if (isProject(html)) {
+      const p = parseStored(html);
+      return { id: n.id, title: n.title, has_page: true, project: true, made_by: row.client, updated: iso(row.updated_at), files: Object.keys(p.files).sort(), ...(p.files["/README.md"] ? { readme: p.files["/README.md"] } : {}),
+        note: "This app is a project of files: read them with read_app_file and change them with edit_app_file or write_app_file.", ...extras, ...(await data(row.data_ct)), versions: list };
+    }
+    return { id: n.id, title: n.title, has_page: true, made_by: row.client, updated: iso(row.updated_at), rules: PAGE_API, ...extras, html, ...(await data(row.data_ct)), versions: list };
   },
 
   async list_api_keys(tx, _a, c) {

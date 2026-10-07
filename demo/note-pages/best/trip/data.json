@@ -1,0 +1,73 @@
+{
+ "values": {
+  "settings": {
+   "people": [
+    "Linnea",
+    "Oskar",
+    "Sam"
+   ],
+   "currency": "SEK",
+   "units": "Celsius"
+  },
+  "places": {
+   "roma termini": {
+    "lat": 41.901,
+    "lon": 12.5018
+   },
+   "via dei serpenti 35, roma": {
+    "lat": 41.8955,
+    "lon": 12.4931
+   },
+   "trattoria monti": {
+    "lat": 41.8961,
+    "lon": 12.4993
+   },
+   "colosseo": {
+    "lat": 41.8902,
+    "lon": 12.4922
+   },
+   "mercato centrale roma": {
+    "lat": 41.9001,
+    "lon": 12.5013
+   },
+   "giardino degli aranci": {
+    "lat": 41.8851,
+    "lon": 12.48
+   },
+   "da remo": {
+    "lat": 41.8796,
+    "lon": 12.476
+   },
+   "musei vaticani": {
+    "lat": 41.9065,
+    "lon": 12.4536
+   },
+   "piazza di santa maria in trastevere": {
+    "lat": 41.8894,
+    "lon": 12.47
+   },
+   "campo de' fiori": {
+    "lat": 41.8956,
+    "lon": 12.4722
+   },
+   "pantheon": {
+    "lat": 41.8986,
+    "lon": 12.4769
+   },
+   "giolitti": {
+    "lat": 41.901,
+    "lon": 12.477
+   },
+   "aeroporto di fiumicino": {
+    "lat": 41.7999,
+    "lon": 12.2462
+   }
+  },
+  "city": {
+   "name": "Rome",
+   "lat": 41.8933,
+   "lon": 12.4829
+  }
+ },
+ "collections": {}
+}

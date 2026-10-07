@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import PlaceCard from "../PlaceCard";
+import { appURL } from "@/lib/app-scheme";
 
 // "See your note's history" in the onboarding emails (https://ambernotes.app/open/history). In the
 // app it opens the version history of the note an AI changed last; here, how to get there.
@@ -9,7 +10,7 @@ export const metadata: Metadata = { title: "Version history · Amber Notes", rob
 export default function Page() {
   return (
     <PlaceCard
-      href="ambernotes://history"
+      href={appURL("history")}
       title="See a note's history"
       lede="Amber Notes opens the version history of the note your AI changed last. On another device, here's how to get there."
       steps={[

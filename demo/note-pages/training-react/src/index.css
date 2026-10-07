@@ -12,7 +12,8 @@
   --card-foreground: var(--amber-text);
   --popover: var(--amber-bg);
   --popover-foreground: var(--amber-text);
-  --primary: var(--amber-accent);
+  /* The accent that text reaches 4.5:1 against (light: a deeper amber; dark: the accent itself). */
+  --primary: var(--amber-accent-text);
   --primary-foreground: var(--amber-on-accent);
   --secondary: var(--amber-fill);
   --secondary-foreground: var(--amber-text);
@@ -23,6 +24,7 @@
   --destructive: var(--amber-danger);
   --border: var(--amber-separator);
   --input: var(--amber-field-border);
+  --field: var(--amber-field);
   --ring: var(--amber-accent);
   --chart-1: var(--amber-accent);
   --chart-2: #3f8f6b;
@@ -50,6 +52,7 @@
   --color-destructive: var(--destructive);
   --color-border: var(--border);
   --color-input: var(--input);
+  --color-field: var(--field);
   --color-ring: var(--ring);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);

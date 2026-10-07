@@ -1,0 +1,40 @@
+{
+ "values": {
+  "settings": {
+   "income": 34500,
+   "save": 4000,
+   "payday": 25
+  },
+  "envelopes": {
+   "Groceries": 4800,
+   "Eating out": 1400,
+   "Transport": 1600,
+   "Fun": 1500,
+   "Shopping": 1200,
+   "Health": 600
+  },
+  "rules": {
+   "ica": "Groceries",
+   "coop": "Groceries",
+   "lidl": "Groceries",
+   "hemköp": "Groceries",
+   "willys": "Groceries",
+   "systembolaget": "Groceries",
+   "espresso": "Eating out",
+   "max": "Eating out",
+   "pressbyrån": "Eating out",
+   "sl ": "Transport",
+   "sj ": "Transport",
+   "voi": "Transport",
+   "apotek": "Health",
+   "clas ohlson": "Shopping",
+   "h&m": "Shopping",
+   "spotify": "Bills",
+   "telia": "Bills",
+   "netflix": "Bills",
+   "sats": "Bills",
+   "filmstaden": "Fun"
+  }
+ },
+ "collections": {}
+}

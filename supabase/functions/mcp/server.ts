@@ -16,18 +16,24 @@ import type { Sql } from "npm:postgres@3.4.5";
 import { tokenKey, unwrap, Vault } from "../_shared/e2ee.ts";
 import { errorKind, log } from "../_shared/log.ts";
 import { Content, runTool, servedTools, ToolContext, ToolError } from "./tools.ts";
+import { FILE_INSTRUCTIONS, FILE_TOOLS, runFileTool } from "./files_tools.ts";
+// The file-like tool set (prototype) when AMBER_MCP_TOOLS=files; otherwise what servedTools() serves.
+const fileSet = () => Deno.env.get("AMBER_MCP_TOOLS") === "files";
 import { challenge, handleOAuth, isOAuthPath, publicBase, resolveAccessToken, subpath } from "./oauth.ts";
 import { SERVER_CARD_PATH, SERVER_INFO, serverCardResponse } from "./card.ts";
+import { BASE_CSS_URI, GUIDE_URI, PAGE_INSTRUCTIONS, PAGE_PROMPTS, pageGuide } from "./page_guide.ts";
+import { AMBER_BASE_CSS } from "./amber-base.ts";
 
 const PROTOCOL_VERSIONS = ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"];
 export const INSTRUCTIONS = `Amber Notes is the user's personal notes app. Notes are markdown; the first line is the title.
 Start with get_overview or search_notes to find things. Read a note before editing it.
 Prefer edit_note (exact find/replace) and append_to_note over replace_note_body, so nothing else changes.
 Tables are markdown tables; trackers are tables with typed columns. Use read_table, then log_table_row (it validates values and, in trackers, upserts by date).
-Checklists are "- [ ] item" lines; use set_checklist_item to tick them. A line like [Title](pane-note:<id>) links a sub-note: a whole note that lives inside
+Checklists are "- [ ] item" lines; use set_checklist_item to tick them. Link to another note by its title, as in Obsidian:
+[[Title]], [[Title|shown text]] or [[Title#Heading]]; the app shows it as a link and follows it by title. A line like [Title](pane-note:<id>) links a sub-note: a whole note that lives inside
 its parent. Use create_sub_note to make one; read it with read_note(id). Deleted notes go to Recently Deleted
 and can be restored; every edit keeps the previous version (note_history / restore_revision).
-A note with has_page: true also has a page: a custom view of its data (set_note_page). Edit the markdown as usual; the page follows it.
+${PAGE_INSTRUCTIONS}
 A note marked locked: true is locked by the user with a separate password: its title is visible here, and nothing else.
 It can't be read, searched or changed here; only the user can open it, in Amber Notes.`;
 
@@ -35,7 +41,7 @@ const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, GET, OPTIONS, DELETE",
   "Access-Control-Allow-Headers": "authorization, content-type, accept, mcp-session-id, mcp-protocol-version, last-event-id",
-  "Access-Control-Expose-Headers": "mcp-session-id, mcp-protocol-version, www-authenticate",
+  "Access-Control-Expose-Headers": "mcp-session-id, mcp-protocol-version, www-authenticate, server-timing",
   "Access-Control-Max-Age": "86400",
 };
 
@@ -55,15 +61,17 @@ function tokenFrom(req: Request): Presented | null {
   return m ? { token: m[1], oauth: false } : null;
 }
 
-type Caller = { user_id: string; name: string; can_write: boolean; vault: Vault };
+type Caller = { user_id: string; name: string; can_write: boolean; vault: Vault; ms?: Record<string, number> };
 
 /** The token's owner, with the data key its wrap holds; undefined when either is missing. */
 async function authenticate(sql: Sql, p: Presented, req: Request): Promise<Caller | undefined> {
+  const t0 = performance.now();
   const who = p.oauth
     ? await resolveAccessToken(sql, p.token, req)
     : (await sql<{ user_id: string; name: string; can_write: boolean; dk_wrap: string | null }[]>`
         select * from public.resolve_mcp_token(${p.token})`)[0];
   if (!who?.dk_wrap) return undefined;
+  const t1 = performance.now();
   const purpose = p.oauth ? "access" : "pane";
   let dataKey;
   try {
@@ -72,7 +80,9 @@ async function authenticate(sql: Sql, p: Presented, req: Request): Promise<Calle
     return undefined;
   }
   // Vault.from wipes the raw key once it's imported.
-  return { user_id: who.user_id, name: who.name, can_write: who.can_write, vault: await Vault.from(dataKey, who.user_id) };
+  const t2 = performance.now();
+  const vault = await Vault.from(dataKey, who.user_id);
+  return { user_id: who.user_id, name: who.name, can_write: who.can_write, vault, ms: { auth_lookup: t1 - t0, auth_unwrap: t2 - t1, auth_vault: performance.now() - t2 } };
 }
 
 /** Only the MCP endpoint, the OAuth paths and the well-known files exist. Anything else is most
@@ -115,9 +125,11 @@ export async function handleRequest(req: Request, sql: Sql): Promise<Response> {
   if (req.method === "DELETE") return new Response(null, { status: 204, headers: cors });
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405, headers: cors });
 
+  const tAuth = performance.now();
   const who = presented
     ? await authenticate(sql, presented, req).catch((e) => { log("token_lookup_failed", errorKind(e)); return undefined; })
     : undefined;
+  const authMs = performance.now() - tAuth;
   // No connection, or one without a key that opens (made before encryption, or revoked): the
   // client is told to connect again.
   if (!who) return unauthorized(base, presented ? "invalid_token" : undefined);
@@ -138,8 +150,16 @@ export async function handleRequest(req: Request, sql: Sql): Promise<Response> {
     return json({ jsonrpc: "2.0", id: null, error: { code: -32600, message: "Invalid Request: empty batch" } }, 400);
   }
 
+  // The client's session, for what it has read (the file tools' read-before-edit rule). A client
+  // that starts one without an Mcp-Session-Id is given one; one that never sends it is known by its token.
+  const given = req.headers.get("mcp-session-id");
+  const starts = (Array.isArray(payload) ? payload : [payload]).some((m) => (m as Rpc | null)?.method === "initialize");
+  const issued = !given && starts ? crypto.randomUUID() : null;
+  const session = given && /^[\x21-\x7e]{1,100}$/.test(given) ? given : issued ?? `t:${await tokenHash(presented!.token)}`;
   // One vault for the whole HTTP request; it goes out of scope with it.
-  const ctx: ToolContext = { sql, userId: who.user_id, client: who.name, canWrite: who.can_write, vault: who.vault };
+  const ctx: ToolContext = { sql, userId: who.user_id, client: who.name, canWrite: who.can_write, vault: who.vault, session, timing: { auth: authMs, ...who.ms, isolate_age: tAuth },
+    // Benchmarks on staging (AMBER_BENCH=1) may ask for a call without cached titles.
+    cold: Deno.env.get("AMBER_BENCH") === "1" && req.headers.get("x-amber-cold") === "1" };
   const batch = Array.isArray(payload);
   // Messages in a batch run one after another, so writes land in the order they were sent.
   const results: unknown[] = [];
@@ -147,8 +167,17 @@ export async function handleRequest(req: Request, sql: Sql): Promise<Response> {
     const r = await handle(m, ctx);
     if (r !== null) results.push(r);
   }
-  if (!results.length) return new Response(null, { status: 202, headers: cors });
-  return json(batch ? results : results[0]);
+  const headers: Record<string, string> = {
+    ...(issued ? { "mcp-session-id": issued } : {}),
+    ...(Object.keys(ctx.timing!).length ? { "server-timing": Object.entries(ctx.timing!).map(([k, v]) => `${k};dur=${Math.round(v)}`).join(", ") } : {}),
+  };
+  if (!results.length) return new Response(null, { status: 202, headers: { ...cors, ...headers } });
+  return json(batch ? results : results[0], 200, headers);
+}
+
+/** A token's stand-in as a session: the first 24 hex digits of its SHA-256. */
+async function tokenHash(token: string): Promise<string> {
+  return [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token)))].slice(0, 12).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 function unauthorized(base: string, error?: string) {
@@ -184,18 +213,19 @@ async function respond(msg: Rpc, id: string | number | null, ctx: ToolContext): 
         const asked = String(msg.params?.protocolVersion ?? "");
         return ok(id, {
           protocolVersion: PROTOCOL_VERSIONS.includes(asked) ? asked : PROTOCOL_VERSIONS[0],
-          capabilities: { tools: { listChanged: false } },
+          capabilities: { tools: { listChanged: false }, resources: { listChanged: false }, prompts: { listChanged: false } },
           serverInfo: SERVER_INFO,
-          instructions: INSTRUCTIONS,
+          // AMBER_MCP_INSTRUCTIONS=none: none at all, as clients that drop them see it (an eval arm).
+          ...(Deno.env.get("AMBER_MCP_INSTRUCTIONS") === "none" ? {} : { instructions: fileSet() ? FILE_INSTRUCTIONS : INSTRUCTIONS }),
         });
       }
       case "ping":
         return ok(id, {});
       case "tools/list":
-        return ok(id, { tools: servedTools().filter((t) => ctx.canWrite || t.annotations.readOnlyHint) });
+        return ok(id, { tools: (fileSet() ? FILE_TOOLS : servedTools()).filter((t) => ctx.canWrite || t.annotations.readOnlyHint) });
       case "tools/call": {
         const name = String(msg.params?.name ?? "");
-        if (!servedTools().some((t) => t.name === name)) {
+        if (!(fileSet() ? FILE_TOOLS : servedTools()).some((t) => t.name === name)) {
           return { jsonrpc: "2.0", id, error: { code: -32602, message: `Unknown tool: ${name || "(none)"}` } };
         }
         const given = msg.params?.arguments ?? {};
@@ -205,7 +235,8 @@ async function respond(msg: Rpc, id: string | number | null, ctx: ToolContext): 
         const args = given as Record<string, unknown>;
         const started = performance.now();
         try {
-          const result = await runTool(name, args, ctx);
+          const result = fileSet() ? await runFileTool(name, args, ctx) : await runTool(name, args, ctx);
+          if (ctx.timing) ctx.timing.total = performance.now() - started;
           if (result instanceof Content) {
             return ok(id, { content: result.content, ...(result.structured ? { structuredContent: result.structured } : {}) });
           }
@@ -222,9 +253,25 @@ async function respond(msg: Rpc, id: string | number | null, ctx: ToolContext): 
         }
       }
       case "resources/list":
-        return ok(id, { resources: [] });
+        return ok(id, { resources: fileSet() ? [] : (await RESOURCES()).map(({ text: _, ...r }) => r) });
+      case "resources/templates/list":
+        return ok(id, { resourceTemplates: [] });
+      case "resources/read": {
+        const uri = String(msg.params?.uri ?? "");
+        const r = (await RESOURCES()).find((x) => x.uri === uri);
+        if (!r) return { jsonrpc: "2.0", id, error: { code: -32002, message: `Resource not found: ${uri}` } };
+        return ok(id, { contents: [{ uri: r.uri, mimeType: r.mimeType, text: r.text }] });
+      }
       case "prompts/list":
-        return ok(id, { prompts: [] });
+        return ok(id, { prompts: fileSet() ? [] : PAGE_PROMPTS.map(({ text: _, ...p }) => p) });
+      case "prompts/get": {
+        const p = PAGE_PROMPTS.find((x) => x.name === msg.params?.name);
+        if (!p) return { jsonrpc: "2.0", id, error: { code: -32602, message: `Unknown prompt: ${String(msg.params?.name ?? "")}` } };
+        const args = (msg.params?.arguments ?? {}) as Record<string, string>;
+        const missing = p.arguments.filter((x) => x.required && !String(args[x.name] ?? "").trim()).map((x) => x.name);
+        if (missing.length) return { jsonrpc: "2.0", id, error: { code: -32602, message: `Missing argument${missing.length > 1 ? "s" : ""}: ${missing.join(", ")}` } };
+        return ok(id, { description: p.description, messages: [{ role: "user", content: { type: "text", text: p.text(args) } }] });
+      }
       default:
         return { jsonrpc: "2.0", id, error: { code: -32601, message: `Method not found: ${msg.method}` } };
     }
@@ -233,6 +280,18 @@ async function respond(msg: Rpc, id: string | number | null, ctx: ToolContext): 
     return { jsonrpc: "2.0", id, error: { code: -32603, message: e instanceof Error ? e.message : String(e) } };
   }
 }
+
+/** Read-only documents a client can attach: the guide, the default stylesheet and an example app
+ *  project. Made the first time a client asks (they're big; most requests never need them). */
+let resources: Promise<{ uri: string; name: string; title: string; description: string; mimeType: string; text: string }[]> | null = null;
+const RESOURCES = () => resources ??= (async () => {
+  const { APP_EXAMPLES } = await import("./app_examples.gen.ts");
+  return [
+    { uri: GUIDE_URI, name: "note-pages-guide", title: "Building note pages", description: "How to build and edit Amber Notes pages: the window.amber API, data model, design rules and a starter page.", mimeType: "text/markdown", text: await pageGuide() },
+    { uri: BASE_CSS_URI, name: "amber-base-css", title: "amber-base.css", description: "The default stylesheet every note's app gets, before its own styles and in a cascade layer: override any rule, or opt out with <meta name=\"amber-base\" content=\"none\">.", mimeType: "text/css", text: AMBER_BASE_CSS },
+    ...Object.entries(APP_EXAMPLES).flatMap(([name, ex]) => Object.entries(ex.files).map(([path, text]) => ({ uri: `amber://examples/${name}${path}`, name: `example-${name}${path.replace(/[/.]/g, "-")}`, title: `Example app ${name}: ${path}`, description: `A file of the ${name} example project.`, mimeType: path.endsWith(".md") ? "text/markdown" : path.endsWith(".css") ? "text/css" : path.endsWith(".html") ? "text/html" : "text/javascript", text: text as string }))),
+  ];
+})();
 
 function ok(id: unknown, result: unknown) {
   return { jsonrpc: "2.0", id, result };

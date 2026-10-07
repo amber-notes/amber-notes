@@ -21,7 +21,7 @@ describe("structured data", () => {
   });
 
   it("names the maker, and the app and site point at them", () => {
-    expect(maker).toMatchObject({ "@type": "Person", name: "Emil Wagman", url: "https://emilwagman.com", sameAs: ["https://emilwagman.com", "https://x.com/EmilWagman", "https://github.com/emilwagman"] });
+    expect(maker).toMatchObject({ "@type": "Person", name: "Emil Wagman", url: "https://emilwagman.com", sameAs: ["https://emilwagman.com", "https://x.com/EmilWagman", "https://www.linkedin.com/in/emil-wagman-52a907287/", "https://github.com/emilwagman"] });
     expect(app("1.0").author).toEqual({ "@id": maker["@id"] });
     expect(organization.founder).toEqual({ "@id": maker["@id"] });
     expect(website.publisher).toEqual({ "@id": organization["@id"] });

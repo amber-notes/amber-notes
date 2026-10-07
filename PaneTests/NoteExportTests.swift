@@ -39,6 +39,47 @@ import ZIPFoundation
         _ = n
     }
 
+    @Test func sharingListsPeopleLinkSettingsAndTemplates() async throws {
+        let context = ModelContext(try ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true)))
+        let work = context.createFolder(named: "Work")
+        let offsite = context.createNote(in: .folder(work.id), body: "Team offsite\n- book the venue")
+        let habits = Note(body: "Habits\n| Day | Run |")
+        let mine = Note(body: "Sharing\na note that happens to share the name")
+        context.insert(habits)
+        context.insert(mine)
+        let sharing = NoteExport.Sharing(
+            notes: [.init(note: offsite.id, people: [.init(name: "Emil", role: "owner", isMe: true), .init(name: "Sara", role: "editor")], link: .edit),
+                    .init(note: UUID(), people: [.init(name: "Jonas", role: "owner")], link: nil)],
+            templates: [.init(note: habits.id, url: URL(string: "https://ambernotes.app/t/abc123")!)])
+
+        let vault = NoteVault(keyStore: MemoryKeyStore(), defaults: MemoryDefaults())
+        let result = try await NoteExport.make(context, vault: vault, now: Date(timeIntervalSince1970: 1_790_000_000), sharing: sharing)
+        defer { try? FileManager.default.removeItem(at: result.zip.deletingLastPathComponent()) }
+        #expect(result.notes == 3)
+
+        let out = result.zip.deletingLastPathComponent().appending(path: "unzipped")
+        try FileManager.default.unzipItem(at: result.zip, to: out)
+        let top = try #require(try FileManager.default.contentsOfDirectory(at: out, includingPropertiesForKeys: nil).first)
+        let text = try String(contentsOf: top.appending(path: "Sharing.md"), encoding: .utf8)
+        #expect(text.contains("### [Team offsite](Work/Team%20offsite.md)\n\n- People with the link: Can edit\n- Emil (you), owner\n- Sara, can edit"))
+        #expect(text.contains("### A note that isn't in this export\n\n- People with the link: No link\n- Jonas, owner"))
+        #expect(text.contains("- [Habits](Habits.md): https://ambernotes.app/t/abc123"))
+        #expect(!text.contains("/s/"), "no share link, and so no link secret, is written")
+        #expect(try String(contentsOf: top.appending(path: "Sharing 2.md"), encoding: .utf8).contains("happens to share the name"), "a note named Sharing doesn't overwrite it")
+    }
+
+    @Test func noSharingNoFile() async throws {
+        let context = ModelContext(try ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true)))
+        context.insert(Note(body: "Sharing\njust a note"))
+        let vault = NoteVault(keyStore: MemoryKeyStore(), defaults: MemoryDefaults())
+        let result = try await NoteExport.make(context, vault: vault)
+        defer { try? FileManager.default.removeItem(at: result.zip.deletingLastPathComponent()) }
+        let out = result.zip.deletingLastPathComponent().appending(path: "unzipped")
+        try FileManager.default.unzipItem(at: result.zip, to: out)
+        let top = try #require(try FileManager.default.contentsOfDirectory(at: out, includingPropertiesForKeys: nil).first)
+        #expect(try String(contentsOf: top.appending(path: "Sharing.md"), encoding: .utf8).contains("just a note"), "without sharing, the name is free for a note")
+    }
+
     @Test func namesAreSafeOnEverySystem() {
         #expect(NoteExport.safeName("a/b:c") == "a-b-c")
         #expect(NoteExport.safeName("..hidden") == "hidden")

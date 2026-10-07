@@ -1,0 +1,239 @@
+// The project every new app starts from (create_app): a normal Vite + React + TypeScript + Tailwind +
+// shadcn/ui project, the stack AIs know best, so an AI works on it the way it would anywhere. Amber
+// Notes compiles it on save (nothing is installed: package.json is there for orientation) and runs
+// React on preact/compat. shadcn's components, the app shell, index.css and lib/ come from the
+// stack's own starter (app_stack.gen.ts).
+
+// The starter's files are big: loaded when a project is made, not when the server starts.
+
+/** How an app runs in Amber Notes: part of every app's README, so any AI working on it reads it. */
+export const appGuide = () => `## How this app runs in Amber Notes
+
+- It is the note: opening the note opens the app, on iPhone (320-440 pt wide, safe areas, the keyboard shrinks the view) and on the Mac (a window from about 500 to 1,800 px, resized live). Light and dark follow the device.
+- A normal Vite + React 19 + TypeScript + Tailwind 4 + shadcn/ui project. Amber Notes compiles it when a file is saved (TSX, the @/ alias, imports without extensions, Tailwind from the classes used) and says what broke; nothing is installed. React runs on preact/compat.
+- Available by name: react, react-dom, radix-ui, lucide-react, recharts, date-fns, zod, motion, sonner, react-day-picker, clsx, tailwind-merge, class-variance-authority, amber-router (Router, Route, route(), back()), chart.js, d3, three, tone, dayjs, marked, dompurify, animejs, canvas-confetti.
+- Data is JSON that Amber Notes keeps for the app (encrypted, synced, with Undo): useStore(key, initial), useCollection(name), useSettings(defaults), batch(fn), setSummary(text) from "@/lib/amber". localStorage works too and is kept the same way. The person's AI reads and edits it as data.json, so keep its shape simple and describe it in docs/README.md.
+- No network except hosts the person allows: declare them in index.html with <meta name="amber-needs" content='{"hosts": ["api.open-meteo.com"]}'> and call fetch(url) from "@/lib/amber"; API keys live in Amber Notes › Settings › API Keys (declare { "keys": [{ "name", "hosts", "query" or "header" }] } and pass { key: name }).
+- The device, through its own prompts: device.reminders, calendar, notify, photos, camera, contacts, location, maps, weather; on-device AI with ai.respond.`;
+
+export async function scaffold(title: string, lang = "en"): Promise<Record<string, string>> {
+  const [{ STACK_FILES }, { SHADCN_UI }] = await Promise.all([import("./app_stack.gen.ts"), import("./shadcn-ui.ts")]);
+  const safe = title.replace(/[<>&"`$\\{}]/g, "").trim() || "App";
+  return {
+    ...STACK_FILES,
+    ...SHADCN_UI,
+    "/package.json": JSON.stringify({
+      name: safe.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "app",
+      private: true, type: "module",
+      scripts: { dev: "vite", build: "vite build", test: "vitest" },
+      "//": "Amber Notes compiles this project when a file is saved and runs it inside the note. Nothing is installed: these are the packages the app provides.",
+      dependencies: {
+        react: "19", "react-dom": "19", "radix-ui": "1.4", "lucide-react": "0.544", recharts: "2.15", "date-fns": "4", zod: "3.25", motion: "11", sonner: "2", "react-day-picker": "9",
+        clsx: "2", "tailwind-merge": "3", "class-variance-authority": "0.7", amber: "*", "amber-router": "*",
+      },
+      devDependencies: { typescript: "5", vite: "7", tailwindcss: "4", vitest: "3", "@testing-library/react": "16", "@testing-library/user-event": "14", "@testing-library/jest-dom": "6" },
+    }, null, 2) + "\n",
+    "/tsconfig.json": JSON.stringify({
+      compilerOptions: { target: "ES2020", module: "ESNext", moduleResolution: "bundler", jsx: "react-jsx", strict: true, skipLibCheck: true, baseUrl: ".", paths: { "@/*": ["./src/*"] } },
+      include: ["src"],
+    }, null, 2) + "\n",
+    "/index.html": `<!doctype html>
+<html lang="${lang}">
+  <head>
+    <meta charset="utf-8" />
+    <title>${safe}</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+`,
+    "/src/main.tsx": `import { createRoot } from "react-dom/client"
+import "./index.css"
+import App from "./App"
+
+createRoot(document.getElementById("root")!).render(<App />)
+`,
+    "/src/App.tsx": `import { Router, Route } from "amber-router"
+import { House, Settings as SettingsIcon } from "lucide-react"
+import { Toaster } from "@/components/ui/sonner"
+import { AppShell } from "@/components/app-shell"
+import Home from "@/screens/home"
+import Settings from "@/screens/settings"
+
+// The app's places: a tab bar on iPhone, a sidebar from 900 px (components/app-shell.tsx).
+const screens = [
+  { path: "/", label: "Home", icon: House },
+  { path: "/settings", label: "Settings", icon: SettingsIcon },
+]
+
+export default function App() {
+  return (
+    <AppShell title="${safe}" screens={screens}>
+      <div className="mx-auto max-w-5xl px-4 pt-4 min-[900px]:px-10 min-[900px]:pt-8">
+        <Router>
+          <Route path="/" component={Home} default />
+          <Route path="/settings" component={Settings} />
+        </Router>
+      </div>
+      <Toaster position="top-center" />
+    </AppShell>
+  )
+}
+`,
+    "/src/screens/home.tsx": `import { useState } from "react"
+import { Check, Pencil, Plus, Trash2 } from "lucide-react"
+import { useCollection } from "@/lib/amber"
+import { PageHeader } from "@/components/app-shell"
+import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+
+type Item = { id: string; text: string }
+
+export default function Home() {
+  const items = useCollection("items")
+  const list = items.items as Item[]
+  const [text, setText] = useState("")
+  const [editing, setEditing] = useState<{ id: string; text: string } | null>(null)
+  const add = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!text.trim()) return
+    await items.add({ text: text.trim() })
+    setText("")
+  }
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editing || !editing.text.trim()) return
+    await items.update(editing.id, { text: editing.text.trim() })
+    setEditing(null)
+  }
+  return (
+    <>
+      <PageHeader title="${safe}" />
+      <form onSubmit={add} className="flex gap-2">
+        <Label htmlFor="new-item" className="sr-only">New item</Label>
+        <Input id="new-item" placeholder="New item" value={text} onChange={(e) => setText(e.currentTarget.value)} />
+        <Button type="submit"><Plus /> Add</Button>
+      </form>
+      <Card className="mt-4 gap-0 py-0">
+        {list.length ? list.map((item) => (
+          <div key={item.id} className="flex items-center gap-2 border-t px-4 py-2 first:border-0">
+            {editing?.id === item.id ? (
+              <form onSubmit={save} className="flex flex-1 items-center gap-2">
+                <Label htmlFor="edit-item" className="sr-only">Edit item</Label>
+                <Input id="edit-item" autoFocus value={editing.text} onChange={(e) => setEditing({ id: item.id, text: e.currentTarget.value })} />
+                <Button type="submit" size="sm"><Check /> Save</Button>
+              </form>
+            ) : (
+              <>
+                <span className="min-w-0 flex-1">{item.text}</span>
+                <Button variant="ghost" size="icon" aria-label={\`Edit \${item.text}\`} onClick={() => setEditing({ id: item.id, text: item.text })}><Pencil /></Button>
+                <Button variant="ghost" size="icon" aria-label={\`Remove \${item.text}\`} onClick={() => items.remove(item.id)}><Trash2 /></Button>
+              </>
+            )}
+          </div>
+        )) : <p className="px-4 py-6 text-center text-muted-foreground">Nothing here yet.</p>}
+      </Card>
+    </>
+  )
+}
+`,
+    "/tests/app.test.tsx": `import { describe, it, expect } from "vitest"
+import { render, screen, waitFor } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
+import { amber } from "amber"
+import App from "@/App"
+
+// Each feature gets a test like these: do what the person does, check what they see, and check
+// what was saved in the app's data.
+const saved = () => (amber.data.collections.items ?? []).map((item: { text: string }) => item.text)
+
+describe("Home", () => {
+  it("adds an item, edits it, and saves the change", async () => {
+    render(<App />)
+    await userEvent.type(screen.getByLabelText("New item"), "Milk")
+    await userEvent.click(screen.getByRole("button", { name: "Add" }))
+    expect(await screen.findByText("Milk")).toBeInTheDocument()
+    await waitFor(() => expect(saved()).toEqual(["Milk"]))
+
+    await userEvent.click(screen.getByRole("button", { name: "Edit Milk" }))
+    const field = screen.getByLabelText("Edit item")
+    await userEvent.clear(field)
+    await userEvent.type(field, "Oat milk")
+    await userEvent.click(screen.getByRole("button", { name: "Save" }))
+    expect(await screen.findByText("Oat milk")).toBeInTheDocument()
+    await waitFor(() => expect(saved()).toEqual(["Oat milk"]))
+  })
+
+  it("removes an item", async () => {
+    render(<App />)
+    await userEvent.type(screen.getByLabelText("New item"), "Bread")
+    await userEvent.click(screen.getByRole("button", { name: "Add" }))
+    await userEvent.click(await screen.findByRole("button", { name: "Remove Bread" }))
+    await waitFor(() => expect(screen.queryByText("Bread")).not.toBeInTheDocument())
+    await waitFor(() => expect(saved()).toEqual([]))
+  })
+})
+`,
+    "/src/screens/settings.tsx": `import { useSettings } from "@/lib/amber"
+import { PageHeader } from "@/components/app-shell"
+import { Card } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+
+const DEFAULTS = { name: "" }
+
+// What the person can change without asking an AI, kept in the app's data.
+export default function Settings() {
+  const [settings, update] = useSettings(DEFAULTS)
+  return (
+    <>
+      <PageHeader title="Settings" />
+      <Card className="gap-0 py-0">
+        <div className="flex items-center gap-3 px-4 py-3.5">
+          <Label htmlFor="name" className="flex-1">Name</Label>
+          <Input id="name" className="w-48" value={settings.name} onChange={(e) => update({ name: e.currentTarget.value })} />
+        </div>
+      </Card>
+    </>
+  )
+}
+`,
+    "/README.md": `# ${safe}
+
+What this app is for, in one sentence.
+
+**Read docs/ first.** It's this app's memory: what it's for, the shape of its data, the decisions made and why, and what's missing. Keep it current whenever you change the app.
+
+## Screens
+- Home (src/screens/home.tsx)
+- Settings (src/screens/settings.tsx)
+
+## Tests
+\`npm test\` runs Vitest. Tests live in tests/*.test.tsx and use Testing Library (render, screen, userEvent) with the jest-dom matchers; data starts empty for each test, and \`amber\` (from "amber") shows what was saved. Amber Notes runs them, and a quick check that the app opens and its buttons work, on every save: a version that fails isn't shown to the person; the last one that passed keeps running until the failures are fixed.
+
+**Every feature you add gets a test like the ones in tests/app.test.tsx**: do what the person does, check what they see, and check what was saved. When the app changes on purpose, change its tests to match the new behaviour. Never weaken, skip or delete a test just to make it pass: fix the app instead.
+
+${appGuide()}
+`,
+    "/docs/README.md": `# ${safe}: notes for whoever works on this app next
+
+## What it's for
+(One or two sentences: who uses it and for what.)
+
+## Data
+How data.json is shaped (the person's AI reads and edits it directly):
+- items: [{ id, text }] (useCollection("items"))
+- settings: { name } (useSettings)
+
+## Decisions
+(What was chosen and why, newest first. "Kept the list on one screen: it's a quick-capture app.")
+
+## Known gaps
+(What's missing or rough, so the next change can start there.)
+`,
+  };
+}
