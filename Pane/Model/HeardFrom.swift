@@ -16,12 +16,13 @@ enum HeardFrom {
         case instagram
         case friend
         case productHuntHN = "product_hunt_hn"
+        case github
         case other
         case skipped
     }
 
     /// The choices, in the order they're shown.
-    static let choices: [Source] = [.google, .blog, .aiAssistant, .tiktok, .youtube, .instagram, .friend, .productHuntHN, .other]
+    static let choices: [Source] = [.google, .blog, .aiAssistant, .tiktok, .youtube, .instagram, .friend, .productHuntHN, .github, .other]
 
     static func title(_ source: Source) -> String {
         switch source {
@@ -33,6 +34,7 @@ enum HeardFrom {
         case .instagram: "Instagram"
         case .friend: "A friend"
         case .productHuntHN: "Product Hunt or Hacker News"
+        case .github: "GitHub"
         case .other: "Something else"
         case .skipped: "Skip"
         }

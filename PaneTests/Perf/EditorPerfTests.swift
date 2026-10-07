@@ -118,8 +118,11 @@ extension EditorPerfTests {
             h.close()
         }
         let reference = medians["80 lines"] ?? 0
-        // (name, a frame's budget on a developer's Mac, at most this many times the 80-line note)
-        for (name, budget, ratio) in [("80 lines", 4.0, 1.0), ("5000 lines", 8.0, 4.0), ("blocks", 16.0, 12.0)] {
+        // (name, a frame's budget on a developer's Mac, at most this many times the 80-line note).
+        // The tables note varies more than plain text between runners: 6 to 13 times the 80-line
+        // note over the first six CI runs, so its ratio has room; the ceiling is what catches a
+        // slowdown of everything.
+        for (name, budget, ratio) in [("80 lines", 4.0, 1.0), ("5000 lines", 8.0, 4.0), ("blocks", 16.0, 20.0)] {
             let median = medians[name] ?? .infinity
             if PerfBudget.slack > 1 {
                 if name != "80 lines" {

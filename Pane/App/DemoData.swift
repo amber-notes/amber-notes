@@ -1,6 +1,7 @@
 import Foundation
 import CoreText
 import ImageIO
+import PDFKit
 import SwiftData
 import UniformTypeIdentifiers
 
@@ -90,7 +91,7 @@ enum DemoData {
             NotePageStore.shared.setHere(habits.id, .init(html: html, by: "Claude", at: .now))
         }
         let toRead = context.createFolder(named: "To Read")
-        if let a = try? FileStore.importData(paperPDF(title: "Fluent Python", lines: 34), filename: "Fluent Python.pdf", type: .pdf) {
+        if let a = try? FileStore.importData(bookPDF(title: "Fluent Python", chapters: fluentPythonChapters), filename: "Fluent Python.pdf", type: .pdf) {
             a.folderID = toRead.id
             a.createdAt = .now.addingTimeInterval(-20 * 60)
             a.modifiedAt = a.createdAt
@@ -148,6 +149,54 @@ enum DemoData {
         ctx.closePDF()
         return data as Data
     }
+
+    /// A short book: a title page, then a page per chapter, with a table of contents (for the
+    /// PDF reader's captures and the demo's "Fluent Python.pdf").
+    static func bookPDF(title: String, chapters: [String]) -> Data {
+        let data = NSMutableData()
+        var box = CGRect(x: 0, y: 0, width: 595, height: 842)
+        guard let consumer = CGDataConsumer(data: data), let ctx = CGContext(consumer: consumer, mediaBox: &box, nil) else { return Data() }
+        func text(_ s: String, size: CGFloat, bold: Bool, at p: CGPoint) {
+            let font = CTFontCreateWithName((bold ? "Helvetica-Bold" : "Times-Roman") as CFString, size, nil)
+            let line = CTLineCreateWithAttributedString(NSAttributedString(string: s, attributes: [
+                NSAttributedString.Key(kCTFontAttributeName as String): font,
+                NSAttributedString.Key(kCTForegroundColorAttributeName as String): CGColor(gray: 0.1, alpha: 1),
+            ]))
+            ctx.textPosition = p
+            CTLineDraw(line, ctx)
+        }
+        let words = "Python is an easy to learn, powerful programming language, and its simplicity lets you become productive quickly, but this often means you aren't using everything it has to offer. This book shows how to write effective, modern Python by leaning on its best ideas: the data model, sequences, functions as objects, and concurrency.".split(separator: " ")
+        for (n, chapter) in ([title] + chapters).enumerated() {
+            ctx.beginPDFPage(nil)
+            ctx.setFillColor(CGColor(gray: 1, alpha: 1))
+            ctx.fill(box)
+            text(n == 0 ? title : "\(n). \(chapter)", size: n == 0 ? 30 : 20, bold: true, at: CGPoint(x: 64, y: n == 0 ? 600 : 760))
+            if n == 0 { text("Clear, concise, and effective programming", size: 15, bold: false, at: CGPoint(x: 64, y: 566)) } else {
+                var i = n * 7
+                for row in 0 ..< 38 {
+                    var s = ""
+                    while s.count < 86 { s += (s.isEmpty ? "" : " ") + words[i % words.count]; i += 1 }
+                    text(s, size: 10.5, bold: false, at: CGPoint(x: 64, y: 724 - CGFloat(row) * 16))
+                }
+            }
+            text("\(n + 1)", size: 9, bold: false, at: CGPoint(x: 292, y: 40))
+            ctx.endPDFPage()
+        }
+        ctx.closePDF()
+        guard let doc = PDFDocument(data: data as Data) else { return data as Data }
+        let root = PDFOutline()
+        for (i, chapter) in chapters.enumerated() {
+            guard let page = doc.page(at: i + 1) else { continue }
+            let item = PDFOutline()
+            item.label = chapter
+            item.destination = PDFDestination(page: page, at: CGPoint(x: 0, y: 842))
+            root.insertChild(item, at: i)
+        }
+        doc.outlineRoot = root
+        return doc.dataRepresentation() ?? data as Data
+    }
+
+    static let fluentPythonChapters = ["The Python Data Model", "An Array of Sequences", "Dictionaries and Sets", "Unicode Text Versus Bytes", "Functions as Objects", "Decorators and Closures"]
 
     /// App Store captures: `-uitest -demo -importedLibrary` is a library just imported from Apple
     /// Notes, the one the website's import card shows: Notes 612, Recipes 188, Work 241,
