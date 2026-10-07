@@ -212,7 +212,8 @@ import Testing
         #expect(made.map(\.filename) == ["Paper.pdf"])
         #expect(refused?.unsupported == ["song.mp3", "book.epub"])
         #expect(refused?.tooBig == ["Huge.pdf"])
-        #expect(refused?.message.contains("can't show these kinds of files yet") == true)
+        #expect(refused?.title == "Can't add these files")
+        #expect(refused?.message.contains("Amber Notes takes PDFs, pictures, text, CSV and Office files.") == true)
         #expect(refused?.message.contains("up to 100 MB") == true)
         for kind in ["pdf", "jpg", "png", "heic", "gif", "webp", "txt", "csv", "json", "py", "swift", "docx", "xlsx", "pptx", "pages", "numbers", "key"] {
             #expect(FileKinds.isSupported(URL(fileURLWithPath: "/x/a.\(kind)")), "\(kind) is added")
