@@ -21,8 +21,11 @@ In the apps (Mac and iPhone, `Pane/Views/SignInView.swift`, state in
    has a show/hide eye.
 2. Create account. With confirmation on, `auth.signUp` returns a user and no session
    (`Backend.signUp` returns true), and the screen becomes **Check your email**: the address,
-   a 6-digit code field (one-time-code content type, so iOS offers the code from Mail), Confirm,
-   Resend code and Use a different email.
+   the code as six boxes in two groups of three (`Pane/Views/CodeBoxes.swift`: one real text
+   field under the boxes, one-time-code content type, so typing, backspace, paste and iOS's
+   suggestion from Mail all work; VoiceOver reads one "Verification code" field), Confirm,
+   Resend code and Use a different email. A wrong or expired code shakes the boxes once
+   (off with Reduce Motion), clears them and says what to do.
 3. Six digits confirm on their own: `auth.verifyOTP(type: .signup)`. The session that comes back
    signs in, and the normal first run follows.
 4. Resend code waits a minute after each code (Supabase sends one email a minute per address).

@@ -58,9 +58,10 @@ struct KeyGateView: View {
 
     var body: some View {
         #if os(macOS)
+        // In the welcome's card window, beside its picture (CardLayout).
         card
             .padding(.horizontal, 36)
-            .padding(.vertical, 48)
+            .padding(.vertical, 32)
             .frame(width: 400)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .containerBackground(for: .window) { Backdrop() }
@@ -81,8 +82,11 @@ struct KeyGateView: View {
 
     @ViewBuilder private var card: some View {
         VStack(spacing: 22) {
+            #if os(iOS)
             // The sign-in card's mark, in the same place, so it stays put from one card to the next.
+            // On the Mac the picture beside the step is the mark, as it is for sign-in.
             AppMark(size: 72)
+            #endif
             // One screen fades into the next while the card eases to its new height: the mark
             // stays put and nothing snaps.
             content

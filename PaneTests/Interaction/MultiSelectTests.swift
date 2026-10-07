@@ -29,7 +29,8 @@ import Testing
             container = try ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
             Seed.ensureLibrary(container.mainContext, demo: true)
             try container.mainContext.save()
-            window = KeyableWindow(contentRect: CGRect(x: -30000, y: -30000, width: 420, height: 900), styleMask: [.titled], backing: .buffered, defer: false)
+            // Borderless, far off screen, key for focus but never ordered front (as EditorHarness).
+            window = KeyableWindow(contentRect: CGRect(x: -20000, y: -20000, width: 420, height: 900), styleMask: [.borderless], backing: .buffered, defer: false)
             window.isReleasedWhenClosed = false
             window.contentViewController = NSHostingController(rootView: Wrapper(box: box).modelContainer(container))
             window.makeKey()

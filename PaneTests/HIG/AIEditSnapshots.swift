@@ -11,17 +11,19 @@ import Testing
 /// `TEST_RUNNER_AMBER_HIG_SHOTS=/path scripts/qa-test.sh PaneTests/AIEditSnapshots`. Motion is
 /// written as numbered frames under `frames/<name>/` with each frame's time in ms, for ffmpeg.
 @MainActor @Suite(.serialized) struct AIEditSnapshots {
-    static var dir: URL? { AppSnapshotTests.dir }
+    /// Key windows, toolbars and live text views: a real window on screen, so CI only
+    /// (AppSnapshotTests.onScreenAllowed).
+    static var dir: URL? { AppSnapshotTests.onScreenAllowed ? AppSnapshotTests.dir : nil }
 
     static func window(_ view: some View, size: CGSize, dark: Bool = false) -> NSWindow {
-        let window = NSWindow(contentRect: CGRect(x: -30000, y: -30000, width: size.width, height: size.height),
+        let window = NSWindow(contentRect: CGRect(x: -20000, y: -20000, width: size.width, height: size.height),
                               styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
                               backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         window.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
         window.contentViewController = NSHostingController(rootView: view)
         window.setContentSize(size)
-        window.setFrameOrigin(CGPoint(x: -30000, y: -30000))
+        window.setFrameOrigin(CGPoint(x: -20000, y: -20000))
         window.orderFrontRegardless()
         return window
     }
@@ -134,7 +136,7 @@ import Testing
                 .background(Color(nsColor: .textBackgroundColor))
             let host = NSHostingView(rootView: card)
             host.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
-            let w = KeyableWindow(contentRect: CGRect(x: -30000, y: -30000, width: 310, height: 300), styleMask: [.borderless], backing: .buffered, defer: false)
+            let w = KeyableWindow(contentRect: CGRect(x: -20000, y: -20000, width: 310, height: 300), styleMask: [.borderless], backing: .buffered, defer: false)
             w.isReleasedWhenClosed = false
             w.contentView = host
             host.frame = CGRect(origin: .zero, size: host.fittingSize)
@@ -164,7 +166,7 @@ import Testing
     /// a `ready-<name>` file, and waits for the shell to write `shot-<name>`.
     /// `TEST_RUNNER_AMBER_DEMO_FRAMES=/path scripts/qa-test.sh 'PaneTests/AIEditSnapshots/demoFrames()'`
     @Test func demoFrames() async throws {
-        guard let dir = ProcessInfo.processInfo.environment["AMBER_DEMO_FRAMES"].map({ URL(fileURLWithPath: $0) }) else { return }
+        guard let dir = AppSnapshotTests.onScreenDir("AMBER_DEMO_FRAMES") else { return }
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let c = try AppSnapshotTests.container()
         try await AppSnapshotTests.withLastNote(c, "Groceries") {
@@ -267,7 +269,7 @@ import Testing
             let r = AIEdit.Receipt(noteID: UUID(), by: "ChatGPT", at: .now, previous: "", lines: lines)
             let host = NSHostingView(rootView: AIReceipt(receipt: r, undo: {}).padding(24).fixedSize())
             host.appearance = NSAppearance(named: .aqua)
-            let win = NSWindow(contentRect: CGRect(x: -30000, y: -30000, width: 400, height: 100), styleMask: [.borderless], backing: .buffered, defer: false)
+            let win = NSWindow(contentRect: CGRect(x: -20000, y: -20000, width: 400, height: 100), styleMask: [.borderless], backing: .buffered, defer: false)
             win.isReleasedWhenClosed = false
             win.isOpaque = false
             win.backgroundColor = .clear
@@ -286,7 +288,7 @@ import Testing
     /// folder icons dim with their names. Captured by the same shell watcher as `demoFrames`.
     /// `TEST_RUNNER_AMBER_DEMO_FRAMES=/path scripts/qa-test.sh 'PaneTests/AIEditSnapshots/sidebarLook()'`
     @Test func sidebarLook() async throws {
-        guard let dir = ProcessInfo.processInfo.environment["AMBER_DEMO_FRAMES"].map({ URL(fileURLWithPath: $0) }) else { return }
+        guard let dir = AppSnapshotTests.onScreenDir("AMBER_DEMO_FRAMES") else { return }
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let tag = ProcessInfo.processInfo.environment["AMBER_SIDEBAR_TAG"] ?? "now"
         let c = try AppSnapshotTests.container()
@@ -307,7 +309,7 @@ import Testing
     /// The Get set up card at the top of the note list at real size, each step and "You're all
     /// set", light and dark, drawn as a front window. Captured by the shell watcher like `demoFrames`.
     @Test func setupInContext() async throws {
-        guard let dir = ProcessInfo.processInfo.environment["AMBER_DEMO_FRAMES"].map({ URL(fileURLWithPath: $0) }) else { return }
+        guard let dir = AppSnapshotTests.onScreenDir("AMBER_DEMO_FRAMES") else { return }
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let states: [(String, SetupProgress)] = [
             ("step1", SetupProgress()), ("step2", SetupProgress(imported: true)),
@@ -337,7 +339,7 @@ import Testing
     /// off-screen window: everything picked, then half imported. Captured by the shell watcher
     /// (screencapture of the sheet's own window, shadow included), light and dark.
     @Test func importSheet() async throws {
-        guard let dir = ProcessInfo.processInfo.environment["AMBER_DEMO_FRAMES"].map({ URL(fileURLWithPath: $0) }) else { return }
+        guard let dir = AppSnapshotTests.onScreenDir("AMBER_DEMO_FRAMES") else { return }
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         AppleNotesBridge.forceDemo = true
         AppleNotesBridge.forceLarge = true
@@ -411,13 +413,13 @@ import Testing
 
     /// The receipt pills on their own, transparent, for the website.
     @Test func receiptPills() async throws {
-        guard let dir = ProcessInfo.processInfo.environment["AMBER_DEMO_FRAMES"].map({ URL(fileURLWithPath: $0) }) else { return }
+        guard let dir = AppSnapshotTests.onScreenDir("AMBER_DEMO_FRAMES") else { return }
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         for (name, lines, created) in [("pill-chatgpt-wrote-note", 14, true), ("pill-chatgpt-2-lines", 2, false)] {
             let r = AIEdit.Receipt(noteID: UUID(), by: "ChatGPT", at: .now, previous: "", lines: lines, created: created)
             let host = NSHostingView(rootView: AIReceipt(receipt: r, undo: {}).padding(24).fixedSize())
             host.appearance = NSAppearance(named: .aqua)
-            let win = NSWindow(contentRect: CGRect(x: -30000, y: -30000, width: 500, height: 100), styleMask: [.borderless], backing: .buffered, defer: false)
+            let win = NSWindow(contentRect: CGRect(x: -20000, y: -20000, width: 500, height: 100), styleMask: [.borderless], backing: .buffered, defer: false)
             win.isReleasedWhenClosed = false
             win.isOpaque = false
             win.backgroundColor = .clear

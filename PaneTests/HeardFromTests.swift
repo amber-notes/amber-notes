@@ -99,10 +99,10 @@ import Testing
     }
 
     @Test func everyChoiceHasPlainWordsAndTheServersName() {
-        #expect(HeardFrom.choices.count == 9)
+        #expect(HeardFrom.choices.count == 10)
         #expect(!HeardFrom.choices.contains(.skipped))
         let names = HeardFrom.Source.allCases.map(\.rawValue)
-        #expect(names == ["google", "blog", "ai_assistant", "tiktok", "youtube", "instagram", "friend", "product_hunt_hn", "other", "skipped"])
+        #expect(names == ["google", "blog", "ai_assistant", "tiktok", "youtube", "instagram", "friend", "product_hunt_hn", "github", "other", "skipped"])
         for source in HeardFrom.choices { #expect(!HeardFrom.title(source).isEmpty) }
     }
 }

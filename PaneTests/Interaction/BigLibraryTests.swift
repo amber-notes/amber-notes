@@ -9,20 +9,22 @@ import Testing
 /// folders nested 30 deep, hostile names. The window must come up and stay responsive.
 @MainActor @Suite(.serialized) struct BigLibraryTests {
     private func window(_ c: ModelContainer, size: CGSize = CGSize(width: 1180, height: 760)) -> NSWindow {
-        let w = NSWindow(contentRect: CGRect(x: -30000, y: -30000, width: size.width, height: size.height),
-                         styleMask: [.titled, .closable, .resizable, .fullSizeContentView], backing: .buffered, defer: false)
+        // Borderless and far off screen, never ordered front: a titled window gets pulled back
+        // onto the display (AppSnapshotTests.onScreenAllowed).
+        let w = NSWindow(contentRect: CGRect(x: -20000, y: -20000, width: size.width, height: size.height),
+                         styleMask: [.borderless], backing: .buffered, defer: false)
         w.isReleasedWhenClosed = false
         w.contentViewController = NSHostingController(rootView: RootView().modelContainer(c))
         w.setContentSize(size)
-        w.setFrameOrigin(CGPoint(x: -30000, y: -30000))
+        w.setFrameOrigin(CGPoint(x: -20000, y: -20000))
         return w
     }
 
     private func firstDisplay(_ w: NSWindow) async -> Double {
         let t = ContinuousClock.now
-        w.orderFrontRegardless()
         w.contentView?.layoutSubtreeIfNeeded()
-        w.displayIfNeeded()
+        // Drawn into the window's buffer; the window itself never shows.
+        w.contentView?.display()
         let d = ContinuousClock.now - t
         try? await Task.sleep(for: .milliseconds(300))
         return Double(d.components.seconds) * 1000 + Double(d.components.attoseconds) / 1e15
