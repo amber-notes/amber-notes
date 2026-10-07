@@ -177,7 +177,7 @@ struct WelcomeFlow: View {
             #endif
             SignInView(backend: backend, heading: returning
                        ? .beside(title: "Welcome back", line: "Sign in with Apple, Google or your email.")
-                       : .beside(title: "Create your account", line: "Already have one? This signs you in too."),
+                       : .beside(title: "Sign in or create your account", line: "Use Apple, Google or your email."),
                        focusEmail: focusEmail)
                 #if os(macOS)
                 // Top-anchored, so the form keeps its place as its steps come and go, but low

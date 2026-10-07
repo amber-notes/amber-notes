@@ -12,10 +12,16 @@ struct SignInView: View {
     @State private var flow: EmailSignInFlow
     @State private var working = false
     @State private var error: String?
+    /// The password in plain text, from the eye button.
+    @State private var revealPassword = false
+    /// Resend code: a new code is on its way.
+    @State private var resending = false
+    /// Under the code: a new code went out (Resend code's "done").
+    @State private var codeNotice: String?
     @FocusState private var focus: Field?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    enum Field { case email, password }
+    enum Field { case email, password, code }
 
     /// The words above the form: the card's own (icon, title and promise, centred), or a title
     /// and a line from the welcome flow, which sets the form beside its picture.
@@ -85,7 +91,7 @@ struct SignInView: View {
 
     private var card: some View {
         VStack(spacing: 24) {
-            switch heading {
+            switch shownHeading {
             case .card:
                 VStack(spacing: 14) {
                     AppMark(size: 72)
@@ -158,12 +164,25 @@ struct SignInView: View {
             ConsentFooter()
         }
         .animation(.snappy(duration: 0.2), value: error)
+        .animation(.snappy(duration: 0.2), value: codeNotice)
         .animation(reduceMotion ? nil : .smooth(duration: 0.3), value: flow.step)
         // Once the password field is there (focusing it in the same update as it appears is
         // lost, and a paste then lands on the email row).
         .onChange(of: flow.showsPassword) { _, shows in if shows { focus = .password } }
+        .onChange(of: flow.step) { _, step in if step == .confirm { focus = .code } }
+        // Six digits, typed or filled in from the email by iOS: confirm straight away.
+        .onChange(of: flow.code) { _, code in if code.count == EmailSignInFlow.codeLength, flow.step == .confirm { primary() } }
         .task { if focusEmail { focus = .email } }
     }
+
+    /// "Check your email" replaces the heading while the code is asked for, in both layouts.
+    private var shownHeading: Heading {
+        guard flow.step == .confirm else { return heading }
+        return .beside(title: Self.confirmTitle, line: Self.confirmLine)
+    }
+
+    static let confirmTitle = "Check your email"
+    static let confirmLine = "We sent a 6-digit code to this address. Type it here to confirm it's yours."
 
     /// The website's one-line promise, with its low amber marker under "your AI".
     private var promise: some View {
@@ -220,6 +239,8 @@ struct SignInView: View {
                 Button {
                     flow.back()
                     error = nil
+                    codeNotice = nil
+                    revealPassword = false
                     focus = .email
                 } label: {
                     // The whole row takes the tap, not just the words.
@@ -237,14 +258,44 @@ struct SignInView: View {
             if flow.showsPassword {
                 field(focused: focus == .password) {
                     let prompt = flow.step == .create ? "Create a password (12+ characters)" : "Password"
-                    SecureField(prompt, text: $flow.password, prompt: Text(prompt).foregroundStyle(Color(Palette.placeholder)))
+                    HStack(spacing: 6) {
+                        Group {
+                            if revealPassword {
+                                TextField(prompt, text: $flow.password, prompt: Text(prompt).foregroundStyle(Color(Palette.placeholder)))
+                                    #if os(iOS)
+                                    .textInputAutocapitalization(.never)
+                                    #endif
+                                    .autocorrectionDisabled()
+                            } else {
+                                SecureField(prompt, text: $flow.password, prompt: Text(prompt).foregroundStyle(Color(Palette.placeholder)))
+                            }
+                        }
                         .textContentType(flow.step == .create ? .newPassword : .password)
                         .focused($focus, equals: .password)
                         .submitLabel(.go)
                         .onSubmit(primary)
                         .accessibilityIdentifier("signin.password")
+                        // Show or hide the password; the cursor stays in the field.
+                        Button {
+                            revealPassword.toggle()
+                            focus = .password
+                        } label: {
+                            Image(systemName: revealPassword ? "eye.slash" : "eye")
+                                .frame(width: 28, height: 28)
+                                .contentShape(.rect)
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(.secondary)
+                        .accessibilityLabel(revealPassword ? "Hide password" : "Show password")
+                        .accessibilityIdentifier("signin.reveal")
+                    }
                 }
                 .transition(.opacity)
+            }
+
+            if flow.step == .confirm {
+                codeField
+                    .transition(.opacity)
             }
 
             if case .forgot = flow.step {
@@ -269,6 +320,11 @@ struct SignInView: View {
                 mainButton(title)
             }
 
+            if flow.step == .confirm {
+                resendRow
+                    .transition(.opacity)
+            }
+
             // Under the button, like the link below, so the button stays where it was.
             if flow.step == .create {
                 Text("New here? We'll create your account.")
@@ -286,7 +342,7 @@ struct SignInView: View {
             }
 
             if flow.step == .forgot(sending: false) {
-                smallButton("Back to Sign In", id: "signin.backToSignIn") {
+                smallButton("Back to sign in", id: "signin.backToSignIn") {
                     flow.backToSignIn()
                     error = nil
                     focus = .password
@@ -302,6 +358,74 @@ struct SignInView: View {
             }
         }
         .textFieldStyle(.plain)
+    }
+
+    /// The 6-digit code, large and spaced like the email shows it. One-time-code content, so iOS
+    /// offers the code from Mail above the keyboard.
+    private var codeField: some View {
+        VStack(spacing: 8) {
+            field(focused: focus == .code) {
+                TextField("6-digit code", text: $flow.code, prompt: Text("6-digit code").foregroundStyle(Color(Palette.placeholder)))
+                    .textContentType(.oneTimeCode)
+                    #if os(iOS)
+                    .keyboardType(.numberPad)
+                    #endif
+                    .autocorrectionDisabled()
+                    .font(.system(size: Row.text + 4, weight: .semibold, design: .monospaced))
+                    .tracking(4)
+                    .multilineTextAlignment(.center)
+                    .focused($focus, equals: .code)
+                    .submitLabel(.go)
+                    .onSubmit(primary)
+                    .disabled(working)
+                    .accessibilityLabel("Confirmation code")
+                    .accessibilityIdentifier("signin.code")
+            }
+            if let codeNotice {
+                note(codeNotice, id: "signin.codeSent")
+            }
+        }
+    }
+
+    /// Resend code, waiting out the minute between codes; then "Use a different email" above
+    /// is the other way out.
+    private var resendRow: some View {
+        TimelineView(.periodic(from: .now, by: 1)) { context in
+            let wait = flow.resendWait(now: context.date)
+            Button(action: resendCode) {
+                HStack(spacing: 6) {
+                    if resending { ProgressView().controlSize(.small) }
+                    Text(resending ? "Sending a new code…" : wait > 0 ? "Resend code in \(wait) s" : "Resend code")
+                        .monospacedDigit()
+                }
+                .frame(minHeight: 28)
+                .contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+            .font(.footnote)
+            .foregroundStyle(wait > 0 || resending ? AnyShapeStyle(.secondary) : AnyShapeStyle(.tint))
+            .disabled(wait > 0 || resending || working)
+            .accessibilityIdentifier("signin.resend")
+        }
+    }
+
+    private func resendCode() {
+        guard flow.step == .confirm, !resending, flow.resendWait(now: .now) == 0 else { return }
+        resending = true
+        error = nil
+        codeNotice = nil
+        let email = flow.email
+        Task {
+            do {
+                try await backend.resendSignUpCode(email: email)
+                flow.codeResent(at: .now)
+                codeNotice = "New code sent. Only the newest one works."
+                focus = .code
+            } catch {
+                self.error = Backend.confirmMessage(for: error)
+            }
+            resending = false
+        }
     }
 
     /// A line of explanation under the email, in the card's quiet voice.
@@ -425,10 +549,39 @@ struct SignInView: View {
             working = true
             Task {
                 do {
-                    if creating { try await backend.signUp(email: email, password: password) }
-                    else { try await backend.signIn(email: email, password: password) }
+                    if creating {
+                        // Confirmation on: no session yet, a code is on its way.
+                        if try await backend.signUp(email: email, password: password) {
+                            flow.needsConfirmation(sentAt: .now)
+                            revealPassword = false
+                        }
+                    } else {
+                        try await backend.signIn(email: email, password: password)
+                    }
+                } catch where Backend.isEmailNotConfirmed(error) {
+                    // An account made earlier and never confirmed: the code screen, with a new code.
+                    flow.needsConfirmation(sentAt: nil)
+                    revealPassword = false
+                    working = false
+                    resendCode()
+                    return
                 } catch {
                     self.error = Backend.message(for: error, signingUp: creating)
+                }
+                working = false
+            }
+        case .verify:
+            let (email, code) = (flow.email, flow.code)
+            working = true
+            codeNotice = nil
+            Task {
+                do {
+                    // The session that comes back signs in; the app moves on from there.
+                    try await backend.confirmSignUp(email: email, code: code)
+                } catch {
+                    self.error = Backend.confirmMessage(for: error)
+                    flow.code = ""
+                    focus = .code
                 }
                 working = false
             }

@@ -23,12 +23,13 @@ function outbox(answer: (m: Message) => SendResult = () => ({ ok: true, id: cryp
   return { sent, send: async (m: Message) => { sent.push(m); return answer(m); } };
 }
 
-type Person = { age: number; notes?: number; mac?: boolean; iphone?: boolean; imported?: boolean; ai?: number; aiEdit?: boolean; history?: boolean; template?: boolean };
+type Person = { age: number; /** ms ago the email was confirmed; null: not confirmed (the default: at sign-up) */ confirmed?: number | null; notes?: number; mac?: boolean; iphone?: boolean; imported?: boolean; ai?: number; aiEdit?: boolean; history?: boolean; template?: boolean };
 
 /// An account `age` ms old, with what it has done. `ai` is how long ago an AI was connected.
 async function person(pg: PGlite, o: Person) {
   const a = await account(pg);
-  await pg.query(`update auth.users set created_at = $2 where id = $1`, [a.id, at(-o.age)]);
+  await pg.query(`update auth.users set created_at = $2, email_confirmed_at = $3 where id = $1`,
+    [a.id, at(-o.age), o.confirmed === null ? null : at(-(o.confirmed ?? o.age))]);
   for (let i = 0; i < (o.notes ?? 0); i++) await note(pg, a, `Note ${i}\n\nSomething private.`);
   if (o.mac) await pg.query(`insert into public.pane_devices (user_id, device_id, platform) values ($1, gen_random_uuid(), 'macos')`, [a.id]);
   if (o.iphone) await pg.query(`insert into public.pane_devices (user_id, device_id, platform) values ($1, gen_random_uuid(), 'ios')`, [a.id]);
@@ -377,12 +378,12 @@ Deno.test("welcome and the ladder: an unanswered welcome isn't part of the silen
   assertEquals((await facts()).sent_since_active, 0);
   assertEquals((await facts()).sent, ["welcome"]);
   // A day later: the stuck rung is ready, but the gap after the welcome holds it.
-  await pg.query(`update auth.users set created_at = $2 where id = $1`, [sara.id, at(-1 * D - H)]);
+  await pg.query(`update auth.users set created_at = $2, email_confirmed_at = $2 where id = $1`, [sara.id, at(-1 * D - H)]);
   await age(pg, 1);
   await run({ sql: sqlFor(pg), send: box.send, cfg: cfg(), ...quick });
   assertEquals(box.sent.length, 1);
   // Day 3: the ladder's first email.
-  await pg.query(`update auth.users set created_at = $2 where id = $1`, [sara.id, at(-3 * D - H)]);
+  await pg.query(`update auth.users set created_at = $2, email_confirmed_at = $2 where id = $1`, [sara.id, at(-3 * D - H)]);
   await age(pg, 2);
   await run({ sql: sqlFor(pg), send: box.send, cfg: cfg(), ...quick });
   assertEquals(box.sent.map((m) => m.subject), ["Welcome to Amber Notes", S.stuck]);
@@ -393,4 +394,32 @@ Deno.test("lifecycle_welcome_tick does nothing without a waiting account, pg_net
   await pg.query(`select public.lifecycle_welcome_tick()`);
   await person(pg, { age: 5 * MIN });
   await pg.query(`select public.lifecycle_welcome_tick()`);
+});
+
+Deno.test("email confirmation: no welcome or ladder email before the code is typed; the welcome follows the code", async () => {
+  const pg = await schemaDB();
+  const waiting = await person(pg, { age: 5 * MIN, confirmed: null });
+  const stale = await person(pg, { age: 2 * D, notes: 1, mac: true, confirmed: null });
+  const box = outbox();
+  const welcomed = await welcome({ sql: sqlFor(pg), send: box.send, cfg: cfg(), pause: async () => {} });
+  const laddered = await run({ sql: sqlFor(pg), send: box.send, cfg: cfg(), ...quick });
+  assertEquals([box.sent.length, welcomed.accounts, laddered.accounts], [0, 0, 0]);
+  assertEquals(await rows(pg), []);
+
+  // Confirmed 3 minutes ago, 2 hours after signing up: the welcome counts from the confirmation.
+  await pg.query(`update auth.users set created_at = $2, email_confirmed_at = $3 where id = $1`, [waiting.id, at(-2 * H), at(-3 * MIN)]);
+  await welcome({ sql: sqlFor(pg), send: box.send, cfg: cfg(), pause: async () => {} });
+  assertEquals(box.sent.map((m) => m.to), [waiting.email]);
+  assert(!box.sent.some((m) => m.to === stale.email));
+});
+
+Deno.test("email confirmation: lifecycle_welcome_tick ignores an account waiting for its code", async () => {
+  const pg = await schemaDB();
+  await person(pg, { age: 5 * MIN, confirmed: null });
+  const due = `select exists (select 1 from auth.users u where u.email_confirmed_at is not null
+    and greatest(u.created_at, u.email_confirmed_at) between now() - interval '60 minutes' and now() - interval '2 minutes') as due`;
+  assertEquals((await pg.query<{ due: boolean }>(due)).rows[0].due, false);
+  await pg.query(`select public.lifecycle_welcome_tick()`);
+  const src = (await pg.query<{ src: string }>(`select prosrc as src from pg_proc where proname = 'lifecycle_welcome_tick'`)).rows[0].src;
+  assertStringIncludes(src, "u.email_confirmed_at is not null");
 });
