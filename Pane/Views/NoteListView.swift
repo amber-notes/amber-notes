@@ -166,10 +166,10 @@ struct NoteListView: View {
             }
             if scope != .trash, search.isEmpty, let usage = storage.usage, usage.level != .fine {
                 #if os(iOS)
-                Section { StorageWarningRow(usage: usage).selectionDisabled() }
+                Section { StorageWarningRow(usage: usage, open: openStorage).selectionDisabled() }
                     .listRowBackground(Color(Palette.row))
                 #else
-                StorageWarningRow(usage: usage)
+                StorageWarningRow(usage: usage, open: openStorage)
                     .listRowInsets(EdgeInsets(top: 6, leading: 10, bottom: 10, trailing: 10))
                     .listRowSeparator(.hidden)
                     .selectionDisabled()
@@ -540,11 +540,21 @@ struct NoteListView: View {
         }
     }
 
-    /// ambernotes.app/open/connect-ai from an email: Settings, at Connect an AI.
+    /// ambernotes.app/open/connect-ai from an email: Settings, at AI (Connect an AI).
     private func openConnectAI(_ place: AppPlace?) {
         guard place == .connectAI else { return }
         AppPlaceCenter.shared.pending = nil
-        SettingsRoute.shared.target = SettingsRoute.connectAI
+        SettingsRoute.shared.open(.ai)
+        #if os(iOS)
+        showSettings = true
+        #else
+        openSettings()
+        #endif
+    }
+
+    /// The storage warning opens Settings at Storage: what takes the room.
+    private func openStorage() {
+        SettingsRoute.shared.open(.storage)
         #if os(iOS)
         showSettings = true
         #else
@@ -554,7 +564,7 @@ struct NoteListView: View {
 
     private func whatsNewCard(_ release: WhatsNew.Release) -> some View {
         WhatsNewCard(release: release, secondary: whatsNew.secondary, onDismiss: dismissWhatsNew) {
-            SettingsRoute.shared.target = SettingsRoute.connectAI
+            SettingsRoute.shared.open(.ai)
             #if os(iOS)
             showSettings = true
             #else
