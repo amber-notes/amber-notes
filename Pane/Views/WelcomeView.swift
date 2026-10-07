@@ -11,6 +11,8 @@ struct WelcomeFlow: View {
     var focusEmail = false
     /// Captures: the sign-in form at a given step (the code screen, say).
     var flow = EmailSignInFlow()
+    /// Captures: an error under the form.
+    var error: String?
     @State private var stage: Stage
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var typeSize
@@ -27,10 +29,11 @@ struct WelcomeFlow: View {
         }
     }
 
-    init(backend: Backend, stage: Stage = .first(), focusEmail: Bool = false, flow: EmailSignInFlow = EmailSignInFlow()) {
+    init(backend: Backend, stage: Stage = .first(), focusEmail: Bool = false, flow: EmailSignInFlow = EmailSignInFlow(), error: String? = nil) {
         self.backend = backend
         self.focusEmail = focusEmail
         self.flow = flow
+        self.error = error
         _stage = State(initialValue: stage)
     }
 
@@ -181,7 +184,7 @@ struct WelcomeFlow: View {
             // The same neutral words from Get started and I already have an account: until the email
             // is checked, nobody knows which it is (SignInView then says Welcome back or Create your account).
             SignInView(backend: backend, flow: flow, heading: .beside(title: SignInView.startTitle, line: SignInView.startLine),
-                       focusEmail: focusEmail)
+                       focusEmail: focusEmail, error: error)
                 #if os(macOS)
                 // Top-anchored, so the form keeps its place as its steps come and go, but low
                 // enough that the first step sits near the middle of the window.

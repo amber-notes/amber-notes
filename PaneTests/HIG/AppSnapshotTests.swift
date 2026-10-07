@@ -105,6 +105,14 @@ import Testing
             let flow = EmailSignInFlow(step: step, email: "you@example.com", password: step == .create ? "correct horse battery" : "")
             try await Self.shoot(SignInView(backend: backend, flow: flow).fixedSize().containerBackground(for: .window) { Backdrop() }, name: "mac-signin-\(name)-\(mode)", size: CGSize(width: 380, height: 520), dark: dark, toolbar: false)
         }
+        // The code boxes part typed and full, and after a wrong code.
+        for (name, code) in [("confirm-typed", "704"), ("confirm-full", "704494")] {
+            try await Self.shoot(WelcomeFlow(backend: backend, stage: .signIn(returning: false), flow: EmailSignInFlow(step: .confirm, email: "sara@example.com", code: code)),
+                                 name: "mac-welcome-\(name)-\(mode)", size: WelcomeFlow.size, dark: dark, toolbar: false)
+        }
+        try await Self.shoot(WelcomeFlow(backend: backend, stage: .signIn(returning: false), flow: EmailSignInFlow(step: .confirm, email: "sara@example.com"),
+                                         error: "That code didn't work. Check the newest email from Amber Notes, or press Resend code."),
+                             name: "mac-welcome-confirm-wrong-\(mode)", size: WelcomeFlow.size, dark: dark, toolbar: false)
         // Email confirmation: Check your email, fresh and just after a code went out.
         for (name, sent) in [("confirm", nil), ("confirm-wait", Date.now)] as [(String, Date?)] {
             try await Self.shoot(WelcomeFlow(backend: backend, stage: .signIn(returning: false), flow: EmailSignInFlow(step: .confirm, email: "sara@example.com", codeSentAt: sent)),
