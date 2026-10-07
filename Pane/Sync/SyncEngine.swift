@@ -174,6 +174,12 @@ final class SyncEngine {
     private func run(_ client: SupabaseClient, pulling: Bool) async {
         // The key can go (signed out, Start fresh) between runs.
         guard let sealer = Wire.sealer else { return }
+        // No network: nothing is tried (each read would be retried for seconds first). What's
+        // waiting goes up when it's back (networkChanged).
+        guard path.isUp else {
+            status = .offline(Self.describe(URLError(.notConnectedToInternet)))
+            return
+        }
         resetOldLibraryIfNeeded()
         adoptKeyIfChanged(sealer.keyID)
         if pulling { status = .syncing }
@@ -184,6 +190,7 @@ final class SyncEngine {
             await pushAPIKeyNames(client, sealer: sealer)
             if pulling { try await pull(client); hasSynced = true }
             lastReach = .online
+            if pulling { downloadKeptFiles() }
             if slowedDown {
                 // The server asked us to slow down: the rest goes up in a little while.
                 status = .offline("Syncing a lot of changes, continuing shortly")
@@ -509,6 +516,8 @@ final class SyncEngine {
         fallback?.cancel()
         fallback = nil
         pending?.cancel()
+        keeping?.cancel()
+        keeping = nil
         pushLoop?.cancel()
         pushLoop = nil
         pushWanted = false
@@ -770,6 +779,49 @@ final class SyncEngine {
         let data = try await client.storage.from("files").download(path: storagePath(user: user, id: id))
         return try sealer.openFile(data, id: id)
     }
+
+    // MARK: Files kept downloaded
+
+    /// Folders whose files are fetched to this device as they arrive, so they open on a plane
+    /// (a folder's ⋯ menu: Keep Files Downloaded). Only on this device.
+    nonisolated static let keptFoldersKey = "files.keepDownloaded"
+
+    func keepsDownloaded(_ folder: UUID) -> Bool { keptFolders.contains(folder) }
+
+    func setKeepsDownloaded(_ folder: UUID, _ keep: Bool) {
+        var kept = keptFolders
+        if keep { kept.insert(folder) } else { kept.remove(folder) }
+        defaults.set(kept.map(\.uuidString), forKey: Self.keptFoldersKey)
+        keptChanged += 1
+        if keep { downloadKeptFiles() }
+    }
+
+    private var keptFolders: Set<UUID> {
+        Set((defaults.stringArray(forKey: Self.keptFoldersKey) ?? []).compactMap(UUID.init(uuidString:)))
+    }
+    /// Bumps when the kept folders change, for menus that show the choice.
+    private(set) var keptChanged = 0
+    private var keeping: Task<Void, Never>?
+
+    /// The files in kept folders that are on the server and not here yet, fetched one at a time.
+    /// Stops when the network goes; the next sync carries on.
+    private func downloadKeptFiles() {
+        let kept = keptFolders
+        guard keeping == nil, path.isUp, !kept.isEmpty else { return }
+        let missing = ((try? context.fetch(FetchDescriptor<Attachment>(predicate: #Predicate { $0.uploaded && $0.deletedAt == nil }))) ?? [])
+            .filter { a in a.trashedAt == nil && a.folderID.map(kept.contains) == true && !FileStore.exists(a) }
+        guard !missing.isEmpty else { return }
+        keeping = Task { [weak self] in
+            for a in missing {
+                guard let self, self.path.isUp, !Task.isCancelled else { break }
+                _ = await self.download(a)
+            }
+            self?.keeping = nil
+        }
+    }
+
+    /// Tests: waits for the kept files being fetched.
+    func keptFilesSettled() async { await keeping?.value }
 
     /// Fetches a file's bytes from Storage to this device.
     func download(_ a: Attachment) async -> Bool {

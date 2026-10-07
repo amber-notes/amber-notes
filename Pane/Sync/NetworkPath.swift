@@ -1,6 +1,8 @@
 import Foundation
 import Network
 import Observation
+import SwiftData
+import UniformTypeIdentifiers
 
 /// Whether this device has a way onto the network, as the system sees it (NWPathMonitor): airplane
 /// mode, or no Wi-Fi and no cellular, is down. It can't tell that a plane's Wi-Fi lets nothing
@@ -91,6 +93,23 @@ enum DebugOffline {
                 Task { @MainActor in DebugOffline.set(offline: offline) }
             }, name as CFString, nil, .deliverImmediately)
         }
+    }
+
+    /// For trying files offline in the simulator: `-offlineSampleFile` puts a small file in a "Trip"
+    /// folder once; `-forgetDownloads` removes every file's bytes from this device at launch (they
+    /// stay on the server), as on a device that never opened them.
+    @MainActor static func prepareFiles(_ context: ModelContext) {
+        let args = ProcessInfo.processInfo.arguments
+        if args.contains("-forgetDownloads") { try? FileManager.default.removeItem(at: FileStore.root) }
+        guard args.contains("-offlineSampleFile") else { return }
+        let name = "Boarding pass.txt"
+        guard ((try? context.fetch(FetchDescriptor<Attachment>())) ?? []).allSatisfy({ $0.filename != name }) else { return }
+        let folder = context.allFolders().first { $0.name == "Trip" } ?? context.createFolder(named: "Trip")
+        guard let a = try? FileStore.importData(Data("Flight AN 214, seat 14A, boarding 09:40".utf8), filename: name, type: .plainText) else { return }
+        a.folderID = folder.id
+        a.modifiedAt = .now
+        context.insert(a)
+        try? context.save()
     }
 
     @MainActor static func set(offline: Bool) {

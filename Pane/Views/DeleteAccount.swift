@@ -6,6 +6,7 @@ import Supabase
 /// this device. The App Store requires it for apps where you can create an account.
 struct DeleteAccountButton: View {
     let backend: Backend
+    @Environment(\.networkReach) private var reach
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     @State private var asking = false
@@ -19,13 +20,18 @@ struct DeleteAccountButton: View {
                 if working { ProgressView().controlSize(.small) }
             }
         }
-        .disabled(working)
+        .disabled(working || reach != .online)
         .accessibilityIdentifier("settings.deleteAccount")
         .confirmationDialog("Delete your Amber Notes account?", isPresented: $asking, titleVisibility: .visible) {
             Button("Delete Account and All Notes", role: .destructive) { Task { await delete() } }
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("Every note, folder, file, earlier version, AI connection and share link is deleted from the cloud and from this device, with the key that opens them. This can't be undone. To keep a copy, export your notes first.")
+        }
+        if reach != .online, !working {
+            Text(OfflineCopy.needsNetwork("delete your account"))
+                .foregroundStyle(.secondary)
+                .font(.callout)
         }
         if let error {
             Label(error, systemImage: "exclamationmark.triangle.fill")

@@ -67,6 +67,9 @@ struct PaneApp: App {
         }
         // With sync on, the library is seeded after the first pull so devices don't duplicate it.
         if backend.client == nil { Seed.ensureLibrary(container.mainContext, demo: args.contains("-demo")) }
+        #if DEBUG || QA
+        DebugOffline.prepareFiles(context)
+        #endif
         // Version history: the server's, or a made-up one for demos (`-demo -demoHistory`).
         let historyStore: NoteHistoryStore = args.contains("-demoHistory") ? DemoHistoryStore(context: context)
             : backend.client.map { SupabaseHistoryStore(client: $0) } ?? EmptyHistoryStore()
@@ -530,6 +533,7 @@ struct AppGate: View {
                 RootView()
                     .environment(backend)
                     .environment(sync)
+                    .environment(\.networkReach, sync.reach)
                     .environment(setup)
                     .shareAskSheet(shareAsk)
                     .heardFromSheet(heardFrom)

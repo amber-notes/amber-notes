@@ -12,7 +12,7 @@ extension NetworkFaults {
     let context: ModelContext
     let path = NetworkPath()
     let engine: SyncEngine
-    let defaults = UserDefaults(suiteName: "offline-\(UUID())")!
+    let defaults: UserDefaults = MemoryDefaults()
 
     init() throws {
         StubSupabase.reset()
@@ -20,7 +20,8 @@ extension NetworkFaults {
         NetFault.resetLog()
         let c = try ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
         context = ModelContext(c)
-        engine = SyncEngine(backend: Backend(testClient: StubSupabase.client(), email: "qa@example.com"), context: context, defaults: defaults, path: path)
+        engine = SyncEngine(backend: Backend(testClient: StubSupabase.client(), email: "qa@example.com", userID: SealedAccount.user),
+                            context: context, defaults: defaults, path: path)
     }
 
     private func syncedNote(_ body: String) async throws -> Note {
@@ -150,7 +151,8 @@ extension NetworkFaults {
         await engine.stop()
 
         // Opened again, still offline: nothing was lost meanwhile.
-        let again = SyncEngine(backend: Backend(testClient: StubSupabase.client(), email: "qa@example.com"), context: context, defaults: defaults, path: path)
+        let again = SyncEngine(backend: Backend(testClient: StubSupabase.client(), email: "qa@example.com", userID: SealedAccount.user),
+                               context: context, defaults: defaults, path: path)
         await again.sync()
         #expect(AccountLibrary.hasUnsynced(context))
 
@@ -204,7 +206,11 @@ extension NetworkFaults {
         let saved = SyncEngine.fallbackPoll
         SyncEngine.fallbackPoll = (.milliseconds(100), .milliseconds(100), 300)
         defer { SyncEngine.fallbackPoll = saved }
-        let n = try await syncedNote("Draft")
+        // Started as the app starts it (no account id: start() hands the library to the account in
+        // the app's own settings, which a test leaves alone).
+        let engine = SyncEngine(backend: Backend(testClient: StubSupabase.client(), email: "qa@example.com"), context: context, defaults: defaults, path: path)
+        let n = context.createNote(in: .all, body: "Draft")
+        await engine.sync()
         // On a plane: no network, and realtime never joins.
         NetFault.config = .init(offline: true)
         path.force(down: true)
@@ -218,20 +224,28 @@ extension NetworkFaults {
         print("PERF no network: \(tried) requests tried in 0.8 s idle (polling every 0.1 s when up)")
         #expect(tried == 0, "nothing polls with no network")
         #expect(n.dirty)
+        // Typing offline tries nothing either, and says offline at once.
+        NetFault.resetLog()
+        n.body = "Draft, offline, more"; n.touch()
+        try await Task.sleep(for: .milliseconds(500))
+        #expect(NetFault.started.isEmpty && engine.status == .offline("Offline"))
 
         NetFault.config = .init()
         path.force(down: false)
-        await waitUntil(2) { StubSupabase.body(n.id) == "Draft, offline" }
-        #expect(StubSupabase.body(n.id) == "Draft, offline", "the network came back and the edit went up without a sync being asked for")
+        await waitUntil(2) { StubSupabase.body(n.id) == "Draft, offline, more" }
+        #expect(StubSupabase.body(n.id) == "Draft, offline, more", "the network came back and the edit went up without a sync being asked for")
         await waitUntil(1) { engine.reach == .online }
         #expect(engine.reach == .online)
+        await engine.stop()
         await finish()
     }
 
     /// The network is there but lets nothing through (a plane's Wi-Fi before you pay): that's
     /// "can't reach", not "offline", and it clears with the next sync that gets through.
     @Test func aNetworkThatLetsNothingThroughIsUnreachable() async throws {
-        _ = try await syncedNote("Draft")
+        let n = try await syncedNote("Draft")
+        // An edit waiting: the push fails first (reads would be retried for seconds by the client).
+        n.body = "Draft, edited"; n.touch()
         NetFault.config = .init(timeoutAfter: 0.05)
         await engine.sync()
         #expect(engine.reach == .unreachable)
@@ -241,6 +255,38 @@ extension NetworkFaults {
         NetFault.config = .init()
         await engine.sync()
         #expect(engine.reach == .online)
+        await finish()
+    }
+
+    // MARK: Files
+
+    /// A folder kept downloaded: its files come to this device after each sync, so they open on a
+    /// plane. Not while there's no network; they come once it's back.
+    @Test func aFolderKeptDownloadedHasItsFilesHere() async throws {
+        let folder = context.createFolder(named: "Boarding passes")
+        let a = try FileStore.importData(Data("Seat 14A".utf8), filename: "pass.txt", type: .plainText)
+        a.folderID = folder.id
+        context.insert(a)
+        defer { FileStore.remove(a) }
+        await engine.sync()
+        #expect(a.uploaded && !a.dirty)
+        // As on a device that only knows the file from the server.
+        FileStore.remove(a)
+        #expect(!engine.keepsDownloaded(folder.id))
+
+        path.force(down: true)
+        engine.setKeepsDownloaded(folder.id, true)
+        await engine.keptFilesSettled()
+        #expect(!FileStore.exists(a), "no network: nothing tried")
+
+        path.force(down: false)
+        // The sync that coming back starts (the app's engine is started; this one runs it by hand).
+        await engine.sync()
+        await engine.keptFilesSettled()
+        #expect(try String(contentsOf: FileStore.url(for: a.id, filename: a.filename), encoding: .utf8) == "Seat 14A")
+        #expect(engine.keepsDownloaded(folder.id))
+        engine.setKeepsDownloaded(folder.id, false)
+        #expect(!engine.keepsDownloaded(folder.id))
         await finish()
     }
 

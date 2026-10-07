@@ -260,6 +260,8 @@ struct NoteListView: View {
         #if os(iOS)
         .listStyle(.insetGrouped)
         .environment(\.editMode, $editMode)
+        // Offline: a quiet line over the bottom bar (the Mac says it in the sidebar).
+        .safeAreaInset(edge: .bottom, spacing: 0) { OfflineLine(sync: sync).animation(.easeOut(duration: 0.25), value: sync?.reach) }
         #endif
         // Less warmth than the sidebar, more than the note.
         .scrollContentBackground(.hidden)

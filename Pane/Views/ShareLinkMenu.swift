@@ -441,6 +441,12 @@ final class ShareLinkStore {
     @discardableResult
     func requestShare() -> Task<Void, Never>? {
         guard let note = noteID else { return nil }
+        // No network: said at once, not after reading what sharing publishes.
+        if !NetworkPath.shared.isUp {
+            state.failed(Self.offline)
+            settleFeedback()
+            return nil
+        }
         if defaults.bool(forKey: Self.askedKey(note)) {
             return Task { await shareAndCopy() }
         }
@@ -532,7 +538,10 @@ final class ShareLinkStore {
         }
     }
 
+    static let offline = OfflineCopy.needsNetwork("share this note")
+
     static func message(for error: Error) -> String {
+        if let u = error as? URLError, SyncEngine.reach(after: u) == .offline { return offline }
         let text = String(describing: error).lowercased()
         if text.contains("no such note") { return "Couldn’t share yet. Try again once the note has synced." }
         if text.contains("note_locked") || text.contains("locked note") { return "Locked notes can’t be shared." }
