@@ -44,7 +44,7 @@ import UniformTypeIdentifiers
         let file = try #require(made.first)
         let url = FileStore.url(for: file.id, filename: file.filename)
         let size = CGSize(width: 900, height: 640)
-        let view = ImageViewer(file: file, url: url, neighbours: c.mainContext.pictures(besides: file), open: { _ in }, turns: turns)
+        let view = ImageViewer(file: file, url: url, neighbours: c.mainContext.pictures(besides: file), open: { _ in }, turns: turns, actualSize: actual)
             .modelContainer(c)
             .frame(width: size.width, height: size.height)
         let w = NSWindow(contentRect: CGRect(x: -20000, y: -20000, width: size.width, height: size.height), styleMask: [.borderless], backing: .buffered, defer: false)
@@ -56,7 +56,6 @@ import UniformTypeIdentifiers
         w.orderFrontRegardless()
         defer { w.orderOut(nil); w.close() }
         try? await Task.sleep(for: .seconds(1.5))
-        if actual, let scroll = Self.scroll(in: w.contentView) { scroll.magnification = 1; try? await Task.sleep(for: .seconds(0.8)) }
         let v = try #require(w.contentView)
         v.layoutSubtreeIfNeeded()
         let rep = try #require(v.bitmapImageRepForCachingDisplay(in: v.bounds))

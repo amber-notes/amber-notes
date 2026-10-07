@@ -225,13 +225,14 @@ struct ImageViewer: View {
     /// Stepping with the keys keeps the keys working on the next picture (a click in the list doesn't).
     @MainActor static var stepping = false
 
-    init(file: Attachment, url: URL, neighbours: [Attachment], open: @escaping (UUID) -> Void, turns: Int = ImageViewer.captureTurns) {
+    init(file: Attachment, url: URL, neighbours: [Attachment], open: @escaping (UUID) -> Void, turns: Int = ImageViewer.captureTurns, actualSize: Bool = false) {
         self.file = file
         self.url = url
         self.neighbours = neighbours
         self.open = open
         let m = ImageViewerModel(url: url)
         m.turns = turns
+        if actualSize { m.fits = false; m.zoom = 1 }
         _model = State(initialValue: m)
     }
 
@@ -394,7 +395,7 @@ enum ImageClipboard {
 
 /// The checkerboard under a picture with transparent parts, in the warm palette's greys.
 enum Checkerboard {
-    static let cell: CGFloat = 8
+    static let cell: CGFloat = 10
 
     static func image(dark: Bool) -> CGImage? {
         let s = Int(cell * 2)
@@ -438,7 +439,10 @@ struct ZoomingImage: NSViewRepresentable {
         context.coordinator.observe()
         model.apply = { [weak scroll] z, _ in
             guard let scroll else { return }
-            scroll.animator().magnification = z
+            // Around the middle of what's shown, as Preview zooms.
+            let v = scroll.documentVisibleRect
+            scroll.animator().setMagnification(z, centeredAt: CGPoint(x: v.midX, y: v.midY))
+            (scroll.documentView as? PictureView)?.zoom = z
         }
         return scroll
     }
@@ -446,9 +450,21 @@ struct ZoomingImage: NSViewRepresentable {
     func updateNSView(_ scroll: NSScrollView, context: Context) {
         guard let doc = scroll.documentView as? PictureView else { return }
         let size = model.shownSize
-        if doc.frame.size != size, size.width > 0 { doc.frame = CGRect(origin: .zero, size: size) }
+        if doc.frame.size != size, size.width > 0 {
+            doc.frame = CGRect(origin: .zero, size: size)
+            // A new picture (or a turn) opens on its middle.
+            DispatchQueue.main.async {
+                let v = scroll.documentVisibleRect
+                scroll.contentView.scroll(to: CGPoint(x: max(0, (size.width - v.width) / 2), y: max(0, (size.height - v.height) / 2)))
+                scroll.reflectScrolledClipView(scroll.contentView)
+            }
+        }
         doc.show(model.image, frames: model.frames, duration: model.frameDuration, checker: model.hasAlpha)
-        if abs(scroll.magnification - model.zoom) > 0.001 { scroll.magnification = model.zoom }
+        if abs(scroll.magnification - model.zoom) > 0.001 {
+            let v = scroll.documentVisibleRect
+            scroll.setMagnification(model.zoom, centeredAt: CGPoint(x: v.midX, y: v.midY))
+        }
+        doc.zoom = model.zoom
     }
 
     func makeCoordinator() -> Coordinator { Coordinator() }
@@ -461,7 +477,12 @@ struct ZoomingImage: NSViewRepresentable {
         func observe() {
             guard let scroll else { return }
             token = NotificationCenter.default.addObserver(forName: NSScrollView.didEndLiveMagnifyNotification, object: scroll, queue: .main) { [weak self] _ in
-                MainActor.assumeIsolated { if let s = self?.scroll { self?.model?.zoomed(to: s.magnification) } }
+                MainActor.assumeIsolated {
+                    if let s = self?.scroll {
+                        self?.model?.zoomed(to: s.magnification)
+                        (s.documentView as? PictureView)?.zoom = s.magnification
+                    }
+                }
             }
         }
 
@@ -487,6 +508,8 @@ final class PictureView: NSView {
     private let imageView = NSImageView()
     private var checker = false
     private var shown = ""
+    /// The scroll view's zoom: the checkerboard keeps its size on screen whatever the zoom.
+    var zoom: CGFloat = 1 { didSet { if checker, abs(zoom - oldValue) > 0.0001 { needsDisplay = true } } }
 
     override init(frame: NSRect) {
         super.init(frame: frame)
@@ -528,7 +551,8 @@ final class PictureView: NSView {
     override func draw(_ dirtyRect: NSRect) {
         guard checker, let ctx = NSGraphicsContext.current?.cgContext,
               let tile = Checkerboard.image(dark: effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua) else { return }
-        ctx.draw(tile, in: CGRect(x: 0, y: 0, width: Checkerboard.cell * 2, height: Checkerboard.cell * 2), byTiling: true)
+        let side = Checkerboard.cell * 2 / max(zoom, 0.01)
+        ctx.draw(tile, in: CGRect(x: 0, y: 0, width: side, height: side), byTiling: true)
     }
 }
 #else
@@ -577,6 +601,7 @@ struct ZoomingImage: UIViewRepresentable {
         }
         doc.show(model.image, frames: model.frames, duration: model.frameDuration, checker: model.hasAlpha)
         if abs(scroll.zoomScale - model.zoom) > 0.001 { scroll.zoomScale = model.zoom }
+        doc.zoom = scroll.zoomScale
         c.center()
     }
 
@@ -590,7 +615,10 @@ struct ZoomingImage: UIViewRepresentable {
         var previous: () -> Void = {}
 
         func viewForZooming(in scrollView: UIScrollView) -> UIView? { doc }
-        func scrollViewDidZoom(_ scrollView: UIScrollView) { center() }
+        func scrollViewDidZoom(_ scrollView: UIScrollView) {
+            center()
+            doc?.zoom = scrollView.zoomScale
+        }
         func scrollViewDidEndZooming(_ scrollView: UIScrollView, with view: UIView?, atScale scale: CGFloat) { model?.zoomed(to: scale) }
 
         /// Smaller than the pane: in its middle.
@@ -616,6 +644,8 @@ final class PictureView: UIView {
     override init(frame: CGRect) {
         super.init(frame: frame)
         imageView.contentMode = .scaleToFill
+        backgroundColor = .clear
+        contentMode = .redraw
         imageView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         addSubview(imageView)
     }
@@ -631,8 +661,17 @@ final class PictureView: UIView {
         } else if let image, imageView.image?.cgImage !== image {
             imageView.image = UIImage(cgImage: image)
         }
-        let dark = traitCollection.userInterfaceStyle == .dark
-        backgroundColor = checker ? Checkerboard.image(dark: dark).map { UIColor(patternImage: UIImage(cgImage: $0)) } : .clear
+        if self.checker != checker { self.checker = checker; setNeedsDisplay() }
+    }
+
+    private var checker = false
+    /// The scroll view's zoom: the checkerboard keeps its size on screen whatever the zoom.
+    var zoom: CGFloat = 1 { didSet { if checker, abs(zoom - oldValue) > 0.0001 { setNeedsDisplay() } } }
+
+    override func draw(_ rect: CGRect) {
+        guard checker, let ctx = UIGraphicsGetCurrentContext(), let tile = Checkerboard.image(dark: traitCollection.userInterfaceStyle == .dark) else { return }
+        let side = Checkerboard.cell * 2 / max(zoom, 0.01)
+        ctx.draw(tile, in: CGRect(x: 0, y: 0, width: side, height: side), byTiling: true)
     }
 }
 #endif
