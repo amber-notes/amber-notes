@@ -66,9 +66,10 @@ import UniformTypeIdentifiers
     }
 
     @Test func thePDFReaderZoomsPagesAndFinds() throws {
-        let doc = try #require(PDFDocument(data: DemoData.paperPDF(title: "Fluent Python", lines: 30)))
+        let doc = try #require(PDFDocument(data: DemoData.bookPDF(title: "Fluent Python", chapters: DemoData.fluentPythonChapters)))
         let m = PDFReaderModel(document: doc)
-        #expect(m.pageCount == 1 && m.pageLabel == "1 of 1")
+        #expect(m.pageCount == 7 && m.pageLabel == "1 of 7")
+        #expect(m.outline.map { $0.label } == DemoData.fluentPythonChapters, "the table of contents")
         // Preview's zoom steps.
         #expect(PDFReaderModel.step(from: 1, up: true) == 1.1)
         #expect(PDFReaderModel.step(from: 1, up: false) == 0.9)
@@ -78,7 +79,7 @@ import UniformTypeIdentifiers
         // Find highlights every match and steps through them.
         m.query = "python"
         m.find()
-        #expect(m.matches.count > 2, "the title and the preface say Python")
+        #expect(m.matches.count > 2, "the title and every chapter say Python")
         #expect(m.findLabel == "1 of \(m.matches.count)")
         m.next()
         #expect(m.findLabel == "2 of \(m.matches.count)")
@@ -88,7 +89,9 @@ import UniformTypeIdentifiers
         m.find()
         #expect(m.findLabel == "Not found")
         // Going to a page is clamped.
-        m.go(to: 9)
+        m.go(to: 99)
+        #expect(m.page == 7)
+        m.go(to: 0)
         #expect(m.page == 1)
     }
 

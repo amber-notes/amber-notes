@@ -9,21 +9,10 @@ import Testing
 /// cacheDisplay and attached to the test results (CI exports them as the "snapshots" artifact).
 /// Nothing appears on any screen.
 @MainActor @Suite(.serialized) struct FileViewerSnapshots {
-    /// A four-page book with a table of contents.
+    /// A short book with a table of contents.
     static func book() throws -> URL {
-        let page = try #require(PDFDocument(data: DemoData.paperPDF(title: "Fluent Python", lines: 34))?.page(at: 0))
-        let doc = PDFDocument()
-        for i in 0 ..< 4 { doc.insert(page.copy() as! PDFPage, at: i) }
-        let root = PDFOutline()
-        for (i, title) in ["Preface", "The Python Data Model", "An Array of Sequences", "Dictionaries and Sets"].enumerated() {
-            let item = PDFOutline()
-            item.label = title
-            item.destination = PDFDestination(page: doc.page(at: i)!, at: CGPoint(x: 0, y: 842))
-            root.insertChild(item, at: i)
-        }
-        doc.outlineRoot = root
         let url = FileManager.default.temporaryDirectory.appending(path: "Fluent Python.pdf")
-        #expect(doc.write(to: url))
+        try DemoData.bookPDF(title: "Fluent Python", chapters: DemoData.fluentPythonChapters).write(to: url)
         return url
     }
 

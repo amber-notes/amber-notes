@@ -312,6 +312,7 @@ struct PDFReader: View {
                     OutlineGroup(model.outline.map(OutlineItem.init), children: \.children) { item in
                         Button(item.title) { model.go(to: item.outline) }
                             .buttonStyle(.plain)
+                            .foregroundStyle(Color.ink)
                             .lineLimit(2)
                     }
                 }
