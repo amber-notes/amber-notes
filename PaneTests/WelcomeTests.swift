@@ -28,9 +28,9 @@ import AppKit
     }
 
     @Test func theCardCantGoFullScreenAndTheNotesCan() {
-        let window = NSWindow(contentRect: CGRect(x: 0, y: 0, width: 1180, height: 760),
-                              styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
-                              backing: .buffered, defer: true)
+        // Off screen, borderless and never ordered front: nothing appears on a developer's Mac.
+        let window = NSWindow(contentRect: CGRect(x: -20000, y: -20000, width: 1180, height: 760),
+                              styleMask: [.borderless], backing: .buffered, defer: true)
         window.collectionBehavior.insert(.fullScreenPrimary)
         CardWindow.lock(window)
         #expect(window.collectionBehavior.contains(.fullScreenNone))
@@ -41,8 +41,10 @@ import AppKit
     }
 
     @Test func theWindowWrapsTheCardAndItsTitleBar() {
-        let window = NSWindow(contentRect: CGRect(x: 0, y: 0, width: 1180, height: 760),
-                              styleMask: [.titled, .closable, .fullSizeContentView], backing: .buffered, defer: true)
+        // It needs a title bar to measure, so it can't be borderless; it stays off screen and is
+        // never ordered front.
+        let window = NSWindow(contentRect: CGRect(x: -20000, y: -20000, width: 1180, height: 760),
+                              styleMask: [.titled, .fullSizeContentView], backing: .buffered, defer: true)
         let titleBar = window.frame.height - window.contentLayoutRect.height
         #expect(titleBar > 0)
         #expect(CardWindow.frameSize(window, card: WelcomeFlow.size) == CGSize(width: 900, height: 600 + titleBar))
