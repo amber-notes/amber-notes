@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { bannerAsks, CONSENT_OPEN_EVENT, storedChoice, type ConsentChoice } from "@/lib/consent";
 import { browserOptedOut, readConsent, recordChoice } from "./posthog-client";
 
-/// The cookie banner (lib/consent.ts): a small note at the bottom of the window that never covers
+/// The cookie banner (lib/consent.ts): a bar centred at the bottom of the window that never covers
 /// the page's middle or blocks it. It asks once; the footer's Cookie settings opens it again.
 /// Reject and Accept are the same size and both plainly readable; Accept sits on the right in the
 /// site's primary button colour, like Download for Mac. SiteAnalytics renders it only where PostHog may run.

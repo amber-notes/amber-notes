@@ -2,8 +2,6 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import nextConfig from "../next.config";
 import sitemap from "../app/sitemap";
-import OpenTemplate from "../app/open/template/[slug]/page";
-import OpenCopy from "../app/open/copy/[slug]/page";
 import { GET } from "../app/api/templates/[slug]/route";
 import { llmsTxt } from "./llms";
 import { renderNote } from "./render";
@@ -180,9 +178,7 @@ describe("once the app opens template links (APP_TEMPLATES)", () => {
     expect(html).toContain("Use template</a>");
   });
 
-  it("keeps the open page out of search, and template pages in it", async () => {
-    const open = await import("../app/open/template/[slug]/page");
-    expect(open.metadata.robots).toMatchObject({ index: false });
+  it("keeps template pages in search", async () => {
     const page = await import("../app/templates/[slug]/page");
     expect(JSON.stringify(await page.generateMetadata(params("habit-tracker")))).not.toContain('"index":false');
   });
@@ -203,45 +199,20 @@ describe("before the app opens template links (APP_TEMPLATES)", () => {
   });
 });
 
-describe("the open pages", () => {
-  afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
-
-  it("tries the app for a template, then offers the Mac app, the iPhone's status and the prompt", async () => {
-    const html = renderToStaticMarkup(await OpenTemplate(params("habit-tracker")));
-    expect(html).toContain('href="ambernotes://template/habit-tracker"');
-    expect(html).toContain(">Open Amber Notes</a>");
-    expect(html).toContain('href="/download/mac"');
-    expect(html).toContain(APP_STORE_LIVE ? "Get it for iPhone" : "iPhone app: coming soon");
-    expect(html).toContain("Or use it with ChatGPT or Claude");
-    expect(html).toContain("Copy the prompt");
-    const t = templates().find((x) => x.slug === "habit-tracker")!;
-    expect(html.replace(/&quot;/g, '"').replace(/&#x27;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&")).toContain(instructions(t)[0].prompt);
-    // Without JavaScript the way to get the app shows; the page itself is never indexed.
-    expect(html).toContain('data-state="fallback"');
+describe("Use template and Use this note in a browser", () => {
+  it("sends an old link's visit back to the template's or note's page, which tries the app there", async () => {
+    const redirects = await nextConfig.redirects!();
+    expect(redirects).toContainEqual({ source: "/open/template/:slug", destination: "/templates/:slug?open=1", permanent: true });
+    expect(redirects).toContainEqual({ source: "/open/copy/:slug", destination: "/n/:slug?open=1", permanent: true });
   });
 
-  it("offers the app's scheme for a shared note, with the copyable markdown", async () => {
-    vi.stubEnv("SUPABASE_URL", "http://127.0.0.1:9");
-    vi.stubEnv("SUPABASE_ANON_KEY", "test");
-    const fetch = vi.fn(async () => Response.json({ title: "Packing", body: "Packing\n\n- [ ] Passport\n", updated_at: "2026-09-30T10:00:00Z", include_subnotes: false, is_sub: false, root_title: "Packing", subnotes: [] }));
-    vi.stubGlobal("fetch", fetch);
-    vi.resetModules();
-    const { default: Page } = await import("../app/open/copy/[slug]/page");
-    const slug = "abcdefghijklmnopqrstuvwx";
-    const html = renderToStaticMarkup(await Page(params(slug)));
-    expect(html).toContain(`href="ambernotes://copy/${slug}"`);
-    expect(html).toContain("- [ ] Passport");
-    expect(html).toContain(`href="/n/${slug}"`);
-  });
-
-  it("never echoes a bad share slug, and calls nothing for it", async () => {
-    const fetch = vi.fn();
-    vi.stubGlobal("fetch", fetch);
-    const html = renderToStaticMarkup(await OpenCopy(params(`"><script>alert(1)</script>`)));
-    expect(html).not.toContain("alert");
+  it.runIf(APP_TEMPLATES.live)("keeps Use template the universal link, with nothing of the attempt in the page as served", async () => {
+    const html = renderToStaticMarkup(await TemplatePage(params("habit-tracker")));
+    // The button is still the universal link, for a copied link or a click without JavaScript.
+    expect(html.match(/href="\/open\/template\/habit-tracker"/g)).toHaveLength(1);
+    // Nothing about the attempt is in the page as served: the sheet only appears in the browser.
+    expect(html).not.toContain("open-sheet");
     expect(html).not.toContain("ambernotes://");
-    expect(html).toContain("isn&#x27;t shared anymore");
-    expect(fetch).not.toHaveBeenCalled();
   });
 });
 

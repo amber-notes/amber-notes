@@ -125,4 +125,12 @@ describe("the parts every connect screen shares", () => {
     expect(a).not.toContain("<aside");
     for (const html of [a, b]) expect([...html.matchAll(/<img[^>]*src="([^"]+)"/g)].every((m) => m[1] === "/mark-256.png")).toBe(true);
   });
+
+  it("puts the site's logo at the top, linking home, and no other way out of the flow", () => {
+    for (const html of [renderToStaticMarkup(<ConnectCard><p>x</p></ConnectCard>), renderToStaticMarkup(<ConnectCard request><p>x</p></ConnectCard>)]) {
+      const bar = html.match(/<header[^>]*>([\s\S]*?)<\/header>/)?.[1] ?? "";
+      expect(text(bar)).toBe("Amber Notes");
+      expect([...bar.matchAll(/href="([^"]+)"/g)].map((m) => m[1])).toEqual(["/"]);
+    }
+  });
 });

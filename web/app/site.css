@@ -251,6 +251,9 @@ html[data-theme] ::selection { background: var(--mark); }
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
 }
+/* The filter motion (lib/filter-transition.ts) is a fade-through of the grid, run from script; while
+   its content is swapped the grid is hidden, a new one mounting included. */
+html[data-filter="out"] .filter-grid { opacity: 0; }
 @keyframes vt-out { to { opacity: 0; } }
 @keyframes vt-in { from { opacity: 0; } }
 
@@ -315,29 +318,32 @@ html[data-theme] ::selection { background: var(--mark); }
 .pi-dev button:focus-visible { outline: 2px solid #f5a53a; outline-offset: 2px; }
 @media (hover: hover) { .pi-dev button:hover { background: rgba(251, 238, 221, 0.28); } }
 
-/* The cookie banner (app/ConsentBanner.tsx): a small note in the bottom corner, the leaf mark, one
-   sentence and two buttons that look the same. Phones get it across the bottom, inside the gutter.
-   It sits over the page's foot without dimming or blocking anything else. */
+/* The cookie banner (app/ConsentBanner.tsx): a bar centred at the bottom of the window, up to 720 px
+   wide, the leaf mark, one sentence and two buttons of the same size, Accept on the right. Phones put
+   the buttons on their own row. It keeps clear of the safe-area insets and sits over the page's foot
+   without dimming or blocking anything else. */
 .consent {
-  position: fixed; z-index: 50; left: var(--gutter); bottom: calc(16px + env(safe-area-inset-bottom));
-  width: min(440px, calc(100vw - 2 * var(--gutter)));
-  display: grid; grid-template-columns: 28px 1fr; gap: 10px 12px; align-items: start;
-  padding: 14px 14px 14px 16px; border-radius: 16px;
+  position: fixed; z-index: 50;
+  left: max(var(--gutter), env(safe-area-inset-left)); right: max(var(--gutter), env(safe-area-inset-right));
+  bottom: max(16px, calc(8px + env(safe-area-inset-bottom)));
+  max-width: 720px; margin-inline: auto;
+  display: grid; grid-template-columns: 28px 1fr auto; gap: 10px 14px; align-items: center;
+  padding: 12px 12px 12px 16px; border-radius: 18px;
   background: var(--card); color: var(--ink); border: 1px solid var(--line);
-  box-shadow: 0 10px 30px rgba(var(--shade), 0.14), 0 1px 3px rgba(var(--shade), 0.08);
+  box-shadow: 0 12px 34px rgba(var(--shade), 0.16), 0 1px 3px rgba(var(--shade), 0.08);
   font-size: 14px; line-height: 1.45;
 }
 @media (prefers-reduced-motion: no-preference) {
   .consent { animation: consent-in 0.42s cubic-bezier(0.2, 0.8, 0.2, 1) 0.6s both; }
 }
-@keyframes consent-in { from { opacity: 0; transform: translateY(10px) rotate(-0.6deg); } to { opacity: 1; transform: none; } }
-.consent-mark { margin-top: 1px; border-radius: 7px; }
+@keyframes consent-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+.consent-mark { border-radius: 7px; }
 .consent-text { margin: 0; text-wrap: pretty; }
 .consent-text a { color: var(--link); text-underline-offset: 3px; }
 .consent-now { color: var(--muted); }
-.consent-actions { grid-column: 2; display: flex; gap: 8px; }
+.consent-actions { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; }
 .consent-button {
-  flex: 1; min-height: 40px; padding: 0 16px; border-radius: 12px; border: 1px solid var(--line);
+  min-width: 96px; min-height: 40px; padding: 0 16px; border-radius: 12px; border: 1px solid var(--line);
   background: var(--soft); color: var(--ink); font: inherit; font-weight: 600; cursor: pointer;
   transition-property: background-color, transform; transition-duration: 120ms;
 }
@@ -347,7 +353,11 @@ html[data-theme] ::selection { background: var(--mark); }
 @media (hover: hover) { .consent-accept:hover { background: color-mix(in srgb, var(--cta-bg) 88%, var(--amber) 12%); } }
 .consent-button:focus-visible, .consent-text a:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
 .consent-button[aria-pressed="true"] { box-shadow: inset 0 0 0 1.5px var(--amber); }
-@media (max-width: 480px) { .consent { left: var(--gutter); right: var(--gutter); width: auto; } }
+@media (max-width: 600px) {
+  .consent { grid-template-columns: 24px 1fr; align-items: start; gap: 10px; padding: 12px; border-radius: 16px; }
+  .consent-mark { width: 24px; height: 24px; border-radius: 6px; margin-top: 1px; }
+  .consent-actions { grid-column: 1 / -1; }
+}
 
 /* The footer's Cookie settings: a button that reads as one of the footer's links. */
 .site-footer button.site-footlink {
@@ -356,3 +366,45 @@ html[data-theme] ::selection { background: var(--mark); }
 }
 @media (hover: hover) { .site-footer button.site-footlink:hover { color: var(--ink); } }
 .site-footer button.site-footlink:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; border-radius: 6px; }
+
+/* "Didn't open?" (app/OpenInApp.tsx): when Use template or Use this note didn't reach Amber Notes,
+   a small sheet centred at the bottom of the window, above the cookie bar, with the Mac app and
+   another try. It never dims or blocks the page. */
+.open-sheet {
+  position: fixed; z-index: 60;
+  left: max(var(--gutter), env(safe-area-inset-left)); right: max(var(--gutter), env(safe-area-inset-right));
+  bottom: max(16px, calc(8px + env(safe-area-inset-bottom)));
+  max-width: 440px; margin-inline: auto;
+  display: grid; gap: 4px; padding: 16px 48px 14px 18px; border-radius: 18px;
+  background: var(--card); color: var(--ink); border: 1px solid var(--line);
+  box-shadow: 0 14px 38px rgba(var(--shade), 0.2), 0 1px 3px rgba(var(--shade), 0.08);
+  font-size: 14.5px; line-height: 1.45; text-align: left;
+}
+/* Focus moves to the sheet so a screen reader reads it; its buttons and links show the ring. */
+.open-sheet:focus { outline: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .open-sheet { animation: open-sheet-in 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+}
+@keyframes open-sheet-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.open-sheet-title { margin: 0; font-weight: 700; font-size: 16px; }
+.open-sheet-text { margin: 0; color: var(--muted); text-wrap: pretty; }
+.open-sheet-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.open-sheet-get, .open-sheet-iphone {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 16px; border-radius: 12px;
+  font-weight: 600; text-decoration: none;
+}
+.open-sheet-get { background: var(--cta-bg); color: var(--cta-ink); }
+.open-sheet-iphone { background: var(--soft); color: var(--ink); }
+.open-sheet-again { margin: 4px 0 0; color: var(--muted); }
+.open-sheet-again button {
+  min-height: 40px; padding: 0 2px; border: 0; background: none; font: inherit; font-weight: 600; color: var(--link); cursor: pointer;
+  text-decoration: underline; text-underline-offset: 3px;
+}
+.open-sheet-close {
+  position: absolute; top: 8px; right: 8px; width: 36px; height: 36px; display: grid; place-items: center;
+  border: 0; border-radius: 10px; background: none; color: var(--muted); cursor: pointer;
+}
+@media (hover: hover) { .open-sheet-close:hover { background: var(--soft); color: var(--ink); } }
+.open-sheet a:focus-visible, .open-sheet button:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+/* The button while the browser hands the link to Amber Notes. */
+[data-opening] { opacity: 0.72; cursor: progress; }
