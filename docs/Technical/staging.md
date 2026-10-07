@@ -64,6 +64,19 @@ iPhone archive the API key couldn't create the share extension's profile ("Authe
 archiving with the Apple ID signed into Xcode (the same `xcodebuild archive` without the
 `-authenticationKey…` flags) and exporting with the key worked.
 
+## Amber Notes Beta for daily use on a Mac
+
+```sh
+scripts/staging.sh dev-app          # build from origin/dev, install /Applications/Amber Notes Beta.app
+scripts/staging.sh dev-app --wait   # the same, waiting for a running copy to quit first
+```
+
+It builds the TestFlight Mac target (sandboxed, App Store entitlements) from a clean worktree at the
+tip of `origin/dev` (`../AmberNotes-devapp`), signed with the team's Apple Development certificate.
+Every rebuild has the same bundle id, team and keychain group as the TestFlight build, so it opens the
+same container and keychain items: no new sign-in, no new device link. It never opens the app, and
+it won't replace a copy that's running. TestFlight may later install a newer TestFlight build over it.
+
 ## What staging leaves out
 
 - Push for AI connection asks (no APNs key). Connect with the QR code or the number instead.
