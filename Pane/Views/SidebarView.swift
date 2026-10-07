@@ -185,7 +185,6 @@ struct SidebarView: View {
                 }
                 ForEach(roots) { folder in
                     FolderTree(folder: folder, files: files.byFolder, dropTarget: dropTarget, targeted: folderTargeted, rename: startRename, newSub: startNewFolder, delete: deleteFolder)
-                        .equatable()
                 }
                 // Last in the same list, like Notes.
                 row("Recently Deleted", icon: "trash", count: counts.trashed, files: files.trashed)
@@ -357,10 +356,9 @@ struct SidebarView: View {
     }
 }
 
-/// A folder row with its sub-folders; accepts dropped notes and folders. Its own equatable view:
-/// the sidebar is worked out again on every save, and each row then counted its folder's notes
-/// again; now a row updates when its folder, its notes or the drop target change.
-private struct FolderTree: View, @MainActor Equatable {
+/// A folder row with its sub-folders; accepts dropped notes and folders. Not an equatable view:
+/// skipping its updates kept the sidebar's selection from following some clicks on folder rows.
+private struct FolderTree: View {
     @Environment(\.modelContext) private var context
     let folder: Folder
     /// Live files per folder, counted once for the whole tree.
@@ -373,10 +371,6 @@ private struct FolderTree: View, @MainActor Equatable {
     let delete: (Folder) -> Void
     @State private var expanded = true
 
-    static func == (a: FolderTree, b: FolderTree) -> Bool {
-        a.folder.id == b.folder.id && a.dropTarget == b.dropTarget && a.files == b.files
-    }
-
     var body: some View {
         if folder.liveChildren.isEmpty {
             label
@@ -384,7 +378,6 @@ private struct FolderTree: View, @MainActor Equatable {
             DisclosureGroup(isExpanded: $expanded) {
                 ForEach(folder.liveChildren) { child in
                     FolderTree(folder: child, files: files, dropTarget: dropTarget, targeted: targeted, rename: rename, newSub: newSub, delete: delete)
-                        .equatable()
                 }
             } label: { label }
         }
