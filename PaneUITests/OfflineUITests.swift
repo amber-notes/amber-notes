@@ -122,6 +122,8 @@ final class OfflineUITests: XCTestCase {
     }
 
     func test2_OpenOfflineWithTheKeyHere() throws {
+        // Follows test1 on the same simulator: signed in, with the key and a synced file.
+        guard env["PANE_EMAIL"] != nil else { throw XCTSkip("No account configured") }
         app.launchArguments = ["-netOffline", "-netToggle", "-skipWelcome", "-forgetDownloads"]
         let started = Date()
         app.launch()
