@@ -386,7 +386,8 @@ try {
     add("storage", "storage.iosAppBytes", "iPhone app installed (universal, unthinned)", sizesJSON.iosAppBytes ?? null, "bytes");
     for (const size of sizes) {
       const st = (perf[size]?.setup?.storage ?? {}) as Record<string, number>;
-      if (st.storeBytes !== undefined) add("storage", `storage.${size}.storeBytes`, `${size} notes: local database after sync`, st.storeBytes, "bytes");
+      if (st.storeBytes !== undefined) add("storage", `storage.${size}.storeBytes`, `${size} notes: local database after sync (checkpointed)`, st.storeBytes, "bytes",
+        st.walBytes !== undefined ? `before the checkpoint: store ${Math.round(st.storeUncheckpointedBytes / 1024)} KB, write-ahead log ${Math.round(st.walBytes / 1024)} KB` : undefined);
       if (st.libraryBytes !== undefined) add("storage", `storage.${size}.libraryBytes`, `${size} notes: everything the app keeps on disk`, st.libraryBytes, "bytes", `caches ${Math.round((st.cachesBytes ?? 0) / 1024)} KB`);
     }
     const server = await staging("bytes", ...sizes.map(String));

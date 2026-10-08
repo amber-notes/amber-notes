@@ -2,6 +2,7 @@
 import AppKit
 import ObjectiveC
 import QuartzCore
+import SQLite3
 import SwiftData
 
 // The release gate's probe (scripts/release-gate.sh, docs/Technical/release-gate.md).
@@ -440,10 +441,20 @@ final class GateProbe: NSObject {
         }
         var out: [String: Any] = [:]
         if let store = results["store"] as? String, !store.isEmpty {
-            let u = URL(fileURLWithPath: store)
-            out["storeBytes"] = ["", "-wal", "-shm"].reduce(Int64(0)) { sum, s in
-                sum + ((try? fm.attributesOfItem(atPath: u.path + s)[.size] as? NSNumber)?.int64Value ?? 0)
+            func bytes(_ suffix: String) -> Int64 { (try? fm.attributesOfItem(atPath: store + suffix)[.size] as? NSNumber)?.int64Value ?? 0 }
+            // As found: the write-ahead log holds whatever was written since SQLite last checkpointed,
+            // so the total moves with timing. Then checkpointed, which is the size of the data itself.
+            out["walBytes"] = bytes("-wal")
+            out["shmBytes"] = bytes("-shm")
+            out["storeUncheckpointedBytes"] = bytes("")
+            var db: OpaquePointer?
+            if sqlite3_open_v2(store, &db, SQLITE_OPEN_READWRITE, nil) == SQLITE_OK {
+                sqlite3_busy_timeout(db, 2000)
+                out["checkpoint"] = sqlite3_exec(db, "PRAGMA wal_checkpoint(TRUNCATE)", nil, nil, nil) == SQLITE_OK ? "truncate" : "failed"
             }
+            sqlite3_close(db)
+            out["storeBytes"] = bytes("")
+            out["walAfterCheckpointBytes"] = bytes("-wal")
         }
         let lib = fm.urls(for: .libraryDirectory, in: .userDomainMask)[0]
         out["applicationSupportBytes"] = size(lib.appending(path: "Application Support"))

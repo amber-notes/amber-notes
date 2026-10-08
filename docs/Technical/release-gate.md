@@ -77,8 +77,10 @@ timings are not a phone's. The iPhone app's size is measured.
 ### Storage
 
 The Mac DMG and installed app, the iPhone app (Release, unsigned, zipped as a stand-in for the App
-Store download), the app's local database and everything it keeps on disk after each account's first
-sync (measured by the app itself, inside its container), and the server bytes of each bench account
+Store download), the app's local database after each account's first sync, checkpointed (SQLite's write-ahead log
+moved into the store first, so the number is the data and not the timing of the last checkpoint; the
+log's size before it is in the notes), and everything the app keeps on disk (measured by the app
+itself, inside its container), and the server bytes of each bench account
 (`pg_column_size` of its rows in every public table, plus its files in storage).
 
 ### Network
