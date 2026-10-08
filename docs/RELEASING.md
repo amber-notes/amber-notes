@@ -2,6 +2,8 @@
 
 Releases are cut from a version tag. GitHub Actions (`.github/workflows/release.yml`) builds both apps from that tag.
 
+**No App Store submission, TestFlight build for users, Mac release or production server deploy without a passing release gate report for that commit** (`scripts/release-gate.sh <ref> --baseline <last release>`, summaries in `docs/Evidence/release-gate/`, what it checks in `docs/Technical/release-gate.md`).
+
 ## Cut a release
 
 ```sh
