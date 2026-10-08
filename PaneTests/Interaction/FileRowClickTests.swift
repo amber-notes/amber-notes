@@ -177,5 +177,49 @@ import Testing
         }
         Testing.Attachment.record(log.joined(separator: "\n"), named: "file-row-clicks.txt")
     }
+
+    /// Emil's exact list (dev 2610071608): the "Bring your notes" card on top, and a folder that
+    /// holds two PDFs and no notes. (The tests above show the clicks reach the list.)
+    @Test func withTheSetupCardAndOnlyFiles() async throws {
+        guard Self.onCI else { return }
+        let c = try ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        let ctx = c.mainContext
+        let folder = ctx.createFolder(named: "Notes")
+        let book = try FileStore.importData(DemoData.bookPDF(title: "Think Python", chapters: ["One", "Two"]), filename: "Think_Python.pdf", type: .pdf)
+        let sample = try FileStore.importData(DemoData.paperPDF(title: "Sample", lines: 5), filename: "sample.pdf", type: .pdf)
+        defer { FileStore.remove(book); FileStore.remove(sample) }
+        for (f, age) in [(book, 60.0), (sample, 120.0)] {
+            f.folderID = folder.id
+            f.modifiedAt = .now.addingTimeInterval(-age)
+            ctx.insert(f)
+        }
+        try ctx.save()
+        let selection = Selection()
+        let setup = SetupStore(progress: SetupProgress())
+        try #require(setup.visible, "the setup card shows")
+        let w = KeyWindow(contentRect: CGRect(x: -20000, y: -20000, width: 420, height: 700), styleMask: [.borderless], backing: .buffered, defer: false)
+        w.isReleasedWhenClosed = false
+        w.contentViewController = NSHostingController(rootView: Host(scope: .folder(folder.id), selection: selection).environment(setup).modelContainer(c))
+        w.setContentSize(CGSize(width: 420, height: 700))
+        w.setFrameOrigin(CGPoint(x: -20000, y: -20000))
+        defer { w.orderOut(nil); w.close() }
+        NSApp.activate(ignoringOtherApps: true)
+        w.makeKeyAndOrderFront(nil)
+        try? await Task.sleep(for: .seconds(1.5))
+        let table = try #require(Self.table(in: w.contentView))
+        // The file rows: 50-60 points tall; the card is taller, the section header shorter.
+        let rows = (0 ..< table.numberOfRows).filter { (40...70).contains(table.rect(ofRow: $0).height) }
+        var log = ["rows: " + (0 ..< table.numberOfRows).map { "\($0):\(Int(table.rect(ofRow: $0).height))" }.joined(separator: " ")]
+        try #require(rows.count == 2, "two file rows below the card (\(log[0]))")
+        for round in 0 ..< 10 {
+            for (row, id, name) in [(rows[0], book.id, "Think_Python.pdf"), (rows[1], sample.id, "sample.pdf")] {
+                if round % 2 == 1 { Self.jitteryClick(table, row: row, in: w) } else { Self.click(table, row: row, in: w) }
+                try? await Task.sleep(for: .milliseconds(300))
+                log.append("round \(round + 1) \(name) row \(row): selection \(selection.ids == [id] ? "right" : selection.ids.isEmpty ? "empty" : "other")")
+                #expect(selection.ids == [id], "round \(round + 1): with the setup card on top, a click on \(name) selects it")
+            }
+        }
+        Testing.Attachment.record(log.joined(separator: "\n"), named: "file-row-clicks-setup-card.txt")
+    }
 }
 #endif
