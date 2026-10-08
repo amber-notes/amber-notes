@@ -43,9 +43,8 @@ jobs:
         env:
           # Runners are several times slower than a developer's Mac; see PaneTests/Perf/PerfBudget.swift.
           TEST_RUNNER_PANE_PERF_SLACK: "4"
-          # Shots that need a titled window ordered in (the Settings tabs' toolbar): only here,
-          # never on a developer's Mac.
-          TEST_RUNNER_PANE_CI_WINDOWS: "1"
+          # Snapshot tests that draw windows (ImageViewerSnapshots) run here only, never on a developer's Mac.
+          TEST_RUNNER_PANE_SNAPSHOTS: "1"
         run: |
           set -o pipefail
           mkdir -p build

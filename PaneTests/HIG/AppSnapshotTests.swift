@@ -221,9 +221,9 @@ extension AppSnapshotTests {
 
     @Test(arguments: [false, true])
     func settingsTabs(dark: Bool) async throws {
-        // A titled window ordered in, for the toolbar: CI only (PANE_CI_WINDOWS, set in ci.yml),
+        // A titled window ordered in, for the toolbar: CI only (PANE_SNAPSHOTS, set in ci.yml),
         // never on a developer's Mac. The pictures are attached to the results (the "snapshots" artifact).
-        guard ProcessInfo.processInfo.environment["PANE_CI_WINDOWS"] != nil else { return }
+        guard ProcessInfo.processInfo.environment["PANE_SNAPSHOTS"] == "1" else { return }
         let view = try await Self.settingsFixture()
         #expect(view.tabs == SettingsTab.allCases)
         for tab in view.tabs {

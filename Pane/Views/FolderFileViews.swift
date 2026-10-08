@@ -85,6 +85,12 @@ struct FileListRow: View {
     var body: some View {
         FileRow(file: file, showFolder: showFolder)
             // Out to Finder, Mail or the Desktop (the file itself), or onto a sidebar folder.
+            #if os(macOS)
+            // The List's own drag hook: the table starts the drag past the drag threshold and keeps
+            // its click-to-select. `.onDrag` put a mouse-down gesture on the row that took the click,
+            // so a click on a file often selected nothing (dev 2610071608).
+            .itemProvider { FileOut.provider(for: file) { [sync] a in await sync?.download(a) ?? false } }
+            #else
             .onDrag {
                 FileOut.provider(for: file) { [sync] a in await sync?.download(a) ?? false }
             } preview: {
@@ -92,6 +98,7 @@ struct FileListRow: View {
                     .padding(.horizontal, 12).padding(.vertical, 8)
                     .glassEffect(.regular, in: .capsule)
             }
+            #endif
             .swipeActions(edge: .trailing) {
                 Button(file.trashedAt == nil ? "Delete" : "Delete Forever…", systemImage: "trash", role: .destructive, action: remove)
             }
@@ -214,6 +221,11 @@ struct FileDetailView: View {
     @State private var confirmForever = false
     @State private var exporting = false
     let onNewNote: () -> Void
+    /// Opens another file (the next picture in the folder).
+    var onOpenFile: (UUID) -> Void = { _ in }
+
+    /// The folder's pictures in the list's order (newest first), for the arrow keys and swipes.
+    private var pictures: [Attachment] { context.pictures(besides: file) }
 
     enum Load: Equatable { case checking, downloading, ready(URL), failed, notDownloaded }
 
@@ -249,7 +261,11 @@ struct FileDetailView: View {
     private var content: some View {
         switch state {
         case .ready(let url):
-            if file.type.conforms(to: .pdf) {
+            if file.isImage {
+                // Pictures view like Preview's and Photos': fit, zoom, pan, turn, step through the folder.
+                ImageViewer(file: file, url: url, neighbours: pictures, open: onOpenFile)
+                    .id(url)
+            } else if file.type.conforms(to: .pdf) {
                 // PDFs read like Preview: zoom, pages, contents, Find.
                 PDFReader(url: url)
                     .id(url)
@@ -352,6 +368,10 @@ struct FileDetailView: View {
         ToolbarItem {
             Menu {
                 if file.trashedAt == nil {
+                    if file.isImage, case .ready(let url) = state {
+                        Button("Copy Image", systemImage: "doc.on.doc") { ImageClipboard.copy(url: url, name: file.filename) }
+                            .accessibilityIdentifier("file.copyImage")
+                    }
                     Button(FileOut.exportTitle, systemImage: FileOut.exportSymbol) { exporting = true }
                         .disabled(!FileStore.exists(file))
                         .accessibilityIdentifier("file.export")

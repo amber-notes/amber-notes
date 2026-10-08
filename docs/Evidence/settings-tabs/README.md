@@ -19,7 +19,7 @@ Heights are for the sample account below. The window takes each tab's height.
 
 All of them come from tests that draw offscreen. Nothing was shown on a screen.
 
-- Mac: `AppSnapshotTests/settingsTabs` on CI (ci.yml sets `TEST_RUNNER_PANE_CI_WINDOWS`). It
+- Mac: `AppSnapshotTests/settingsTabs` on CI (ci.yml sets `TEST_RUNNER_PANE_SNAPSHOTS`). It
   orders a titled window in for the toolbar, so it never runs on a developer's Mac. The pictures
   are attached to the test results, and CI keeps them as the `snapshots` artifact.
   Each tab's real page is drawn in a window with AppKit toolbar tabs (`NSTabViewController`,
