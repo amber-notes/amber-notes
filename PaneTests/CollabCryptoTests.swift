@@ -86,7 +86,7 @@ import Testing
         let body = try a.putObject(obj: .ROOT, key: "body", ty: .Text)
         try a.spliceText(obj: body, start: 0, delete: 0, value: "Agenda 👋\n- Lunch\n")
         let b = Document(textEncoding: .utf16)
-        try CollabSession.absorb(a.save(), into: b)
+        try CollabText.absorb(a.save(), into: b)
         _ = a.encodeNewChanges()
         let end = UInt64(("Agenda 👋\n- Lunch" as NSString).length)
         try a.spliceText(obj: body, start: end, delete: 0, value: " at noon")
@@ -106,7 +106,7 @@ private final class CollabVectorsToken {}
 /// Remote carets: a cursor sent from one device resolves to the same insertion point on another,
 /// through concurrent edits, at line ends, in lists and tables, and with emoji and CJK (UTF-16).
 @Suite struct CollabCursorTests {
-    typealias Session = CollabSession
+    typealias Session = CollabText
 
     /// Two replicas of one document.
     func pair(_ text: String) throws -> (Document, Document, ObjId) {

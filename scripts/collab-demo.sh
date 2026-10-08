@@ -3,6 +3,7 @@
 # it at once. Records each simulator and puts them side by side.
 #   scripts/collab-demo.sh [out dir]          (build first: see the xcodebuild line below)
 # Output: <out>/emil.mp4, <out>/sara.mp4, <out>/side-by-side.mp4, <out>/relay.log
+# Needs Automerge in the app, which it doesn't link for now: see Pane/Collab/CollabText.swift.
 set -e
 cd "$(dirname "$0")/.."
 export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
