@@ -23,6 +23,8 @@ The sheet, top to bottom (iPhone and Mac):
 
 There is no Reset Link in the UI. Removing someone quietly makes a new note key and a new link (the old link would let them back in). If a link goes further than meant, Off and then on again gives a new link; anyone who already joined through it is listed in People and can be removed. Explanatory text: none, beyond the labels.
 
+**In the app today (2026-10-08):** the app doesn't link Automerge, which was 4.6 MB of each architecture for a prototype no release runs. The Automerge parts live in `Pane/Collab/CollabText.swift`; the app builds them against stand-ins that throw, and the test target links Automerge and builds the same file for real, so `CollabCryptoTests` still run in CI. `-collab` and `scripts/collab-demo.sh` don't work in the app until it's put back: add `- package: Automerge` to the app targets in `project.yml`, add `COLLAB_AUTOMERGE` to their `SWIFT_ACTIVE_COMPILATION_CONDITIONS`, and delete the stand-ins in `CollabText`.
+
 ## The short version
 
 - **Keys.** Every account gets an identity key pair (P-256). The private half is sealed under the account's data key and kept on the server, so any device that can open the notes can share. A note set to Edit gets its own random note key. Joining through the link opens that key and seals it to your own identity and data keys. The server never holds a key that opens anything.

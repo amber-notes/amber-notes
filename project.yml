@@ -62,7 +62,6 @@ targets:
       - package: Markdown
       - package: Supabase
       - package: ZIPFoundation
-      - package: Automerge
       - target: PaneShare
         platformFilter: iOS
     # SwiftPM resource bundles (ZIPFoundation's and swift-crypto's privacy manifests, and any
@@ -173,7 +172,6 @@ targets:
       - package: Markdown
       - package: Supabase
       - package: ZIPFoundation
-      - package: Automerge
       - package: Sparkle
     info:
       path: Pane/Resources/Info-Direct.plist
@@ -258,11 +256,15 @@ targets:
         buildPhase: resources
       - path: supabase/migrations/20260929230000_tip_events.sql
         buildPhase: resources
+      # Collaboration's Automerge parts, built here against the real Automerge: the app doesn't
+      # link it (see Pane/Collab/CollabText.swift).
+      - path: Pane/Collab/CollabText.swift
     dependencies:
       - target: Pane
       - package: Automerge
     settings:
       base:
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: $(inherited) COLLAB_AUTOMERGE
         GENERATE_INFOPLIST_FILE: YES
         "TEST_HOST[sdk=macosx*]": "$(BUILT_PRODUCTS_DIR)/Pane.app/Contents/MacOS/Pane"
   PaneUITests:
