@@ -317,15 +317,17 @@ Deno.test("2 GB per person: growth is refused at the limit, shrinking and deleti
   const keep = await note(pg, a, "Keep\n\nA long note that can get shorter.");
   const big = await stored(pg, a, GB2 - 10);
   // Room for 10 bytes: a new note doesn't fit.
-  await assertRejects(() => note(pg, a, "New\n\nThis won't fit."), Error, "Pinto Notes is full");
+  // (The database trigger still says Amber Notes, like every message raised in the database; the
+  // app and the MCP tools word their own from the PT413 code.)
+  await assertRejects(() => note(pg, a, "New\n\nThis won't fit."), Error, "Amber Notes is full");
   // An older app's file row that grows is refused the same way.
-  await assertRejects(() => app(pg, a.id, `update public.attachments set size = size + 100 where id = $1`, [big.id]), Error, "Pinto Notes is full");
+  await assertRejects(() => app(pg, a.id, `update public.attachments set size = size + 100 where id = $1`, [big.id]), Error, "Amber Notes is full");
   // Editing a note down, and deleting, still work: the account keeps what it has.
   await app(pg, a.id, `update public.notes set body_ct = $2, head_ct = $3 where id = $1`,
     [keep, await a.vault.sealBody(keep, "Keep"), await a.vault.sealHead(keep, { title: "Keep", preview: "" })]);
   await app(pg, a.id, `update public.attachments set trashed_at = now() where id = $1`, [big.id]);
   // Recently Deleted still counts until it's gone for good.
-  await assertRejects(() => note(pg, a, "New\n\nStill full."), Error, "Pinto Notes is full");
+  await assertRejects(() => note(pg, a, "New\n\nStill full."), Error, "Amber Notes is full");
   await pg.query(`set session_replication_role = replica`);
   await pg.query(`update public.attachments set deleted_at = now() where id = $1`, [big.id]);
   await pg.query(`set session_replication_role = default`);
