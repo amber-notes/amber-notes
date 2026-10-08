@@ -137,3 +137,59 @@ extension AppPerfTests {
     }
 }
 #endif
+
+#if os(macOS)
+extension AppPerfTests {
+    /// With files in folders the list showed notes and files together by wrapping every note as a
+    /// list item and sorting them all again on each update. Now the notes keep the order they're
+    /// already in and only the files are merged in: same sections, a fraction of the work.
+    @Test(.timeLimit(.minutes(3))) func notesAndFilesWithTwentyThousandNotes() async throws {
+        let (c, notes) = try library(notes: 20_000, big: false)
+        let ctx = c.mainContext
+        let folder = try #require(notes.first?.folder)
+        var files: [Pane.Attachment] = []
+        for i in 0..<10 {
+            let a = Pane.Attachment(filename: "File \(i).pdf", contentType: "com.adobe.pdf", size: 1000)
+            a.folderID = folder.id
+            a.modifiedAt = Date().addingTimeInterval(Double(-i * 3600 * 1900 - 1800))
+            ctx.insert(a)
+            files.append(a)
+        }
+        try ctx.save()
+        let newestFirst = notes.map { ($0, $0.updatedAt) }.sorted { $0.1 > $1.1 }.map(\.0)
+
+        let before = DateBucket.sections(newestFirst.map(ListItem.note) + files.map(ListItem.file))
+        let after = DateBucket.sections(newestFirst: DateBucket.merged(notes: newestFirst, files: files))
+        #expect(after.map { $0.0 } == before.map { $0.0 }, "the same sections")
+        #expect(after.map { $0.1.map { $0.id } } == before.map { $0.1.map { $0.id } }, "in the same order")
+
+        let clock = ContinuousClock()
+        func median(_ f: () -> Void) -> Double {
+            var t: [Double] = []
+            for _ in 0..<5 { t.append(ms(clock.measure(f))) }
+            return t.sorted()[2]
+        }
+        let wrapped = median { _ = DateBucket.sections(newestFirst.map(ListItem.note) + files.map(ListItem.file)) }
+        let merged = median { _ = DateBucket.sections(newestFirst: DateBucket.merged(notes: newestFirst, files: files)) }
+        print("PERF 20,000 notes + 10 files, list order: wrapped and sorted \(String(format: "%.1f", wrapped)) ms, merged \(String(format: "%.1f", merged)) ms")
+        #expect(merged < wrapped, "merging the files in costs less than sorting everything again")
+
+        // The list itself, as it updates when a note is saved.
+        let (w, host) = window(NoteListView(scope: .all, selection: .constant([]), onNewNote: {}).modelContainer(c))
+        defer { w.close() }
+        let first = ms(clock.measure { host.layoutSubtreeIfNeeded(); w.displayIfNeeded() })
+        var updates: [Double] = []
+        for i in 0..<5 {
+            let start = clock.now
+            notes[i].body += " a"
+            notes[i].touch()
+            await Task.yield()
+            host.layoutSubtreeIfNeeded()
+            w.displayIfNeeded()
+            updates.append(ms(clock.now - start))
+        }
+        updates.sort()
+        print("PERF list of 20,000 notes + 10 files: first display \(String(format: "%.0f", first)) ms, a save shown \(String(format: "%.1f", updates[2])) ms (median)")
+    }
+}
+#endif
