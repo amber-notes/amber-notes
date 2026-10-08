@@ -79,6 +79,9 @@ final class StubSupabase: URLProtocol, @unchecked Sendable {
         }
     }
 
+    /// Forgets the requests and bodies seen so far; the tables stay.
+    static func resetLog() { lock.withLock { _requests = []; _bodies = [] } }
+
     /// "METHOD /path?query" of every request that reached the server.
     static var requests: [String] { lock.withLock { _requests } }
     /// Each request with when it reached the server, in order.
@@ -351,6 +354,10 @@ final class StubSupabase: URLProtocol, @unchecked Sendable {
                     guard let x = r[key] else { return false }
                     return "\(x)".lowercased() == want
                 }
+            }
+            if v.hasPrefix("in.("), v.hasSuffix(")") {
+                let want = Set(v.dropFirst(4).dropLast().split(separator: ",").map { $0.trimmingCharacters(in: CharacterSet(charactersIn: "\" ")).lowercased() })
+                return { r in r[key].map { want.contains("\($0)".lowercased()) } ?? false }
             }
             if v.lowercased() == "is.null" {
                 return { r in r[key] == nil || r[key] is NSNull }
