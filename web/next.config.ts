@@ -32,15 +32,6 @@ const security = [
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), interest-cohort=()" },
 ];
 
-// pintonotes.com is the site's address. The old vercel.app address sends the site's own pages there
-// (308, path kept). Everything installed apps and links out in the world reach it for stays put on
-// both hosts: the appcast and downloads (Sparkle), shared notes and their report pages, and the
-// privacy, terms and support pages the apps and the App Store link to. www goes to the apex at the
-// domain level, in the Vercel project.
-const OLD_HOST = "amber-notes.vercel.app";
-const SITE = "https://pintonotes.com";
-const MOVED = ["/", "/help", "/download", "/changelog", "/connect"];
-
 // The connect pages (/connect, /open/connect) and /reset-password get their CSP, with a nonce, from middleware.ts.
 const connectSecurity = security.filter((h) => h.key !== "Content-Security-Policy");
 
@@ -54,12 +45,6 @@ const config: NextConfig = {
   skipMiddlewareUrlNormalize: true,
   async redirects() {
     return [
-      ...MOVED.map((source) => ({
-        source,
-        has: [{ type: "host" as const, value: OLD_HOST }],
-        destination: `${SITE}${source}`,
-        permanent: true,
-      })),
       // The guides became the blog on 30 September 2026.
       { source: "/guides", destination: "/blog", permanent: true },
       { source: "/guides/:slug", destination: "/blog/:slug", permanent: true },
@@ -75,6 +60,10 @@ const config: NextConfig = {
       { source: "/open/copy/:slug", destination: "/n/:slug?open=1", permanent: true },
       // A guessed address for the Obsidian MCP post (one visit on 5 October, no link of ours).
       { source: "/blog/obsidian-mcp-servers-compared", destination: "/blog/obsidian-mcp", permanent: true },
+      // The comparison took the app's new name (October 2026); its old address keeps working.
+      { source: "/blog/amber-notes-vs-apple-notes", destination: "/blog/pinto-notes-vs-apple-notes", permanent: true },
+      // The old name, typed as an address, lands on the page that says what it's called now.
+      { source: "/ambernotes", destination: "/amber-notes", permanent: true },
     ];
   },
   async rewrites() {
@@ -94,7 +83,7 @@ const config: NextConfig = {
         // robots.txt, the sitemap and llms.txt are for crawlers. So are the templates' pages; their
         // .json data isn't. Blog posts carry their own robots meta
         // (drafts say noindex). A new page for search is added here too.
-        source: "/((?!privacy|terms|support|help|download|changelog|blog|templates(?!/[^/]+\\.json$)|connect$|open/connect$|reset-password$|\\.well-known/apple-app-site-association$|robots\\.txt$|sitemap\\.xml$|llms\\.txt$|llms-full\\.txt$).+)",
+        source: "/((?!privacy|terms|support|help|download|changelog|blog|amber-notes$|templates(?!/[^/]+\\.json$)|connect$|open/connect$|reset-password$|\\.well-known/apple-app-site-association$|robots\\.txt$|sitemap\\.xml$|llms\\.txt$|llms-full\\.txt$).+)",
         headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }, ...security],
       },
       { source: "/connect", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }, { key: "Cache-Control", value: "no-store" }, ...connectSecurity] },
@@ -110,6 +99,7 @@ const config: NextConfig = {
       { source: "/download", headers: security },
       { source: "/changelog", headers: security },
       { source: "/help", headers: security },
+      { source: "/amber-notes", headers: security },
       { source: "/support", headers: security },
       { source: "/blog", headers: security },
       { source: "/blog/:slug", headers: security },

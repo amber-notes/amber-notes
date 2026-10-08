@@ -75,7 +75,7 @@ export default function Page() {
       <p>
         If you like how Apple Notes feels and want your AI to use your notes, that&apos;s the gap I built Pinto Notes for. It works like Apple
         Notes, imports your Apple Notes on the Mac, and ChatGPT, Claude, Claude Code, Codex and Incredible can use it, with your approval and
-        an Undo for every change. <a href="/blog/amber-notes-vs-apple-notes">Pinto Notes vs Apple Notes</a> covers what it doesn&apos;t do yet.
+        an Undo for every change. <a href="/blog/pinto-notes-vs-apple-notes">Pinto Notes vs Apple Notes</a> covers what it doesn&apos;t do yet.
       </p>
 
       <h2>Which to use</h2>

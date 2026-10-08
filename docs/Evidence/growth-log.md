@@ -1,9 +1,56 @@
 # Growth log
 
-What was measured and what changed, to get more people to Amber Notes from search and from AI
+What was measured and what changed, to get more people to Pinto Notes (Amber Notes until 8 October 2026) from search and from AI
 assistants. Newest first. Research behind it: [seo-aeo-research-2026-09-30.md](seo-aeo-research-2026-09-30.md).
 
 `docs/` had no README naming a folder for evidence, so this and the research live in `docs/Evidence/`.
+
+## 8 October 2026: the site moved to pintonotes.com, audited and tightened
+
+The app was renamed from Amber Notes to Pinto Notes on 8 October, and the site moved from ambernotes.app to pintonotes.com (PR 312). This is the audit of the live move, and what the follow-up branch `site/seo-move-pinto` changes.
+
+### Measured (live, 8 October about 20:30 UTC)
+
+- **Old addresses:** all 69 sitemap pages on ambernotes.app answer one 308 to the same path on pintonotes.com, query kept, and end on a 200. http and www variants arrive too, with one extra hop each that Vercel adds before our code runs (http to https, www.ambernotes.app to ambernotes.app).
+- **Kept on ambernotes.app on purpose:** /.well-known/apple-app-site-association, /updates/, /downloads/, /api/ and /open/ answer 200 there.
+- **pintonotes.com:** every sitemap page has a self canonical, og:url equal to it, og:site_name "Pinto Notes", a 1200 by 630 share image on pintonotes.com, twitter summary_large_image, one h1, and no noindex. robots.txt names the new sitemap. No title, description or share title says Amber Notes. Internal links: 160 distinct, none broken, none to ambernotes.app.
+- **JSON-LD:** SoftwareApplication "Pinto Notes" with alternateName "Amber Notes", WebSite with alternateName "Amber Notes" and "ambernotes.app", sameAs the GitHub repo.
+- **Where "Amber Notes" still shows, on purpose:** the lines that tell people what to search for in Claude's connector directory and in Incredible's Apps (those listings still carry the old name), the 1.0 and 1.1 changelog entries, and the "was called Amber Notes until October 2026" lines in /llms.txt, the privacy policy and the terms.
+- **PostHog (EU project 291184), last 24 hours:** pintonotes.com 32 page views (first at 15:54 UTC on 8 October), www.pintonotes.com 8, ambernotes.app 39 (last at 19:35 UTC, before the redirect). The new address records.
+
+### Found
+
+- **www.pintonotes.com served the whole site with a 200**, a second copy of every page (the canonical pointed at pintonotes.com, so it was a soft duplicate, and 8 page views landed there).
+- **amber-notes.vercel.app** redirected only /, /help, /download, /changelog and /connect; /blog, the posts and the templates answered 200 there.
+- **No feed.** /blog/feed.xml, /feed.xml and /rss.xml were 404.
+- **No page for the old name.** A search for "amber notes" (5 impressions in the week to 3 October, our only brand query) had nothing that says the app is Pinto Notes now.
+- **`scripts/indexnow.sh` still named ambernotes.app** as host and key location, so the ping after the deploy offered pintonotes.com addresses under the wrong host.
+- **One post address had the old name:** /blog/amber-notes-vs-apple-notes.
+
+### Changed (branch `site/seo-move-pinto`)
+
+- www.pintonotes.com answers a 308 to pintonotes.com for every path, and amber-notes.vercel.app moves like ambernotes.app does: every page to the same path on pintonotes.com, with the same kept paths (`web/lib/site-move.ts`, `web/middleware.ts`).
+- New page [/amber-notes](https://pintonotes.com/amber-notes), "Amber Notes is now Pinto Notes": what changed, what stayed the same, why. Indexable, in the sitemap and /llms.txt, linked from the footer ("Formerly Amber Notes"). /ambernotes redirects to it.
+- New feed at /blog/feed.xml (RSS 2.0, every published post), named in every page's head.
+- /blog/amber-notes-vs-apple-notes is now /blog/pinto-notes-vs-apple-notes, with a 308 from the old address. The post was 9 days old, its title already says Pinto Notes, and nothing outside the site links to it yet. Picture file names that start with amber-notes- stay: a picture's address isn't shown to anyone, and renaming would only break hot links.
+- /download carries the SoftwareApplication JSON-LD too.
+- `scripts/indexnow.sh` pings pintonotes.com, and with `--moved` also the same pages on ambernotes.app, which keeps serving the IndexNow key for that.
+- IndexNow was pinged for the 69 pintonotes.com pages on 8 October (HTTP 202).
+
+### Still to do by hand
+
+- Search Console: Domain property for pintonotes.com, the sitemap, and Change of Address from ambernotes.app. Bing Webmaster Tools the same. Steps are with the maintainer.
+- After this branch is live: `scripts/indexnow.sh --moved`.
+- In Vercel, www.ambernotes.app is set to redirect to ambernotes.app, which makes two hops for www links. Setting it to serve the project directly makes it one (our middleware already sends it to pintonotes.com).
+
+### To watch for four weeks (to 5 November)
+
+- **Week 1 (to 15 October):** Search Console, pintonotes.com: pages indexed rising from 0, the sitemap read with 70 addresses found. ambernotes.app: "Page with redirect" growing under Pages. No "Redirect error". PostHog: no page views on ambernotes.app or www.pintonotes.com at all.
+- **Week 2 (to 22 October):** impressions on pintonotes.com passing ambernotes.app. Clicks for the two properties added together should be no lower than the last week before the move (6 clicks, 319 impressions in the week to 3 October). A dip of a week or two is normal in a move.
+- **Week 3 (to 29 October):** the query "amber notes" showing /amber-notes or the home page of pintonotes.com. "pinto notes" showing the home page at position 1 to 3. The site name in results reading "Pinto Notes".
+- **Week 4 (to 5 November):** most of the 69 pages indexed on pintonotes.com, ambernotes.app impressions near zero. If more than a third of the pages are still not indexed on pintonotes.com, use URL Inspection on the home page, /blog and the five posts with the most impressions, and ask for indexing.
+- **Every week:** 404s in PostHog (pathname of page views on the not-found page) for an old address nobody redirected; Bing Webmaster Tools, Site Explorer, for pintonotes.com pages found.
+- **Keep for good:** ambernotes.app registered with auto-renew, and its redirects in place. Google asks for at least a year; links and installed apps need it longer.
 
 ## 6 October 2026: a week of PostHog, Search Console, and "One memory for Claude Code, Codex and your other agents"
 
