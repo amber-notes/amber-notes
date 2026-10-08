@@ -947,3 +947,26 @@ import Testing
         }
     }
 }
+
+/// Where the data key is kept: the data protection keychain unless this build can't write to it.
+@Suite struct KeychainChoiceTests {
+    @Test func aBuildWithTheKeychainGroupUsesIt() {
+        #expect(KeychainAccountKeyStore.usable(read: errSecItemNotFound, write: errSecSuccess))
+    }
+
+    /// The sandboxed Developer ID beta: the read passes, the synced write is refused.
+    @Test func aReadThatPassesIsNotEnoughWhenTheWriteIsRefused() {
+        #expect(!KeychainAccountKeyStore.usable(read: errSecItemNotFound, write: errSecMissingEntitlement))
+    }
+
+    /// The unsandboxed download (Developer ID, no profile) and ad-hoc builds.
+    @Test func noEntitlementForTheReadMeansTheFallback() {
+        #expect(!KeychainAccountKeyStore.usable(read: errSecMissingEntitlement, write: errSecMissingEntitlement))
+    }
+
+    /// A locked device or a busy keychain doesn't move the key somewhere else.
+    @Test func aMomentaryFailureKeepsTheKeychain() {
+        #expect(KeychainAccountKeyStore.usable(read: errSecInteractionNotAllowed, write: errSecInteractionNotAllowed))
+        #expect(KeychainAccountKeyStore.usable(read: errSecItemNotFound, write: errSecDuplicateItem))
+    }
+}
