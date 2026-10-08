@@ -60,7 +60,7 @@ private let habitJSON = """
   "folder": "Habits",
   "note": "Habit tracker\\n\\n<!-- pane-table: Date=date; Walk=choice Yes|No -->\\n| Date | Walk |\\n| --- | --- |",
   "instructions": [
-    { "client": "chatgpt", "name": "ChatGPT", "prompt": "In Amber Notes, use the note 'Habit tracker'." },
+    { "client": "chatgpt", "name": "ChatGPT", "prompt": "In Pinto Notes, use the note 'Habit tracker'." },
     { "client": "claude", "name": "Claude", "prompt": "Claude prompt" },
     { "client": "broken" },
     { "client": "claude-code", "name": "Claude Code", "prompt": "Claude Code prompt" }

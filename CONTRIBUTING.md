@@ -21,7 +21,7 @@ Good ideas become issues, credited to you, and you're first in line to build it 
   - [Translate the app, starting with Swedish](https://github.com/amber-notes/amber-notes/issues/135) (Swift, L)
   - [Write a template for the gallery](https://github.com/amber-notes/amber-notes/issues/136) (JSON, S)
 - [**good first issue**](https://github.com/amber-notes/amber-notes/labels/good%20first%20issue): small, well-scoped fixes for a first pull request.
-- **A template** for the [template gallery](https://ambernotes.app/templates): no Swift needed, see [Add a template](#add-a-template).
+- **A template** for the [template gallery](https://pintonotes.com/templates): no Swift needed, see [Add a template](#add-a-template).
 
 ## What you can expect from me
 
@@ -75,7 +75,7 @@ cd web && pnpm install && pnpm typecheck && pnpm test && pnpm build
 
 ## Add a template
 
-A [template](https://ambernotes.app/templates) is a note plus the instructions that let ChatGPT, Claude or Claude Code fill it in. Each one is a JSON file in `web/content/templates/`, and it gets its own page on ambernotes.app with your name on it.
+A [template](https://pintonotes.com/templates) is a note plus the instructions that let ChatGPT, Claude or Claude Code fill it in. Each one is a JSON file in `web/content/templates/`, and it gets its own page on ambernotes.app with your name on it.
 
 **The bar.** A template earns its place when someone would use it every week:
 

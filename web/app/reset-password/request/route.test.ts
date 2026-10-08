@@ -18,8 +18,8 @@ beforeEach(() => {
 });
 afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
-const ask = (body: unknown, headers: Record<string, string> = { origin: "https://ambernotes.app", host: "ambernotes.app" }) =>
-  POST(new Request("https://ambernotes.app/reset-password/request", { method: "POST", headers: { "content-type": "application/json", ...headers }, body: JSON.stringify(body) }));
+const ask = (body: unknown, headers: Record<string, string> = { origin: "https://pintonotes.com", host: "pintonotes.com" }) =>
+  POST(new Request("https://pintonotes.com/reset-password/request", { method: "POST", headers: { "content-type": "application/json", ...headers }, body: JSON.stringify(body) }));
 
 describe("/reset-password/request", () => {
   it("asks Supabase Auth for a recovery email, with no redirect and no PKCE challenge", async () => {
@@ -56,8 +56,8 @@ describe("/reset-password/request", () => {
   });
 
   it("answers only the reset page itself", async () => {
-    expect((await ask({ email: "a@b.co" }, { origin: "https://evil.example", host: "ambernotes.app" })).status).toBe(403);
-    expect((await ask({ email: "a@b.co" }, { host: "ambernotes.app" })).status).toBe(403);
+    expect((await ask({ email: "a@b.co" }, { origin: "https://evil.example", host: "pintonotes.com" })).status).toBe(403);
+    expect((await ask({ email: "a@b.co" }, { host: "pintonotes.com" })).status).toBe(403);
     expect(calls).toEqual([]);
   });
 

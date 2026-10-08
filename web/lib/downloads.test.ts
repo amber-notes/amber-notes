@@ -26,6 +26,7 @@ describe("download links", () => {
   it("Sparkle updates fetch the versioned DMG directly, never the counter", () => {
     const release = readFileSync(join(root, "../scripts/release-mac.sh"), "utf8");
     const enclosure = release.split("\n").find((l) => l.includes("<enclosure"));
+    // Installed apps read the feed and DMGs on the old address, which keeps serving them (lib/site-move.ts).
     expect(enclosure).toContain("https://ambernotes.app/downloads/$FILE");
     expect(release).not.toContain(MAC_DOWNLOAD_PATH);
   });

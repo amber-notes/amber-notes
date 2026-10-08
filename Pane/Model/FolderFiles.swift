@@ -245,7 +245,7 @@ struct FileRefusal: Equatable, Identifiable {
     /// The files by name, one a line, then one line on what works.
     var message: String {
         var help: [String] = []
-        if !unsupported.isEmpty { help.append("Amber Notes takes PDFs, pictures, text, CSV, HTML and code, and Office and iWork files.") }
+        if !unsupported.isEmpty { help.append("Pinto Notes takes PDFs, pictures, text, CSV, HTML and code, and Office and iWork files.") }
         if !tooBig.isEmpty { help.append("Files can be up to 100 MB.") }
         // The names, a blank line, then what works: two blocks the eye can tell apart.
         return Self.names(unsupported + tooBig).joined(separator: "\n") + "\n\n" + help.joined(separator: " ")

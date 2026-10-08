@@ -13,9 +13,9 @@ type Props = { params: Promise<{ slug: string; sub: string }> };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug, sub } = await params;
   const note = await sharedNote(slug, sub);
-  if (!note) return { title: "Not shared · Amber Notes" };
+  if (!note) return { title: "Not shared · Pinto Notes" };
   const description = summary(withoutTitle(note.body));
-  return { title: `${note.title} · Amber Notes`, description, openGraph: { title: note.title, description, siteName: "Amber Notes", type: "article" } };
+  return { title: `${note.title} · Pinto Notes`, description, openGraph: { title: note.title, description, siteName: "Pinto Notes", type: "article" } };
 }
 
 export default async function Page({ params }: Props) {

@@ -50,7 +50,7 @@ import Testing
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let mode = dark ? "dark" : "light"
         let c = try AppSnapshotTests.container()
-        try await AppSnapshotTests.withLastNote(c, "Welcome to Amber Notes") {
+        try await AppSnapshotTests.withLastNote(c, "Welcome to Pinto Notes") {
             let w = Self.frontWindow(RootView().modelContainer(c).tint(Color(PColor.paneAccent)), dark: dark)
             defer { w.orderOut(nil); w.close() }
             try? await Task.sleep(for: .seconds(1.6))

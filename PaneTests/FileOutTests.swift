@@ -98,7 +98,7 @@ import UniformTypeIdentifiers
     @Test func refusalsAreShortAndNameTheKind() {
         let video = FileRefusal(unsupported: ["Holiday.mov"], tooBig: [])
         #expect(video.title == "Can't add videos yet")
-        #expect(video.message == "\u{201C}Holiday.mov\u{201D}\n\nAmber Notes takes PDFs, pictures, text, CSV, HTML and code, and Office and iWork files.")
+        #expect(video.message == "\u{201C}Holiday.mov\u{201D}\n\nPinto Notes takes PDFs, pictures, text, CSV, HTML and code, and Office and iWork files.")
         #expect(FileRefusal(unsupported: ["a.mp3", "b.m4a"], tooBig: []).title == "Can't add audio yet")
         #expect(FileRefusal(unsupported: ["Book.epub"], tooBig: []).title == "Can't add e-books yet")
         #expect(FileRefusal(unsupported: ["x.exe"], tooBig: []).title == "Can't add this kind of file")

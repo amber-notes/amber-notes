@@ -144,9 +144,9 @@ final class KeepImporter {
             let quiet: Set<String> = ["html", "txt", "json"]
             writer.summary.notNotes += files.filter { !used.contains($0.lastPathComponent.lowercased()) && !quiet.contains($0.pathExtension.lowercased()) }.count
         }
-        if colors > 0 { writer.summary.dropped.append("\(colors) \(colors == 1 ? "note had a color" : "notes had colors"), which Amber Notes doesn't have.") }
+        if colors > 0 { writer.summary.dropped.append("\(colors) \(colors == 1 ? "note had a color" : "notes had colors"), which Pinto Notes doesn't have.") }
         if drawings > 0 { writer.summary.dropped.append("\(drawings) \(drawings == 1 ? "note had a drawing" : "notes had drawings"), which couldn't come over.") }
-        if reminders > 0 { writer.summary.dropped.append("\(reminders) \(reminders == 1 ? "note had a reminder" : "notes had reminders"), which Amber Notes doesn't keep.") }
+        if reminders > 0 { writer.summary.dropped.append("\(reminders) \(reminders == 1 ? "note had a reminder" : "notes had reminders"), which Pinto Notes doesn't keep.") }
         return writer.finish()
     }
 

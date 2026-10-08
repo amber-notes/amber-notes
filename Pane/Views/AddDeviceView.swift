@@ -10,7 +10,7 @@ import UIKit
 /// Add a device, in words: the new device's screen, and the sheet on the device that has the key.
 enum AddDeviceCopy {
     static var gateTitle: String { "Open your notes on this \(InstallID.kind)" }
-    static let gateMessage = "On a device where Amber Notes already works, go to Settings \u{203A} Security \u{203A} Add a device and scan this code."
+    static let gateMessage = "On a device where Pinto Notes already works, go to Settings \u{203A} Security \u{203A} Add a device and scan this code."
     /// Why the screen is there, before what to do: the notes exist, this device isn't linked yet.
     static var gateWhy: String { "This account already has notes on another device. Link this \(InstallID.kind) to open them here." }
     static let codeLead = "Can\u{2019}t scan? Type this code there:"
@@ -20,7 +20,7 @@ enum AddDeviceCopy {
     static let noDevice = "No device left?"
     static let expired = "This code expired."
     static let newCode = "Show a new code"
-    static let offline = "Can\u{2019}t reach Amber Notes. Connect to the internet to show a code."
+    static let offline = "Can\u{2019}t reach Pinto Notes. Connect to the internet to show a code."
     static let notAccountsKey = "What the other device sent isn\u{2019}t this account\u{2019}s key, so it wasn\u{2019}t used. Here is a new code."
 
     static let noDeviceMessage = "We don\u{2019}t have your key. One of these can still open your notes."
@@ -33,10 +33,10 @@ enum AddDeviceCopy {
 
     static let sheetTitle = "Add a device"
     static let scanMessage = "Point the camera at the code on your new device."
-    static let typeMessage = "Sign in to Amber Notes on the new device, then type the code it shows under its QR code."
+    static let typeMessage = "Sign in to Pinto Notes on the new device, then type the code it shows under its QR code."
     static let typeInstead = "Type the code instead"
     static let scanInstead = "Scan the code instead"
-    static let cameraOff = "Amber Notes can\u{2019}t use the camera. Allow it in Settings \u{203A} Amber Notes, or type the code."
+    static let cameraOff = "Pinto Notes can\u{2019}t use the camera. Allow it in Settings \u{203A} Pinto Notes, or type the code."
     static func confirmTitle(_ kind: String) -> String { "Add this \(kind)?" }
     static let confirmMessage = "It will open all your notes until you remove it in Settings."
     static let warning = "Only add a device that is in front of you. Never use a code that someone sent you."

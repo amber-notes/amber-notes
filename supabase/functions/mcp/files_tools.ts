@@ -151,7 +151,7 @@ export const FILE_TOOLS: Tool[] = ([
   },
   {
     name: "see_app", title: "See an app",
-    description: "Screenshots of a note's app at iPhone and Mac sizes, light and dark, over a sample with the shape of its data (data: \"real\" only if the person allowed it in Amber Notes), with what each view shows and anything broken." +
+    description: "Screenshots of a note's app at iPhone and Mac sizes, light and dark, over a sample with the shape of its data (data: \"real\" only if the person allowed it in Pinto Notes), with what each view shows and anything broken." +
       (tryOn() ? " With steps, uses the app like a person instead and answers after each step with what's on screen, console errors, what changed in its data, and screenshots: { tap: \"Add\" } (text, label or CSS selector), { type: \"85\", into: \"Weight\" }, { scroll: \"down\" }, { wait: 500 | \"Saved\" }, { press: \"Enter\" }, { resize: \"phone\" | \"desktop\" }, { dark: true }. Nothing is written back." : ""),
     inputSchema: {
       type: "object",
@@ -170,7 +170,7 @@ export const FILE_TOOLS: Tool[] = ([
 
 /** What the server tells every client when this tool set is on: how the files are laid out. The
  *  format rules live where they're needed (the tools' checks and descriptions, an app's README). */
-export const FILE_INSTRUCTIONS = `Amber Notes is the person's notes, as files: each note is a markdown file in folders ("Work/Acme.md"; its first line is its title). A note's sub-notes and files are in the folder with its name ("Work/Acme/Agenda.md", "Work/Acme/contract.pdf"); folders also hold files of their own ("To read/Paper.pdf"). A folder ending in .app is the note's app, a small React project with its data in data.json; read its README.md first. Its docs/ folder is that app's memory: read docs/ first, and keep it current (data shape, decisions and why, known gaps) whenever you change the app. Every feature you add gets a test in tests/ like the starter's (do what the person does, check what they see and what was saved); never weaken, skip or delete a test to make it pass: fix the app instead. Tests run on every save, and a version that fails isn't shown to the person. Deleted notes are in "Recently Deleted/". Read before you edit; edit and write answer with checks: fix what they report.`;
+export const FILE_INSTRUCTIONS = `Pinto Notes is the person's notes, as files: each note is a markdown file in folders ("Work/Acme.md"; its first line is its title). A note's sub-notes and files are in the folder with its name ("Work/Acme/Agenda.md", "Work/Acme/contract.pdf"); folders also hold files of their own ("To read/Paper.pdf"). A folder ending in .app is the note's app, a small React project with its data in data.json; read its README.md first. Its docs/ folder is that app's memory: read docs/ first, and keep it current (data shape, decisions and why, known gaps) whenever you change the app. Every feature you add gets a test in tests/ like the starter's (do what the person does, check what they see and what was saved); never weaken, skip or delete a test to make it pass: fix the app instead. Tests run on every save, and a version that fails isn't shown to the person. Deleted notes are in "Recently Deleted/". Read before you edit; edit and write answer with checks: fix what they report.`;
 
 const SWITCHES = new Set(["title_only", "case_sensitive", "pinned", "sub_notes", "deleted", "replace_all", "raw"]);
 export async function runFileTool(name: string, args: Args, ctx: ToolContext): Promise<unknown> {
@@ -1122,7 +1122,7 @@ async function chatFile(f: Record<string, unknown>): Promise<Uint8Array> {
   }
   const res = await fetch(url, { redirect: "follow" });
   if (!res.ok) { await res.body?.cancel(); throw new ToolError(`The file couldn't be downloaded from the chat (${res.status}).`); }
-  return await readCapped(res, AI_FILE_BYTES).catch(() => { throw new ToolError("The file is over 10 MB. The AI can write files up to 10 MB; larger ones are added in Amber Notes."); });
+  return await readCapped(res, AI_FILE_BYTES).catch(() => { throw new ToolError("The file is over 10 MB. The AI can write files up to 10 MB; larger ones are added in Pinto Notes."); });
 }
 
 /** A file as the AI reads it: text to edit, extracted text, a picture, or (raw) its bytes. */

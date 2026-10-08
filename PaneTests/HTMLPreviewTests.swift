@@ -41,8 +41,8 @@ import WebKit
 
     func load(_ html: String, delegate: LockedHTMLDelegate) async throws -> WKWebView {
         let web = LockedHTMLView.make(html, delegate: delegate)
-        for _ in 0..<200 {
-            if delegate.firstLoadDone, (try? await web.evaluateJavaScript("document.readyState")) as? String == "complete" { return web }
+        for _ in 0..<300 {
+            if delegate.finished { return web }
             try await Task.sleep(for: .milliseconds(50))
         }
         Issue.record("the preview never loaded")

@@ -323,6 +323,13 @@ extension Attachment: DatedListItem {
 /// Grouping of the note list by recency, like Apple Notes.
 enum DateBucket {
     static func sections<Item: DatedListItem>(_ notes: [Item], now: Date = .now, calendar: Calendar = .current) -> [(String, [Item])] {
+        // Each date read once: model properties aren't free, and a sort reads them often.
+        sections(newestFirst: notes.map { ($0, $0.listDate) }.sorted { $0.1 > $1.1 }, now: now, calendar: calendar)
+    }
+
+    /// The same, for items already in order, newest first, each with its date: nothing is sorted
+    /// or read again (the list hands over its notes in this order already).
+    static func sections<Item: DatedListItem>(newestFirst dated: [(Item, Date)], now: Date = .now, calendar: Calendar = .current) -> [(String, [Item])] {
         var pinned: [Item] = []
         var groups: [(key: String, order: Date, notes: [Item])] = []
         var index: [String: Int] = [:]
@@ -332,8 +339,6 @@ enum DateBucket {
         let yesterday = daysBack(1), week = daysBack(7), month30 = daysBack(30)
         var monthKeys: [Int: (String, Date)] = [:]
         let thisYear = calendar.component(.year, from: now)
-        // Each date read once: model properties aren't free, and a sort reads them often.
-        let dated = notes.map { ($0, $0.listDate) }.sorted { $0.1 > $1.1 }
         for (n, d) in dated {
             if n.pinnedInList { pinned.append(n); continue }
             let key: String

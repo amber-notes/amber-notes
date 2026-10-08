@@ -231,3 +231,23 @@ Deno.test("a takedown removes a template at once, keeps it down, and only we can
   // Sharing the same note again, under any id, is refused.
   await refused(app(pg, emil.id, `select public.publish_template('TkDnTkDnTkDnTkDo', $1, 'Emil', $2)`, [note, JSON.stringify(t)]), "taken down");
 });
+
+Deno.test("collab_role answers only about notes the caller is in", async () => {
+  const pg = await schemaDB();
+  const emil = await person(pg, "Emil"), sara = await person(pg, "Sara"), eve = await person(pg, "Eve");
+  const { note, nk } = await share(pg, emil);
+  await invite(pg, emil, "sara@example.com", note, nk);
+  await accept(pg, sara, note);
+  const role = async (me: Person, who: Person) =>
+    (await app(pg, me.id, `select public.collab_role($1, $2) as role`, [note, who.id]))[0].role;
+  // Members: about themselves and each other.
+  assertEquals(await role(emil, emil), "owner");
+  assertEquals(await role(sara, emil), "owner");
+  assertEquals(await role(emil, sara), "editor");
+  // Someone outside the note learns nothing, about the owner or about themselves.
+  assertEquals(await role(eve, emil), null);
+  assertEquals(await role(eve, sara), null);
+  assertEquals(await role(eve, eve), null);
+  // The one-argument form the policies use still works for members.
+  assertEquals((await app(pg, sara.id, `select public.collab_role($1) as role`, [note]))[0].role, "editor");
+});

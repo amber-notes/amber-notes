@@ -47,7 +47,7 @@ struct SidebarHeader: View {
         HStack(spacing: 8) {
             AppMark(size: 21)
             // The website's display type: heavy and tight.
-            Text("Amber Notes").font(.display(15)).tracking(Palette.tracking(15)).foregroundStyle(Color.ink)
+            Text("Pinto Notes").font(.display(15)).tracking(Palette.tracking(15)).foregroundStyle(Color.ink)
             Spacer(minLength: 0)
         }
         .padding(.leading, 18)
@@ -230,7 +230,7 @@ struct SidebarView: View {
             }
             return moved
         }
-        .navigationTitle("Amber Notes")
+        .navigationTitle("Pinto Notes")
         .toolbar {
             #if os(iOS)
             ToolbarItem(placement: .bottomBar) {

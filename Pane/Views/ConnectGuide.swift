@@ -54,19 +54,19 @@ struct WebConnectPlan: Equatable {
 
     /// The page shows a code to scan; on a Mac it also opens Amber Notes here.
     #if os(macOS)
-    static let allowStep = "Choose Open Amber Notes on this Mac, or scan the code with your iPhone. Then choose Allow."
+    static let allowStep = "Choose Open Pinto Notes on this Mac, or scan the code with your iPhone. Then choose Allow."
     #else
     static let allowStep = "Scan the code it shows with this iPhone, then choose Allow."
     #endif
 
-    static let testPrompt = "Search my Amber Notes and tell me what I wrote most recently."
+    static let testPrompt = "Search my Pinto Notes and tell me what I wrote most recently."
 
     static let chatgpt = WebConnectPlan(
         ai: "ChatGPT",
         prefills: false,
         steps: [
             "Turn on Developer mode in Settings, Security and login (once).",
-            "In Plugins, choose + and name it Amber Notes.",
+            "In Plugins, choose + and name it Pinto Notes.",
             "Paste the address, choose OAuth, then Create.",
             allowStep,
         ],
@@ -97,7 +97,7 @@ struct WebConnectPlan: Equatable {
     static func installLink(server: String) -> URL {
         // Fully percent-encoded, as the link wants (URLComponents would leave ":" and "/" as they are).
         let encode = { (s: String) in s.addingPercentEncoding(withAllowedCharacters: .alphanumerics.union(.init(charactersIn: "-._~"))) ?? "" }
-        return URL(string: "https://claude.ai/customize/connectors?modal=add-custom-connector&connectorName=\(encode("Amber Notes"))&connectorUrl=\(encode(server))")!
+        return URL(string: "https://claude.ai/customize/connectors?modal=add-custom-connector&connectorName=\(encode("Pinto Notes"))&connectorUrl=\(encode(server))")!
     }
 
     /// A new chat with the question typed in. Not documented by either app, so the question is
@@ -110,11 +110,11 @@ struct WebConnectPlan: Equatable {
 
     /// The steps as plain text, for sending to yourself.
     func message(server: String) -> String {
-        var lines = ["Connect \(ai) to Amber Notes (on a computer, once):", "", "1. Open \(setupPage(server: server).absoluteString)"]
+        var lines = ["Connect \(ai) to Pinto Notes (on a computer, once):", "", "1. Open \(setupPage(server: server).absoluteString)"]
         for (i, s) in steps.enumerated() { lines.append("\(i + 2). \(s)") }
         if !prefills { lines += ["", "Address:", server] }
         if let fallback { lines += ["", fallback.line, fallback.page(server).absoluteString] }
-        lines += ["", "After that, Amber Notes works in the \(ai) app on your phone too."]
+        lines += ["", "After that, Pinto Notes works in the \(ai) app on your phone too."]
         return lines.joined(separator: "\n")
     }
 }
@@ -205,7 +205,7 @@ struct WebConnectGuide: View {
     var body: some View {
         Group {
             Section {
-                step(0, "Add Amber Notes in \(plan.ai)", detail: addDetail) { addButton }
+                step(0, "Add Pinto Notes in \(plan.ai)", detail: addDetail) { addButton }
                 step(1, Self.allowLine, detail: nil) { EmptyView() }
                 step(2, "Ask \(plan.ai) about your notes", detail: nil) { tryIt }
             } footer: {
@@ -234,7 +234,7 @@ struct WebConnectGuide: View {
     #if os(iOS)
     static let allowLine = "Scan the code on your computer with this iPhone, then choose Allow"
     #else
-    static let allowLine = "Choose Open Amber Notes on this Mac, then Allow"
+    static let allowLine = "Choose Open Pinto Notes on this Mac, then Allow"
     #endif
 
     /// What adding takes, while it's the step at hand.
@@ -250,7 +250,7 @@ struct WebConnectGuide: View {
     @ViewBuilder
     private var addButton: some View {
         #if os(iOS)
-        ShareLink(item: plan.message(server: server), subject: Text("Connect \(plan.ai) to Amber Notes")) {
+        ShareLink(item: plan.message(server: server), subject: Text("Connect \(plan.ai) to Pinto Notes")) {
             Label("Send Link to My Computer", systemImage: "paperplane").frame(maxWidth: .infinity)
         }
         .buttonStyle(.amberProminent)
@@ -417,16 +417,16 @@ enum IncredibleConnect {
     /// Amber Notes as one of Incredible's apps (Incredible's built-in, found by search).
     static let steps = [
         "Open Apps and search for Amber Notes.",
-        "Choose Connect. Your browser opens Amber Notes.",
-        "Scan the code it shows with your iPhone (or open Amber Notes on this Mac), then choose Allow.",
+        "Choose Connect. Your browser opens Pinto Notes.",
+        "Scan the code it shows with your iPhone (or open Pinto Notes on this Mac), then choose Allow.",
         "Back in Incredible, choose Let's go.",
     ]
 
     /// Versions of Incredible from before Amber Notes was one of its apps.
-    static let olderVersion = "If Amber Notes isn't in Apps, add it as your own MCP server: choose Add it here at the bottom of Apps (or Add another MCP server), paste the address, choose Continue, then Sign in. After you choose Allow, choose Add server."
+    static let olderVersion = "If Pinto Notes isn't in Apps, add it as your own MCP server: choose Add it here at the bottom of Apps (or Add another MCP server), paste the address, choose Continue, then Sign in. After you choose Allow, choose Add server."
 
     /// What Amber Notes shows when Incredible asks, since it can't name Incredible for sure.
-    static let consentNote = "Amber Notes asks to allow an app on this computer that calls itself \u{201C}incredible\u{201D}. It can't prove which app that is, so only allow it if you just chose Connect. Choose Allow. Options has Read only, if Incredible should only look things up."
+    static let consentNote = "Pinto Notes asks to allow an app on this computer that calls itself \u{201C}incredible\u{201D}. It can't prove which app that is, so only allow it if you just chose Connect. Choose Allow. Options has Read only, if Incredible should only look things up."
 
     /// The newest sign-in that went back to an app on the person's own computer since the guide
     /// opened. That's where Incredible's answer goes; the name it registered decides nothing.
@@ -440,9 +440,9 @@ enum IncredibleConnect {
 
     /// The steps as plain text, for sending to yourself.
     static func message(server: String) -> String {
-        var lines = ["Connect Incredible to Amber Notes (in Incredible on your computer, once):", ""]
+        var lines = ["Connect Incredible to Pinto Notes (in Incredible on your computer, once):", ""]
         for (i, s) in steps.enumerated() { lines.append("\(i + 1). \(s)") }
-        lines += ["", "On a Windows PC, scan the code on the Amber Notes page that opens with your iPhone, then choose Allow.",
+        lines += ["", "On a Windows PC, scan the code on the Pinto Notes page that opens with your iPhone, then choose Allow.",
                   "", olderVersion, "", "Address:", server]
         return lines.joined(separator: "\n")
     }
@@ -510,12 +510,12 @@ struct IncredibleGuide: View {
             Label {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Takes a minute on your computer, once.").font(.body.weight(.semibold))
-                    Text("Incredible is a desktop app for Mac and Windows. You connect Amber Notes in Incredible there.").foregroundStyle(.secondary)
+                    Text("Incredible is a desktop app for Mac and Windows. You connect Pinto Notes in Incredible there.").foregroundStyle(.secondary)
                 }
             } icon: {
                 Image(systemName: "laptopcomputer").foregroundStyle(.tint)
             }
-            ShareLink(item: IncredibleConnect.message(server: server), subject: Text("Connect Incredible to Amber Notes")) {
+            ShareLink(item: IncredibleConnect.message(server: server), subject: Text("Connect Incredible to Pinto Notes")) {
                 Label("Send Steps to Yourself", systemImage: "paperplane")
                     .frame(maxWidth: .infinity)
             }
@@ -583,7 +583,7 @@ struct IncredibleGuide: View {
         } header: {
             Text("On an older version of Incredible")
         } footer: {
-            Text("The address holds no password. Access is granted only when you choose Allow in Amber Notes.")
+            Text("The address holds no password. Access is granted only when you choose Allow in Pinto Notes.")
         }
     }
 

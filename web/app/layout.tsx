@@ -11,7 +11,7 @@ import { repoStats } from "@/lib/github";
 import { APP_STORE_ID, APP_STORE_LIVE, SITE_NAME, SITE_URL } from "@/lib/site";
 
 // Google Search Console and Bing Webmaster ownership by meta tag, set at build time. A DNS TXT
-// record on ambernotes.app does the same without these.
+// record on pintonotes.com does the same without these.
 const verification = {
   google: process.env.GOOGLE_SITE_VERIFICATION || undefined,
   other: process.env.BING_SITE_VERIFICATION ? { "msvalidate.01": process.env.BING_SITE_VERIFICATION } : undefined,

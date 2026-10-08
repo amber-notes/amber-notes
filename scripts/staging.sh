@@ -14,6 +14,11 @@
 #   scripts/staging.sh lifecycle-next <email> [days]
 #                                      fast-forward one account: its sign-up and earlier emails move
 #                                      back by days (default 3), then a round runs at once
+#   scripts/staging.sh dev-app [--wait]
+#                                      build Amber Notes Beta for this Mac from origin/dev and install it
+#                                      as /Applications/Amber Notes Beta.app (never opens it). If it's
+#                                      running, it stops before replacing it; --wait waits for it to quit.
+#                                      DEV_APP_REF=origin/<branch> builds a branch instead (a PR to try)
 #   scripts/staging.sh all             db, functions, secrets, auth, app-config and web, in order
 #   scripts/staging.sh status          what's where
 #
@@ -262,6 +267,61 @@ json.dump({"query": q}, open(out, "w"))' "$f" "$email" "$days"
   echo
 }
 
+# Amber Notes Beta for daily use on this Mac, from the tip of origin/dev, against staging. The same
+# build as the Mac TestFlight beta (target Pane, Config/Beta.xcconfig: sandboxed, App Store
+# entitlements) signed with the team's Apple Development certificate and an automatic provisioning
+# profile. Every rebuild has the same bundle id, team and keychain group, so it keeps its container,
+# its keychain items (the session and the account's key) and its device: nothing to sign in or link
+# again. Built in its own clean worktree (../AmberNotes-devapp), so no work in progress goes in.
+# Only for this Mac's chip (ONLY_ACTIVE_ARCH): half the compile of a universal build.
+cmd_dev_app() {
+  need_ref
+  local wait=${1:-}
+  local tree="$ROOT/../AmberNotes-devapp" dest="/Applications/Amber Notes Beta.app"
+  [[ -f $ROOT/Config/Backend.staging.local.xcconfig ]] || cmd_app_config
+  local ref=${DEV_APP_REF:-origin/dev}
+  git -C "$ROOT" fetch -q origin
+  [[ -d $tree ]] || git -C "$ROOT" worktree add -q --detach "$tree" "$ref"
+  git -C "$tree" checkout -q -f --detach "$ref"
+  cp "$ROOT/Config/Backend.staging.local.xcconfig" "$tree/Config/"
+  local commit; commit=$(git -C "$tree" rev-parse --short HEAD)
+  local build; build=$(date +%y%m%d%H%M)
+  local dd="$tree/build/dd-devapp" app="$tree/build/dd-devapp/Build/Products/Release/Amber Notes Beta.app"
+  mkdir -p "$tree/build"
+  mkdir -p "$tree/build"
+  (cd "$tree" && xcodegen generate >/dev/null)
+  rm -rf "$app"
+  echo "→ Building Amber Notes Beta $build from ${ref#origin/} $commit"
+  DEVELOPER_DIR=${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer} nice -n 10 xcodebuild \
+    -project "$tree/Pane.xcodeproj" -scheme Pane -configuration Release -destination 'platform=macOS' \
+    -derivedDataPath "$dd" -xcconfig "$tree/Config/Beta.xcconfig" \
+    -allowProvisioningUpdates -allowProvisioningDeviceRegistration \
+    DEVELOPMENT_TEAM=4UM3XVUN9Y CODE_SIGN_STYLE=Automatic CODE_SIGN_IDENTITY="Apple Development" \
+    PROVISIONING_PROFILE_SPECIFIER= CURRENT_PROJECT_VERSION="$build" ONLY_ACTIVE_ARCH=YES build > "$tree/build/dev-app.log" 2>&1 \
+    || { grep -E ' error: ' "$tree/build/dev-app.log" | head; echo "Build failed: $tree/build/dev-app.log" >&2; exit 1; }
+  # Every piece of code in the app signed by the same team, or the app won't start.
+  codesign --verify --deep --strict "$app"
+  local teams; teams=$({ print -r -- "$app"; find "$app/Contents" \( -name '*.app' -o -name '*.appex' -o -name '*.framework' -o -name '*.dylib' -o -name '*.xpc' \); } \
+    | while IFS= read -r c; do codesign -dv "$c" 2>&1 | sed -n 's/^TeamIdentifier=//p'; done | sort -u | tr '\n' ' ')
+  [[ $teams == "4UM3XVUN9Y " ]] || { echo "Signed by more than one team: $teams" >&2; exit 1; }
+  if pgrep -f "^$dest/Contents/MacOS/" >/dev/null; then
+    if [[ $wait != --wait ]]; then
+      echo "Amber Notes Beta is open. Quit it and run this again (or pass --wait). Built: $app"
+      exit 3
+    fi
+    echo "→ Waiting for Amber Notes Beta to quit"
+    while pgrep -f "^$dest/Contents/MacOS/" >/dev/null; do sleep 1; done
+  fi
+  # TestFlight installs its copy as root, which this can't replace: it goes to the Trash by hand.
+  if [[ -e $dest && ! -O $dest ]]; then
+    echo "$dest belongs to $(stat -f %Su "$dest") (TestFlight installs it that way). Move it to the Trash in Finder, then run this again. Built: $app" >&2
+    exit 4
+  fi
+  rm -rf "$dest"
+  ditto "$app" "$dest"
+  echo "✓ Installed $dest: build $build from ${ref#origin/} $commit ($(codesign -dvv "$dest" 2>&1 | sed -n 's/^Authority=//p' | head -1)). Not opened."
+}
+
 cmd_status() {
   echo "Supabase   ${REF:-not made} $( [[ -n $REF ]] && url)"
   echo "MCP        $( [[ -n $REF ]] && mcp_url)"
@@ -281,7 +341,8 @@ case ${1:-status} in
   seed) cmd_seed ;;
   lifecycle) cmd_lifecycle ;;
   lifecycle-next) shift; cmd_lifecycle_next "$@" ;;
+  dev-app) shift; cmd_dev_app "$@" ;;
   all) cmd_db; cmd_functions; cmd_secrets; cmd_auth; cmd_app_config; cmd_web ;;
   status) cmd_status ;;
-  *) sed -n 2,21p "$0" >&2; exit 2 ;;
+  *) sed -n 2,25p "$0" >&2; exit 2 ;;
 esac

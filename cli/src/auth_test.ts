@@ -21,7 +21,7 @@ Deno.test("the code comes back only with our state, from our issuer", () => {
   assertEquals(codeFrom(back("state=st&code=c"), "st", "https://s/"), "c");
   assertThrows(() => codeFrom(back("state=other&code=c"), "st", "https://s"), Error, "started somewhere else");
   assertThrows(() => codeFrom(back("state=st&iss=https%3A%2F%2Fevil&code=c"), "st", "https://s"), Error, "not https://s");
-  assertThrows(() => codeFrom(back("state=st&error=access_denied"), "st", "https://s"), Error, "Declined in Amber Notes");
+  assertThrows(() => codeFrom(back("state=st&error=access_denied"), "st", "https://s"), Error, "Declined in Pinto Notes");
   assertThrows(() => codeFrom("not a url", "st", "https://s"), Error, "Copy the whole address");
   assertThrows(() => codeFrom(back("state=st"), "st", "https://s"), Error, "no code");
 });

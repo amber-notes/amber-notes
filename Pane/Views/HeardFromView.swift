@@ -24,7 +24,7 @@ struct HeardFromView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: Metrics.gap) {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("How did you hear about Amber Notes?")
+                        Text("How did you hear about Pinto Notes?")
                             .font(Metrics.title)
                             .tracking(-0.4)
                             .foregroundStyle(Color.ink)

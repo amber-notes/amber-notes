@@ -354,7 +354,7 @@ enum ConnectAPI {
             let (data, response) = try await AppNetwork.session.data(for: req)
             guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
                 let message = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["error"] as? String
-                throw Failure(message: message ?? "Couldn't reach Amber Notes. Check your connection.")
+                throw Failure(message: message ?? "Couldn't reach Pinto Notes. Check your connection.")
             }
             return data
         }
@@ -455,8 +455,8 @@ enum ConnectAPI {
     static func decide(id: UUID, redirectURI: String?, allow: Bool, write: Bool,
                        code: (code: String, hash: String, wrap: String)?, browserKey: Data? = nil, handoffRedirect: String? = nil,
                        wrongNumber: Bool = false, scan: String? = nil, send: Send) async throws -> Answer {
-        guard let redirectURI else { throw Failure(message: "Update Amber Notes to connect an AI.") }
-        guard !allow || code != nil else { throw Failure(message: "Open Amber Notes and finish setting up encryption first.") }
+        guard let redirectURI else { throw Failure(message: "Update Pinto Notes to connect an AI.") }
+        guard !allow || code != nil else { throw Failure(message: "Open Pinto Notes and finish setting up encryption first.") }
         var body: [String: Any] = ["id": id.uuidString.lowercased(), "allow": allow, "write": write, "redirect_uri": redirectURI]
         if !allow, wrongNumber { body["wrong_number"] = true }
         if let scan { body["scan"] = scan }
@@ -477,7 +477,7 @@ enum ConnectAPI {
         // The browser that asked goes on by itself, allowed or not.
         if answer?["handoff"] as? Bool == true { return .handedOff }
         guard let s = answer?["redirect"] as? String, let url = URL(string: s) else {
-            throw Failure(message: "Amber Notes gave an unexpected answer. Try connecting again.")
+            throw Failure(message: "Pinto Notes gave an unexpected answer. Try connecting again.")
         }
         guard allow, let code else { return .open(url) }
         return .open(withCode(url, code.code))
@@ -1122,7 +1122,7 @@ struct ConsentSheet: View {
             AppMark(size: 56)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(ai.map { "\($0) and Amber Notes" } ?? "An app and Amber Notes")
+        .accessibilityLabel(ai.map { "\($0) and Pinto Notes" } ?? "An app and Pinto Notes")
         .accessibilityIdentifier(ai == nil ? "connect.header.unknown" : "connect.header.\(ai!)")
     }
 
@@ -1142,7 +1142,7 @@ struct ConsentSheet: View {
                 .padding(.top, 18)
                 .accessibilityIdentifier("connect.title")
             if r.verifiedAI == nil {
-                Label("Amber Notes doesn't recognize this app. Only allow it if you just started connecting it.",
+                Label("Pinto Notes doesn't recognize this app. Only allow it if you just started connecting it.",
                       systemImage: "exclamationmark.triangle.fill")
                     .font(.footnote)
                     .foregroundStyle(.orange)
@@ -1453,8 +1453,8 @@ struct ConnectAISection: View {
             switch self {
             case .chatgpt: "Added once in ChatGPT on the web, then works in its apps"
             case .claude: "Added once in Claude on the web or desktop, then works in its apps"
-            case .claudeCode: "Adds Amber Notes to Claude Code on this Mac"
-            case .codex: "Adds Amber Notes to Codex"
+            case .claudeCode: "Adds Pinto Notes to Claude Code on this Mac"
+            case .codex: "Adds Pinto Notes to Codex"
             case .incredible: "Connected once in Incredible on your computer"
             }
         }
@@ -1688,7 +1688,7 @@ struct GuideSheet: View {
             }
         case .claudeCode:
             tokenGuide(
-                intro: "Claude Code gets its own access token, sent in a request header. It works in every project. If you connected Claude and use Claude Code with the same account, it already has Amber Notes.",
+                intro: "Claude Code gets its own access token, sent in a request header. It works in every project. If you connected Claude and use Claude Code with the same account, it already has Pinto Notes.",
                 snippet: token.map { ConnectSnippets.claudeCode(url: server, token: $0) },
                 note: "Or run this in a terminal. It's shown once; keep it private.")
         case .codex:

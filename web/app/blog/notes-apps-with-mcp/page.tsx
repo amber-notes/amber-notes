@@ -5,14 +5,14 @@ import { SHOTS } from "@/lib/posts";
 
 export const dynamic = "force-static";
 export const metadata = postMetadata("notes-apps-with-mcp", {
-  title: "Notes apps with an MCP server, compared (2026) · Amber Notes",
+  title: "Notes apps with an MCP server, compared (2026) · Pinto Notes",
 });
 
 type Row = { app: string; server: string; reach: string; edit: string; open: string };
 
 // Checked against each app's own announcement or documentation on 30 September 2026.
 const ROWS: Row[] = [
-  { app: "Amber Notes", server: "Built in, hosted", reach: "ChatGPT, Claude, Claude Code, Codex, Incredible and other MCP apps, from any device", edit: "Yes, with approval per app, Undo and version history", open: "Yes (MIT)" },
+  { app: "Pinto Notes", server: "Built in, hosted", reach: "ChatGPT, Claude, Claude Code, Codex, Incredible and other MCP apps, from any device", edit: "Yes, with approval per app, Undo and version history", open: "Yes (MIT)" },
   { app: "Notion", server: "Official, hosted", reach: "Any app that supports remote MCP, from any device", edit: "Yes", open: "No" },
   { app: "Evernote", server: "Official, hosted (beta)", reach: "Any app that supports remote MCP, from any device", edit: "Read, search and create", open: "No" },
   { app: "Hjarni", server: "Built in, hosted", reach: "ChatGPT, Claude and other MCP apps, from any device", edit: "Yes", open: "No" },
@@ -29,7 +29,7 @@ const FAQ = [
     "ChatGPT, claude.ai and the Claude and ChatGPT phone apps run in the cloud, so they can only reach a server on the internet. A server that runs on your Mac works with Claude Desktop or Claude Code on that Mac, and only while it's awake.",
   ] },
   { q: "Which of these notes apps can ChatGPT reach?", a: [
-    "ChatGPT needs a hosted server. Of the apps here, that's Amber Notes, Notion, Evernote and Hjarni. Adding one yourself needs Developer mode in ChatGPT, on a paid plan.",
+    "ChatGPT needs a hosted server. Of the apps here, that's Pinto Notes, Notion, Evernote and Hjarni. Adding one yourself needs Developer mode in ChatGPT, on a paid plan.",
   ] },
 ];
 
@@ -37,7 +37,7 @@ export default function Page() {
   return (
     <PostPage
       slug="notes-apps-with-mcp"
-      intro={<>More notes apps now let ChatGPT and Claude use your notes. They differ in two ways that matter: whether it works away from your Mac, and what happens when the AI gets an edit wrong. I make Amber Notes, so weigh this with that in mind; I&apos;ve described every app the way its maker does, and linked their own pages.</>}
+      intro={<>More notes apps now let ChatGPT and Claude use your notes. They differ in two ways that matter: whether it works away from your Mac, and what happens when the AI gets an edit wrong. I make Pinto Notes, so weigh this with that in mind; I&apos;ve described every app the way its maker does, and linked their own pages.</>}
       faq={FAQ}
     >
 
@@ -69,12 +69,12 @@ export default function Page() {
         <li><strong>Whether you like writing in it.</strong> You&apos;ll spend more time writing notes than asking about them.</li>
       </ul>
 
-      <Figure shot={SHOTS.history} caption="Version history in Amber Notes: every change, with who made it, including ChatGPT and Claude Code." />
+      <Figure shot={SHOTS.history} caption="Version history in Pinto Notes: every change, with who made it, including ChatGPT and Claude Code." />
 
       <h2>The apps</h2>
-      <p className="label"><strong>Amber Notes</strong></p>
+      <p className="label"><strong>Pinto Notes</strong></p>
       <p>
-        A free notes app for iPhone and Mac that works like Apple Notes, with an MCP server built in. You approve each AI app in Amber
+        A free notes app for iPhone and Mac that works like Apple Notes, with an MCP server built in. You approve each AI app in Pinto
         Notes and choose Read Only, or Read and Edit. When an AI changes a note, you see what changed, with Undo, and every earlier
         version is kept. It <a href="/blog/move-from-apple-notes">imports Apple Notes on the Mac</a>. {APP_STORE_LIVE ? "It's on the Mac and the App Store." : "The Mac app is out now; the iPhone app is coming soon to the App Store."} The{" "}
         <a href="/blog/mcp-server">MCP server page</a> lists its tools, and{" "}

@@ -12,7 +12,7 @@
   "folder": "Personal",
   "note": "Gift ideas\n\nSave ideas the moment you hear them, so the next birthday is easy.\n\n<!-- pane-table: Person=text; Occasion=text; Idea=text; Budget=number; Status=choice Idea|Bought|Given -->\n| Person | Occasion | Idea | Budget | Status |\n| --- | --- | --- | --- | --- |\n\n## Sizes and likes\n",
   "prompt": {
-    "default": "Use my Amber Notes note \"Gift ideas\". Whenever I mention something someone would like, add a row with log_table_row: Person, Occasion if I said one, Idea, Budget as a number if I gave one, and Status Idea. Keep what I learn about each person (sizes, favourite things, what they already have) under \"Sizes and likes\" with append_to_note. Before a birthday, when I ask, read the note and suggest three gifts within budget that fit what's there. When I buy one, set its Status to Bought with edit_note."
+    "default": "Use my Pinto Notes note \"Gift ideas\". Whenever I mention something someone would like, add a row with log_table_row: Person, Occasion if I said one, Idea, Budget as a number if I gave one, and Status Idea. Keep what I learn about each person (sizes, favourite things, what they already have) under \"Sizes and likes\" with append_to_note. Before a birthday, when I ask, read the note and suggest three gifts within budget that fit what's there. When I buy one, set its Status to Bought with edit_note."
   },
   "asks": [
     "Maja mentioned she wants a good chef's knife.",

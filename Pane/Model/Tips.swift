@@ -278,7 +278,7 @@ struct ShareLinkTip: Tip {
 struct MenuBarTip: Tip {
     var id: String { "menuBar" }
     var title: Text { Text("Jot a note from the menu bar") }
-    var message: Text? { Text("Click Amber Notes in the menu bar to write or find a note without opening this window.") }
+    var message: Text? { Text("Click Pinto Notes in the menu bar to write or find a note without opening this window.") }
     var image: Image? { TipGlyph.image("menubar.arrow.up.rectangle") }
     var rules: [Rule] {
         [
@@ -298,7 +298,7 @@ struct MenuBarTip: Tip {
 struct ShareExtensionTip: Tip {
     var id: String { "shareExtension" }
     var title: Text { Text("Save from any app") }
-    var message: Text? { Text("In Safari or any app, tap Share, then Amber Notes.") }
+    var message: Text? { Text("In Safari or any app, tap Share, then Pinto Notes.") }
     var image: Image? { TipGlyph.image("square.and.arrow.up") }
     var rules: [Rule] { commonRules + [#Rule(PaneTips.imported) { $0.donations.count >= 1 }, #Rule(PaneTips.$turn) { $0 == "" || $0 == "shareExtension" }] }
     var options: [any TipOption] { [Tips.MaxDisplayCount(2)] }

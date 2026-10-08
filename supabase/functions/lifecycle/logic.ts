@@ -271,7 +271,7 @@ export type Config = {
   manualRounds: boolean;
 };
 
-export const FROM = "Emil at Amber Notes <emil@ambernotes.app>";
+export const FROM = "Emil at Pinto Notes <emil@ambernotes.app>";
 export const REPLY_TO = "emil@ambernotes.app";
 export const SITE = "https://ambernotes.app";
 

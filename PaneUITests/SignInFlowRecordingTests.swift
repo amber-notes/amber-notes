@@ -28,10 +28,10 @@ final class SignInFlowRecordingTests: XCTestCase {
         // A fresh simulator introduces its keyboard once: out of the way before the recording counts.
         field.tap()
         if app.buttons["Continue"].waitForExistence(timeout: 2) { app.buttons["Continue"].tap() }
-        app.staticTexts["Sign in to Amber Notes"].swipeDown(); pause()
+        app.staticTexts["Sign in to Pinto Notes"].swipeDown(); pause()
         mark("email.tap"); field.tap(); pause()
         // The keyboard down and up again, the way a person does it.
-        mark("keyboard.dismiss"); app.staticTexts["Sign in to Amber Notes"].swipeDown(); pause()
+        mark("keyboard.dismiss"); app.staticTexts["Sign in to Pinto Notes"].swipeDown(); pause()
         mark("email.tap2"); field.tap(); pause()
         mark("email.type"); field.typeText(email); pause()
         mark("continue.tap"); app.buttons["signin.submit"].tap()

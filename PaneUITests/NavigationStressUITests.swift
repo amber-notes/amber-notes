@@ -15,7 +15,7 @@ final class NavigationStressUITests: XCTestCase {
         XCTAssertTrue(folderList.waitForExistence(timeout: 5))
     }
 
-    var folderList: XCUIElement { app.navigationBars["Amber Notes"] }
+    var folderList: XCUIElement { app.navigationBars["Pinto Notes"] }
     var backButton: XCUIElement { app.navigationBars.element(boundBy: 0).buttons.element(boundBy: 0) }
     func row(_ id: String) -> XCUIElement { app.cells.containing(.any, identifier: id).firstMatch }
 

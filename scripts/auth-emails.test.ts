@@ -54,5 +54,5 @@ Deno.test("turning confirmation on: only the confirmation fields, a 6-digit code
   assertEquals(Object.keys(body).sort(), ["mailer_autoconfirm", "mailer_otp_exp", "mailer_otp_length", "mailer_subjects_confirmation", "mailer_templates_confirmation_content"]);
   assertEquals([body.mailer_autoconfirm, body.mailer_otp_length, body.mailer_otp_exp], [false, 6, 3600]);
   assertEquals(body.mailer_templates_confirmation_content, patch().mailer_templates_confirmation_content);
-  assertEquals(confirmPatch("[Staging] ").mailer_subjects_confirmation, "[Staging] Confirm your email for Amber Notes");
+  assertEquals(confirmPatch("[Staging] ").mailer_subjects_confirmation, "[Staging] Confirm your email for Pinto Notes");
 });

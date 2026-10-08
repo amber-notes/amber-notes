@@ -142,7 +142,7 @@ struct RootView: View {
             #if os(iOS)
             .alert("Import on your Mac", isPresented: $importOnMac) {
                 Button("OK") {}
-            } message: { Text("To bring everything at once, use Import from Apple Notes in Amber Notes on your Mac. It syncs here a second later.") }
+            } message: { Text("To bring everything at once, use Import from Apple Notes in Pinto Notes on your Mac. It syncs here a second later.") }
             #endif
     }
 

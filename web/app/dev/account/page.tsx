@@ -10,8 +10,8 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Dev: account email landing pages", robots: { index: false, follow: false } };
 
 const EMAIL = "sara@example.com";
-const openApp = <a className={ui.primary} href={appURL()}>Open Amber Notes</a>;
-const getApp = <p className={ui.small}>Don&apos;t have it on this device? <a href="/download">Get Amber Notes</a></p>;
+const openApp = <a className={ui.primary} href={appURL()}>Open Pinto Notes</a>;
+const getApp = <p className={ui.small}>Don&apos;t have it on this device? <a href="/download">Get Pinto Notes</a></p>;
 
 export default async function AccountPreview({ searchParams }: { searchParams: Promise<{ screen?: string }> }) {
   devOnly();
@@ -38,24 +38,24 @@ const screens: Record<string, React.ReactNode> = {
   // link can't use it up.
   confirm: (
     <EmptyState title="Confirm your email" actions={<button type="button" className={ui.primary}>Confirm email</button>}>
-      Confirm that <b>{EMAIL}</b> is yours, and your Amber Notes account is ready.
+      Confirm that <b>{EMAIL}</b> is yours, and your Pinto Notes account is ready.
     </EmptyState>
   ),
   confirmed: (
     <EmptyState title="Your email is confirmed" sign={<Sign kind="done" />} actions={<>{openApp}{getApp}</>}>
-      Go back to Amber Notes and sign in.
+      Go back to Pinto Notes and sign in.
     </EmptyState>
   ),
   expired: (
-    <EmptyState title="This link has expired" sign={<Sign kind="gone" />} actions={<a className={ui.secondary} href={appURL()}>Open Amber Notes</a>}>
-      A link in an email works once, for one hour. Ask for a new one from the sign-in screen in Amber Notes.
+    <EmptyState title="This link has expired" sign={<Sign kind="gone" />} actions={<a className={ui.secondary} href={appURL()}>Open Pinto Notes</a>}>
+      A link in an email works once, for one hour. Ask for a new one from the sign-in screen in Pinto Notes.
     </EmptyState>
   ),
   reset: reset(),
   "reset-error": reset("The two passwords aren't the same."),
   "reset-done": (
     <EmptyState title="Your password is changed" sign={<Sign kind="done" />} actions={<>{openApp}{getApp}</>}>
-      Sign in to Amber Notes with your new password.
+      Sign in to Pinto Notes with your new password.
     </EmptyState>
   ),
 };

@@ -23,7 +23,7 @@ export const appTools = [
   {
     name: "preview_app", title: "See a note's app",
     description: "Screenshots of a note's app as images, at the widths and in the color schemes asked for (default a 390 px iPhone and a 1280 px Mac window, light and dark), with a text description of each for clients that can't show images. " +
-      "Use it after building or changing an app, when you can see images, to judge layout and design; fix what looks wrong. By default the app shows a sample with the note's shape and none of its content; data: \"real\" works only if the person turned on previews with real data in Amber Notes.",
+      "Use it after building or changing an app, when you can see images, to judge layout and design; fix what looks wrong. By default the app shows a sample with the note's shape and none of its content; data: \"real\" works only if the person turned on previews with real data in Pinto Notes.",
     inputSchema: {
       type: "object",
       properties: {
@@ -62,7 +62,7 @@ export const appTools = [
   },
   {
     name: "resolve_package", title: "Pin an npm package for an app",
-    description: "For a library Amber Notes doesn't bundle: looks up an npm package's file at an exact version and returns the entry to add to the note's app, with its hash, e.g. <meta name=\"amber-libs\" content=\"npm:qrcode-generator@1.4.4/qrcode.js#sha256-…\">. Amber Notes downloads that exact file once, checks the hash and keeps it on the device. Pick a UMD or global build. Never paste a library's code into an app, and prefer the bundled ones (chart, d3, three, tone, dayjs, marked, purify, anime, confetti, topojson, world).",
+    description: "For a library Pinto Notes doesn't bundle: looks up an npm package's file at an exact version and returns the entry to add to the note's app, with its hash, e.g. <meta name=\"amber-libs\" content=\"npm:qrcode-generator@1.4.4/qrcode.js#sha256-…\">. Pinto Notes downloads that exact file once, checks the hash and keeps it on the device. Pick a UMD or global build. Never paste a library's code into an app, and prefer the bundled ones (chart, d3, three, tone, dayjs, marked, purify, anime, confetti, topojson, world).",
     inputSchema: { type: "object", properties: { name: str("npm package name, e.g. \"qrcode\" or \"@scope/pkg\"."), version: str("Exact version or range; default latest."), file: str("A file in the package, e.g. \"build/qrcode.js\"; default the package's browser build.") }, required: ["name"] },
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
   },
@@ -124,7 +124,7 @@ export const appHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<u
     const real = a.data === "real";
     if (real) {
       const [p] = await tx<{ app_previews_real: boolean }[]>`select app_previews_real from public.profiles where user_id = ${c.ctx.userId}`;
-      if (!p?.app_previews_real) throw new ToolError("Trying the app with real data is off. It uses a sample with the same shape by default (data: \"sample\"). The person can allow real data in Amber Notes › Settings › Apps in Notes.");
+      if (!p?.app_previews_real) throw new ToolError("Trying the app with real data is off. It uses a sample with the same shape by default (data: \"sample\"). The person can allow real data in Pinto Notes › Settings › Apps in Notes.");
     }
     const t = today();
     const r = await render({ html, markdown: real ? body : sampleNote(body, t), data: real ? data : sampleData(data, t), today: t,
@@ -163,7 +163,7 @@ export const appHandlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<u
     const real = a.data === "real";
     if (real) {
       const [p] = await tx<{ app_previews_real: boolean }[]>`select app_previews_real from public.profiles where user_id = ${c.ctx.userId}`;
-      if (!p?.app_previews_real) throw new ToolError("Previews with real data are off. They show a sample with the same shape by default (data: \"sample\"). The person can allow real data in Amber Notes › Settings › Apps in Notes, \"Let AIs preview apps with my notes\".");
+      if (!p?.app_previews_real) throw new ToolError("Previews with real data are off. They show a sample with the same shape by default (data: \"sample\"). The person can allow real data in Pinto Notes › Settings › Apps in Notes, \"Let AIs preview apps with my notes\".");
     }
     const t = today();
     const r = await render({ html, markdown: real ? body : sampleNote(body, t), data: real ? data : sampleData(data, t), today: t, views, capture: true, interact: false, probes: false });

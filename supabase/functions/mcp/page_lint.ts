@@ -22,7 +22,7 @@ export function pageWarnings(html: string, body?: string): string[] {
   if (important) out.push(`!important appears ${important} time${important > 1 ? "s" : ""}: it isn't needed. amber-base.css sits in a cascade layer, so any rule the app writes already wins over it; restyle what you want, or opt out with <meta name="amber-base" content="none">.`);
   const wide = [...css.matchAll(/(?:^|[;{\s])(width|min-width)\s*:\s*(\d{3,})px/gi)].filter((m) => Number(m[2]) > 380);
   if (wide.length) out.push(`Fixed widths over 380 px (${wide.slice(0, 3).map((m) => `${m[1]}: ${m[2]}px`).join(", ")}) overflow a 390 px phone. Use max-width or percentages.`);
-  if (/\b(indexedDB|document\.cookie)\b/.test(js)) out.push("IndexedDB and cookies aren't available in the sandbox. Keep data in amber.store (or localStorage, which Amber Notes keeps and syncs).");
+  if (/\b(indexedDB|document\.cookie)\b/.test(js)) out.push("IndexedDB and cookies aren't available in the sandbox. Keep data in amber.store (or localStorage, which Pinto Notes keeps and syncs).");
   if (/\b(alert|confirm|prompt)\s*\(/.test(js)) out.push("alert/confirm/prompt don't show in the sandbox. Show messages inline.");
   if (/\bsetInterval\s*\(/.test(js) && !/onChange/.test(js)) out.push("Polling with setInterval: use amber.onChange, which fires on every change.");
   if (/innerHTML/.test(js) && !/&amp;|&lt;|replace\([^)]*[<&]/.test(js) && !/textContent/.test(js)) out.push("Values from the note go into innerHTML without escaping. Escape < & \" ' (see the guide's esc helper) or use textContent; notes contain those characters.");
