@@ -1,17 +1,32 @@
 [
   {
     "version": "1.2",
-    "date": "2026-10-02",
-    "title": "Scan to connect",
-    "major": false,
+    "date": "2026-10-08",
+    "title": "Pinto Notes",
+    "major": true,
+    "highlights": [
+      "Amber Notes is now Pinto Notes. Same app, same notes, nothing to do.",
+      "Your AI connections keep working.",
+      "Keep writing offline. Changes sync when you're back.",
+      "Files live in folders now, with PDF and picture viewers."
+    ],
     "items": [
+      "Amber Notes is now Pinto Notes. It's the same app with the same notes, and your AI connections keep working",
+      "Work offline: keep writing without a connection, and everything syncs when you're back",
+      "Files live in folders next to your notes, with 2 GB of storage and a Storage page in Settings",
+      "PDFs open in a viewer with zoom, drag-out and Export, and pictures open in a viewer of their own",
+      "HTML and code files open as code you can edit, with a Preview for HTML",
+      "Editing a file keeps its earlier versions",
+      "Settings is arranged in tabs",
+      "Signing up with email confirms your address with a six-digit code",
       "Connect an AI by scanning a QR code with your iPhone. No number to type",
-      "On a Mac, one click on the connect page opens Amber Notes to allow it",
+      "On a Mac, one click on the connect page opens Pinto Notes to allow it",
       "The question is shorter: \"Allow Claude to use your notes?\", with read or edit access under Options",
-      "The Claude guide opens Amber Notes in Claude's directory, and its steps tick themselves",
       "An AI's request stays in reach after you close its sheet, until you answer it",
       "Every connected AI shows an icon and a name",
-      "A new leaf icon on iPhone and Mac"
+      "A new leaf icon on iPhone and Mac",
+      "The app opens faster and uses no processor time while idle",
+      "Fixed: switching accounts could leave the other account's folders in the sidebar"
     ]
   },
   {
