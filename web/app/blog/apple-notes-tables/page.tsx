@@ -123,7 +123,7 @@ export default function Page() {
       ) : (
         <p>
           The iPhone app is coming soon to the App Store, with the same tables. <a href="/blog/move-from-apple-notes">Moving from
-          Apple Notes</a> brings your existing tables across in one import on your Mac, and <a href="/blog/amber-notes-vs-apple-notes">Pinto
+          Apple Notes</a> brings your existing tables across in one import on your Mac, and <a href="/blog/pinto-notes-vs-apple-notes">Pinto
           Notes vs Apple Notes</a> compares the rest.
         </p>
       )}

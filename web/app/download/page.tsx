@@ -3,6 +3,8 @@ import path from "node:path";
 import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/site";
 import { MAC_DOWNLOAD_PATH } from "@/lib/downloads";
+import { latestVersion } from "@/lib/changelog";
+import { JsonLd, app, breadcrumbs, incredible, maker, organization } from "@/lib/structured-data";
 import PlatformNote from "../PlatformNote";
 import styles from "./download.module.css";
 
@@ -33,6 +35,7 @@ export default function Download() {
   const macos = release?.minimumSystemVersion.replace(/\.0$/, "") ?? "26";
   return (
     <div className={styles.wrap}>
+      <JsonLd graph={[app(latestVersion()), organization, maker, incredible, breadcrumbs([{ name: "Pinto Notes", path: "/" }, { name: "Download for Mac", path: "/download" }])]} />
       <section className={styles.hero}>
         <img className={`${styles.icon} rise`} style={r(0)} src="/mark-256.png" alt="" width={128} height={128} />
         <h1 className={`${styles.title} rise`} style={r(1)}>Download Pinto Notes for Mac</h1>

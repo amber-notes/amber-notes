@@ -3,7 +3,7 @@ import { GITHUB_URL } from "./github";
 import { published } from "./posts";
 import { searchTitle, templates } from "./templates";
 import { MCP_TOOLS } from "./mcp-tools";
-import { INCREDIBLE_URL, MAKER_URL, SITE_URL } from "./site";
+import { FEED_PATH, INCREDIBLE_URL, MAKER_URL, SITE_URL } from "./site";
 import { FAQ } from "../app/help/questions";
 
 /// /llms.txt (llmstxt.org): a plain summary for AI assistants and agents, with links to the pages
@@ -51,6 +51,8 @@ function summary(): string[] {
     `- [Changelog](${SITE_URL}/changelog)`,
     `- [Privacy & Security](${SITE_URL}/privacy-security): what's stored, what's encrypted, every log and how long it's kept.`,
     `- [Privacy policy](${SITE_URL}/privacy)`,
+    `- [Amber Notes is now Pinto Notes](${SITE_URL}/amber-notes): the old name, and what stayed the same.`,
+    `- [Blog feed (RSS)](${SITE_URL}${FEED_PATH})`,
     `- [Source code on GitHub](${GITHUB_URL}) (MIT license)`,
   ];
 }

@@ -20,12 +20,14 @@ import { movedTo } from "@/lib/site-move";
 //    same treatment; it calls the Supabase project too.
 //
 // 3. ambernotes.app, the site's old address, sends each page to pintonotes.com, path for path
-//    (lib/site-move.ts says which paths stay).
+//    (lib/site-move.ts says which paths stay). So do amber-notes.vercel.app, the address before
+//    that, and www.pintonotes.com.
 
 export const config = {
   matcher: [
     { source: "/:path*", has: [{ type: "host", value: "mcp\\.(?:ambernotes\\.app|pintonotes\\.com)" }] },
     { source: "/:path*", has: [{ type: "host", value: "(?:www\\.)?ambernotes\\.app" }] },
+    { source: "/:path*", has: [{ type: "host", value: "amber-notes\\.vercel\\.app|www\\.pintonotes\\.com" }] },
     "/connect",
     "/open/connect",
     "/connect/preview",

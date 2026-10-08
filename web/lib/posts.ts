@@ -318,7 +318,7 @@ export const posts: Post[] = [
     draft: false,
   },
   {
-    slug: "amber-notes-vs-apple-notes",
+    slug: "pinto-notes-vs-apple-notes",
     title: "Pinto Notes vs Apple Notes",
     description: "What Pinto Notes adds, what Apple Notes still does better, and who each one is for.",
     excerpt: "Pinto Notes is built to feel like Apple Notes, with a few things it always missed. Where they differ, including what Apple Notes still does better.",

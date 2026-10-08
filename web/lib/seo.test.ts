@@ -6,10 +6,11 @@ import sitemap from "../app/sitemap";
 import { MCP_URL } from "./facts";
 import { postShots } from "./post-images";
 import { DEFAULT_SHARE_IMAGE, pageMetadata } from "./site";
+import { feedXml } from "./feed";
 import { llmsFullTxt, llmsTxt } from "./llms";
 import { PER_PAGE, categories, categoryAnchor, categoryPath, morePosts, newestFirst, pageCount, pageOf, pagePath, posts, published } from "./posts";
 
-const INDEX_FOLDERS = ["page", "category"];
+const INDEX_FOLDERS = ["page", "category", "feed.xml"];
 
 const postSource = (slug: string) => readFileSync(new URL(`../app/blog/${slug}/page.tsx`, import.meta.url), "utf8");
 
@@ -211,6 +212,55 @@ describe("blog pages", () => {
   it("redirects a guessed post address that 404ed to the real post", async () => {
     const redirects = await nextConfig.redirects!();
     expect(redirects).toContainEqual({ source: "/blog/obsidian-mcp-servers-compared", destination: "/blog/obsidian-mcp", permanent: true });
+  });
+});
+
+describe("the rename from Amber Notes", () => {
+  it("keeps the comparison's old address working, and links only to the new one", async () => {
+    const redirects = await nextConfig.redirects!();
+    expect(redirects).toContainEqual({ source: "/blog/amber-notes-vs-apple-notes", destination: "/blog/pinto-notes-vs-apple-notes", permanent: true });
+    expect(posts.some((p) => p.slug === "pinto-notes-vs-apple-notes")).toBe(true);
+    for (const p of posts) expect(postSource(p.slug), p.slug).not.toContain("/blog/amber-notes-vs-apple-notes");
+  });
+
+  it("has a page for the old name that search may index, listed in the sitemap and /llms.txt", async () => {
+    const page = await import("../app/amber-notes/page");
+    expect(page.metadata.title).toBe("Amber Notes is now Pinto Notes");
+    expect(page.metadata.alternates?.canonical).toBe("/amber-notes");
+    expect(page.metadata.robots).toEqual({ index: true, follow: true });
+    const description = String(page.metadata.description);
+    expect(description.length).toBeGreaterThanOrEqual(70);
+    expect(description.length).toBeLessThanOrEqual(160);
+    expect(sitemap().map((e) => e.url)).toContain("https://pintonotes.com/amber-notes");
+    expect(llmsTxt()).toContain("https://pintonotes.com/amber-notes");
+    // The catch-all noindex header leaves this page out, and only this page.
+    const noindex = (await nextConfig.headers!()).find((h) => h.headers.some((x) => x.key === "X-Robots-Tag" && h.source.startsWith("/((?!")))!;
+    const re = new RegExp(`^${noindex.source}$`);
+    expect(re.test("/amber-notes")).toBe(false);
+    expect(re.test("/amber-notes/x")).toBe(true);
+    expect(re.test("/n/abc")).toBe(true);
+  });
+});
+
+describe("the blog's feed", () => {
+  it("lists every published post, newest first, at its address on pintonotes.com", () => {
+    const xml = feedXml();
+    const links = [...xml.matchAll(/<item>[\s\S]*?<link>([^<]+)<\/link>/g)].map((m) => m[1]);
+    expect(links).toEqual(newestFirst().map((p) => `https://pintonotes.com/blog/${p.slug}`));
+    for (const p of posts.filter((x) => x.draft)) expect(xml).not.toContain(`/blog/${p.slug}<`);
+    expect(xml).toContain('<atom:link href="https://pintonotes.com/blog/feed.xml" rel="self" type="application/rss+xml" />');
+    expect(xml).not.toContain("ambernotes.app");
+  });
+
+  it("escapes titles and descriptions, so the feed stays well-formed", () => {
+    const xml = feedXml();
+    expect(xml.replace(/&(?:amp|lt|gt|quot);/g, "")).not.toContain("&");
+    for (const body of xml.matchAll(/<(?:title|description)>([^<]*)<\/(?:title|description)>/g)) expect(body[1]).not.toMatch(/[<>]/);
+  });
+
+  it("is named on every page, so feed readers find it", () => {
+    const m = pageMetadata({ title: "x", description: "y", path: "/z" });
+    expect(m.alternates?.types).toEqual({ "application/rss+xml": [{ url: "/blog/feed.xml", title: "Pinto Notes blog" }] });
   });
 });
 
