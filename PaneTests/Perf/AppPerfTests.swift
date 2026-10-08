@@ -159,7 +159,8 @@ extension AppPerfTests {
         let newestFirst = notes.map { ($0, $0.updatedAt) }.sorted { $0.1 > $1.1 }.map(\.0)
 
         let before = DateBucket.sections(newestFirst.map(ListItem.note) + files.map(ListItem.file))
-        let after = DateBucket.sections(newestFirst: DateBucket.merged(notes: newestFirst, files: files))
+        let entries = newestFirst.map(NoteEntry.init)
+        let after = DateBucket.sections(newestFirst: ListEntry.merged(notes: entries, files: files))
         #expect(after.map { $0.0 } == before.map { $0.0 }, "the same sections")
         #expect(after.map { $0.1.map { $0.id } } == before.map { $0.1.map { $0.id } }, "in the same order")
 
@@ -170,7 +171,7 @@ extension AppPerfTests {
             return t.sorted()[2]
         }
         let wrapped = median { _ = DateBucket.sections(newestFirst.map(ListItem.note) + files.map(ListItem.file)) }
-        let merged = median { _ = DateBucket.sections(newestFirst: DateBucket.merged(notes: newestFirst, files: files)) }
+        let merged = median { _ = DateBucket.sections(newestFirst: ListEntry.merged(notes: entries, files: files)) }
         print("PERF 20,000 notes + 10 files, list order: wrapped and sorted \(String(format: "%.1f", wrapped)) ms, merged \(String(format: "%.1f", merged)) ms")
         #expect(merged < wrapped, "merging the files in costs less than sorting everything again")
 
@@ -191,5 +192,41 @@ extension AppPerfTests {
         updates.sort()
         print("PERF list of 20,000 notes + 10 files: first display \(String(format: "%.0f", first)) ms, a save shown \(String(format: "%.1f", updates[2])) ms (median)")
     }
+}
+#endif
+
+#if os(macOS)
+extension AppPerfTests {
+    /// The list at 2,000 and 20,000 notes: how long it takes to show first, and how long a save of
+    /// one note takes to show. A save should cost what changed, not the size of the library.
+    @Test(.timeLimit(.minutes(4)), arguments: [2_000, 20_000]) func listShowsASaveAtScale(count: Int) async throws {
+        let (c, notes) = try library(notes: count, big: false)
+        let clock = ContinuousClock()
+        let (w, host) = window(NoteListView(scope: .all, selection: .constant([]), onNewNote: {}).modelContainer(c))
+        defer { w.close() }
+        let first = ms(clock.measure { host.layoutSubtreeIfNeeded(); w.displayIfNeeded() })
+        try? await Task.sleep(for: .milliseconds(300))
+        var saves: [Double] = []
+        for i in 0..<9 {
+            let start = clock.now
+            notes[i * 7 + 3].body += " a"
+            notes[i * 7 + 3].touch()
+            // The list hears of the change once the main queue turns, as in the app.
+            try? await Task.sleep(for: .milliseconds(2))
+            host.layoutSubtreeIfNeeded()
+            w.displayIfNeeded()
+            saves.append(ms(clock.now - start))
+            try? await Task.sleep(for: .milliseconds(50))
+        }
+        saves.sort()
+        let save = saves[saves.count / 2]
+        print("PERF list of \(count) notes: first display \(String(format: "%.0f", first)) ms, a save shown \(String(format: "%.1f", save)) ms (median)")
+        let budget = Self.listBudgets[count] ?? (first: 4000, save: 1000)
+        #expect(first < budget.first * PerfBudget.slack, "first display of \(count) notes")
+        #expect(save < budget.save * PerfBudget.slack, "a save shown with \(count) notes")
+    }
+
+    /// Milliseconds on a developer's Mac (CI multiplies by its slack).
+    static let listBudgets: [Int: (first: Double, save: Double)] = [2_000: (first: 400, save: 100), 20_000: (first: 2000, save: 400)]
 }
 #endif

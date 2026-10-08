@@ -322,29 +322,6 @@ extension Attachment: DatedListItem {
 
 /// Grouping of the note list by recency, like Apple Notes.
 enum DateBucket {
-    /// Notes in order, newest first, with files merged in where their dates fall. The notes keep
-    /// their order and are read once; only the few files are sorted. With files in the library
-    /// the list used to wrap and sort every note again on each update (20,000 at launch).
-    static func merged(notes: [Note], files: [Attachment]) -> [(ListItem, Date)] {
-        let sortedFiles = files.map { ($0, $0.listDate) }.sorted { $0.1 > $1.1 }
-        var out: [(ListItem, Date)] = []
-        out.reserveCapacity(notes.count + sortedFiles.count)
-        var f = 0
-        for n in notes {
-            let d = n.updatedAt
-            while f < sortedFiles.count, sortedFiles[f].1 > d {
-                out.append((.file(sortedFiles[f].0), sortedFiles[f].1))
-                f += 1
-            }
-            out.append((.note(n), d))
-        }
-        while f < sortedFiles.count {
-            out.append((.file(sortedFiles[f].0), sortedFiles[f].1))
-            f += 1
-        }
-        return out
-    }
-
     static func sections<Item: DatedListItem>(_ notes: [Item], now: Date = .now, calendar: Calendar = .current) -> [(String, [Item])] {
         // Each date read once: model properties aren't free, and a sort reads them often.
         sections(newestFirst: notes.map { ($0, $0.listDate) }.sorted { $0.1 > $1.1 }, now: now, calendar: calendar)
