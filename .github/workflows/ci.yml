@@ -24,7 +24,7 @@ jobs:
       - name: gitleaks
         run: |
           curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.28.0/gitleaks_8.28.0_linux_x64.tar.gz | tar -xz gitleaks
-          ./gitleaks git --no-banner --redact -c .gitleaks.toml
+          ./gitleaks git --no-banner --redact -v -c .gitleaks.toml
 
   app:
     name: App tests (macOS)
