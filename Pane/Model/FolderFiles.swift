@@ -187,6 +187,21 @@ enum FileKinds {
     }
 }
 
+/// Earlier versions of a file kept on the server, as folder_files.ts keeps them.
+enum FileVersions {
+    /// How many are kept for each file.
+    static let kept = 10
+
+    /// Where the next one goes: <path>.v<n>, one past the highest kept.
+    static func nextPath(_ path: String, kept: [String]) -> String {
+        let highest = kept.compactMap { p -> Int? in
+            guard p.hasPrefix(path + ".v") else { return nil }
+            return Int(p.dropFirst(path.count + 2))
+        }.max() ?? 0
+        return "\(path).v\(highest + 1)"
+    }
+}
+
 /// Files that weren't added, and why, for the window to say once.
 struct FileRefusal: Equatable, Identifiable {
     var unsupported: [String]

@@ -313,6 +313,15 @@ import Testing
         }
     }
 
+    /// An edit made here keeps the version it replaces, at the path the AI's replacements use.
+    @Test func editsHereKeepTheVersionTheyReplace() {
+        let path = "u/9f1c"
+        #expect(FileVersions.nextPath(path, kept: []) == "u/9f1c.v1")
+        #expect(FileVersions.nextPath(path, kept: ["u/9f1c.v2", "u/9f1c.v10", "u/9f1c.v9"]) == "u/9f1c.v11")
+        #expect(FileVersions.nextPath(path, kept: ["u/other.v40", "u/9f1c.vx"]) == "u/9f1c.v1", "only this file's numbered versions count")
+        #expect(FileVersions.kept == 10, "the same as folder_files.ts writeFile")
+    }
+
     @Test func textKindsOpenAsCodeAndHTMLCanBePreviewed() {
         #expect(FileKinds.isText("index.HTML") && FileKinds.isText("page.htm") && FileKinds.isText("app.py"))
         #expect(!FileKinds.isText("Budget.csv") && !FileKinds.isText("Paper.pdf"))
