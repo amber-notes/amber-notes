@@ -6,17 +6,17 @@ import { MCP_URL } from "@/lib/facts";
 
 export const dynamic = "force-static";
 export const metadata = postMetadata("shared-memory-for-coding-agents", {
-  title: "Shared memory for Claude Code and Codex · Amber Notes",
+  title: "Shared memory for Claude Code and Codex · Pinto Notes",
 });
 
 const FAQ = [
   { q: "Can Claude Code and Codex share the same memory?", a: [
-    "Yes, if both can reach the same place. Connect both to one Amber Notes account, keep a Project memory note, and tell each agent in CLAUDE.md or AGENTS.md to read it at the start of a task and add to it when something is decided. Both read and write the same note, from any computer.",
+    "Yes, if both can reach the same place. Connect both to one Pinto Notes account, keep a Project memory note, and tell each agent in CLAUDE.md or AGENTS.md to read it at the start of a task and add to it when something is decided. Both read and write the same note, from any computer.",
   ] },
   { q: "How do I see which agent changed my notes?", a: [
     "Give each agent its own access token from Settings, Connect an AI, and its edits carry its name: Edited by Claude Code or Edited by Codex in the note list, the changed lines tinted with Undo in the note, and the name on every version in the note's history.",
   ] },
-  { q: "Can Amber Notes read my agents' memory?", a: [
+  { q: "Can Pinto Notes read my agents' memory?", a: [
     "Not at rest: notes are end-to-end encrypted on your devices. While an agent you approved is working, our server opens the notes it asks for in memory to answer it, and forgets the key when the request ends. Locked notes stay out of reach even then.",
   ] },
 ];
@@ -25,7 +25,7 @@ export default function Page() {
   return (
     <PostPage
       slug="shared-memory-for-coding-agents"
-      intro={<>Someone found Amber Notes this week looking for one thing: a memory that Claude Code, Codex and their other agents all share, and that they can read too. This is the setup I&apos;d suggest, checked against the app and the server.</>}
+      intro={<>Someone found Pinto Notes this week looking for one thing: a memory that Claude Code, Codex and their other agents all share, and that they can read too. This is the setup I&apos;d suggest, checked against the app and the server.</>}
       faq={FAQ}
     >
       <h2>Why agents need a shared memory</h2>
@@ -46,13 +46,13 @@ export default function Page() {
         memory I&apos;d use an access token for each, made in the app:
       </p>
       <ol>
-        <li>In Amber Notes on your Mac, open Settings and, under Connect an AI, choose Claude Code. Choose Add to Claude Code if your copy shows it, or Create Access Token and run the command it shows.</li>
+        <li>In Pinto Notes on your Mac, open Settings and, under Connect an AI, choose Claude Code. Choose Add to Claude Code if your copy shows it, or Create Access Token and run the command it shows.</li>
         <li>Go back to Connect an AI and choose Codex. Choose Create Access Token and copy the lines it shows into <code>~/.codex/config.toml</code>.</li>
       </ol>
       <p>
         The reason for tokens is the name. A token is named after the agent you made it for, and that name goes on every edit. Codex and the Claude
         Code plugin can also sign in through the browser, which works fine, but a sign-in from a terminal is listed as &ldquo;An app on this
-        computer&rdquo;, because Amber Notes can&apos;t prove which program is on the other end. With two agents signed in that way, their edits
+        computer&rdquo;, because Pinto Notes can&apos;t prove which program is on the other end. With two agents signed in that way, their edits
         look the same.
       </p>
       <p>
@@ -88,7 +88,7 @@ export default function Page() {
       <p>Then tell both agents to use it. Put the same lines in <code>CLAUDE.md</code> for Claude Code and <code>AGENTS.md</code> for Codex:</p>
       <pre><code>{`## Memory
 - Before a task, read the note
-  "Project memory: Atlas" in Amber Notes.
+  "Project memory: Atlas" in Pinto Notes.
 - When we decide something, add it under
   Decisions with append_to_note: the date,
   the decision and one line on why.
@@ -127,7 +127,7 @@ export default function Page() {
       <h2>What the encryption covers</h2>
       <p>
         Notes are end-to-end encrypted on your {APP_STORE_LIVE ? "iPhone or Mac" : "Mac"}, with a key iCloud Keychain carries between your devices,
-        so Amber Notes can&apos;t read them at rest. The exception is while an agent works: when an agent you
+        so Pinto Notes can&apos;t read them at rest. The exception is while an agent works: when an agent you
         approved makes a request, our server opens the notes it asks for in memory to answer it, and forgets the key when the request ends.
         Locked notes stay out of reach even then; an agent sees only their titles.{" "}
         <a href="/blog/encrypted-notes-app-for-ai">An encrypted notes app that ChatGPT and Claude can use</a> explains how that works.

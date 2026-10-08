@@ -13,7 +13,7 @@
   "folder": "Home",
   "note": "Budget and expenses\n\nWhat you spend, one row each, and a monthly budget to measure it against. Amounts are in your own currency.\n\n<!-- pane-table: Date=text; What=text; Category=choice Groceries|Eating out|Transport|Home|Fun|Bills|Other; Amount=number -->\n| Date | What | Category | Amount |\n| --- | --- | --- | --- |\n\n## Monthly budget\n| Category | Budget |\n| --- | --- |\n| Groceries | 4000 |\n| Eating out | 1500 |\n| Transport | 800 |\n| Home | 1000 |\n| Fun | 1000 |\n| Bills | 3500 |\n\n## Month summaries\n",
   "prompt": {
-    "default": "Use my Amber Notes note \"Budget and expenses\". When I tell you what I spent, add a row to the first table with log_table_row: Date as yyyy-mm-dd, What, a Category from its options, and Amount as a number. At the end of the month, when I ask, read both tables with read_table, add up each category against \"Monthly budget\", and add a short summary under \"Month summaries\" with append_to_note: what was over, what was under, and one suggestion. Don't give financial advice beyond that."
+    "default": "Use my Pinto Notes note \"Budget and expenses\". When I tell you what I spent, add a row to the first table with log_table_row: Date as yyyy-mm-dd, What, a Category from its options, and Amount as a number. At the end of the month, when I ask, read both tables with read_table, add up each category against \"Monthly budget\", and add a short summary under \"Month summaries\" with append_to_note: what was over, what was under, and one suggestion. Don't give financial advice beyond that."
   },
   "asks": [
     "Spent 412 on groceries and 85 on the bus card today.",

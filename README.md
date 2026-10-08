@@ -1,11 +1,12 @@
 <p align="center">
-  <img src="docs/images/icon.png" width="72" height="72" alt="Amber Notes app icon">
+  <img src="docs/images/icon.png" width="72" height="72" alt="Pinto Notes app icon">
 </p>
 
-<h1 align="center">Amber Notes</h1>
+<h1 align="center">Pinto Notes</h1>
 
 <p align="center">
   The notes app your AI can actually use. Apple Notes-style notes for iPhone and Mac that ChatGPT, Claude, Claude Code and Codex can read and edit.
+  Formerly Amber Notes.
 </p>
 
 <p align="center">
@@ -15,7 +16,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/images/banner.jpg" width="1280" alt="ChatGPT writes a note called Lisbon, 4 days in May into Amber Notes on the Mac. The new text is tinted, with a pill that says ChatGPT wrote this note and an Undo button.">
+  <img src="docs/images/banner.jpg" width="1280" alt="ChatGPT writes a note called Lisbon, 4 days in May into Pinto Notes on the Mac. The new text is tinted, with a pill that says ChatGPT wrote this note and an Undo button.">
 </p>
 
 <table align="center">
@@ -104,7 +105,7 @@ Everything the app needs runs on one Supabase project:
 
 ## Connect an AI
 
-In the app, open **Settings → Connect an AI** and follow the steps for your client. ChatGPT and Claude get a plain server address, `https://mcp.ambernotes.app`, and ask Amber Notes for permission through OAuth: a page on ambernotes.app opens, where you answer in the app or sign in and answer on the web. Claude Code and Codex get a command with a revocable token. Connections are listed in Settings, where you can disconnect each one.
+In the app, open **Settings → Connect an AI** and follow the steps for your client. ChatGPT and Claude get a plain server address, `https://mcp.ambernotes.app`, and ask Pinto Notes for permission through OAuth: a page on ambernotes.app opens, where you answer in the app or sign in and answer on the web. Claude Code and Codex get a command with a revocable token. Connections are listed in Settings, where you can disconnect each one.
 
 ## Privacy and security
 

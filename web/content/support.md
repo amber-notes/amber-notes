@@ -1,4 +1,4 @@
-# Amber Notes support
+# Pinto Notes support
 
 Write to **hello@ambernotes.app**. You'll normally get an answer within a day or two.
 
@@ -11,7 +11,7 @@ Sign in with the same account on both. Notes sync on their own, within about a s
 Open the note, choose **Share → Share Link…**, and confirm. The link is copied. Anyone with it can read the note until you choose **Stop Sharing**.
 
 **How do I connect ChatGPT, Claude, Claude Code or Codex?**
-Open **Settings → Connect an AI** and follow the steps for your assistant. You approve every connection in Amber Notes, and you can disconnect it there at any time.
+Open **Settings → Connect an AI** and follow the steps for your assistant. You approve every connection in Pinto Notes, and you can disconnect it there at any time.
 
 **I deleted a note by mistake.**
 Deleted notes stay in **Recently Deleted**. Open it, and restore the note.

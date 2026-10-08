@@ -3,8 +3,8 @@ import type { MetadataRoute } from "next";
 // For "Add to Home Screen" and browsers that show a site's icon and colour.
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Amber Notes",
-    short_name: "Amber Notes",
+    name: "Pinto Notes",
+    short_name: "Pinto Notes",
     description: "The notes app your AI can actually use.",
     start_url: "/",
     display: "browser",
