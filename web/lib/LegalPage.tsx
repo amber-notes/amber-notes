@@ -63,7 +63,7 @@ function toHtml(markdown: string, sections?: Section[]): string {
 
 export function readLegal(file: string): Legal {
   let md = readFileSync(join(process.cwd(), "content", file), "utf8");
-  const title = md.match(/^#\s+(.+)$/m)?.[1] ?? "Amber Notes";
+  const title = md.match(/^#\s+(.+)$/m)?.[1] ?? "Pinto Notes";
   md = md.replace(/^#\s+.+\n+/, "");
   const updated = md.match(/^Last updated:\s*(.+)$/m)?.[1]?.trim() ?? null;
   md = md.replace(/^Last updated:.*\n+/m, "");

@@ -29,14 +29,14 @@ describe("a post's call to action", () => {
     expect(tag).toContain('href="/download/mac"');
     expect(tag).toMatch(/class="[^"]*pi-apple pi-not-ios/);
     const el = { tagName: "A", getAttribute: (n: string) => attr(tag, n) };
-    const sent = clickEvents(el, new URL("https://ambernotes.app/blog/apple-notes-api"));
+    const sent = clickEvents(el, new URL("https://pintonotes.com/blog/apple-notes-api"));
     expect(sent.map((e) => [e.event, e.properties.path])).toEqual([["blog_cta_clicked", "/blog/apple-notes-api"], ["download_mac_clicked", "/blog/apple-notes-api"]]);
   });
 
   it("tells an iPhone the app is coming until it's on the App Store, and offers the link to the post", () => {
     const html = render();
     expect(html).toContain("The iPhone app is coming to the App Store soon.");
-    expect(html).toContain("body=https%3A%2F%2Fambernotes.app%2Fblog%2Fapple-notes-api");
+    expect(html).toContain("body=https%3A%2F%2Fpintonotes.com%2Fblog%2Fapple-notes-api");
     expect(html).not.toContain("apps.apple.com");
     expect(render(true)).toContain("apps.apple.com");
     expect(render(true)).not.toContain("coming to the App Store");

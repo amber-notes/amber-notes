@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { OPEN_WAIT_MS, openEvent, openRequested, validAppLink, withoutOpen } from "./open-in-app";
 
-describe("opening Amber Notes from the page", () => {
+describe("opening Pinto Notes from the page", () => {
   it("only tries a template's or a shared note's app link", () => {
     expect(validAppLink("ambernotes://template/habit-tracker")).toBe(true);
     expect(validAppLink("ambernotes://copy/abcdefghijklmnopqrstuvwx")).toBe(true);
@@ -17,8 +17,8 @@ describe("opening Amber Notes from the page", () => {
     expect(openRequested("?open")).toBe(true);
     expect(openRequested("")).toBe(false);
     expect(openRequested("?category=work")).toBe(false);
-    expect(withoutOpen("https://ambernotes.app/templates/habit-tracker?open=1")).toBe("/templates/habit-tracker");
-    expect(withoutOpen("https://ambernotes.app/n/abc?x=2&open=1#top")).toBe("/n/abc?x=2#top");
+    expect(withoutOpen("https://pintonotes.com/templates/habit-tracker?open=1")).toBe("/templates/habit-tracker");
+    expect(withoutOpen("https://pintonotes.com/n/abc?x=2&open=1#top")).toBe("/n/abc?x=2#top");
   });
 
   it("names a template's attempt and its outcome, and nothing for a shared note", () => {

@@ -42,6 +42,6 @@ describe("the Dev-only preview pages", () => {
 describe("analytics on the private pages", () => {
   it.each(["/n/abc", "/n/abc/def", "/n/preview", "/connect", "/open/connect", "/open/copy/abc", "/open/template/trip-plan", "/report/abc"])("never loads on %s", (path) => {
     expect(posthogAllowed(path)).toBe(false);
-    expect(analyticsEvent({ url: `https://ambernotes.app${path}?x=1` })).toBeNull();
+    expect(analyticsEvent({ url: `https://pintonotes.com${path}?x=1` })).toBeNull();
   });
 });

@@ -27,7 +27,7 @@ describe("signing in on the connect page", () => {
     expect(html).toContain(">Continue<");
     expect(html).not.toContain(APPLE_INSTEAD.replace(/'/g, "&#x27;"));
     // One focus: no lede that the next screen repeats, no sign-up link, no "this computer" line yet.
-    expect(html).not.toContain("Sign in, and Amber Notes asks you");
+    expect(html).not.toContain("Sign in, and Pinto Notes asks you");
     expect(html).not.toContain("No account yet");
     expect(html).not.toContain("/open/connect?request=");
   });

@@ -17,8 +17,8 @@ beforeEach(() => {
 });
 afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 
-const ask = (body: unknown, headers: Record<string, string> = { origin: "https://ambernotes.app", host: "ambernotes.app", "x-real-ip": "198.51.100.7" }) =>
-  POST(new Request("https://ambernotes.app/connect/account-status", { method: "POST", headers: { "content-type": "application/json", ...headers }, body: JSON.stringify(body) }));
+const ask = (body: unknown, headers: Record<string, string> = { origin: "https://pintonotes.com", host: "pintonotes.com", "x-real-ip": "198.51.100.7" }) =>
+  POST(new Request("https://pintonotes.com/connect/account-status", { method: "POST", headers: { "content-type": "application/json", ...headers }, body: JSON.stringify(body) }));
 
 describe("/connect/account-status", () => {
   it("asks the function for the visitor, and passes back only whether there's an account and a password", async () => {
@@ -32,8 +32,8 @@ describe("/connect/account-status", () => {
   });
 
   it("answers only the connect page itself", async () => {
-    expect((await ask({ email: "a@b.co" }, { origin: "https://evil.example", host: "ambernotes.app" })).status).toBe(403);
-    expect((await ask({ email: "a@b.co" }, { host: "ambernotes.app" })).status).toBe(403);
+    expect((await ask({ email: "a@b.co" }, { origin: "https://evil.example", host: "pintonotes.com" })).status).toBe(403);
+    expect((await ask({ email: "a@b.co" }, { host: "pintonotes.com" })).status).toBe(403);
     expect(calls).toEqual([]);
   });
 

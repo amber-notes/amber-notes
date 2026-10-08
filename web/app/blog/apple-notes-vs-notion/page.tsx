@@ -22,7 +22,7 @@ const FAQ = [
     "For structured work, yes: databases, linked pages and a shared team workspace are things Apple Notes doesn't try to do. For quick everyday notes, Apple Notes is faster to open and write in, and it works fully offline.",
   ] },
   { q: "Can ChatGPT or Claude use my Apple Notes like they can use Notion?", a: [
-    "No. Notion has an MCP server that ChatGPT and Claude connect to; Apple Notes has no API, so they can't reach it from the web or your phone; only the Claude desktop app on a Mac can, through Anthropic's Read and Write Apple Notes extension. Amber Notes works like Apple Notes and has an MCP server built in.",
+    "No. Notion has an MCP server that ChatGPT and Claude connect to; Apple Notes has no API, so they can't reach it from the web or your phone; only the Claude desktop app on a Mac can, through Anthropic's Read and Write Apple Notes extension. Pinto Notes works like Apple Notes and has an MCP server built in.",
   ] },
 ];
 
@@ -37,7 +37,7 @@ export default function Page() {
       <div className="tableWrap">
         <table>
           <thead>
-            <tr><th scope="col"></th><th scope="col">Apple Notes</th><th scope="col">Notion</th><th scope="col">Amber Notes</th></tr>
+            <tr><th scope="col"></th><th scope="col">Apple Notes</th><th scope="col">Notion</th><th scope="col">Pinto Notes</th></tr>
           </thead>
           <tbody>
             {ROWS.map(([what, apple, notion, amber]) => (
@@ -73,14 +73,14 @@ export default function Page() {
         them from the web or your phone. <a href="/blog/apple-notes-api">Apple Notes API: what exists</a> explains why.
       </p>
       <p>
-        If you like how Apple Notes feels and want your AI to use your notes, that&apos;s the gap I built Amber Notes for. It works like Apple
+        If you like how Apple Notes feels and want your AI to use your notes, that&apos;s the gap I built Pinto Notes for. It works like Apple
         Notes, imports your Apple Notes on the Mac, and ChatGPT, Claude, Claude Code, Codex and Incredible can use it, with your approval and
-        an Undo for every change. <a href="/blog/amber-notes-vs-apple-notes">Amber Notes vs Apple Notes</a> covers what it doesn&apos;t do yet.
+        an Undo for every change. <a href="/blog/amber-notes-vs-apple-notes">Pinto Notes vs Apple Notes</a> covers what it doesn&apos;t do yet.
       </p>
 
       <h2>Which to use</h2>
       <ul>
-        <li><strong>Mostly quick personal notes:</strong> Apple Notes, or Amber Notes if you want AI in the loop.</li>
+        <li><strong>Mostly quick personal notes:</strong> Apple Notes, or Pinto Notes if you want AI in the loop.</li>
         <li><strong>Team projects and databases:</strong> Notion.</li>
         <li><strong>Both:</strong> plenty of people keep quick notes in one and projects in the other. <a href="/blog/notes-apps-that-work-with-chatgpt">Notes apps that work with ChatGPT</a> compares the options if AI access is the deciding factor.</li>
       </ul>

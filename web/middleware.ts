@@ -1,8 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { connectCSP, newNonce } from "@/lib/connect-csp";
-import { allowedPath, functionRegion, MCP_HOST, sitePath, upstream, upstreamHeaders } from "@/lib/mcp-proxy";
+import { allowedPath, functionRegion, mcpPublicURL, sitePath, upstream, upstreamHeaders } from "@/lib/mcp-proxy";
+import { movedTo } from "@/lib/site-move";
 
-// Two jobs, each on its own requests.
+// Three jobs, each on its own requests.
 //
 // 1. mcp.ambernotes.app is the MCP server's public address. Requests to that host, on the server's
 //    own paths only, go to the Supabase function (supabase/functions/mcp) with path and query kept,
@@ -10,16 +11,21 @@ import { allowedPath, functionRegion, MCP_HOST, sitePath, upstream, upstreamHead
 //    host in its OAuth metadata and counts the caller's address for rate limits because the proxy
 //    says so with a shared secret (MCP_PROXY_SECRET). Without the secret the proxy doesn't run.
 //    The favicon and OpenAI's domain challenge on that host are the site's own files.
+//    mcp.pintonotes.com (the new name) is the same server; mcp.ambernotes.app keeps serving for good.
 //
 // 2. The connect pages (/connect, and /open/connect where the universal link lands in a browser) get
 //    a per-response nonce, a strict CSP and no referrer. /connect may also call the Supabase project.
 //    The Dev-only /connect/preview gets the same CSP, so what it shows is what /connect can render.
 //    /reset-password is the same kind of page (a link's one-time token, a new password) and gets the
 //    same treatment; it calls the Supabase project too.
+//
+// 3. ambernotes.app, the site's old address, sends each page to pintonotes.com, path for path
+//    (lib/site-move.ts says which paths stay).
 
 export const config = {
   matcher: [
-    { source: "/:path*", has: [{ type: "host", value: "mcp\\.ambernotes\\.app" }] },
+    { source: "/:path*", has: [{ type: "host", value: "mcp\\.(?:ambernotes\\.app|pintonotes\\.com)" }] },
+    { source: "/:path*", has: [{ type: "host", value: "(?:www\\.)?ambernotes\\.app" }] },
     "/connect",
     "/open/connect",
     "/connect/preview",
@@ -29,12 +35,16 @@ export const config = {
 
 export async function middleware(req: NextRequest) {
   const host = (req.headers.get("host") ?? "").toLowerCase();
-  if (host === MCP_HOST) return proxy(req);
+  const publicURL = mcpPublicURL(host);
+  if (publicURL) return proxy(req, publicURL);
+  // req.url as sent, so the query moves exactly as it was (see proxy below).
+  const moved = movedTo(host, new URL(req.url));
+  if (moved) return NextResponse.redirect(moved, 308);
   if (["/connect", "/open/connect", "/connect/preview", "/reset-password"].includes(req.nextUrl.pathname)) return connectPage(req);
   return NextResponse.next();
 }
 
-function proxy(req: NextRequest) {
+function proxy(req: NextRequest, publicURL: string) {
   // req.url as the client sent it, never req.nextUrl: Next.js rewrites the first 127.x.x.x or [::1]
   // anywhere in nextUrl, the query included, to "localhost", which breaks a loopback redirect_uri
   // (Codex, VS Code). skipMiddlewareUrlNormalize in next.config.ts keeps req.url raw.
@@ -43,12 +53,12 @@ function proxy(req: NextRequest) {
   const supabase = process.env.SUPABASE_URL;
   const secret = process.env.MCP_PROXY_SECRET;
   if (!supabase || !secret) {
-    console.error("mcp.ambernotes.app: SUPABASE_URL or MCP_PROXY_SECRET is not set; not proxying");
-    return new NextResponse("The Amber Notes MCP server isn't available here right now.", { status: 503 });
+    console.error("MCP host: SUPABASE_URL or MCP_PROXY_SECRET is not set; not proxying");
+    return new NextResponse("The Pinto Notes MCP server isn't available here right now.", { status: 503 });
   }
   if (!allowedPath(raw.pathname)) return NextResponse.json({ error: "not_found" }, { status: 404 });
   const to = upstream(supabase, raw.pathname, raw.search);
-  return NextResponse.rewrite(to, { request: { headers: upstreamHeaders(req.headers, secret, functionRegion(process.env.FUNCTION_REGION)) } });
+  return NextResponse.rewrite(to, { request: { headers: upstreamHeaders(req.headers, secret, functionRegion(process.env.FUNCTION_REGION), publicURL) } });
 }
 
 async function connectPage(req: NextRequest) {
