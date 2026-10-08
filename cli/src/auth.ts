@@ -47,12 +47,12 @@ export function codeFrom(returned: string, state: string, issuer: string): strin
   let u: URL;
   try { u = new URL(returned.trim()); } catch { throw new Error("That isn't the address from the browser. Copy the whole address, starting with http://127.0.0.1."); }
   const q = u.searchParams;
-  if (q.get("error")) throw new Error(q.get("error") === "access_denied" ? "Declined in Amber Notes. Nothing was connected." : `Sign-in failed: ${q.get("error_description") ?? q.get("error")}`);
+  if (q.get("error")) throw new Error(q.get("error") === "access_denied" ? "Declined in Pinto Notes. Nothing was connected." : `Sign-in failed: ${q.get("error_description") ?? q.get("error")}`);
   if (q.get("state") !== state) throw new Error("That sign-in was started somewhere else (its state doesn't match). Run amber login again.");
   // RFC 9207: the code must come from the server we asked.
   if (q.get("iss") && q.get("iss")!.replace(/\/+$/, "") !== issuer.replace(/\/+$/, "")) throw new Error(`The answer came from ${q.get("iss")}, not ${issuer}.`);
   const code = q.get("code");
-  if (!code) throw new Error("The address has no code. Approve in Amber Notes, then copy the address you land on.");
+  if (!code) throw new Error("The address has no code. Approve in Pinto Notes, then copy the address you land on.");
   return code;
 }
 
@@ -84,9 +84,9 @@ export async function login(server: string, io: LoginIO, o: { noBrowser?: boolea
     const redirect = `http://127.0.0.1:${listener.addr.port}${CALLBACK_PATH}`;
     const url = authorizeURL(meta, { clientId, redirect, challenge: await challengeOf(verifier), state, resource: server, scope: o.readOnly ? "notes:read" : SCOPE });
     const opened = !o.noBrowser && await io.open(url);
-    if (opened) io.say("Opened your browser to connect. Approve in Amber Notes on your iPhone or Mac.");
+    if (opened) io.say("Opened your browser to connect. Approve in Pinto Notes on your iPhone or Mac.");
     io.say(`${opened ? "If it didn't open, go to" : "Open this in a browser"}:\n\n  ${url}\n`);
-    if (!opened) io.say("Approve in Amber Notes. If the browser is on another machine, it ends on a page that won't load:\ncopy that page's address (it starts with http://127.0.0.1) and paste it here.");
+    if (!opened) io.say("Approve in Pinto Notes. If the browser is on another machine, it ends on a page that won't load:\ncopy that page's address (it starts with http://127.0.0.1) and paste it here.");
     // Whichever comes first: the browser coming back here, or an address pasted in.
     const pasted = opened ? new Promise<string>(() => {}) : io.ask("Address: ").then((a) => a ?? new Promise<string>(() => {}));
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -129,7 +129,7 @@ export async function accessToken(server: string, force = false): Promise<string
     if (!res.ok || !t.access_token) {
       if (t.error === "invalid_grant") {
         await deleteCredentials(server);
-        throw new Error("This terminal was disconnected from Amber Notes (Settings › Connect an AI). Run `amber login` to connect again.");
+        throw new Error("This terminal was disconnected from Pinto Notes (Settings › Connect an AI). Run `amber login` to connect again.");
       }
       throw new Error(`Couldn't renew the sign-in: ${t.error_description ?? res.status}`);
     }

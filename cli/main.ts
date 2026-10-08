@@ -7,7 +7,7 @@ import { parse } from "./src/args.ts";
 import { format, readText } from "./src/format.ts";
 import { DEFAULT_SERVER, loadConfig, loadCredentials, saveConfig, saveCredentials, where } from "./src/store.ts";
 
-const HELP = `amber: your Amber Notes from the terminal
+const HELP = `amber: your Pinto Notes from the terminal
 
 Notes are paths like "Work/Acme.md"; folders end in "/". A note's sub-notes and files are in the
 folder with its name ("Work/Acme/Agenda.md"). Read a note before you edit or write it.
@@ -25,7 +25,7 @@ folder with its name ("Work/Acme/Agenda.md"). Read a note before you edit or wri
   amber restore <note> [<version>]   undelete, or bring back a version
   amber pin <note> [--off]
 
-  amber login                        connect: approve in Amber Notes on your iPhone or Mac
+  amber login                        connect: approve in Pinto Notes on your iPhone or Mac
   amber logout                       disconnect this terminal
   amber status                       who and where
 
@@ -45,7 +45,7 @@ const MORE: Record<string, string> = {
   history: `amber history <note> [--limit 10]\n\nEarlier versions, newest first, with who made each (a device, or an AI).`,
   restore: `amber restore <note>              out of Recently Deleted\namber restore <note> <version>    bring back a version from amber history (the current text is kept too)`,
   pin: `amber pin <note>\namber pin <note> --off`,
-  login: `amber login                 opens your browser; approve in Amber Notes on your iPhone or Mac\namber login --no-browser    for a server or SSH session: prints the address to open anywhere,\n                            then takes the address the browser ends on\namber login --read-only     ask for read access only\namber login --token         paste an access token from Settings › Connect an AI (for CI)\n\nOr set AMBER_TOKEN. The connection shows in Settings › Connect an AI, where you can disconnect it.\nTokens are kept in ${where()}.`,
+  login: `amber login                 opens your browser; approve in Pinto Notes on your iPhone or Mac\namber login --no-browser    for a server or SSH session: prints the address to open anywhere,\n                            then takes the address the browser ends on\namber login --read-only     ask for read access only\namber login --token         paste an access token from Settings › Connect an AI (for CI)\n\nOr set AMBER_TOKEN. The connection shows in Settings › Connect an AI, where you can disconnect it.\nTokens are kept in ${where()}.`,
 };
 
 const out = (s: string) => console.log(s);
@@ -117,8 +117,8 @@ async function main() {
     // The sign-in this one replaces is disconnected once the new one works, so none is left behind.
     const old = await loadCredentials(server);
     if (args.token) {
-      const token = await readSecret("Access token from Amber Notes › Settings › Connect an AI: ");
-      if (!/^pane_[0-9a-f]{64}$/i.test(token)) fail("That isn't an Amber Notes access token (pane_ and 64 letters and digits).");
+      const token = await readSecret("Access token from Pinto Notes › Settings › Connect an AI: ");
+      if (!/^pane_[0-9a-f]{64}$/i.test(token)) fail("That isn't a Pinto Notes access token (pane_ and 64 letters and digits).");
       const mcp = await connect(server, () => Promise.resolve(token)).catch((e) => fail(e instanceof Refused ? "The server refused that token." : e.message));
       await mcp.close();
       await saveCredentials(server, { access_token: token });
@@ -130,12 +130,12 @@ async function main() {
     await saveConfig({ ...cfg, server: server === DEFAULT_SERVER ? undefined : server });
     const c = (await loadCredentials(server))!;
     const access = args.token ? "the token's access" : c.scope?.includes("notes:write") ? "read & edit" : "read only";
-    return out(`Connected to Amber Notes (${access}). Tokens are kept in ${where()}.\nDisconnect any time: amber logout, or Settings › Connect an AI in the app.`);
+    return out(`Connected to Pinto Notes (${access}). Tokens are kept in ${where()}.\nDisconnect any time: amber logout, or Settings › Connect an AI in the app.`);
   }
   if (cmd === "logout") {
     const what = await logout(server);
-    return out(what === "revoked" ? "Disconnected this terminal from Amber Notes." : what === "forgotten"
-      ? "Forgot the access token here. It keeps working until you delete it in Amber Notes › Settings › Connect an AI." : "This terminal wasn't connected.");
+    return out(what === "revoked" ? "Disconnected this terminal from Pinto Notes." : what === "forgotten"
+      ? "Forgot the access token here. It keeps working until you delete it in Pinto Notes › Settings › Connect an AI." : "This terminal wasn't connected.");
   }
 
   // One session across runs (for 12 hours), so what amber read read counts for amber edit.
@@ -143,7 +143,7 @@ async function main() {
   const kept = config.sessions?.[server];
   const session = kept && Date.now() - kept.at < 12 * 3600_000 ? kept.id : undefined;
   const mcp = await connect(server, (force) => accessToken(server, force), session).catch((e) =>
-    fail(e instanceof Refused ? (Deno.env.get("AMBER_TOKEN") ? "The server refused AMBER_TOKEN." : "Amber Notes turned this terminal away. Run `amber login` to connect again.") : e.message));
+    fail(e instanceof Refused ? (Deno.env.get("AMBER_TOKEN") ? "The server refused AMBER_TOKEN." : "Pinto Notes turned this terminal away. Run `amber login` to connect again.") : e.message));
   if (mcp.session && mcp.session !== session) await saveConfig({ ...config, sessions: { ...(config.sessions ?? {}), [server]: { id: mcp.session, at: Date.now() } } }).catch(() => {});
   try {
     if (cmd === "status") {
@@ -196,7 +196,7 @@ async function main() {
     out(format(tool, r));
   } catch (e) {
     if (e instanceof ToolFailed) fail(e.message);
-    if (e instanceof Refused) fail("Amber Notes turned this terminal away. Run `amber login` to connect again.");
+    if (e instanceof Refused) fail("Pinto Notes turned this terminal away. Run `amber login` to connect again.");
     throw e;
   } finally {
     // The session stays open for the next run (it ends on its own).

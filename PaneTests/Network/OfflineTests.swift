@@ -330,7 +330,7 @@ extension NetworkFaults {
         #expect(OfflineCopy.line(.online, waiting: true) == nil)
         #expect(OfflineCopy.line(.offline, waiting: false) == "Offline")
         #expect(OfflineCopy.line(.offline, waiting: true) == "Offline \u{00B7} changes sync later")
-        #expect(OfflineCopy.line(.unreachable, waiting: true) == "Can\u{2019}t reach Amber Notes \u{00B7} changes sync later")
+        #expect(OfflineCopy.line(.unreachable, waiting: true) == "Can\u{2019}t reach Pinto Notes \u{00B7} changes sync later")
     }
 }
 }

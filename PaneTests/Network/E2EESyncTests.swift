@@ -743,7 +743,7 @@ extension NetworkFaults {
         #expect(center.queue == [late])
         let text = ConnectNotifier.content(ask, who: "ChatGPT")
         #expect(text.title == "Allow ChatGPT to use your notes?")
-        #expect(text.body == "Requested from Chrome on a Mac. Open Amber Notes to allow it.")
+        #expect(text.body == "Requested from Chrome on a Mac. Open Pinto Notes to allow it.")
         // An expired one never opens or notifies.
         let stale = ConnectAsk(request_id: UUID(), browser_key: "", started_from: "Chrome on a Mac", created_at: now.addingTimeInterval(-700), expires_at: now.addingTimeInterval(-1))
         await asks.take(stale)

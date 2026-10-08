@@ -256,7 +256,7 @@ enum AddDeviceError: LocalizedError, Equatable {
 
     var errorDescription: String? {
         switch self {
-        case .notACode: "That isn't an Amber Notes code. Scan the code on the screen that says \u{201C}Open your notes on this device\u{201D}."
+        case .notACode: "That isn't a Pinto Notes code. Scan the code on the screen that says \u{201C}Open your notes on this device\u{201D}."
         case .typo: "That code has a typo. It's 12 letters and numbers."
         case .notFound: "That code isn't waiting on your account. Check that both devices are signed in to the same account, then use the code the new device shows now."
         case .changed: "Something changed this request on the way. Nothing was sent. Show a new code on the new device and try again."

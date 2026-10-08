@@ -118,33 +118,33 @@ function draft(kind: Kind, c: Context): Draft {
   switch (kind) {
     case "welcome":
       return {
-        subject: ["Welcome to Amber Notes", "Hi from Emil at Amber Notes"],
-        preview: ["What Amber Notes is good for, and the one thing to do first.",
+        subject: ["Welcome to Pinto Notes", "Hi from Emil at Pinto Notes"],
+        preview: ["What Pinto Notes is good for, and the one thing to do first.",
           "A quick hello, and the one thing to do first."],
-        title: "Welcome to Amber Notes",
+        title: "Welcome to Pinto Notes",
         art: c.plain ? undefined : { file: "hero-try.jpg", ground: "#2e346d", alt: "Two paper-cut armchairs with a mug each, ready for a chat" },
         blocks: [
-          { p: "Hi, I'm Emil. Amber Notes is a simple notes app for iPhone and Mac that ChatGPT and Claude can read and edit, with your approval. It's end-to-end encrypted, and free." },
+          { p: "Hi, I'm Emil. Pinto Notes is a simple notes app for iPhone and Mac that ChatGPT and Claude can read and edit, with your approval. It's end-to-end encrypted, and free." },
           ...welcomeStepBlocks(c),
           { p: "Questions, or something that doesn't work? Just reply, I read every email." },
         ],
       };
     case "stuck":
       return {
-        subject: ["Did something go wrong after signing in?", "Your Amber Notes account is still empty"],
-        preview: ["Your Amber Notes account has no notes yet. If the app got in your way, I'd like to know.",
+        subject: ["Did something go wrong after signing in?", "Your Pinto Notes account is still empty"],
+        preview: ["Your Pinto Notes account has no notes yet. If the app got in your way, I'd like to know.",
           "No notes have arrived yet. If something got stuck after signing in, tell me."],
         title: "Did something get stuck?",
         art: { file: "hero-stuck.jpg", ground: "#e9a82a", alt: "A paper-cut ladybird on a leaf, next to a magnifying glass and a toolbox" },
         blocks: [
-          { p: "Hi, I'm Emil, and I make Amber Notes. You made an account, but no notes have arrived yet. If something after signing in was confusing or got stuck, tell me and I'll help you get going." },
+          { p: "Hi, I'm Emil, and I make Pinto Notes. You made an account, but no notes have arrived yet. If something after signing in was confusing or got stuck, tell me and I'll help you get going." },
           { button: { label: "Reply to Emil", href: "mailto:emil@ambernotes.app?subject=Stuck%20after%20signing%20in" } },
           { p: "Notes in Apple Notes? On the Mac, choose File, then Import from Apple Notes.", small: true },
         ],
       };
     case "import":
       return {
-        subject: ["Bring your Apple Notes over", "Your Apple Notes, in Amber Notes"],
+        subject: ["Bring your Apple Notes over", "Your Apple Notes, in Pinto Notes"],
         preview: ["One menu on the Mac brings your notes across with their folders. Apple Notes stays as it is.",
           "Choose File, then Import from Apple Notes. Folders come along, and Apple Notes stays as it is."],
         title: "Bring your Apple Notes over",
@@ -157,11 +157,11 @@ function draft(kind: Kind, c: Context): Draft {
       };
     case "connect": {
       const last = c.connectTried
-        ? "Started connecting? Finish by typing the number the page shows into Amber Notes on your iPhone or Mac."
+        ? "Started connecting? Finish by typing the number the page shows into Pinto Notes on your iPhone or Mac."
         : "In the app: Settings, then Connect an AI. You approve it on your iPhone or Mac.";
       return c.sortable
         ? {
-          subject: ["Let ChatGPT sort your notes into folders", "A tidier Amber Notes in one ask"],
+          subject: ["Let ChatGPT sort your notes into folders", "A tidier Pinto Notes in one ask"],
           preview: ["Connect ChatGPT or Claude and ask it to sort your notes. It makes the folders and moves each note.",
             "Ask ChatGPT or Claude to sort your notes into folders, and it does the moving."],
           title: "Sort your notes into folders",
@@ -175,7 +175,7 @@ function draft(kind: Kind, c: Context): Draft {
         }
         : {
           subject: ["Your grocery list, kept by ChatGPT", "Let ChatGPT or Claude into your notes"],
-          preview: ["Tell ChatGPT what you need, and the list in Amber Notes changes. Every change is marked, with Undo.",
+          preview: ["Tell ChatGPT what you need, and the list in Pinto Notes changes. Every change is marked, with Undo.",
             "Connect ChatGPT or Claude, then just ask. The change lands in your note, marked, with Undo."],
           title: "Let your AI keep the grocery list",
           art: { file: "hero-connect.jpg", ground: "#86b994", alt: "A paper-cut fridge with a grocery list held up by an amber magnet, beside a lemon and a pot of basil" },
@@ -198,7 +198,7 @@ function draft(kind: Kind, c: Context): Draft {
         blocks: [
           { p: "Your AI is connected. Tap one of these, and it opens in ChatGPT or Claude ready to send." },
           { prompts: PROMPTS },
-          { p: "In ChatGPT, add Amber Notes from the tools menu in a new chat first.", small: true },
+          { p: "In ChatGPT, add Pinto Notes from the tools menu in a new chat first.", small: true },
         ],
       };
     case "undo":
@@ -220,14 +220,14 @@ function draft(kind: Kind, c: Context): Draft {
       // Behind APPS_LIVE. Check the words against the shipped feature before turning it on.
       return {
         subject: ["Your notes can be apps", "A habit tracker, made in a note"],
-        preview: ["A note in Amber Notes can be a small app now, like a habit tracker or a budget.",
+        preview: ["A note in Pinto Notes can be a small app now, like a habit tracker or a budget.",
           "Ask your AI to turn a note into an app, or start from a template."],
         title: "Your notes can be apps",
         art: { file: "hero-apps.jpg", ground: "#0c5c63", alt: "A paper-cut open notebook whose pieces rise and fit together into a little gadget with a ring gauge and buttons" },
         blocks: [
           { p: "Hi, Emil here. A note can hold a small app now. Here are two: a habit tracker you tick off every day, and a budget that adds up as you go." },
-          { shot: { file: "app-habits.jpg", w: 300, h: 214, alt: "A habit tracker app in an Amber Notes note: four of four done today" } },
-          { shot: { file: "app-budget.jpg", w: 300, h: 219, alt: "A budget app in an Amber Notes note: October budget with spending by category" } },
+          { shot: { file: "app-habits.jpg", w: 300, h: 214, alt: "A habit tracker app in a Pinto Notes note: four of four done today" } },
+          { shot: { file: "app-budget.jpg", w: 300, h: 219, alt: "A budget app in a Pinto Notes note: October budget with spending by category" } },
           { button: { label: "See apps you can start from", href: `${c.site}/templates?category=apps` } },
         ],
       };
@@ -247,26 +247,26 @@ function draft(kind: Kind, c: Context): Draft {
     case "iphone":
       // Behind APP_STORE_LIVE.
       return {
-        subject: ["Amber Notes is on iPhone", "Your notes, on your iPhone"],
+        subject: ["Pinto Notes is on iPhone", "Your notes, on your iPhone"],
         preview: ["Sign in with the same account and your notes are there, with your AI's changes.",
-          "Amber Notes is in the App Store. Your notes are waiting there."],
+          "Pinto Notes is in the App Store. Your notes are waiting there."],
         title: "Your notes, on your iPhone",
         art: { file: "hero-iphone.jpg", ground: "#86936b", alt: "A paper-cut phone standing by a window, a note on its screen, with a plant and a cup of coffee" },
         blocks: [
-          { p: "Hi, Emil here. Amber Notes is in the App Store. Sign in with the same account, and your notes are there, with everything your AI changed." },
+          { p: "Hi, Emil here. Pinto Notes is in the App Store. Sign in with the same account, and your notes are there, with everything your AI changed." },
           { button: { label: "Get it on the App Store", href: APP_STORE_URL } },
           { p: "Your key comes along through iCloud Keychain, so your notes open right away.", small: true },
         ],
       };
     case "mac":
       return {
-        subject: ["Amber Notes on your Mac", "Your notes, on your Mac too"],
+        subject: ["Pinto Notes on your Mac", "Your notes, on your Mac too"],
         preview: ["The Mac app is free. Sign in with the same account, and it can bring your Apple Notes over too.",
-          "Amber Notes for Mac is a free download. Your notes are already there."],
-        title: "Amber Notes on your Mac",
+          "Pinto Notes for Mac is a free download. Your notes are already there."],
+        title: "Pinto Notes on your Mac",
         art: { file: "hero-mac.jpg", ground: "#e0ae78", alt: "A paper-cut laptop on a warm desk with a notes window on its screen, beside a plant and a mug" },
         blocks: [
-          { p: "Hi, Emil here. Amber Notes is on the Mac too, and it's free. Sign in with the same account, and on the Mac it can also bring your Apple Notes over." },
+          { p: "Hi, Emil here. Pinto Notes is on the Mac too, and it's free. Sign in with the same account, and on the Mac it can also bring your Apple Notes over." },
           { button: { label: "Download for Mac", href: `${c.site}/download` } },
           { p: "It needs macOS 26 or later.", small: true },
         ],
@@ -304,10 +304,10 @@ function textOf(d: Draft, c: Context): string {
     else if ("prompts" in b) for (const x of b.prompts) out.push(`"${x.text}"`, `Ask ChatGPT: ${askChatGPT(x.text)}`, `Ask Claude: ${askClaude(c, x.id)}`, "");
     else if ("templates" in b) for (const t of b.templates) out.push(`${t.title}: ${t.tagline}`, `Use template: ${c.site}/open/template/${t.slug}`, "");
   }
-  out.push("Emil", "I make Amber Notes. Just reply to reach me.", "", "--",
-    "You're getting this because you made an Amber Notes account. Each of these emails stops once you've done what it's about.",
+  out.push("Emil", "I make Pinto Notes. Just reply to reach me.", "", "--",
+    "You're getting this because you made a Pinto Notes account. Each of these emails stops once you've done what it's about.",
     `Stop these emails: ${c.unsubscribe}`,
-    `Amber Notes, made by Emil Wagman in Sweden. Privacy: ${c.site}/privacy`);
+    `Pinto Notes, made by Emil Wagman in Sweden. Privacy: ${c.site}/privacy`);
   return out.join("\n") + "\n";
 }
 
@@ -500,7 +500,7 @@ ${table(' width="100%" style="width:100%;max-width:520px;"')}
   <tr><td style="padding:0 4px 18px;">
     ${table()}<tr>
       <td style="padding-right:10px;">${table()}<tr><td width="28" height="28" align="center" valign="middle" bgcolor="#f0901a" style="width:28px;height:28px;background:#f0901a;border-radius:7px;text-align:center;"><img src="${a}/mark.png" width="28" height="28" alt="A" style="display:block;width:28px;height:28px;border:0;border-radius:7px;color:#fff4e6;font-family:${DISPLAY};font-size:16px;font-weight:800;line-height:28px;text-align:center;"></td></tr></table></td>
-      <td class="ink" style="font-family:${DISPLAY};font-size:18px;font-weight:700;color:#2a1d10;">Amber Notes</td>
+      <td class="ink" style="font-family:${DISPLAY};font-size:18px;font-weight:700;color:#2a1d10;">Pinto Notes</td>
     </tr></table>
   </td></tr>
 ${art}  <tr><td class="window" bgcolor="${L.page}" style="background:${L.page};border:1px solid ${L.edge};border-radius:14px;">
@@ -523,7 +523,7 @@ ${body}
             <td valign="middle" style="padding-right:12px;">${table()}<tr><td width="44" height="44" align="center" valign="middle" bgcolor="#74604c" style="width:44px;height:44px;background:#74604c;border-radius:22px;text-align:center;"><img src="${a}/emil.jpg" width="44" height="44" alt="E" style="display:block;width:44px;height:44px;border:0;border-radius:22px;color:#fff4e6;font-family:${DISPLAY};font-size:19px;font-weight:700;line-height:44px;text-align:center;"></td></tr></table></td>
             <td valign="middle" style="font-family:${SANS};">
               <p class="ink" style="margin:0;font-size:16px;line-height:1.35;font-weight:600;color:${L.text};">Emil</p>
-              <p class="sec" style="margin:0;font-size:14px;line-height:1.4;color:${L.secondary};">I make Amber Notes. Just reply to reach me.</p>
+              <p class="sec" style="margin:0;font-size:14px;line-height:1.4;color:${L.secondary};">I make Pinto Notes. Just reply to reach me.</p>
             </td>
           </tr></table>
         </td></tr></table>
@@ -531,8 +531,8 @@ ${body}
     </table>
   </td></tr>
   <tr><td class="muted" style="padding:20px 8px 0;font-family:${SANS};font-size:13px;line-height:1.55;color:${L.muted};">
-    You're getting this because you made an Amber Notes account. Each of these emails stops once you've done what it's about. <a class="foot-lnk" href="${esc(c.unsubscribe)}" style="color:${L.link};">Stop these emails</a>.<br><br>
-    Amber Notes, made by Emil Wagman in Sweden. <a class="foot-lnk" href="${c.site}/privacy" style="color:${L.link};">Privacy</a>
+    You're getting this because you made a Pinto Notes account. Each of these emails stops once you've done what it's about. <a class="foot-lnk" href="${esc(c.unsubscribe)}" style="color:${L.link};">Stop these emails</a>.<br><br>
+    Pinto Notes, made by Emil Wagman in Sweden. <a class="foot-lnk" href="${c.site}/privacy" style="color:${L.link};">Privacy</a>
   </td></tr>
 </table>
 <!--[if mso]></td></tr></table><![endif]-->

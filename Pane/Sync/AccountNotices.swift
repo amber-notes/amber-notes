@@ -59,10 +59,10 @@ struct AccountNotice: Decodable, Equatable, Identifiable, Sendable {
                     "Save your new recovery key in Settings \u{203A} Security.")
         case .wrongNumber:
             return ("Someone who knows your password tried to connect an AI. Change your password.",
-                    "The number typed didn't match, so it was declined. Amber Notes takes no new requests to connect an AI for an hour.")
+                    "The number typed didn't match, so it was declined. Pinto Notes takes no new requests to connect an AI for an hour.")
         case .deviceAdded:
             return ("A device was added to your account",
-                    "\(Self.when(created_at)). It can open your notes. If you didn\u{2019}t add it: remove it in Settings \u{203A} Security, change your password, and disconnect and reconnect your AIs. Removing signs a real Amber Notes app out and erases its copy. A device that took your key keeps what it already has: the key can\u{2019}t be changed yet.")
+                    "\(Self.when(created_at)). It can open your notes. If you didn\u{2019}t add it: remove it in Settings \u{203A} Security, change your password, and disconnect and reconnect your AIs. Removing signs a real Pinto Notes app out and erases its copy. A device that took your key keeps what it already has: the key can\u{2019}t be changed yet.")
         case .unknown:
             return ("", "")
         }

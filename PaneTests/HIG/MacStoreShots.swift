@@ -127,7 +127,7 @@ import Testing
             AppleNotesBridge.forceLarge = true
             defer { AppleNotesBridge.forceDemo = false; AppleNotesBridge.forceLarge = false }
             let c = try AppSnapshotTests.container()
-            try await AppSnapshotTests.withLastNote(c, "Welcome to Amber Notes") {
+            try await AppSnapshotTests.withLastNote(c, "Welcome to Pinto Notes") {
                 let w = Self.root(c, dark: false)
                 defer { w.orderOut(nil); w.close() }
                 try? await Task.sleep(for: .seconds(1))

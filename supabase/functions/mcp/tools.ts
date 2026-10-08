@@ -59,7 +59,7 @@ const write = { readOnlyHint: false, destructiveHint: false, openWorldHint: fals
 export const tools: Tool[] = ([
   {
     name: "get_overview", title: "Overview of the notes",
-    description: "An overview of the person's Amber Notes: folders with counts, pinned notes and the most recently edited notes.",
+    description: "An overview of the person's Pinto Notes: folders with counts, pinned notes and the most recently edited notes.",
     inputSchema: { type: "object", properties: {} }, annotations: read,
   },
   {
@@ -119,7 +119,7 @@ export const tools: Tool[] = ([
   },
   {
     name: "replace_note_body", title: "Rewrite a note",
-    description: "Replaces the whole note with new markdown. Use only for full rewrites; prefer edit_note. The person sees the change in Amber Notes with Undo, and the old version stays in history.",
+    description: "Replaces the whole note with new markdown. Use only for full rewrites; prefer edit_note. The person sees the change in Pinto Notes with Undo, and the old version stays in history.",
     inputSchema: { type: "object", properties: { ...noteRef, body: str("The complete new markdown."), expected_version: int("Version from read_note, to avoid overwriting newer changes.") }, required: ["body"] },
     annotations: { ...write, destructiveHint: true },
   },
@@ -196,13 +196,13 @@ export const tools: Tool[] = ([
   },
   {
     name: "list_files", title: "List files",
-    description: "Files kept in Amber Notes (PDFs, spreadsheets, images…), newest first, with the notes that embed them.",
+    description: "Files kept in Pinto Notes (PDFs, spreadsheets, images…), newest first, with the notes that embed them.",
     inputSchema: { type: "object", properties: { query: str("Filter by filename."), limit: int("Default 30.") } },
     annotations: read,
   },
   {
     name: "get_file", title: "Get a file",
-    description: "A file's details and its contents: text files (CSV, JSON, markdown…) as text, images as an image, PDFs and other files as an attached resource. Files over 8 MB can only be opened in Amber Notes.",
+    description: "A file's details and its contents: text files (CSV, JSON, markdown…) as text, images as an image, PDFs and other files as an attached resource. Files over 8 MB can only be opened in Pinto Notes.",
     inputSchema: { type: "object", properties: { id: str("File id from list_files or a pane-file: link in a note.") }, required: ["id"] },
     annotations: read,
   },
@@ -235,7 +235,7 @@ export const tools: Tool[] = ([
   // Note pages (prototype): a view over a note's data, see page.ts.
   {
     name: "set_note_page", title: "Make a page for a note",
-    description: "The note's app (what people see on its App side; call it \"the note's app\" with them, never \"page\"). Gives a note a page: a custom view of its data (a habit grid with streaks, a budget with totals, a reading log), shown in Amber Notes with a Page / Text switch. " +
+    description: "The note's app (what people see on its App side; call it \"the note's app\" with them, never \"page\"). Gives a note a page: a custom view of its data (a habit grid with streaks, a budget with totals, a reading log), shown in Pinto Notes with a Page / Text switch. " +
       "The note's markdown stays the data and the source of truth: this tool never changes it. Keep the note's table or checklist as it is (fix it first with the data tools if needed) and make the page read and change it. " +
       "Replaces the note's current page, if any; an empty html removes it. The last 10 pages are kept, and the page's data (amber.data) stays, so nothing is lost. " +
       "Call get_page_guide first. Pages with external addresses or network calls are refused; the result lists warnings to fix (dark mode, labels, overflow, copied data).\n" + PAGE_REWRITE + "\n" + PAGE_API,
@@ -264,7 +264,7 @@ export const tools: Tool[] = ([
   },
   {
     name: "list_api_keys", title: "List API keys for apps",
-    description: "The API keys the person has set up in Amber Notes for their notes' apps: each key's name, the hosts it may be sent to, and whether it has a value. Never the values: an app asks the app to make a request with { key: name } and Amber Notes adds the key. Use it to tell the person which key an app needs and where to add it (Settings › API Keys).",
+    description: "The API keys the person has set up in Pinto Notes for their notes' apps: each key's name, the hosts it may be sent to, and whether it has a value. Never the values: an app asks the app to make a request with { key: name } and Pinto Notes adds the key. Use it to tell the person which key an app needs and where to add it (Settings › API Keys).",
     inputSchema: { type: "object", properties: {} },
     annotations: read,
   },
@@ -272,13 +272,13 @@ export const tools: Tool[] = ([
   // ChatGPT's connector conventions.
   {
     name: "search", title: "Search",
-    description: "Search the person's Amber Notes by words or phrases. Returns note ids and titles; read one with fetch. Locked notes are left out.",
+    description: "Search the person's Pinto Notes by words or phrases. Returns note ids and titles; read one with fetch. Locked notes are left out.",
     inputSchema: { type: "object", properties: { query: str("Search query.") }, required: ["query"] },
     annotations: read,
   },
   {
     name: "fetch", title: "Fetch",
-    description: "Fetch an Amber Notes note by id (from search) as its full markdown, with folder, pinned state and last edit time.",
+    description: "Fetch a Pinto Notes note by id (from search) as its full markdown, with folder, pinned state and last edit time.",
     inputSchema: { type: "object", properties: { id: str("Note id.") }, required: ["id"] },
     annotations: read,
   },
@@ -353,9 +353,9 @@ async function storageFull(ctx: ToolContext, claims: string): Promise<ToolError>
       return r.u;
     });
     const parts = [["files", u.files], ["Recently Deleted", u.deleted], ["earlier versions", u.versions], ["notes", u.notes], ["apps", u.apps]] as [string, number][];
-    return new ToolError(`Amber Notes is full: ${mb(u.used)} of ${mb(u.limit)} used (${parts.filter(([, n]) => n > 0).map(([k, n]) => `${k} ${mb(n)}`).join(", ")}). Nothing was saved. The person can make room by emptying Recently Deleted or deleting large files in Amber Notes; you can delete files or notes they don't need, if they agree.`);
+    return new ToolError(`Pinto Notes is full: ${mb(u.used)} of ${mb(u.limit)} used (${parts.filter(([, n]) => n > 0).map(([k, n]) => `${k} ${mb(n)}`).join(", ")}). Nothing was saved. The person can make room by emptying Recently Deleted or deleting large files in Pinto Notes; you can delete files or notes they don't need, if they agree.`);
   } catch {
-    return new ToolError("Amber Notes is full (2 GB). Nothing was saved. Empty Recently Deleted or delete large files, then try again.");
+    return new ToolError("Pinto Notes is full (2 GB). Nothing was saved. Empty Recently Deleted or delete large files, then try again.");
   }
 }
 
@@ -386,7 +386,7 @@ export async function bodyOf(v: Vault, n: { id: string; body_ct?: string | null 
   try {
     return await v.openBody(n.id, n.body_ct);
   } catch {
-    throw new ToolError("This note can't be opened with this connection's key. Connect again from Amber Notes (Settings › Connect an AI).");
+    throw new ToolError("This note can't be opened with this connection's key. Connect again from Pinto Notes (Settings › Connect an AI).");
   }
 }
 
@@ -525,7 +525,7 @@ export async function descendants(tx: Tx, id: string): Promise<string[]> {
 }
 
 /** A locked note's text is sealed with the user's notes password; here only its title opens. */
-export const LOCKED = "This note is locked. Its text is encrypted on the user's devices: it can't be read, searched or changed here. The user can open it in Amber Notes.";
+export const LOCKED = "This note is locked. Its text is encrypted on the user's devices: it can't be read, searched or changed here. The user can open it in Pinto Notes.";
 
 export function refuseLocked(n: Note) {
   if (n.locked_body !== null && n.locked_body !== undefined) throw new ToolError(`"${n.title}": ${LOCKED}`);
@@ -1050,7 +1050,7 @@ export const handlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<unkn
       select body_ct, head_ct, locked_body from public.note_revisions where id = ${wholeNumber(a.revision_id, "revision_id")} and note_id = ${n.id}`;
     if (!rows.length) throw new ToolError("No such revision for this note. Use note_history.");
     const r = rows[0];
-    if (r.locked_body !== null || !r.body_ct || !r.head_ct) throw new ToolError("That version was saved while the note was locked, so its text is encrypted. The user can restore it in Amber Notes.");
+    if (r.locked_body !== null || !r.body_ct || !r.head_ct) throw new ToolError("That version was saved while the note was locked, so its text is encrypted. The user can restore it in Pinto Notes.");
     // Opened to check it opens; the version's boxes go back as they are.
     await bodyOf(c.v, { id: n.id, body_ct: r.body_ct });
     const { title } = await withHead(c.v, { ...n, head_ct: r.head_ct });
@@ -1118,8 +1118,8 @@ export const handlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<unkn
       select id, meta_ct, size, storage_path, folder_id from public.attachments where id = ${id}::uuid and deleted_at is null`;
     if (!rows.length) throw new ToolError(`No file with id ${id}. Use list_files.`);
     const f = rows[0];
-    const meta = await c.v.openFileMeta(f.id, f.meta_ct).catch(() => { throw new ToolError("This file can't be opened here. The user can open it in Amber Notes."); });
-    const tooBig = () => new ToolError(`"${meta.name}" is ${(Math.max(Number(f.size), meta.size ?? 0) / 1048576).toFixed(1)} MB. Files over 8 MB can't be sent here; the user can open it in Amber Notes.`);
+    const meta = await c.v.openFileMeta(f.id, f.meta_ct).catch(() => { throw new ToolError("This file can't be opened here. The user can open it in Pinto Notes."); });
+    const tooBig = () => new ToolError(`"${meta.name}" is ${(Math.max(Number(f.size), meta.size ?? 0) / 1048576).toFixed(1)} MB. Files over 8 MB can't be sent here; the user can open it in Pinto Notes.`);
     if (Math.max(Number(f.size), meta.size ?? 0) > MAX_FILE_BYTES) throw tooBig();
     // The row was read under RLS, so this path belongs to the caller. The service key goes in a
     // header, never in an address; the object is sealed and only this request's vault opens it.
@@ -1130,13 +1130,13 @@ export const handlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<unkn
     });
     if (!res.ok) {
       await res.body?.cancel();
-      throw new ToolError("The file isn't uploaded yet. Open Amber Notes on the device that added it so it can sync.");
+      throw new ToolError("The file isn't uploaded yet. Open Pinto Notes on the device that added it so it can sync.");
     }
     // The stored size was checked above; the object itself is held to the same cap (plus the box's
     // header and tag), by its length and by counting what's read, so a bigger one is never read whole.
     const sealed = await readCapped(res, MAX_FILE_BYTES + SEALED_FILE_OVERHEAD).catch(() => { throw tooBig(); });
     let plain: Uint8Array<ArrayBuffer>;
-    try { plain = await c.v.openFile(f.id, sealed); } catch { throw new ToolError("This file can't be opened here. The user can open it in Amber Notes."); }
+    try { plain = await c.v.openFile(f.id, sealed); } catch { throw new ToolError("This file can't be opened here. The user can open it in Pinto Notes."); }
     const type = mimeOf(meta.type, meta.name);
     const details: Record<string, unknown> = { id: f.id, filename: meta.name, type, bytes: plain.length };
     if (f.folder_id) details.folder = pathOf(f.folder_id, await folders(tx, c.v));
@@ -1276,7 +1276,7 @@ export const handlers: Record<string, (tx: Tx, a: Args, c: Call) => Promise<unkn
       } catch { /* sealed with another key */ }
     }
     keys.sort((x, y) => x.name.localeCompare(y.name));
-    return { keys, note: "Values are never shown or sent to AIs. To add a key: Amber Notes › Settings › API Keys." };
+    return { keys, note: "Values are never shown or sent to AIs. To add a key: Pinto Notes › Settings › API Keys." };
   },
 
   async search(tx, a, c) {

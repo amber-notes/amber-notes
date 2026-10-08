@@ -8,7 +8,7 @@ enum OfflineCopy {
         switch reach {
         case .online: return nil
         case .offline: lead = "Offline"
-        case .unreachable: lead = "Can\u{2019}t reach Amber Notes"
+        case .unreachable: lead = "Can\u{2019}t reach Pinto Notes"
         }
         return waiting ? "\(lead) \u{00B7} changes sync later" : lead
     }

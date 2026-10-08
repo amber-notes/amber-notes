@@ -93,7 +93,7 @@ await check("the consent page loads with a nonce CSP and no unsafe-inline", asyn
   expect(/script-src 'self' 'nonce-[A-Za-z0-9+/=]+'/.test(csp), `CSP: ${csp}`);
   expect(!csp.includes("unsafe-inline"), `CSP allows unsafe-inline: ${csp}`);
   expect(csp.includes(`https://${REF}.supabase.co`), "CSP doesn't allow the Supabase project");
-  expect(html.includes("Connect an app to Amber Notes"), "the page doesn't show the sign-in");
+  expect(html.includes("Connect an app to Pinto Notes"), "the page doesn't show the sign-in");
   expect(res.headers.get("x-robots-tag")?.includes("noindex"), "no noindex");
 });
 

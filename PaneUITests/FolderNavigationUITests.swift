@@ -17,7 +17,7 @@ final class FolderNavigationUITests: XCTestCase {
     }
 
     /// The folder list's navigation bar.
-    var folderList: XCUIElement { app.navigationBars["Amber Notes"] }
+    var folderList: XCUIElement { app.navigationBars["Pinto Notes"] }
 
     func back(toFolders: Bool = true) {
         app.navigationBars.element(boundBy: 0).buttons.element(boundBy: 0).tap()

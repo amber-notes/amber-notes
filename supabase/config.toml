@@ -231,27 +231,27 @@ otp_expiry = 3600
 # copies are set through the Management API, not from here. The "password changed" notice is set
 # there only (docs/Technical/password-reset.md).
 [auth.email.template.recovery]
-subject = "Reset your Amber Notes password"
+subject = "Reset your Pinto Notes password"
 content_path = "./supabase/templates/recovery.html"
 
 [auth.email.template.magic_link]
-subject = "Your Amber Notes sign-in code"
+subject = "Your Pinto Notes sign-in code"
 content_path = "./supabase/templates/magic_link.html"
 
 [auth.email.template.confirmation]
-subject = "Confirm your email for Amber Notes"
+subject = "Confirm your email for Pinto Notes"
 content_path = "./supabase/templates/confirmation.html"
 
 [auth.email.template.email_change]
-subject = "Confirm your new email for Amber Notes"
+subject = "Confirm your new email for Pinto Notes"
 content_path = "./supabase/templates/email_change.html"
 
 [auth.email.template.invite]
-subject = "You're invited to Amber Notes"
+subject = "You're invited to Pinto Notes"
 content_path = "./supabase/templates/invite.html"
 
 [auth.email.template.reauthentication]
-subject = "Your Amber Notes code"
+subject = "Your Pinto Notes code"
 content_path = "./supabase/templates/reauthentication.html"
 
 [auth.sms]

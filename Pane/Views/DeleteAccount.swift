@@ -22,7 +22,7 @@ struct DeleteAccountButton: View {
         }
         .disabled(working || reach != .online)
         .accessibilityIdentifier("settings.deleteAccount")
-        .confirmationDialog("Delete your Amber Notes account?", isPresented: $asking, titleVisibility: .visible) {
+        .confirmationDialog("Delete your Pinto Notes account?", isPresented: $asking, titleVisibility: .visible) {
             Button("Delete Account and All Notes", role: .destructive) { Task { await delete() } }
             Button("Cancel", role: .cancel) {}
         } message: {

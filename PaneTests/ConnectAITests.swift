@@ -523,7 +523,7 @@ import Testing
     @Test func claudesFallbackInstallLinkFillsInNameAndAddress() throws {
         let server = "https://example.supabase.co/functions/v1/mcp"
         let url = try #require(WebConnectPlan.claude.fallback).page(server)
-        #expect(url.absoluteString == "https://claude.ai/customize/connectors?modal=add-custom-connector&connectorName=Amber%20Notes&connectorUrl=https%3A%2F%2Fexample.supabase.co%2Ffunctions%2Fv1%2Fmcp")
+        #expect(url.absoluteString == "https://claude.ai/customize/connectors?modal=add-custom-connector&connectorName=Pinto%20Notes&connectorUrl=https%3A%2F%2Fexample.supabase.co%2Ffunctions%2Fv1%2Fmcp")
         let items = try #require(URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems)
         #expect(items.first { $0.name == "connectorUrl" }?.value == server, "decodes back to the exact address")
         #expect(WebConnectPlan.claude.prefills && !WebConnectPlan.chatgpt.prefills)

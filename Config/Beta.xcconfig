@@ -2,7 +2,7 @@
 // data, keychain or links (docs/Technical/staging.md). Passed with -xcconfig by
 // `CHANNEL=beta scripts/release-mac.sh` and `CHANNEL=beta scripts/testflight.sh`.
 PANE_BUNDLE_ID = dev.emilwagman.pane.beta
-PANE_DISPLAY_NAME = Amber Notes Beta
+PANE_DISPLAY_NAME = Pinto Notes Beta
 PANE_PRODUCT_NAME = Amber Notes Beta
 PANE_URL_SCHEME = ambernotes-beta
 PANE_APP_GROUP = group.dev.emilwagman.pane.beta
