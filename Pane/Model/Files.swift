@@ -26,8 +26,10 @@ final class Attachment {
     var trashedAt: Date?
     /// When its name, folder or state last changed; the list sorts files by it.
     var modifiedAt: Date?
-    /// How many times its bytes were replaced (by the AI); a new number means fetch them again.
+    /// How many times its bytes were replaced (by the AI, or edited here); a new number means fetch them again.
     var contentVersion: Int = 0
+    /// Its bytes were edited on this device and haven't gone up yet.
+    var bytesEdited: Bool = false
 
     init(id: UUID = UUID(), filename: String, contentType: String, size: Int64) {
         self.id = id

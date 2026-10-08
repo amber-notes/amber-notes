@@ -40,11 +40,11 @@ const extOf = (name: string) => { const i = name.lastIndexOf("."); return i > 0 
 /** The kinds a person can add (the app's Add File), by ending. Audio, video and EPUB come later. */
 export const SUPPORTED = new Set([
   "pdf", "jpg", "jpeg", "png", "heic", "heif", "gif", "webp",
-  "txt", "md", "markdown", "csv", "tsv", "json", "xml", "yaml", "yml", "html", "css", "js", "ts", "tsx", "jsx", "py", "swift", "sh", "sql", "rb", "go", "rs", "java", "kt", "c", "h", "cpp", "m",
+  "txt", "md", "markdown", "csv", "tsv", "json", "xml", "yaml", "yml", "html", "htm", "css", "js", "ts", "tsx", "jsx", "py", "swift", "sh", "sql", "rb", "go", "rs", "java", "kt", "c", "h", "cpp", "m",
   "docx", "xlsx", "pptx", "pages", "numbers", "key",
 ]);
 /** Text the AI can change line by line, like a note. */
-const TEXT_ENDINGS = new Set(["txt", "md", "markdown", "csv", "tsv", "json", "xml", "yaml", "yml", "html", "css", "js", "ts", "tsx", "jsx", "py", "swift", "sh", "sql", "rb", "go", "rs", "java", "kt", "c", "h", "cpp", "m"]);
+const TEXT_ENDINGS = new Set(["txt", "md", "markdown", "csv", "tsv", "json", "xml", "yaml", "yml", "html", "htm", "css", "js", "ts", "tsx", "jsx", "py", "swift", "sh", "sql", "rb", "go", "rs", "java", "kt", "c", "h", "cpp", "m"]);
 const ending = (name: string) => extOf(name).slice(1).toLowerCase();
 export const isTextFile = (name: string, type: string) => TEXT_ENDINGS.has(ending(name)) || isTextType(mimeOf(type, name));
 
@@ -54,7 +54,7 @@ export function utiOf(name: string, mime?: string): string {
   const byEnding: Record<string, string> = {
     pdf: "com.adobe.pdf", jpg: "public.jpeg", jpeg: "public.jpeg", png: "public.png", heic: "public.heic", gif: "com.compuserve.gif", webp: "org.webmproject.webp",
     txt: "public.plain-text", md: "net.daringfireball.markdown", markdown: "net.daringfireball.markdown", csv: "public.comma-separated-values-text", tsv: "public.tab-separated-values-text",
-    json: "public.json", xml: "public.xml", yaml: "public.yaml", yml: "public.yaml", html: "public.html", css: "public.css", js: "com.netscape.javascript-source", ts: "public.typescript-source",
+    json: "public.json", xml: "public.xml", yaml: "public.yaml", yml: "public.yaml", html: "public.html", htm: "public.html", css: "public.css", js: "com.netscape.javascript-source", ts: "public.typescript-source",
     py: "public.python-script", swift: "public.swift-source", sh: "public.shell-script", sql: "public.sql",
     docx: "org.openxmlformats.wordprocessingml.document", xlsx: "org.openxmlformats.spreadsheetml.sheet", pptx: "org.openxmlformats.presentationml.presentation",
     pages: "com.apple.iwork.pages.sffpages", numbers: "com.apple.iwork.numbers.sffnumbers", key: "com.apple.iwork.keynote.sffkey",

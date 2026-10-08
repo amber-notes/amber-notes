@@ -775,8 +775,15 @@ final class SyncEngine {
                     a.size = Int64(data.count)
                     a.uploaded = true
                 }
+                // Edited here: a version past the server's, even if the AI replaced it meanwhile.
+                if a.bytesEdited {
+                    struct Row: Decodable { var content_version: Int }
+                    let rows: [Row] = (try? await client.from("attachments").select("content_version").eq("id", value: a.id).execute().value) ?? []
+                    if let server = rows.first?.content_version, server >= a.contentVersion { a.contentVersion = server + 1 }
+                }
                 try await client.from("attachments").upsert(AttachmentDTO(a, path: path)).execute()
                 a.dirty = false
+                a.bytesEdited = false
                 // Deleted for good here: the sealed bytes leave Storage too, with its earlier versions
                 // (the row stays as a tombstone).
                 if a.deletedAt != nil {
@@ -1527,7 +1534,12 @@ struct AttachmentDTO: Codable {
         self.init(id: a.id, filename: String(a.filename.prefix(255)), content_type: a.contentType, size: a.size,
                   storage_path: path, created_at: a.createdAt, updated_at: .now, deleted_at: a.deletedAt,
                   folder_id: a.folderID, trashed_at: a.trashedAt)
+        // New bytes from this device (a text file edited here): other devices fetch them again.
+        if a.bytesEdited { sendsContentVersion = a.contentVersion }
     }
+
+    /// Sent only with bytes edited here; otherwise the server's count stays as it is.
+    var sendsContentVersion: Int?
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -1566,6 +1578,7 @@ struct AttachmentDTO: Codable {
         try c.encode(deleted_at, forKey: .deleted_at)
         try c.encode(folder_id, forKey: .folder_id)
         try c.encode(trashed_at, forKey: .trashed_at)
+        if let v = sendsContentVersion { try c.encode(v, forKey: .content_version) }
     }
 }
 

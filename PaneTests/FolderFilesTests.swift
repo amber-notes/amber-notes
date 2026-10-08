@@ -213,7 +213,7 @@ import Testing
         #expect(refused?.unsupported == ["song.mp3", "book.epub"])
         #expect(refused?.tooBig == ["Huge.pdf"])
         #expect(refused?.title == "Can't add these files")
-        #expect(refused?.message.contains("Amber Notes takes PDFs, pictures, text, CSV and Office files.") == true)
+        #expect(refused?.message.contains("Amber Notes takes PDFs, pictures, text, CSV, HTML and code, and Office and iWork files.") == true)
         #expect(refused?.message.contains("up to 100 MB") == true)
         for kind in ["pdf", "jpg", "png", "heic", "gif", "webp", "txt", "csv", "json", "py", "swift", "docx", "xlsx", "pptx", "pages", "numbers", "key"] {
             #expect(FileKinds.isSupported(URL(fileURLWithPath: "/x/a.\(kind)")), "\(kind) is added")
@@ -291,5 +291,46 @@ import Testing
             row["content_version"] = 3
             #expect(try JSONDecoder().decode(AttachmentDTO.self, from: JSONSerialization.data(withJSONObject: row)).content_version == 3)
         }
+    }
+
+    @Test func textEditedHereSendsItsNewVersion() throws {
+        let c = try ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        let folder = c.mainContext.createFolder(named: "Site")
+        let src = FileManager.default.temporaryDirectory.appending(path: "index.html")
+        try Data("<h1>Hi</h1>".utf8).write(to: src)
+        let file = try #require(c.mainContext.addFiles([src], to: folder).first)
+        defer { FileStore.remove(file) }
+        file.uploaded = true
+        file.dirty = false
+        file.contentVersion = 2
+        try c.mainContext.saveText(file, "<h1>Hello</h1>")
+        #expect(try String(contentsOf: FileStore.url(for: file.id, filename: file.filename), encoding: .utf8) == "<h1>Hello</h1>")
+        #expect(file.size == 14 && file.contentVersion == 3 && file.bytesEdited && !file.uploaded && file.dirty)
+        let sealer = Sealer(key: E2EE.newDataKey(), user: UUID())
+        try Wire.$testSealer.withValue(sealer) {
+            let row = try JSONSerialization.jsonObject(with: JSONEncoder().encode(AttachmentDTO(file, path: "u/\(file.id)"))) as! [String: Any]
+            #expect(row["content_version"] as? Int == 3)
+        }
+    }
+
+    @Test func textKindsOpenAsCodeAndHTMLCanBePreviewed() {
+        #expect(FileKinds.isText("index.HTML") && FileKinds.isText("page.htm") && FileKinds.isText("app.py"))
+        #expect(!FileKinds.isText("Budget.csv") && !FileKinds.isText("Paper.pdf"))
+        #expect(FileKinds.isHTML("page.htm") && !FileKinds.isHTML("app.js"))
+        #expect(FileKinds.textEndings.isSubset(of: FileKinds.endings))
+    }
+
+    /// The app and the AI's server take the same kinds (folder_files.ts SUPPORTED), and the
+    /// "can't add" message names them.
+    @Test func acceptedKindsMatchTheServerAndTheMessage() throws {
+        let ts = URL(filePath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .appending(path: "supabase/functions/mcp/folder_files.ts")
+        guard let source = try? String(contentsOf: ts, encoding: .utf8) else { return }
+        let found = try #require(source.range(of: #"SUPPORTED = new Set\(\[[^\]]*\]"#, options: .regularExpression))
+        let list = String(source[found])
+        let server = Set(list.matches(of: /"([a-z0-9]+)"/).map { String($0.1) })
+        #expect(server == FileKinds.endings)
+        let message = FileRefusal(unsupported: ["Film.mov"], tooBig: []).message
+        for kind in ["PDFs", "pictures", "text", "CSV", "HTML", "code", "Office", "iWork"] { #expect(message.contains(kind)) }
     }
 }
