@@ -434,8 +434,7 @@ private struct WindowShaper: NSViewRepresentable {
         window.toolbar?.isVisible = !compact
         // Notes' full-height toolbar with large buttons; compact only for the sign-in card.
         window.toolbarStyle = compact ? .unifiedCompact : .unified
-        // No line under the bar: each column's own ground runs up under it (see RootView).
-        window.titlebarSeparatorStyle = .none
+        window.titlebarSeparatorStyle = compact ? .none : .automatic
         // The card runs under a see-through title bar: one surface, just the window buttons on it.
         window.titlebarAppearsTransparent = compact
         if compact { window.styleMask.insert(.fullSizeContentView) }

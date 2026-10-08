@@ -72,15 +72,9 @@ struct RootView: View {
         NavigationSplitView(columnVisibility: $visibility) {
             SidebarView(scope: $scope, onNewNote: newNote)
                 .navigationSplitViewColumnWidth(min: 200, ideal: 230, max: 320)
-                #if os(macOS)
-                .warmToolbar(Color(Palette.sidebarTop))
-                #endif
         } content: {
             NoteListView(scope: scope ?? .all, selection: $selection, onNewNote: newNote)
                 .navigationSplitViewColumnWidth(min: 260, ideal: 310, max: 420)
-                #if os(macOS)
-                .warmToolbar(Color(Palette.listGround))
-                #endif
                 #if os(iOS)
                 // Each visit to a folder starts at the top with its large title, as in Notes.
                 .id(scope)
@@ -90,7 +84,6 @@ struct RootView: View {
                 #if os(macOS)
                 // Room for the note's toolbar; a narrow window drops the sidebar instead, like Notes.
                 .navigationSplitViewColumnWidth(min: 520, ideal: 760)
-                .warmToolbar(Color.notePage)
                 #endif
         }
         .environment(editor)
@@ -561,20 +554,6 @@ enum Presentation {
         UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
             .flatMap(\.windows)
             .contains { $0.rootViewController?.presentedViewController != nil }
-    }
-}
-#endif
-
-#if os(macOS)
-extension View {
-    /// A column's top under the toolbar: its own warm ground, never the system's grey band. The
-    /// toolbar draws no material, and content scrolling under it fades softly instead of under a
-    /// hard grey edge (that band was a cool grey over the note pane, and over the sidebar in
-    /// full screen).
-    func warmToolbar(_ ground: Color) -> some View {
-        toolbarBackground(ground, for: .windowToolbar)
-            .toolbarBackgroundVisibility(.visible, for: .windowToolbar)
-            .scrollEdgeEffectStyle(.soft, for: .top)
     }
 }
 #endif
