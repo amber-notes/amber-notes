@@ -1,15 +1,15 @@
 ---
 name: amber-notes
-description: Use the person's Amber Notes (ambernotes.app) through the amber-notes MCP server. Use when they mention their notes, Amber Notes, a checklist, a work log, a standup, a timesheet or tracker, or ask to save, look up or update something "in my notes".
+description: Use the person's notes in Pinto Notes (pintonotes.com, formerly Amber Notes) through the amber-notes MCP server. Use when they mention their notes, Pinto Notes, Amber Notes, a checklist, a work log, a standup, a timesheet or tracker, or ask to save, look up or update something "in my notes".
 ---
 
-# Amber Notes
+# Pinto Notes
 
-Amber Notes is the person's own notes app on Mac and iPhone. The `amber-notes` MCP server reads and edits the same notes they see in the app. Every change you make shows up there with Undo, and the previous version stays in the note's history.
+Pinto Notes is the person's own notes app on Mac and iPhone. The `amber-notes` MCP server reads and edits the same notes they see in the app. Every change you make shows up there with Undo, and the previous version stays in the note's history. It was called Amber Notes until October 2026, and the app shows that name until it's updated; it's the same app.
 
 ## If the tools are missing
 
-The server needs a one-time sign-in. If no `amber-notes` tools are available, or a call says to sign in, tell the person to run `/mcp`, pick `amber-notes`, and choose Authenticate. A browser opens at ambernotes.app/connect: they open Amber Notes or sign in there, then choose Read and Edit, or Read Only. They need the free app (ambernotes.app/download) and an account.
+The server needs a one-time sign-in. If no `amber-notes` tools are available, or a call says to sign in, tell the person to run `/mcp`, pick `amber-notes`, and choose Authenticate. A browser opens at pintonotes.com/connect: they open Pinto Notes or sign in there, then choose Read and Edit, or Read Only. They need the free app (pintonotes.com/download) and an account.
 
 A read-only connection only has the reading tools. If a change is refused for that reason, say so; don't look for a way around it.
 

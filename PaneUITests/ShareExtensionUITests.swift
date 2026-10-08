@@ -29,17 +29,17 @@ final class ShareExtensionUITests: XCTestCase {
         let share = safari.buttons["Share"].firstMatch.exists ? safari.buttons["Share"].firstMatch : safari.buttons["ShareButton"]
         XCTAssertTrue(share.waitForExistence(timeout: 10), "Safari's Share")
         share.tap()
-        var target = safari.cells["Amber Notes"]
+        var target = safari.cells["Pinto Notes"]
         if !target.waitForExistence(timeout: 5) {
-            target = safari.buttons["Amber Notes"]
+            target = safari.buttons["Pinto Notes"]
         }
         if !target.waitForExistence(timeout: 5) {
             // Not in the row of apps yet: More reveals every share extension.
             let more = safari.cells["More"].exists ? safari.cells["More"] : safari.buttons["More"]
             if more.waitForExistence(timeout: 5) { more.tap() }
-            target = safari.cells["Amber Notes"].exists ? safari.cells["Amber Notes"] : safari.buttons["Amber Notes"]
+            target = safari.cells["Pinto Notes"].exists ? safari.cells["Pinto Notes"] : safari.buttons["Pinto Notes"]
         }
-        XCTAssertTrue(target.waitForExistence(timeout: 10), "Amber Notes in the share sheet")
+        XCTAssertTrue(target.waitForExistence(timeout: 10), "Pinto Notes in the share sheet")
         attach(safari, "share-sheet")
         target.tap()
 

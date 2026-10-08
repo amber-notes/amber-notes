@@ -132,22 +132,22 @@ async function fileRow(tx: Tx, id: string, lock = false): Promise<FileRow> {
 /** A file's bytes and what it is, opened; refused over the AI's 10 MB. */
 export async function readFile(tx: Tx, c: Call, id: string, path: string): Promise<{ bytes: Uint8Array<ArrayBuffer>; meta: FileMeta; version: number }> {
   const f = await fileRow(tx, id);
-  const meta = await c.v.openFileMeta(f.id, f.meta_ct).catch(() => { throw new ToolError(`${path} can't be opened here. The person can open it in Amber Notes.`); });
+  const meta = await c.v.openFileMeta(f.id, f.meta_ct).catch(() => { throw new ToolError(`${path} can't be opened here. The person can open it in Pinto Notes.`); });
   const size = Math.max(Number(f.size) - SEALED_OVERHEAD, meta.size ?? 0);
-  if (size > AI_FILE_BYTES) throw new ToolError(`${path} is ${MB(size)}. Files over 10 MB can't go through the AI connection; the person can open it in Amber Notes.`);
+  if (size > AI_FILE_BYTES) throw new ToolError(`${path} is ${MB(size)}. Files over 10 MB can't go through the AI connection; the person can open it in Pinto Notes.`);
   const res = await storage(`files/${objectPath(f.storage_path)}`);
-  if (!res.ok) { await res.body?.cancel(); throw new ToolError(`${path} isn't uploaded yet. Open Amber Notes on the device that added it so it can sync.`); }
+  if (!res.ok) { await res.body?.cancel(); throw new ToolError(`${path} isn't uploaded yet. Open Pinto Notes on the device that added it so it can sync.`); }
   const sealed = await readCapped(res, AI_FILE_BYTES + SEALED_OVERHEAD).catch(() => { throw new ToolError(`${path} is over 10 MB.`); });
-  try { return { bytes: await c.v.openFile(f.id, sealed), meta, version: f.content_version }; } catch { throw new ToolError(`${path} can't be opened here. The person can open it in Amber Notes.`); }
+  try { return { bytes: await c.v.openFile(f.id, sealed), meta, version: f.content_version }; } catch { throw new ToolError(`${path} can't be opened here. The person can open it in Pinto Notes.`); }
 }
 
 /** Writes a file's bytes: a new file in a folder (`folderId`), or a new version of an existing one
  *  (`id`), keeping the version it replaces (at most pane_limit 'file_versions'). */
 export async function writeFile(tx: Tx, c: Call, o: { id?: string; folderId?: string | null; name: string; type: string; bytes: Uint8Array; path: string }): Promise<{ id: string; version: number; replaced?: boolean }> {
   if (!SUPPORTED.has(ending(o.name))) {
-    throw new ToolError(`${o.path}: Amber Notes can't show .${ending(o.name) || "(no ending)"} files, so they can't be added. It takes PDF; JPEG, PNG, HEIC, GIF, WebP; text, Markdown, CSV, TSV, JSON, XML, YAML, HTML and code; Word, Excel, PowerPoint, Pages, Numbers and Keynote. Audio, video and EPUB come later.`);
+    throw new ToolError(`${o.path}: Pinto Notes can't show .${ending(o.name) || "(no ending)"} files, so they can't be added. It takes PDF; JPEG, PNG, HEIC, GIF, WebP; text, Markdown, CSV, TSV, JSON, XML, YAML, HTML and code; Word, Excel, PowerPoint, Pages, Numbers and Keynote. Audio, video and EPUB come later.`);
   }
-  if (o.bytes.length > AI_FILE_BYTES) throw new ToolError(`${o.path} would be ${MB(o.bytes.length)}. The AI can write files up to 10 MB; larger ones are added in Amber Notes (up to 100 MB).`);
+  if (o.bytes.length > AI_FILE_BYTES) throw new ToolError(`${o.path} would be ${MB(o.bytes.length)}. The AI can write files up to 10 MB; larger ones are added in Pinto Notes (up to 100 MB).`);
   const sealedSize = o.bytes.length + SEALED_OVERHEAD;
   // Refused at the account's limit with how much is used (the error is the database's).
   await tx`select public.storage_room(${sealedSize}::bigint)`;
@@ -160,7 +160,7 @@ export async function writeFile(tx: Tx, c: Call, o: { id?: string; folderId?: st
     const versionPath = `${f.storage_path}.v${n}`;
     const copied = await storage("copy", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ bucketId: "files", sourceKey: f.storage_path, destinationKey: versionPath }) });
     await copied.body?.cancel();
-    if (!copied.ok) throw new ToolError(`${o.path} isn't uploaded yet, so it can't be replaced. Open Amber Notes on the device that added it so it can sync.`);
+    if (!copied.ok) throw new ToolError(`${o.path} isn't uploaded yet, so it can't be replaced. Open Pinto Notes on the device that added it so it can sync.`);
     await tx`insert into public.attachment_versions (attachment_id, meta_ct, size, storage_path, client, made_at)
       values (${f.id}, ${f.meta_ct}, ${f.size}, ${versionPath}, ${c.ctx.client}, ${f.updated_at})`;
     // Only the newest versions stay.

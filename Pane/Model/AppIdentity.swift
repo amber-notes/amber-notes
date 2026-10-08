@@ -11,10 +11,11 @@ enum AppIdentity {
     static let keychainPrefix = info("PaneBundleID") ?? "dev.emilwagman.pane"
     /// The App Group the share extension hands items to the app through.
     static let appGroup = info("PaneAppGroup") ?? "group.dev.emilwagman.pane"
-    /// Website hosts whose /open/… links the app handles: ambernotes.app, and the site the build
-    /// shares to when that's another public one (the staging site).
+    /// Website hosts whose /open/… links the app handles: ambernotes.app, pintonotes.com (the new
+    /// name, alongside; old links keep working), and the site the build shares to when that's
+    /// another public one (the staging site).
     static let webHosts: Set<String> = {
-        var hosts: Set<String> = ["ambernotes.app", "www.ambernotes.app"]
+        var hosts: Set<String> = ["ambernotes.app", "www.ambernotes.app", "pintonotes.com", "www.pintonotes.com"]
         if let s = info("PaneShareURL"), let u = URL(string: s), u.scheme == "https", let host = u.host?.lowercased() { hosts.insert(host) }
         return hosts
     }()

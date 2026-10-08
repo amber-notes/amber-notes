@@ -170,7 +170,7 @@ import AppKit
             ("shared", ShareLinkState(phase: .shared(slug: "AAAAAAAAAAAAAAAAAAAAAAAA", includesSubNotes: false))),
             ("working", ShareLinkState(phase: .notShared, feedback: .working("Creating link…"))),
             ("done", ShareLinkState(phase: .shared(slug: "AAAAAAAAAAAAAAAAAAAAAAAA", includesSubNotes: false), feedback: .done("Link created and copied"))),
-            ("failed", ShareLinkState(phase: .notShared, feedback: .failed("Couldn’t reach Amber Notes. Check your connection."))),
+            ("failed", ShareLinkState(phase: .notShared, feedback: .failed("Couldn’t reach Pinto Notes. Check your connection."))),
         ]
         for (name, state) in states {
             for dark in [false, true] {

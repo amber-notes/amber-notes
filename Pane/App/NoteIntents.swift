@@ -36,8 +36,8 @@ enum NoteIntentError: Error, CustomLocalizedStringResourceConvertible {
     case gone, locked
     var localizedStringResource: LocalizedStringResource {
         switch self {
-        case .gone: "That note isn't in Amber Notes any more."
-        case .locked: "That note is locked. Open it in Amber Notes."
+        case .gone: "That note isn't in Pinto Notes any more."
+        case .locked: "That note is locked. Open it in Pinto Notes."
         }
     }
 }

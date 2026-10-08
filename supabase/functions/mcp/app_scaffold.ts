@@ -7,13 +7,13 @@
 // The starter's files are big: loaded when a project is made, not when the server starts.
 
 /** How an app runs in Amber Notes: part of every app's README, so any AI working on it reads it. */
-export const appGuide = () => `## How this app runs in Amber Notes
+export const appGuide = () => `## How this app runs in Pinto Notes
 
 - It is the note: opening the note opens the app, on iPhone (320-440 pt wide, safe areas, the keyboard shrinks the view) and on the Mac (a window from about 500 to 1,800 px, resized live). Light and dark follow the device.
-- A normal Vite + React 19 + TypeScript + Tailwind 4 + shadcn/ui project. Amber Notes compiles it when a file is saved (TSX, the @/ alias, imports without extensions, Tailwind from the classes used) and says what broke; nothing is installed. React runs on preact/compat.
+- A normal Vite + React 19 + TypeScript + Tailwind 4 + shadcn/ui project. Pinto Notes compiles it when a file is saved (TSX, the @/ alias, imports without extensions, Tailwind from the classes used) and says what broke; nothing is installed. React runs on preact/compat.
 - Available by name: react, react-dom, radix-ui, lucide-react, recharts, date-fns, zod, motion, sonner, react-day-picker, clsx, tailwind-merge, class-variance-authority, amber-router (Router, Route, route(), back()), chart.js, d3, three, tone, dayjs, marked, dompurify, animejs, canvas-confetti.
-- Data is JSON that Amber Notes keeps for the app (encrypted, synced, with Undo): useStore(key, initial), useCollection(name), useSettings(defaults), batch(fn), setSummary(text) from "@/lib/amber". localStorage works too and is kept the same way. The person's AI reads and edits it as data.json, so keep its shape simple and describe it in docs/README.md.
-- No network except hosts the person allows: declare them in index.html with <meta name="amber-needs" content='{"hosts": ["api.open-meteo.com"]}'> and call fetch(url) from "@/lib/amber"; API keys live in Amber Notes › Settings › API Keys (declare { "keys": [{ "name", "hosts", "query" or "header" }] } and pass { key: name }).
+- Data is JSON that Pinto Notes keeps for the app (encrypted, synced, with Undo): useStore(key, initial), useCollection(name), useSettings(defaults), batch(fn), setSummary(text) from "@/lib/amber". localStorage works too and is kept the same way. The person's AI reads and edits it as data.json, so keep its shape simple and describe it in docs/README.md.
+- No network except hosts the person allows: declare them in index.html with <meta name="amber-needs" content='{"hosts": ["api.open-meteo.com"]}'> and call fetch(url) from "@/lib/amber"; API keys live in Pinto Notes › Settings › API Keys (declare { "keys": [{ "name", "hosts", "query" or "header" }] } and pass { key: name }).
 - The device, through its own prompts: device.reminders, calendar, notify, photos, camera, contacts, location, maps, weather; on-device AI with ai.respond.`;
 
 export async function scaffold(title: string, lang = "en"): Promise<Record<string, string>> {
@@ -26,7 +26,7 @@ export async function scaffold(title: string, lang = "en"): Promise<Record<strin
       name: safe.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "app",
       private: true, type: "module",
       scripts: { dev: "vite", build: "vite build", test: "vitest" },
-      "//": "Amber Notes compiles this project when a file is saved and runs it inside the note. Nothing is installed: these are the packages the app provides.",
+      "//": "Pinto Notes compiles this project when a file is saved and runs it inside the note. Nothing is installed: these are the packages the app provides.",
       dependencies: {
         react: "19", "react-dom": "19", "radix-ui": "1.4", "lucide-react": "0.544", recharts: "2.15", "date-fns": "4", zod: "3.25", motion: "11", sonner: "2", "react-day-picker": "9",
         clsx: "2", "tailwind-merge": "3", "class-variance-authority": "0.7", amber: "*", "amber-router": "*",
@@ -213,7 +213,7 @@ What this app is for, in one sentence.
 - Settings (src/screens/settings.tsx)
 
 ## Tests
-\`npm test\` runs Vitest. Tests live in tests/*.test.tsx and use Testing Library (render, screen, userEvent) with the jest-dom matchers; data starts empty for each test, and \`amber\` (from "amber") shows what was saved. Amber Notes runs them, and a quick check that the app opens and its buttons work, on every save: a version that fails isn't shown to the person; the last one that passed keeps running until the failures are fixed.
+\`npm test\` runs Vitest. Tests live in tests/*.test.tsx and use Testing Library (render, screen, userEvent) with the jest-dom matchers; data starts empty for each test, and \`amber\` (from "amber") shows what was saved. Pinto Notes runs them, and a quick check that the app opens and its buttons work, on every save: a version that fails isn't shown to the person; the last one that passed keeps running until the failures are fixed.
 
 **Every feature you add gets a test like the ones in tests/app.test.tsx**: do what the person does, check what they see, and check what was saved. When the app changes on purpose, change its tests to match the new behaviour. Never weaken, skip or delete a test just to make it pass: fix the app instead.
 

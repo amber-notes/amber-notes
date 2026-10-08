@@ -39,7 +39,7 @@ describe("the unsubscribe page", () => {
 
 describe("POST /unsubscribe/confirm", () => {
   afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
-  const post = (q: string, body = "") => POST(new Request(`https://ambernotes.app/unsubscribe/confirm?${q}`, { method: "POST", body, headers: { "content-type": "application/x-www-form-urlencoded" } }));
+  const post = (q: string, body = "") => POST(new Request(`https://pintonotes.com/unsubscribe/confirm?${q}`, { method: "POST", body, headers: { "content-type": "application/x-www-form-urlencoded" } }));
 
   it("asks the lifecycle function, then sends the page's button back to the page", async () => {
     vi.stubEnv("SUPABASE_URL", "https://example.supabase.co");

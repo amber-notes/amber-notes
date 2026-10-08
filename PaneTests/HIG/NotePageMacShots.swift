@@ -135,7 +135,7 @@ import WebKit
         let json = #"{"slug":"evening-tracker","title":"Evening tracker","note":"Evening tracker\n\nA two-minute check-in at the end of the day.\n","description":"A small app for your evenings: how the day went, sleep and mood, with your week and trends. Your AI can change it.","ask":"Add a sleep column to my Evening tracker."}"#
         let template = try JSONDecoder().decode(NoteTemplate.self, from: Data(json.utf8))
         defer { FirstOpen.variant = .a }
-        let meals = #"{"slug":"meal-plan","title":"Meal plan and groceries","note":"Meal plan and groceries\n\nThis week's dinners and the shopping list that goes with them.\n","description":"A weekly meal plan with the grocery list that goes with it. Your AI plans the dinners and writes the list in Amber Notes.","ask":"Plan dinners for this week. We're out on Friday, and no mushrooms."}"#
+        let meals = #"{"slug":"meal-plan","title":"Meal plan and groceries","note":"Meal plan and groceries\n\nThis week's dinners and the shopping list that goes with them.\n","description":"A weekly meal plan with the grocery list that goes with it. Your AI plans the dinners and writes the list in Pinto Notes.","ask":"Plan dinners for this week. We're out on Friday, and no mushrooms."}"#
         let mealTemplate = try JSONDecoder().decode(NoteTemplate.self, from: Data(meals.utf8))
         let runs: [(FirstOpen.Variant, Bool, Bool)] = [(.a, false, false), (.b, false, false), (.c, false, false), (.a, true, false),
                                                        (.ac, false, false), (.ac, true, false), (.ac, false, true), (.ac, true, true)]

@@ -23,19 +23,19 @@ export function PostCta({ slug, position, title, children, appStoreLive = APP_ST
     <div className={s.cta}>
       <p className={s.ctaTitle}>{title}</p>
       {children}
-      <DownloadLink className={`${s.ctaButton} pi-apple pi-not-ios`} {...cta("download_mac")}>Download Amber Notes for Mac</DownloadLink>
+      <DownloadLink className={`${s.ctaButton} pi-apple pi-not-ios`} {...cta("download_mac")}>Download Pinto Notes for Mac</DownloadLink>
       <div className="pi pi-ios">
         {appStoreLive ? (
           <a className={s.ctaButton} href={APP_STORE_URL} target="_blank" rel="noopener noreferrer" {...cta("app_store")}>Download for iPhone</a>
         ) : (
           <>
-            <p className="pi-line"><strong>The iPhone app is coming to the App Store soon.</strong> Amber Notes is on Mac today: send yourself the link to open there.</p>
+            <p className="pi-line"><strong>The iPhone app is coming to the App Store soon.</strong> Pinto Notes is on Mac today: send yourself the link to open there.</p>
             {send}
           </>
         )}
       </div>
       <div className="pi pi-other">
-        <p className="pi-line"><strong>Amber Notes is for iPhone and Mac.</strong> Send yourself the link to open on one.</p>
+        <p className="pi-line"><strong>Pinto Notes is for iPhone and Mac.</strong> Send yourself the link to open on one.</p>
         {send}
       </div>
       <p className={s.ctaFine}>Free, for macOS 26 or later. Importing from Apple Notes only reads it; nothing there changes.</p>

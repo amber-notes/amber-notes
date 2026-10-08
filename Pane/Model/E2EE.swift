@@ -516,8 +516,31 @@ struct KeychainAccountKeyStore: AccountKeyStore {
     static let dataProtectionAvailable: Bool = {
         var q = query(UUID(), slot: .synced)
         q[kSecMatchLimit as String] = kSecMatchLimitOne
-        return SecItemCopyMatching(q as CFDictionary, nil) != errSecMissingEntitlement
+        let read = SecItemCopyMatching(q as CFDictionary, nil)
+        guard read != errSecMissingEntitlement else { return false }
+        // A read can pass where a write can't: the sandboxed Developer ID beta has no keychain access
+        // group (that needs a provisioning profile), so its synced key was never saved and every
+        // launch asked for the recovery key again. A throwaway synced item, written and removed, says.
+        let probe: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
+                                    kSecAttrService as String: service + ".probe",
+                                    kSecAttrAccount as String: "probe",
+                                    kSecUseDataProtectionKeychain as String: true,
+                                    kSecAttrSynchronizable as String: true]
+        SecItemDelete(probe as CFDictionary)
+        var add = probe
+        add[kSecValueData as String] = Data([0])
+        add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
+        let write = SecItemAdd(add as CFDictionary, nil)
+        SecItemDelete(probe as CFDictionary)
+        return usable(read: read, write: write)
     }()
+
+    /// Whether the data protection keychain can hold the key, from a read and a write of a synced
+    /// item. Only a missing entitlement rules it out: a locked device or a busy keychain is a moment,
+    /// not a reason to move the key somewhere else.
+    nonisolated static func usable(read: OSStatus, write: OSStatus) -> Bool {
+        read != errSecMissingEntitlement && write != errSecMissingEntitlement
+    }
 
     var syncs: Bool { Self.dataProtectionAvailable }
 

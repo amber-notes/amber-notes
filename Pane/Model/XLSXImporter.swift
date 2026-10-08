@@ -8,7 +8,7 @@ enum XLSXImporter {
         case unreadable, empty
         var errorDescription: String? {
             switch self {
-            case .unreadable: "That file isn't a spreadsheet Amber Notes can read."
+            case .unreadable: "That file isn't a spreadsheet Pinto Notes can read."
             case .empty: "The first sheet has no header row."
             }
         }

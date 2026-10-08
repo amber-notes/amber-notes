@@ -1156,7 +1156,7 @@ import AppKit
         let app = FirstOpen.Moment(note: UUID(), isApp: true, title: "Evening tracker", description: nil,
                                    ask: "Add a sleep column to my Evening tracker.", slug: "evening-tracker", preview: preview, full: true)
         let note = FirstOpen.Moment(note: UUID(), isApp: false, title: "Meal plan and groceries",
-                                    description: "A weekly meal plan with the grocery list that goes with it. Your AI plans the dinners and writes the list in Amber Notes.",
+                                    description: "A weekly meal plan with the grocery list that goes with it. Your AI plans the dinners and writes the list in Pinto Notes.",
                                     ask: "Plan dinners for this week. We're out on Friday, and no mushrooms.", slug: "meal-plan", preview: nil, full: true)
         func height(_ m: FirstOpen.Moment, _ width: CGFloat) -> CGFloat {
             let view = FirstOpenRichSheetContent(moment: m, small: FirstOpenRichSheet.small(width: width)) {}

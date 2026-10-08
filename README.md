@@ -1,21 +1,22 @@
 <p align="center">
-  <img src="docs/images/icon.png" width="72" height="72" alt="Amber Notes app icon">
+  <img src="docs/images/icon.png" width="72" height="72" alt="Pinto Notes app icon">
 </p>
 
-<h1 align="center">Amber Notes</h1>
+<h1 align="center">Pinto Notes</h1>
 
 <p align="center">
   The notes app your AI can actually use. Apple Notes-style notes for iPhone and Mac that ChatGPT, Claude, Claude Code and Codex can read and edit.
+  Formerly Amber Notes.
 </p>
 
 <p align="center">
-  <a href="https://ambernotes.app/download"><b>Download for Mac</b></a>
+  <a href="https://pintonotes.com/download"><b>Download for Mac</b></a>
   &nbsp;·&nbsp; iPhone app in App Store review
-  &nbsp;·&nbsp; <a href="https://ambernotes.app">ambernotes.app</a>
+  &nbsp;·&nbsp; <a href="https://pintonotes.com">pintonotes.com</a>
 </p>
 
 <p align="center">
-  <img src="docs/images/banner.jpg" width="1280" alt="ChatGPT writes a note called Lisbon, 4 days in May into Amber Notes on the Mac. The new text is tinted, with a pill that says ChatGPT wrote this note and an Undo button.">
+  <img src="docs/images/banner.jpg" width="1280" alt="ChatGPT writes a note called Lisbon, 4 days in May into Pinto Notes on the Mac. The new text is tinted, with a pill that says ChatGPT wrote this note and an Undo button.">
 </p>
 
 <table align="center">
@@ -104,7 +105,7 @@ Everything the app needs runs on one Supabase project:
 
 ## Connect an AI
 
-In the app, open **Settings → Connect an AI** and follow the steps for your client. ChatGPT and Claude get a plain server address, `https://mcp.ambernotes.app`, and ask Amber Notes for permission through OAuth: a page on ambernotes.app opens, where you answer in the app or sign in and answer on the web. Claude Code and Codex get a command with a revocable token. Connections are listed in Settings, where you can disconnect each one.
+In the app, open **Settings → Connect an AI** and follow the steps for your client. ChatGPT and Claude get a plain server address, `https://mcp.ambernotes.app`, and ask Pinto Notes for permission through OAuth: a page on pintonotes.com opens, where you answer in the app or sign in and answer on the web. Claude Code and Codex get a command with a revocable token. Connections are listed in Settings, where you can disconnect each one.
 
 ## Privacy and security
 
@@ -115,7 +116,7 @@ In the app, open **Settings → Connect an AI** and follow the steps for your cl
 - Row-level security applies to the app, the AI server and direct API calls alike, on top of the encryption.
 - AI tokens are stored as hashes and can be read-only.
 - Shared pages are public to anyone with the link. The app warns before creating one, and a page stops working the moment you stop sharing.
-- [Privacy policy](https://ambernotes.app/privacy) · [Security policy](SECURITY.md)
+- [Privacy policy](https://pintonotes.com/privacy) · [Security policy](SECURITY.md)
 
 ## Thanks
 

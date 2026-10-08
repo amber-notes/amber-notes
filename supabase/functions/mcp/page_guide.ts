@@ -11,7 +11,7 @@ const LIBS_BY_PACKAGE = "chart.js, d3, three, tone, dayjs, marked, dompurify, an
 
 /** The few lines every client sees in the server's instructions. Clients differ in what else they
  *  read (resources, prompts, skills), so this and the tool descriptions carry the essentials. */
-export const PAGE_INSTRUCTIONS = `Apps: a note in Amber Notes can be an app. Call it "the note's app" with the person, never "page" (some tools still say page).
+export const PAGE_INSTRUCTIONS = `Apps: a note in Pinto Notes can be an app. Call it "the note's app" with the person, never "page" (some tools still say page).
 - Before making or changing an app, call get_page_guide once. It says where an app lives; how it looks and works is up to you.
 - An app is a normal Vite + React + TypeScript + Tailwind + shadcn/ui project. create_app starts one; list_app_files, read_app_file, write_app_file and edit_app_file work on it like any codebase. Every save compiles it and tells you what broke.
 - Its data is JSON the app keeps (useStore, useCollection, useSettings from "@/lib/amber", or localStorage: all synced and encrypted). You read and change it with get_page_data, query_app_data and update_page_data.
@@ -28,13 +28,13 @@ One self-contained HTML document, at most ${kb(MAX_PAGE_BYTES)}; the app's own d
  *  purpose (Emil, 2026-10-06): where an app lives and what it can use, not how to design it. */
 export async function pageGuide(): Promise<string> {
   const SCAFFOLD = await scaffold("Example");
-  return `# Apps in Amber Notes
+  return `# Apps in Pinto Notes
 
 A note can be an app: a habit tracker, a budget, a workout log, a game. The person opens the note and the app is all they see. This says where an app lives and what it can use. How it looks and works is your call; build it as well as you would anywhere.
 
 ## Where it runs
 
-- Inside a note in Amber Notes, on iPhone (320-440 pt wide, safe areas at the edges, the keyboard shrinks the view) and on the Mac (a window from about 500 to 1,800 px, resized live). Both matter: a phone layout and a real wide layout.
+- Inside a note in Pinto Notes, on iPhone (320-440 pt wide, safe areas at the edges, the keyboard shrinks the view) and on the Mac (a window from about 500 to 1,800 px, resized live). Both matter: a phone layout and a real wide layout.
 - Light and dark mode follow the device (prefers-color-scheme).
 - In a sandbox with no network (see Network).
 - Nothing around the app shows the note's title, so the app shows it if it wants a title.
@@ -60,7 +60,7 @@ ${AMBER_BASE_CSS.trim()}
 
 ## Data
 
-The app's data is JSON that Amber Notes keeps for it: encrypted, synced across the person's devices, versioned, with Undo for changes the person makes. Up to 4 MB; photos and recordings as files.
+The app's data is JSON that Pinto Notes keeps for it: encrypted, synced across the person's devices, versioned, with Undo for changes the person makes. Up to 4 MB; photos and recordings as files.
 
 - From "@/lib/amber" (which re-exports "amber"): const [value, setValue] = useStore("key", initial); const workouts = useCollection("workouts") → { items, add(fields) → id, update(id, patch), remove(id) }; const [settings, update] = useSettings({ unit: "kg" }); batch(async () => { … }) for several changes as one Undo; setSummary("3 of 4 habits today") for the line under the note's title in the list.
 - localStorage works and is kept the same way (synced), so code written for the web just works. sessionStorage lasts while the app is open; there's no IndexedDB.
@@ -75,7 +75,7 @@ The app can't reach the internet by itself. For live data, declare the hosts in 
 
 \`<meta name="amber-needs" content='{"hosts": ["api.open-meteo.com"], "keys": [{ "name": "OpenWeather", "hosts": ["api.openweathermap.org"], "query": "appid={key}", "help": "Where to get one" }]}'>\`
 
-Then call fetch(url, { key: "OpenWeather" }) from "@/lib/amber"; it returns { ok, status, body }. Keys live in Amber Notes › Settings › API Keys; the app and you never see their values. list_api_keys shows which exist. Walk the person through getting one (the site, the free plan, where the key is) and adding it there. Never ask for a key in the chat; if one is pasted, don't store or repeat it, and suggest they make a new one. Prefer services that need no key (api.open-meteo.com for weather). fetch("/src/data.json") reads the app's own files.
+Then call fetch(url, { key: "OpenWeather" }) from "@/lib/amber"; it returns { ok, status, body }. Keys live in Pinto Notes › Settings › API Keys; the app and you never see their values. list_api_keys shows which exist. Walk the person through getting one (the site, the free plan, where the key is) and adding it there. Never ask for a key in the chat; if one is pasted, don't store or repeat it, and suggest they make a new one. Prefer services that need no key (api.open-meteo.com for weather). fetch("/src/data.json") reads the app's own files.
 
 The device, through the system's own prompts: device.reminders, calendar, notify, photos, camera, contacts, location, maps, weather; on-device AI with ai.respond. Each returns { ok, … }.
 

@@ -37,6 +37,14 @@ struct PaneApp: App {
         let config = perfStore.map { ModelConfiguration(url: URL(fileURLWithPath: $0)) } ?? ModelConfiguration("Pane", isStoredInMemoryOnly: inMemory)
         container = try! ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: config)
         Self.sharedContainer = container
+        if !inMemory {
+            LocalUpkeep.keepServerAnswersOffDisk()
+            // After launch has settled: it can be a few hundred thousand rows the first time.
+            Task.detached(priority: .utility) { [container] in
+                try? await Task.sleep(for: .seconds(30))
+                LocalUpkeep.forgetOldHistory(in: container)
+            }
+        }
         let backend = Backend()
         let context = container.mainContext
         backend.willSignIn = { user in AccountLibrary.adopt(user, context: context) }
@@ -236,7 +244,7 @@ private struct MenuBarItem: Scene {
                 .modelContainer(container)
                 .tint(Color(PColor.paneAccent))
         } label: {
-            Image("MenuBarIcon").accessibilityLabel("Amber Notes")
+            Image("MenuBarIcon").accessibilityLabel("Pinto Notes")
         }
         .menuBarExtraStyle(.window)
     }
@@ -876,7 +884,7 @@ enum Seed {
                 of: "Small things, most days. A ✓ means done.",
                 with: "Small things, most days. A ✓ means done. " + Self.sampleAppLine))
             habits.updatedAt = .now.addingTimeInterval(-60)
-            NotePageStore.shared.setHere(habits.id, .init(html: html, by: "Amber Notes", at: .now))
+            NotePageStore.shared.setHere(habits.id, .init(html: html, by: "Pinto Notes", at: .now))
         }
     }
 
@@ -884,9 +892,9 @@ enum Seed {
     static let sampleAppLine = "This note is also an app, made by AI: switch between App and Text at the top."
 
     static let welcome = """
-    Welcome to Amber Notes
+    Welcome to Pinto Notes
 
-    Amber Notes is a place for notes. Write in **markdown** and it styles itself as you type, with the syntax hidden until you need it.
+    Pinto Notes is a place for notes. Write in **markdown** and it styles itself as you type, with the syntax hidden until you need it.
 
     ## The basics
     - [ ] Tap a circle to check it off
@@ -1016,7 +1024,7 @@ struct CaptureScreen: View {
             WelcomeFlow(backend: backend, stage: .signIn(returning: false), flow: EmailSignInFlow(step: .confirm, email: "sara@example.com", code: "704"))
         case "welcome-confirm-wrong":
             WelcomeFlow(backend: backend, stage: .signIn(returning: false), flow: EmailSignInFlow(step: .confirm, email: "sara@example.com"),
-                        error: "That code didn't work. Check the newest email from Amber Notes, or press Resend code.")
+                        error: "That code didn't work. Check the newest email from Pinto Notes, or press Resend code.")
         case "welcome-confirm", "welcome-confirm-wait":
             WelcomeFlow(backend: backend, stage: .signIn(returning: false),
                         flow: EmailSignInFlow(step: .confirm, email: "sara@example.com", codeSentAt: name.hasSuffix("-wait") ? .now : nil))

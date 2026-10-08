@@ -9,7 +9,7 @@ import { APP_STORE_LIVE, APP_STORE_URL, pageMetadata } from "@/lib/site";
 import { JsonLd, app, incredible, maker, organization, website } from "@/lib/structured-data";
 
 export const metadata: Metadata = pageMetadata({
-  title: "Amber Notes: the notes app your AI can actually use",
+  title: "Pinto Notes: the notes app your AI can actually use",
   shareTitle: "The notes app your AI can actually use",
   description:
     "A simple notes app for iPhone and Mac that ChatGPT, Claude, Claude Code, Codex and Incredible can read and edit, with your approval. Imports your Apple Notes. Free.",
