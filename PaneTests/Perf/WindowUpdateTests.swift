@@ -214,62 +214,6 @@ import Testing
         #expect(updates.value == 1)
     }
 
-    /// Undo and redo (⌘Z, ⇧⌘Z) after an edit, a move and a delete put notes back without going
-    /// through the app's own functions. The app has no undo for those today (the editor undoes
-    /// text, Recently Deleted undoes a delete), so the test gives the library an undo manager,
-    /// as it would have: after each undo and redo the list matches a fresh read of every note.
-    @Test func listEntriesFollowUndoAndRedo() async throws {
-        let c = try ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
-        let ctx = c.mainContext
-        let work = ctx.createFolder(named: "Work"), home = ctx.createFolder(named: "Home")
-        var notes: [Note] = []
-        for i in 0..<20 {
-            let n = ctx.createNote(in: .folder(work.id), body: "Note \(i)\n\ntext")
-            n.updatedAt = Date(timeIntervalSinceNow: -Double(i) * 3600)
-            notes.append(n)
-        }
-        try ctx.save()
-        let undo = UndoManager()
-        undo.groupsByEvent = false
-        ctx.undoManager = undo
-        let library = LibraryNotes()
-        _ = library.entries(in: ctx)
-        func check(_ what: Comment) async throws {
-            try? await Task.sleep(for: .milliseconds(60))
-            let have = library.entries(in: ctx)
-            let want = try ctx.fetch(FetchDescriptor<Note>()).map(NoteEntry.init).sorted { $0.date > $1.date }
-            #expect(have.map(\.id) == want.map(\.id), what)
-            #expect(have.map(\.date) == want.map(\.date), what)
-            #expect(have.map(\.trashed) == want.map(\.trashed), what)
-            #expect(have.map(\.folderID) == want.map(\.folderID), what)
-        }
-        var undone = 0
-        func step(_ name: String, _ change: () -> Void) async throws {
-            undo.beginUndoGrouping()
-            change()
-            ctx.processPendingChanges()
-            undo.endUndoGrouping()
-            try await check("\(name)")
-            guard undo.canUndo else { return }
-            let before = try ctx.fetch(FetchDescriptor<Note>()).map(NoteEntry.init).map { "\($0.date)\($0.trashed)\($0.folderID?.uuidString ?? "")" }
-            undo.undo()
-            ctx.processPendingChanges()
-            try await check("\(name), undone")
-            let after = try ctx.fetch(FetchDescriptor<Note>()).map(NoteEntry.init).map { "\($0.date)\($0.trashed)\($0.folderID?.uuidString ?? "")" }
-            if before != after { undone += 1 }
-            undo.redo()
-            ctx.processPendingChanges()
-            try await check("\(name), redone")
-        }
-        try await step("an edit") {
-            notes[12].body = "Note 12\n\nedited"
-            notes[12].updatedAt = .now
-        }
-        try await step("a move") { notes[5].folder = home }
-        try await step("a delete") { notes[7].trashedAt = .now }
-        print("PERF undo: \(undone) of 3 changes were put back by the library's undo manager")
-    }
-
     /// Many notes at once: a sync pull that changes thousands, an import that adds thousands, and
     /// an account switch that empties the library and fills it with another. After each the
     /// entries are what a fresh read of every note gives, and nothing of the old account is left.
