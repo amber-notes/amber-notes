@@ -95,8 +95,32 @@ before the gate when its functions or migrations changed.
 (an account size). `max` is the budget; `floor` is the noise floor for the regression rule (a change
 smaller than it is never a regression); `regression: false` turns that rule off for a line.
 
-The first budgets were set on 2026-10-07 from dev, measured on fleet-air (MacBook Air M4, macOS 27):
-BUDGETS_TABLE
+The first budgets were set on 2026-10-08, measured on fleet-air (MacBook Air M4, macOS 27), from
+dev eb57bb1dc9 (docs/Evidence/release-gate/2026-10-08-dev-eb57bb1dc9.md), with these rules:
+
+| Metric | Budget | Noise floor |
+|---|---|---|
+| Longest frame of a step | 1.5 × dev, at least 50 ms | 34 ms (two frames) |
+| Views laid out in a step | 1.5 × dev + 50 | no regression rule (a frozen baseline lays out less) |
+| Views laid out while idle | 0 | none |
+| Hitches | 1.5 × dev + 2 | no regression rule |
+| Idle CPU, wake-ups | 2%, 10 a second | 1%, 5 a second |
+| Slowest key | 16 ms (one frame) | no regression rule |
+| Cold launch to window, launch to synced | 1.3 × dev | 150 ms, 500 ms |
+| First sync | 1.3 × dev | 2 s |
+| Memory after the flows | 1.3 × dev | 20 MB |
+| Hangs over 250 ms per run | dev's count (launch, and flows apart) | 1 |
+| Longest hang | 1.3 × dev, at least 250 ms; 0 where dev had none | 150 ms |
+| App and download sizes | 1.1 × dev | 1 MB |
+| Local database, app data, server bytes | 1.3 × dev | 100 KB |
+| Requests per flow | dev + 3 | 2 |
+| Bytes per flow | 1.5 × dev | 10 KB |
+| Server latency p50, p95 | 1.5 × dev + 100 ms, 2 × dev + 200 ms | 100 ms, 300 ms |
+| Supabase advisor warnings | dev's count | 0 |
+
+These are ceilings on today's dev, not targets: dev still has hangs of over a second, a first sync
+of minutes, and a folder push the server refuses about 1,500 times a launch (see the report). Tighten a budget in its own commit when the code
+behind it gets better; never loosen one to pass a run.
 
 ## Limits
 

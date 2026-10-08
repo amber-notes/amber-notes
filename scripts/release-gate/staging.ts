@@ -221,7 +221,9 @@ async function bytes(ns: number[]) {
     const parts = await sql(tables.map((t) => `select '${t.name}' as t, coalesce(sum(pg_column_size(r.*)), 0)::bigint as b, count(*)::int as rows from public."${t.name}" r where r.user_id = '${user}'`).join(" union all "));
     const files = await sql(`select coalesce(sum((metadata->>'size')::bigint), 0)::bigint as b, count(*)::int as n from storage.objects where owner = '${user}'`);
     const byTable = Object.fromEntries(parts.filter((p) => Number(p.b) > 0).map((p) => [p.t, Number(p.b)]));
-    out[n] = { rowBytes: parts.reduce((s, p) => s + Number(p.b), 0), fileBytes: Number(files[0].b), byTable };
+    // Version history grows with every gate run (the probe types into a note): counted apart.
+    const history = parts.filter((p) => p.t === "note_revisions").reduce((s, p) => s + Number(p.b), 0);
+    out[n] = { rowBytes: parts.reduce((s, p) => s + Number(p.b), 0) - history, historyBytes: history, fileBytes: Number(files[0].b), byTable };
   }
   return out;
 }

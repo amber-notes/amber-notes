@@ -19,7 +19,7 @@ import SwiftData
 
 /// Counts every request that goes through AppNetwork.session, with its bytes on the wire.
 final class GateNet: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
-    struct Request { var at: CFTimeInterval; var host: String; var path: String; var sent: Int64; var received: Int64; var ms: Double; var status: Int }
+    struct Request { var at: CFTimeInterval; var host: String; var path: String; var method: String; var sent: Int64; var received: Int64; var ms: Double; var status: Int; var error: String }
 
     static let shared = GateNet()
     static let session: URLSession = URLSession(configuration: .default, delegate: GateNet.shared, delegateQueue: nil)
@@ -34,9 +34,10 @@ final class GateNet: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
             received += t.countOfResponseHeaderBytesReceived + t.countOfResponseBodyBytesReceived
         }
         let url = task.originalRequest?.url
-        let r = Request(at: CACurrentMediaTime(), host: url?.host ?? "", path: Self.shape(url?.path ?? ""),
+        let r = Request(at: CACurrentMediaTime(), host: url?.host ?? "", path: Self.shape(url?.path ?? ""), method: task.originalRequest?.httpMethod ?? "",
                         sent: sent, received: received, ms: metrics.taskInterval.duration * 1000,
-                        status: (task.response as? HTTPURLResponse)?.statusCode ?? 0)
+                        status: (task.response as? HTTPURLResponse)?.statusCode ?? 0,
+                        error: (task.error as? URLError).map { "URLError \($0.code.rawValue)" } ?? task.error.map { "\($0)".prefix(60).description } ?? "")
         lock.withLock { requests.append(r) }
     }
 
@@ -384,8 +385,11 @@ final class GateProbe: NSObject {
     private func summary(_ rs: [GateNet.Request]) -> [String: Any] {
         var byPath: [String: Int] = [:]
         for r in rs { byPath[r.host + r.path, default: 0] += 1 }
+        var failures: [String: Int] = [:]
+        for r in rs where r.status >= 400 || r.status == 0 { failures["\(r.method) \(r.path) \(r.status == 0 ? r.error : String(r.status))", default: 0] += 1 }
         return ["requests": rs.count, "bytesSent": rs.reduce(0) { $0 + $1.sent }, "bytesReceived": rs.reduce(0) { $0 + $1.received },
                 "failed": rs.filter { $0.status >= 400 || $0.status == 0 }.count,
+                "failures": failures.sorted { $0.value > $1.value }.prefix(6).map { "\($0.key) ×\($0.value)" },
                 "endpoints": byPath.sorted { $0.value > $1.value }.map { "\($0.key) \($0.value)" }]
     }
 

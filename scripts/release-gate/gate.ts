@@ -12,7 +12,7 @@
 import { parseArgs } from "jsr:@std/cli@1/parse-args";
 
 const ROOT = new URL("../..", import.meta.url).pathname.replace(/\/$/, "");
-const args = parseArgs(Deno.args, { string: ["baseline", "sizes", "runs", "only", "host", "rescore"], boolean: ["rebuild", "no-baseline", "reuse-perf"], default: { sizes: "1,2000,20000", runs: "3", host: "fleet-air" } });
+const args = parseArgs(Deno.args, { string: ["baseline", "sizes", "runs", "only", "host", "rescore", "label"], boolean: ["rebuild", "no-baseline", "reuse-perf"], default: { sizes: "1,2000,20000", runs: "3", host: "fleet-air" } });
 // `--rescore <report.json>`: the same numbers against the current budgets and baseline, nothing measured again.
 const RESCORE = args.rescore ? JSON.parse(await Deno.readTextFile(args.rescore)) : null;
 const candidate = String(args._[0] ?? RESCORE?.ref ?? "");
@@ -57,10 +57,12 @@ function check(section: string, key: string, label: string, ok: boolean, value: 
 
 // MARK: The candidate
 
-const sha = await git("rev-parse", "--verify", `${candidate}^{commit}`);
+const sha: string = RESCORE?.sha ?? await git("rev-parse", "--verify", `${candidate}^{commit}`);
 const short = sha.slice(0, 10);
 const date = new Date().toISOString().slice(0, 10);
-const refName = candidate.replace(/^origin\//, "").replaceAll("/", "-");
+// The name people know the ref by (`--label dev` when the candidate is given as a commit).
+const label: string = args.label ?? RESCORE?.label ?? candidate.replace(/^origin\//, "");
+const refName = label === short ? short : `${label.replaceAll("/", "-")}-${short}`;
 log(`Release gate: ${candidate} (${short})`);
 
 // The baseline: its newest report, or a run of it now.
@@ -270,6 +272,8 @@ if (only.has("perf")) {
     }
     const untyped = rs.filter((r) => typeof r.typing === "string").length;
     if (untyped) check("perf", `perf.${size}.typing`, `${size} notes: the typing step ran`, false, `skipped in ${untyped} of ${rs.length} runs`, String(rs.find((r) => r.typing)?.typing));
+    const failing = [perf[size]?.setup?.firstSyncNet, ...rs.map((r) => r.launchNet)].flatMap((n) => ((n as Record<string, string[]> | undefined)?.failures ?? []));
+    if (failing.length) add("perf", `perf.${size}.failingRequests`, `${size} notes: requests the server refused (first sync, then launches)`, failing.length ? "yes" : "none", "", [...new Set(failing)].slice(0, 6).join("; "));
     const late = rs.filter((r) => r.typingPushTimedOut || r.savePushTimedOut).length;
     check("perf", `perf.${size}.savePushed`, `${size} notes: an edit reaches the server within 30 s`, late === 0, late ? `late in ${late} of ${rs.length} runs` : "yes");
     // Hangs: how many per run and the longest, outside launch and in it.
@@ -383,8 +387,9 @@ try {
     const server = await staging("bytes", ...sizes.map(String));
     for (const size of sizes) {
       const s = server[size];
-      add("storage", `storage.${size}.serverBytes`, `${size} notes: server bytes for the account`, s.rowBytes + s.fileBytes, "bytes",
-        Object.entries(s.byTable as Record<string, number>).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([t, b]) => `${t} ${Math.round(b / 1024)} KB`).join(", "));
+      add("storage", `storage.${size}.serverBytes`, `${size} notes: server bytes for the account, without version history`, s.rowBytes + s.fileBytes, "bytes",
+        Object.entries(s.byTable as Record<string, number>).filter(([t]) => t !== "note_revisions").sort((a, b) => b[1] - a[1]).slice(0, 4).map(([t, b]) => `${t} ${Math.round(b / 1024)} KB`).join(", ") +
+        `. Version history ${Math.round(s.historyBytes / 1024)} KB, most of it from gate runs.`);
     }
   }
 } catch (e) {
@@ -402,6 +407,9 @@ try {
         const vals = rs.map((r) => r[k] as Record<string, number>).filter(Boolean);
         if (!vals.length) continue;
         add("network", `network.${size}.${k}.requests`, `${size} notes: requests for ${label}`, median(vals.map((v) => v.requests)), "");
+        const refused = median(vals.map((v) => v.failed ?? 0));
+        check("network", `network.${size}.${k}.failed`, `${size} notes: requests that failed during ${label}`, refused === 0, String(refused),
+          refused ? [...new Set(rs.flatMap((r) => ((r[k] as Record<string, string[]>)?.failures ?? [])))].slice(0, 4).join("; ") || undefined : undefined);
         add("network", `network.${size}.${k}.bytes`, `${size} notes: bytes for ${label}`, median(vals.map((v) => v.bytesSent + v.bytesReceived)), "bytes",
           ((rs[0][k] as Record<string, string[]>)?.endpoints ?? []).slice(0, 4).join(", ").replace(/[a-z0-9]{20}\.supabase\.co/g, "") || undefined);
       }
@@ -470,7 +478,7 @@ const funcs = await (async () => {
   } catch { return "unknown"; }
 })();
 const sectionNames: Record<string, string> = { perf: "Performance", security: "Security", storage: "Storage", network: "Network" };
-let md = `# Release gate: ${candidate} (${short})\n\n**${verdict}**: ${fails.length} over budget or failed, ${regressions.length} regressions${baseline ? ` against ${baseline.ref} (${baseline.sha.slice(0, 10)})` : ", no baseline"}.\n\n`;
+let md = `# Release gate: ${label} (${short})\n\n**${verdict}**: ${fails.length} over budget or failed, ${regressions.length} regressions${baseline ? ` against ${baseline.ref} (${baseline.sha.slice(0, 10)})` : ", no baseline"}.\n\n`;
 md += `- Date: ${new Date().toISOString().slice(0, 16).replace("T", " ")} UTC\n- Build: Release, PaneDirect, Developer ID (team-signed, not notarized), Amber Notes Beta identity on staging, with the gate's probe added (scripts/release-gate/GateProbe.swift)\n`;
 if (machine) md += `- Mac: ${HOST} (${machine}), ${runs} measured runs per account, medians\n`;
 md += `- Accounts: staging bench accounts of ${sizes.join(", ")} notes, plus the gate's 3 notes each\n- Server: staging runs what was deployed there, not this ref: ${funcs}\n- Budgets: scripts/release-gate/budgets.json; regression = over 15% worse than the baseline and past the metric's noise floor\n\n`;
@@ -493,7 +501,10 @@ if (hangSamples.length) {
 }
 await Deno.mkdir(EVIDENCE, { recursive: true });
 const base = `${EVIDENCE}/${date}-${refName}`;
-await Deno.writeTextFile(`${base}.md`, md);
-await Deno.writeTextFile(`${base}.json`, JSON.stringify({ ref: candidate, sha, verdict, finishedAt: new Date().toISOString(), host: HOST, machine, sizes, runs, baseline: baseline ? { ref: baseline.ref, sha: baseline.sha } : null, metrics, raw: { perf, sizes: sizesJSON } }, null, 1));
+// The repository is public: no staging project ref, account addresses or home folders in reports.
+const stagingRef = (await Deno.readTextFile(`${(await git("rev-parse", "--path-format=absolute", "--git-common-dir")).replace(/\/\.git$/, "")}/.secrets/staging.env`)).match(/STAGING_REF=(\S+)/)?.[1] ?? "";
+const clean = (t: string) => t.replaceAll(stagingRef || "\u0000", "<staging>").replace(/[\w.+-]+@ambernotes\.app/g, "<bench account>").replace(/\/Users\/[^/"\s]+/g, "~");
+await Deno.writeTextFile(`${base}.md`, clean(md));
+await Deno.writeTextFile(`${base}.json`, clean(JSON.stringify({ ref: candidate, label, sha, verdict, finishedAt: new Date().toISOString(), host: HOST, machine, sizes, runs, baseline: baseline ? { ref: baseline.ref, sha: baseline.sha } : null, metrics, raw: { perf, sizes: sizesJSON } }, null, 1)));
 console.log(`${verdict}: ${base}.md`);
 if (verdict !== "PASS") Deno.exit(1);
