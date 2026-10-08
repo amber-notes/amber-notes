@@ -104,7 +104,7 @@ jobs:
           supabase/functions/mcp/notes.test.ts supabase/functions/mcp/needs_database.test.ts supabase/functions/mcp/annotations.test.ts supabase/functions/mcp/card.test.ts
           supabase/functions/mcp/oauth.pglite.test.ts supabase/functions/mcp/locked.pglite.test.ts supabase/functions/mcp/e2ee.pglite.test.ts
           supabase/functions/mcp/canary.pglite.test.ts supabase/functions/mcp/sealed_tools.pglite.test.ts supabase/functions/mcp/device_add.pglite.test.ts
-          supabase/functions/mcp/tips.pglite.test.ts supabase/functions/mcp/share_ask.pglite.test.ts supabase/functions/mcp/open_source_ask.pglite.test.ts supabase/functions/mcp/download_counts.pglite.test.ts
+          supabase/functions/mcp/tips.pglite.test.ts supabase/functions/mcp/folder_files.pglite.test.ts supabase/functions/mcp/share_ask.pglite.test.ts supabase/functions/mcp/open_source_ask.pglite.test.ts supabase/functions/mcp/download_counts.pglite.test.ts
           supabase/functions/share-files/logic.test.ts scripts/e2ee-tool.test.ts
           supabase/functions/account/account.pglite.test.ts supabase/functions/_shared/hash.test.ts
           scripts/auth-emails.test.ts scripts/ops/daily-digest.test.ts supabase/functions/mcp/tool_errors.test.ts supabase/functions/lifecycle/logic.test.ts supabase/functions/lifecycle/emails.test.ts supabase/functions/lifecycle/assets.test.ts supabase/functions/lifecycle/lifecycle.pglite.test.ts

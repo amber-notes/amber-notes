@@ -5,6 +5,7 @@
 import { assert, assertEquals, assertRejects, assertStringIncludes } from "jsr:@std/assert@1";
 import type { PGlite } from "npm:@electric-sql/pglite@0.2.17";
 import { schemaDB } from "./pglite.ts";
+import { aesKey, sealFile } from "../_shared/e2ee.ts";
 import { type Account, account, app, file, folder, note, opened, stubStorage, toolContext } from "./sealed.ts";
 import { runTool, ToolError } from "./tools.ts";
 import { FILE_TOOLS, runFileTool } from "./files_tools.ts";
@@ -174,6 +175,37 @@ Deno.test("text files change like notes: read first, exact edits, every version 
     objects.set(p.path, p.sealed);
     await tool(pg, a, "fetch", { id: "To read/Paper.pdf", raw: true });
     assertStringIncludes(await fails(tool(pg, a, "edit", { path: "To read/Paper.pdf", old_string: "a", new_string: "b" })), "isn't text");
+  } finally { unstub(); }
+});
+
+Deno.test("an edit made in the app keeps the version it replaces, as the AI's do (SyncEngine.keepServerVersion)", async () => {
+  const { objects, unstub } = storageStub();
+  try {
+    const pg = await schemaDB();
+    const a = await account(pg);
+    const other = await account(pg);
+    const site = await folder(pg, a, "Site");
+    const f = await file(pg, a, "index.html", "public.html", enc("<h1>Hi</h1>"), { folder: site });
+    objects.set(f.path, f.sealed);
+    // What the app does, as the signed-in person: copy the bytes to <path>.v<n>, a version row with
+    // the meta it had, then the new bytes and a content version past the server's.
+    const [old] = await app(pg, a.id, `select meta_ct, size, updated_at from public.attachments where id = $1`, [f.id]);
+    objects.set(`${f.path}.v1`, objects.get(f.path)!);
+    await app(pg, a.id, `insert into public.attachment_versions (attachment_id, meta_ct, size, storage_path, client, made_at) values ($1, $2, $3, $4, 'Amber Notes', $5)`,
+      [f.id, old.meta_ct, old.size, `${f.path}.v1`, old.updated_at]);
+    const html = enc("<h1>Hello</h1>");
+    objects.set(f.path, await sealFile(html, await aesKey(a.dk.slice()), a.keyId, f.id));
+    await app(pg, a.id, `update public.attachments set meta_ct = $2, size = $3, content_version = 1 where id = $1`,
+      [f.id, await a.vault.sealFileMeta(f.id, { name: "index.html", type: "public.html", size: html.length }), html.length]);
+    assertStringIncludes((await tool(pg, a, "fetch", { id: "Site/index.html" })).text, "Hello");
+    // Someone else can't add versions to it.
+    await assertRejects(() => app(pg, other.id, `insert into public.attachment_versions (attachment_id, meta_ct, size, storage_path, client, made_at) values ($1, $2, $3, $4, 'Amber Notes', now())`,
+      [f.id, old.meta_ct, old.size, `${f.path}.v2`]));
+    const h = await tool(pg, a, "history", { path: "Site/index.html" });
+    assertEquals(h.versions.length, 1);
+    assertEquals([h.versions[0].made_by, h.versions[0].name], ["Amber Notes", "index.html"]);
+    await tool(pg, a, "restore", { path: "Site/index.html", version: h.versions[0].version });
+    assertEquals((await tool(pg, a, "fetch", { id: "Site/index.html" })).text.includes("<h1>Hi</h1>"), true, "the edit is undone from history");
   } finally { unstub(); }
 });
 
