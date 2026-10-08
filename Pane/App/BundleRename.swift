@@ -13,7 +13,8 @@ enum BundleRename {
     static let newName = "Pinto Notes.app"
 
     /// Where this bundle should move, or nil to leave it: only a bundle still called
-    /// "Amber Notes.app", never over an app already there, and never where it can't be moved (the
+    /// "Amber Notes.app", never over an app already there (which is also the case when the app was
+    /// opened through the link this leaves behind), and never where it can't be moved (the
     /// disk image, or the random read-only place Gatekeeper runs a quarantined app from).
     static func destination(for bundle: URL, exists: (URL) -> Bool) -> URL? {
         guard bundle.lastPathComponent == oldName else { return nil }
@@ -29,6 +30,7 @@ enum BundleRename {
     static func moveAndReopenIfNeeded(bundle: URL = Bundle.main.bundleURL, files: FileManager = .default) {
         guard let to = destination(for: bundle, exists: { files.fileExists(atPath: $0.path) }) else { return }
         do { try files.moveItem(at: bundle, to: to) } catch { return }
+        leaveLink(at: bundle, files: files)
         let config = NSWorkspace.OpenConfiguration()
         config.createsNewApplicationInstance = true
         let done = DispatchSemaphore(value: 0)
@@ -39,7 +41,17 @@ enum BundleRename {
         }
         if done.wait(timeout: .now() + 15) == .success, opened { exit(0) }
         // This copy keeps running, so it goes back to the path it was loaded from.
+        try? files.removeItem(at: bundle)   // the link, never a folder: destination(for:) saw nothing else there
         try? files.moveItem(at: to, to: bundle)
+    }
+
+    /// A Dock icon or a Login Items entry made for "Amber Notes.app" holds that path (the update
+    /// gave the bundle a new identity, so their bookmarks don't follow it). A hidden link at the
+    /// old path, pointing to the new name beside it, keeps them opening the app. Finder doesn't
+    /// show it, so there is still one app in the folder.
+    static func leaveLink(at old: URL, files: FileManager = .default) {
+        guard (try? files.createSymbolicLink(atPath: old.path, withDestinationPath: newName)) != nil else { return }
+        _ = old.withUnsafeFileSystemRepresentation { lchflags($0, UInt32(UF_HIDDEN)) }
     }
 }
 #endif
