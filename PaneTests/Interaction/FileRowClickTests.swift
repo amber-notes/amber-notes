@@ -52,6 +52,21 @@ import Testing
         w.sendEvent(event(.leftMouseDown))
     }
 
+    /// A click as a hand makes it on a trackpad: the pointer moves a pixel or two between down and
+    /// up. Well under the drag threshold, so it's still a click.
+    static func jitteryClick(_ table: NSTableView, row: Int, in w: NSWindow) {
+        let r = table.rect(ofRow: row)
+        let p = table.convert(NSPoint(x: r.midX, y: r.midY), to: nil)
+        func event(_ type: NSEvent.EventType, dx: CGFloat) -> NSEvent {
+            NSEvent.mouseEvent(with: type, location: NSPoint(x: p.x + dx, y: p.y), modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
+                               windowNumber: w.windowNumber, context: nil, eventNumber: 0, clickCount: 1, pressure: type == .leftMouseUp ? 0 : 1)!
+        }
+        NSApp.postEvent(event(.leftMouseDragged, dx: 1), atStart: false)
+        NSApp.postEvent(event(.leftMouseDragged, dx: 2), atStart: false)
+        NSApp.postEvent(event(.leftMouseUp, dx: 2), atStart: false)
+        w.sendEvent(event(.leftMouseDown, dx: 0))
+    }
+
     @Test func clickingTwoFileRowsAlternatelySelectsEachEveryTime() async throws {
         guard Self.onCI else { return }
         let c = try ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
@@ -151,11 +166,12 @@ import Testing
         var log: [String] = []
         for round in 0 ..< 10 {
             for (row, id, name) in picks where round < 9 || name != "the note" {
-                Self.click(list, row: row, in: w)
+                // Every other round the pointer moves a pixel or two during the click, as on a trackpad.
+                if round % 2 == 1 { Self.jitteryClick(list, row: row, in: w) } else { Self.click(list, row: row, in: w) }
                 try? await Task.sleep(for: .milliseconds(400))
                 let selected = list.selectedRowIndexes.contains(row)
                 let opened = d.string(forKey: "lastNote") == id.uuidString
-                log.append("round \(round + 1) \(name): row selected \(selected), opened \(opened)")
+                log.append("round \(round + 1)\(round % 2 == 1 ? " (pointer moved 2 px)" : "") \(name): row selected \(selected), opened \(opened)")
                 #expect(selected && opened, "round \(round + 1): a click on \(name) selects and opens it")
             }
         }
