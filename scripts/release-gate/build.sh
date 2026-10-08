@@ -59,6 +59,12 @@ patch("Pane/Sync/NetFault.swift", "        return .shared\n", "        #if os(ma
 PY
 xcodegen generate >/dev/null
 
+# Swift packages from the last build, so a new commit doesn't clone Sparkle and Supabase again.
+if [[ ! -d $DD/SourcePackages ]]; then
+  last=$(ls -dt "$ROOT"/build/release-gate/dd-*/SourcePackages(N) 2>/dev/null | head -1)
+  [[ -n $last ]] && mkdir -p "$DD" && cp -R "$last" "$DD/"
+fi
+
 echo "→ Mac Release archive"
 ARCHIVE="$DD/AmberNotes.xcarchive"
 rm -rf "$ARCHIVE" "$DD/export"

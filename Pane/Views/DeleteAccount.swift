@@ -94,7 +94,7 @@ extension ModelContext {
     /// Forgets every note, folder and file on this device (after the account is gone).
     @MainActor func wipeLocalLibrary(files: URL? = nil) {
         // One by one (a batch delete refuses rows that other rows still point at), and through
-        // `erase` so it's SwiftData's delete, not Library's delete(folder) that moves to Recently Deleted.
+        // `erase` so it's SwiftData's delete, not Library's trash(folder) that moves to Recently Deleted.
         func erase<T: PersistentModel>(_ type: T.Type) {
             for m in (try? fetch(FetchDescriptor<T>())) ?? [] { delete(m) }
         }

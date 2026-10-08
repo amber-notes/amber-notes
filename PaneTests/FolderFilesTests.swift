@@ -91,7 +91,7 @@ import Testing
         let inner = context.createFolder(named: "Contracts", parent: work)
         let a = try #require(context.addFiles([try sample("A.pdf")], to: work).first)
         let b = try #require(context.addFiles([try sample("B.pdf")], to: inner).first)
-        context.delete(work)
+        context.trash(work)
         #expect(a.trashedAt != nil && b.trashedAt != nil)
         FileStore.remove(a)
         FileStore.remove(b)
