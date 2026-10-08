@@ -107,7 +107,7 @@ struct NoteListView: View {
 
     /// What the list shows, in its order: notes and files together, by date.
     private var orderedItems: [ListItem] {
-        DateBucket.sections(filtered.map(ListItem.note) + filteredFiles(from: scopedFiles).map(ListItem.file)).flatMap(\.1)
+        DateBucket.sections(newestFirst: DateBucket.merged(notes: filtered, files: filteredFiles(from: scopedFiles))).flatMap(\.1)
     }
 
     /// "12 notes, 3 files", or just the notes when the folder has no files.
@@ -223,11 +223,11 @@ struct NoteListView: View {
             // Without files the notes go straight in: wrapping each one as a list item, and sorting
             // them again as items, was about a third of each save with 5,000 notes.
             if visibleFiles.isEmpty {
-                ForEach(DateBucket.sections(visible), id: \.0) { section in
+                ForEach(DateBucket.sections(newestFirst: visible.map { ($0, $0.updatedAt) }), id: \.0) { section in
                     dateSection(section) { noteRow($0) }
                 }
             } else {
-                ForEach(DateBucket.sections(visible.map(ListItem.note) + visibleFiles.map(ListItem.file)), id: \.0) { section in
+                ForEach(DateBucket.sections(newestFirst: DateBucket.merged(notes: visible, files: visibleFiles)), id: \.0) { section in
                     dateSection(section) { item in
                         switch item {
                         case .note(let note):
