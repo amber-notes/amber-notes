@@ -9,5 +9,5 @@ Rules for coding agents (and people) changing this repo. The README explains the
 - **Never test against production data.** Load, abuse and end-to-end tests run on the local stack.
 - **Migrations are additive** with a timestamp newer than every existing one. Never set `[auth.email] enable_signup = false` in `supabase/config.toml`: it turns off email sign-in entirely.
 - **Installing on a developer's devices:** `scripts/install-mac.sh` (team-signed; never copy an ad-hoc build over the installed app) and `scripts/install-phone.sh`.
-- **Releases** are tag-based and run in GitHub Actions; see `docs/RELEASING.md`. Never submit an app for App Store review; that stays with the maintainer.
+- **Releases** are tag-based and run in GitHub Actions; see `docs/RELEASING.md`. Never submit an app for App Store review; that stays with the maintainer. Nothing ships (App Store, TestFlight to users, Mac release, production deploy) without a passing release gate report: the `amber-release-gate` skill.
 - Write plainly in UI copy and docs: sentence case, short sentences, no hype.
