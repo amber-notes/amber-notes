@@ -16,10 +16,10 @@ describe("the Ask Claude copy page", () => {
 
   it("shows the prompt, one copy button and the ChatGPT way", async () => {
     const html = renderToStaticMarkup(await CopyPage({ params: Promise.resolve({ id: "latest" }) }));
-    expect(html).toContain("Search my Amber Notes and tell me what I wrote most recently.");
+    expect(html).toContain("Search my Pinto Notes and tell me what I wrote most recently.");
     expect(html.match(/<button /g)).toHaveLength(1);
     expect(html).toContain("Copy and open Claude");
-    expect(html).toContain(`href="https://chatgpt.com/?q=${encodeURIComponent("Search my Amber Notes and tell me what I wrote most recently.")}"`);
+    expect(html).toContain(`href="https://chatgpt.com/?q=${encodeURIComponent("Search my Pinto Notes and tell me what I wrote most recently.")}"`);
   });
 
   it("only copies the emails' own prompts", async () => {

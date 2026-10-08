@@ -18,5 +18,5 @@ export default function TryApp({ href }: { href: string }) {
     setTarget(to);
     window.location.href = to;
   }, [href]);
-  return <a className={styles.primary} href={target}>Open Amber Notes</a>;
+  return <a className={styles.primary} href={target}>Open Pinto Notes</a>;
 }

@@ -119,7 +119,7 @@ Deno.test("when home can't be reached, a read is answered here; a write is never
     // A write was sent: home may have run it. Not run here; 502, and it is logged.
     for (const method of ["POST", "DELETE", "PUT", "PATCH"]) {
       const { value: res, lines } = await quiet(() => serve(req("/mcp", { method, body: method === "DELETE" ? undefined : '{"jsonrpc":"2.0"}' })));
-      assertEquals([res.status, await res.json(), res.headers.get("retry-after")], [502, { error: "Couldn't reach Amber Notes just now. Try again." }, "2"]);
+      assertEquals([res.status, await res.json(), res.headers.get("retry-after")], [502, { error: "Couldn't reach Pinto Notes just now. Try again." }, "2"]);
       assertEquals(lines.map((l) => [l.event, l.where, l.method]), [["relay_failed", "us-east-1", method]]);
     }
     assertEquals(ran, 0);

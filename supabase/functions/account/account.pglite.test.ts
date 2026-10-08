@@ -99,7 +99,7 @@ async function seed(pg: PGlite, me: string) {
   await pg.query(`insert into public.email_sends (user_id, kind, status, sent_at) values ($1, 'connect', 'sent', now())`, [me]);
   await pg.query(`insert into public.email_unsubscribes (user_id, source) values ($1, 'link')`, [me]);
   await pg.query(`insert into public.email_replies (user_id) values ($1)`, [me]);
-  await pg.query(`insert into auth.sessions (user_id, user_agent, ip) values ($1, 'Amber Notes/1.0 iPhone', '203.0.113.9')`, [me]);
+  await pg.query(`insert into auth.sessions (user_id, user_agent, ip) values ($1, 'Pinto Notes/1.0 iPhone', '203.0.113.9')`, [me]);
   await pg.query(`insert into auth.audit_log_entries (payload, ip_address) values (json_build_object('actor_id', $1::text, 'actor_username', 'sara@example.com'), '203.0.113.9')`, [me]);
   // Collaboration (prototype): an identity key, a shared note with its owner as member, a sealed link and a shared template.
   const b64 = (n: number) => btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(n))));

@@ -8,7 +8,7 @@ describe("structured data", () => {
   it("describes the app as a free productivity app for iOS and macOS", () => {
     const a = app("1.0");
     expect(a["@type"]).toBe("SoftwareApplication");
-    expect(a.name).toBe("Amber Notes");
+    expect(a.name).toBe("Pinto Notes");
     expect(a.applicationCategory).toBe("ProductivityApplication");
     expect(a.operatingSystem).toBe("iOS, macOS");
     expect(a.offers).toEqual({ "@type": "Offer", price: "0", priceCurrency: "USD" });
@@ -28,9 +28,9 @@ describe("structured data", () => {
     expect(app("1.0").publisher).toEqual({ "@id": organization["@id"] });
   });
 
-  it("names the site Amber Notes for Google, with the domain only as a fallback", () => {
-    expect(website.name).toBe("Amber Notes");
-    expect(website.alternateName).toEqual(["Amber Notes app", "ambernotes.app"]);
+  it("names the site Pinto Notes for Google, with the domain only as a fallback", () => {
+    expect(website.name).toBe("Pinto Notes");
+    expect(website.alternateName).toEqual(["Pinto Notes app", "Amber Notes", "ambernotes.app"]);
   });
 
   it("serves a favicon whose first frame is 48px, the size Google needs for its results", () => {
@@ -39,8 +39,8 @@ describe("structured data", () => {
     expect(frames).toEqual([48, 32, 16]);
   });
 
-  it("ties the name to the GitHub repository, so it isn't mixed up with other apps called Amber Notes", () => {
-    expect(organization).toMatchObject({ "@type": "Organization", name: "Amber Notes", url: "https://ambernotes.app" });
+  it("ties the name to the GitHub repository, so it isn't mixed up with other apps called Pinto Notes", () => {
+    expect(organization).toMatchObject({ "@type": "Organization", name: "Pinto Notes", url: "https://ambernotes.app" });
     expect(organization.sameAs).toContain("https://github.com/amber-notes/amber-notes");
     expect(app("1.0").sameAs).toContain("https://github.com/amber-notes/amber-notes");
   });

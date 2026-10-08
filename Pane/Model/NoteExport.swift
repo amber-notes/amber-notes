@@ -51,14 +51,14 @@ enum NoteExport {
                      fetch: @MainActor (Attachment) async -> Bool = { _ in false }) async throws -> Result {
         let vault = vault ?? NoteVault.shared
         let stamp = now.formatted(.iso8601.year().month().day())
-        let work = FileManager.default.temporaryDirectory.appending(path: "Amber Notes export \(UUID().uuidString)", directoryHint: .isDirectory)
-        let top = work.appending(path: "Amber Notes \(stamp)", directoryHint: .isDirectory)
+        let work = FileManager.default.temporaryDirectory.appending(path: "Pinto Notes export \(UUID().uuidString)", directoryHint: .isDirectory)
+        let top = work.appending(path: "Pinto Notes \(stamp)", directoryHint: .isDirectory)
         try FileManager.default.createDirectory(at: top, withIntermediateDirectories: true)
 
         let notes = ((try? context.fetch(FetchDescriptor<Note>())) ?? [])
             .filter { $0.trashedAt == nil && $0.deletedAt == nil }
             .sorted { $0.createdAt < $1.createdAt }
-        var result = Result(zip: work.appending(path: "Amber Notes \(stamp).zip"), notes: 0, files: 0, skippedLocked: 0, missingFiles: 0)
+        var result = Result(zip: work.appending(path: "Pinto Notes \(stamp).zip"), notes: 0, files: 0, skippedLocked: 0, missingFiles: 0)
 
         // Where each note goes, relative to the top: its folders, then a unique file name.
         var used: Set<String> = sharing.isEmpty ? [] : ["sharing.md"]
@@ -124,7 +124,7 @@ enum NoteExport {
             }
         }
         var lines = ["# Sharing", "",
-                     "What you shared in Amber Notes, as of \(stamp). The shared notes are in this export like your other notes."]
+                     "What you shared in Pinto Notes, as of \(stamp). The shared notes are in this export like your other notes."]
         if !sharing.notes.isEmpty {
             lines += ["", "## Shared notes"]
             for n in sharing.notes {

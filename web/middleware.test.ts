@@ -53,6 +53,14 @@ describe("the MCP proxy", () => {
     expect(await proxied("/token?redirect_uri=http%3A%2F%2F127.0.0.1%3A1%2F")).toBe(`${FN}/token?redirect_uri=http%3A%2F%2F127.0.0.1%3A1%2F`);
   });
 
+  it("serves the same server on mcp.pintonotes.com, naming that address to the function", async () => {
+    for (const host of ["mcp.pintonotes.com", "mcp.ambernotes.app"]) {
+      const res = await middleware(new NextRequest(`https://${host}/token`, { headers: { host } }));
+      expect(res.headers.get("x-middleware-rewrite")).toBe(`${FN}/token`);
+      expect(res.headers.get("x-middleware-request-x-mcp-public-url")).toBe(`https://${host}`);
+    }
+  });
+
   it("maps the root to the function itself", async () => {
     expect(await proxied("/")).toBe(FN);
   });

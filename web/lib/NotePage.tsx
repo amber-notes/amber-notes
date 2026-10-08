@@ -23,13 +23,13 @@ function edited(iso: string): string {
 /// The one mention of the app on someone's shared note: after the note, never over it.
 function GetAmberNotes() {
   return (
-    <aside className={s.get} aria-label="About Amber Notes">
+    <aside className={s.get} aria-label="About Pinto Notes">
       <img src="/mark-256.png" alt="" width={44} height={44} />
       <p>
-        <strong>Shared from Amber Notes</strong>
+        <strong>Shared from Pinto Notes</strong>
         <span>A notes app for iPhone and Mac that ChatGPT and Claude can read and edit.</span>
       </p>
-      <a className={ui.secondary} href="/">Get Amber Notes</a>
+      <a className={ui.secondary} href="/">Get Pinto Notes</a>
     </aside>
   );
 }
@@ -72,7 +72,7 @@ export function NotePage({ slug, note, files, page, sealed = false, editHref = n
   // Copies the whole note into the visitor's own Amber Notes, opened from this page. A sealed
   // link (collaboration) offers Edit in Amber Notes instead, or nothing yet.
   const use = editHref
-    ? <a className={s.use} href={editHref}>Edit in Amber Notes</a>
+    ? <a className={s.use} href={editHref}>Edit in Pinto Notes</a>
     : !sealed && APP_TEMPLATES.live && <OpenInApp className={s.use} href={copyLink(slug)} app={copyAppLink(slug)} auto>Use this note</OpenInApp>;
 
   return (

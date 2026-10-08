@@ -63,7 +63,7 @@ import ZIPFoundation
         #expect(s.attachments == 2 && s.filesMissing == 1 && s.notNotes == 0)
         #expect(s.dropped == ["1 note had a color, which Amber Notes doesn't have.",
                               "1 note had a drawing, which couldn't come over.",
-                              "1 note had a reminder, which Amber Notes doesn't keep."])
+                              "1 note had a reminder, which Pinto Notes doesn't keep."])
 
         let groceries = try r.note("Groceries")
         #expect(groceries.body == "Groceries\n- [ ] Oat milk\n- [ ] Saffron\n- [x] Lemons\n")

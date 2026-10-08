@@ -72,7 +72,7 @@ describe("search and AI crawlers", () => {
 
   it("writes /llms.txt with the one-line description, the MCP address and the published posts only", () => {
     const txt = llmsTxt();
-    expect(txt.startsWith("# Amber Notes\n\n> Amber Notes is a free, open-source notes app for iPhone and Mac")).toBe(true);
+    expect(txt.startsWith("# Pinto Notes\n\n> Pinto Notes is a free, open-source notes app for iPhone and Mac")).toBe(true);
     expect(txt).toContain(MCP_URL);
     expect(txt).toContain("Incredible");
     expect(txt).toContain("https://emilwagman.com");
@@ -133,7 +133,7 @@ describe("the blog", () => {
 
   it("gives every published post a unique search title of at most 60 characters and a unique description of 70 to 160", () => {
     const pub = published();
-    const searchTitle = (slug: string, title: string) => postSource(slug).match(/postMetadata\("[^"]+", \{\s*title: "([^"]+)"/)?.[1] ?? `${title} · Amber Notes`;
+    const searchTitle = (slug: string, title: string) => postSource(slug).match(/postMetadata\("[^"]+", \{\s*title: "([^"]+)"/)?.[1] ?? `${title} · Pinto Notes`;
     const titles = pub.map((p) => searchTitle(p.slug, p.title));
     for (const [i, t] of titles.entries()) expect(t.length, pub[i].slug).toBeLessThanOrEqual(60);
     for (const p of pub) {

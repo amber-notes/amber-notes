@@ -38,9 +38,9 @@ export function declaredLibs(html: string): string[] {
 
 /** How the guide teaches it. */
 export const LIBRARY_GUIDE = `Libraries load by name, never pasted into the app:
-- Bundled with Amber Notes (on the device, instant): ${BUNDLED.map((b) => `${b.name} (${b.what}; global ${b.global})`).join(", ")}.
+- Bundled with Pinto Notes (on the device, instant): ${BUNDLED.map((b) => `${b.name} (${b.what}; global ${b.global})`).join(", ")}.
   Declare them: <meta name="amber-libs" content="chart, dayjs">; they load before your scripts. Or load one when needed: const THREE = await amber.lib("three").
-- Any other npm package: call resolve_package { name, version?, file? } and add the entry it returns to the same meta, like <meta name="amber-libs" content="chart, npm:qrcode-generator@1.4.4/qrcode.js#sha384-…">. Amber Notes downloads that exact file once, checks the hash and keeps it on the device; an entry without an exact version and a hash is refused. Pick a UMD or global build (it defines a global), not an ES module with imports. Prefer a bundled library when one does the job.
+- Any other npm package: call resolve_package { name, version?, file? } and add the entry it returns to the same meta, like <meta name="amber-libs" content="chart, npm:qrcode-generator@1.4.4/qrcode.js#sha384-…">. Pinto Notes downloads that exact file once, checks the hash and keeps it on the device; an entry without an exact version and a hash is refused. Pick a UMD or global build (it defines a global), not an ES module with imports. Prefer a bundled library when one does the job.
 - Never paste a library's code into the app: it bloats the app and can't be checked or updated. check_app flags pasted copies.`;
 
 /** Library problems in an app's HTML, worded as fixes. */
@@ -75,7 +75,7 @@ export function libraryReport(html: string): string[] {
 export async function resolvePackage(name: string, version?: string, file?: string): Promise<{ name: string; version: string; file: string; entry: string; meta: string; bytes: number; note: string }> {
   if (!/^(@[a-z0-9][\w.-]*\/)?[a-z0-9][\w.-]*$/i.test(name)) throw new Error(`"${name}" isn't an npm package name.`);
   const bundled = BUNDLED.find((b) => b.name === name || b.npm.startsWith(`${name}@`));
-  if (bundled) throw new Error(`${name} is bundled with Amber Notes as "${bundled.name}" (global ${bundled.global}): <meta name="amber-libs" content="${bundled.name}">.`);
+  if (bundled) throw new Error(`${name} is bundled with Pinto Notes as "${bundled.name}" (global ${bundled.global}): <meta name="amber-libs" content="${bundled.name}">.`);
   const get = async (url: string) => {
     const res = await fetch(url, { signal: AbortSignal.timeout(10_000), headers: { "user-agent": "amber-notes-mcp" } });
     if (!res.ok) { await res.body?.cancel(); throw new Error(res.status === 404 ? `No npm package ${name}${version ? `@${version}` : ""}.` : `The package registry answered ${res.status}; try again.`); }

@@ -12,7 +12,7 @@ import type { Sql } from "npm:postgres@3.4.5";
 
 export type Export = { name: string; files: Record<string, string> };
 
-const README = `Your Amber Notes data
+const README = `Your Pinto Notes data
 
 data.json holds everything our server keeps about your account that isn't encrypted: your
 profile, the list of your notes, folders, earlier versions and files (ids and dates only), AI
@@ -22,7 +22,7 @@ onboarding emails we sent you, and your current sign-ins.
 
 Your notes, folder names, file names and files are end-to-end encrypted with a key only your
 devices have, so we can't read them and can't export them. To take your notes with you, open
-Amber Notes and choose Settings > Privacy & Security > Export Your Notes.
+Pinto Notes and choose Settings > Privacy & Security > Export Your Notes.
 
 Access tokens and passwords are never stored in readable form, so they aren't included.
 

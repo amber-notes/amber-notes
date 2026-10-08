@@ -93,12 +93,12 @@ import Testing
     func root(dark: Bool) async throws {
         guard Self.dir != nil else { return }
         let c = try Self.container()
-        for (title, slug) in [("Welcome to Amber Notes", "welcome"), ("Evening tracker", "tracker"), ("Lisbon", "lisbon"), ("Trip documents", "files")] {
+        for (title, slug) in [("Welcome to Pinto Notes", "welcome"), ("Evening tracker", "tracker"), ("Lisbon", "lisbon"), ("Trip documents", "files")] {
             try await Self.withLastNote(c, title) {
                 try await Self.shoot(RootView().modelContainer(c), name: "mac-root-\(slug)-\(dark ? "dark" : "light")", size: CGSize(width: 1180, height: 760), dark: dark)
             }
         }
-        try await Self.withLastNote(c, "Welcome to Amber Notes") {
+        try await Self.withLastNote(c, "Welcome to Pinto Notes") {
             try await Self.shoot(RootView().modelContainer(c), name: "mac-root-narrow-\(dark ? "dark" : "light")", size: CGSize(width: 780, height: 600), dark: dark)
         }
     }
@@ -125,7 +125,7 @@ import Testing
                                  name: "mac-welcome-\(name)-\(mode)", size: WelcomeFlow.size, dark: dark, toolbar: false, card: true)
         }
         try await Self.shoot(WelcomeFlow(backend: backend, stage: .signIn(returning: false), flow: EmailSignInFlow(step: .confirm, email: "sara@example.com"),
-                                         error: "That code didn't work. Check the newest email from Amber Notes, or press Resend code."),
+                                         error: "That code didn't work. Check the newest email from Pinto Notes, or press Resend code."),
                              name: "mac-welcome-confirm-wrong-\(mode)", size: WelcomeFlow.size, dark: dark, toolbar: false, card: true)
         // Email confirmation: Check your email, fresh and just after a code went out.
         for (name, sent) in [("confirm", nil), ("confirm-wait", Date.now)] as [(String, Date?)] {

@@ -14,7 +14,7 @@ const at = (ms: number) => new Date(NOW.getTime() + ms);
 
 const cfg = (o: Partial<Config> = {}): Config => ({
   enabled: true, flags: { apps: false, appStore: false, sharing: false }, subjectTest: false, trackClicks: false, since: at(-60 * D), only: null, resendKey: "re_test", unsubscribeSecret: "u".repeat(40), cronSecret: "c".repeat(40),
-  from: "Emil at Amber Notes <emil@ambernotes.app>", replyTo: "emil@ambernotes.app", site: "https://ambernotes.app", subjectPrefix: "", manualRounds: false, ...o,
+  from: "Emil at Pinto Notes <emil@ambernotes.app>", replyTo: "emil@ambernotes.app", site: "https://ambernotes.app", subjectPrefix: "", manualRounds: false, ...o,
 });
 
 /// A fake Resend that remembers what it was given.
@@ -340,7 +340,7 @@ Deno.test("welcome: once, a couple of minutes after sign-up, by any sign-up, nev
   await welcome({ sql: sqlFor(pg), send: box.send, cfg: cfg(), pause: async () => {} });
   await Promise.all([1, 2, 3].map(() => welcome({ sql: sqlFor(pg), send: box.send, cfg: cfg(), pause: async () => {} })));
   assertEquals(box.sent.map((m) => m.to), [sara.email]);
-  assertEquals(box.sent[0].subject, "Welcome to Amber Notes");
+  assertEquals(box.sent[0].subject, "Welcome to Pinto Notes");
   assertEquals(box.sent[0].idempotencyKey, `lifecycle-welcome-${sara.id}`);
   assertStringIncludes(box.sent[0].html, "https://ambernotes.app/open/connect-ai");
   assert(box.sent[0].headers["List-Unsubscribe"]);
@@ -386,7 +386,7 @@ Deno.test("welcome and the ladder: an unanswered welcome isn't part of the silen
   await pg.query(`update auth.users set created_at = $2, email_confirmed_at = $2 where id = $1`, [sara.id, at(-3 * D - H)]);
   await age(pg, 2);
   await run({ sql: sqlFor(pg), send: box.send, cfg: cfg(), ...quick });
-  assertEquals(box.sent.map((m) => m.subject), ["Welcome to Amber Notes", S.stuck]);
+  assertEquals(box.sent.map((m) => m.subject), ["Welcome to Pinto Notes", S.stuck]);
 });
 
 Deno.test("lifecycle_welcome_tick does nothing without a waiting account, pg_net or the vault", async () => {

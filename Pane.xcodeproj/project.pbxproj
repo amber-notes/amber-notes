@@ -2568,7 +2568,7 @@
 				PANE_APPLINKS_HOST = ambernotes.app;
 				PANE_APP_GROUP = group.dev.emilwagman.pane;
 				PANE_BUNDLE_ID = dev.emilwagman.pane;
-				PANE_DISPLAY_NAME = "Amber Notes";
+				PANE_DISPLAY_NAME = "Pinto Notes";
 				PANE_UPDATE_FEED = "https://ambernotes.app/updates/appcast.xml";
 				PANE_URL_SCHEME = ambernotes;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -2730,7 +2730,7 @@
 				PANE_APPLINKS_HOST = ambernotes.app;
 				PANE_APP_GROUP = group.dev.emilwagman.pane;
 				PANE_BUNDLE_ID = dev.emilwagman.pane;
-				PANE_DISPLAY_NAME = "Amber Notes";
+				PANE_DISPLAY_NAME = "Pinto Notes";
 				PANE_UPDATE_FEED = "https://ambernotes.app/updates/appcast.xml";
 				PANE_URL_SCHEME = ambernotes;
 				PRODUCT_NAME = "$(TARGET_NAME)";

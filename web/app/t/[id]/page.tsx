@@ -19,8 +19,8 @@ const REPORT = "hello@ambernotes.app";
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const t = await sharedTemplate((await params).id);
-  if (!t) return { title: "Not shared · Amber Notes", robots: noindex };
-  return { title: `${t.template.title} · Amber Notes`, description: t.template.description, robots: noindex };
+  if (!t) return { title: "Not shared · Pinto Notes", robots: noindex };
+  return { title: `${t.template.title} · Pinto Notes`, description: t.template.description, robots: noindex };
 }
 
 export default async function Page({ params }: Props) {
@@ -48,7 +48,7 @@ export default async function Page({ params }: Props) {
         {!t.page && <h1 className={s.bigTitle}>{t.title}</h1>}
         <div className={s.useRow}>
           <a className={s.use} href={`/open/shared-template/${id}`}>Use template</a>
-          <span>Adds your own copy to Amber Notes. <a href="/download">Download</a></span>
+          <span>Adds your own copy to Pinto Notes. <a href="/download">Download</a></span>
         </div>
         {t.page
           ? <PageFrame html={t.page} markdown={example} label={`${t.title}, a preview`} />

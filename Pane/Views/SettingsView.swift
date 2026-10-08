@@ -340,7 +340,7 @@ private struct AccountSettings: View {
                 Button(role: .destructive) { confirmSignOut = true } label: { Text("Sign Out…").foregroundStyle(.red) }
                     .accessibilityIdentifier("settings.signOut")
                     // Settings closes once you're signed out.
-                    .confirmationDialog("Sign out of Amber Notes?", isPresented: $confirmSignOut, titleVisibility: .visible) {
+                    .confirmationDialog("Sign out of Pinto Notes?", isPresented: $confirmSignOut, titleVisibility: .visible) {
                         Button("Sign Out", role: .destructive) { Task { await backend.signOut() } }
                     } message: {
                         Text("Your notes stay in your account and come back when you sign in again.")

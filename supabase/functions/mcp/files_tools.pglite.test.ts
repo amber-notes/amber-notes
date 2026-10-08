@@ -180,7 +180,7 @@ Deno.test("an app: create, its files, and data.json edited like a file, one chan
   assertEquals(made.app, "Health/Habits.app/");
   const files = await tool(pg, a, "list", { path: "Health/Habits.app" });
   assert(files.files.some((f: { path: string }) => f.path === "Health/Habits.app/src/App.tsx"));
-  assertStringIncludes((await tool(pg, a, "fetch", { id: "Health/Habits.app/README.md" })).text, "How this app runs in Amber Notes");
+  assertStringIncludes((await tool(pg, a, "fetch", { id: "Health/Habits.app/README.md" })).text, "How this app runs in Pinto Notes");
   // docs/ is the app's memory: the README sends the AI there, and data.json's notes come from it.
   assertStringIncludes((await tool(pg, a, "fetch", { id: "Health/Habits.app/README.md" })).text, "Read docs/ first");
   assertStringIncludes((await tool(pg, a, "fetch", { id: "Health/Habits.app/docs/README.md" })).text, "## Known gaps");

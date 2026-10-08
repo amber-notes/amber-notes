@@ -6,12 +6,12 @@
     "Personal"
   ],
   "audience": "For anyone training a few times a week who wants to see progress.",
-  "description": "A workout log your AI keeps for you. Describe the session after the gym and ChatGPT or Claude logs it in Amber Notes.",
+  "description": "A workout log your AI keeps for you. Describe the session after the gym and ChatGPT or Claude logs it in Pinto Notes.",
   "tagline": "One row per session, and your personal bests.",
   "folder": "Health",
   "note": "Workout log\n\nOne row per session. After training, tell your AI what you did in one message.\n\n<!-- pane-table: Date=date; Workout=choice Push|Pull|Legs|Run|Other; Main lift=text; Top set=text; Minutes=number; Effort=scale 1-10 -->\n| Date | Workout | Main lift | Top set | Minutes | Effort |\n| --- | --- | --- | --- | --- | --- |\n\n## Program\n- Monday: legs (squat, lunges, calves)\n- Wednesday: push (bench, overhead press, dips)\n- Friday: pull (deadlift, rows, pull-ups)\n- Weekend: an easy run\n\n## Personal bests\n",
   "prompt": {
-    "default": "Use my Amber Notes note \"Workout log\". After a session I'll tell you what I did. Log one row with log_table_row: Workout as one of the options, the Main lift, the Top set like \"100 kg x 5\", Minutes, and Effort from 1 to 10. If I beat a number listed under \"Personal bests\", or there's none for that lift yet, add it there with append_to_note and today's date. When I ask how I'm doing, read the table with read_table and compare the last four weeks."
+    "default": "Use my Pinto Notes note \"Workout log\". After a session I'll tell you what I did. Log one row with log_table_row: Workout as one of the options, the Main lift, the Top set like \"100 kg x 5\", Minutes, and Effort from 1 to 10. If I beat a number listed under \"Personal bests\", or there's none for that lift yet, add it there with append_to_note and today's date. When I ask how I'm doing, read the table with read_table and compare the last four weeks."
   },
   "asks": [
     "Legs today: squat 100 kg for 5, then lunges. About 55 minutes, felt hard.",

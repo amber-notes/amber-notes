@@ -9,6 +9,9 @@ struct AppPlaceTests {
             ("https://ambernotes.app/open/connect-ai", .connectAI),
             ("https://www.ambernotes.app/open/import/", .importNotes),
             ("https://ambernotes.app/open/history", .history),
+            // The new name's address, alongside the old one.
+            ("https://pintonotes.com/open/history", .history),
+            ("https://www.pintonotes.com/open/connect-ai", .connectAI),
             ("ambernotes://connect-ai", .connectAI),
             ("ambernotes://history", .history),
             ("ambernotes://import", .importNotes),

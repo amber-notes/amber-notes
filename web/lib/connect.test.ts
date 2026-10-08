@@ -76,7 +76,7 @@ describe("the connect page", () => {
   it("says why sign-in failed in plain words", () => {
     expect(signInError(400, { error_code: "invalid_credentials" })).toBe("The email or password isn't right.");
     expect(signInError(400, { error_code: "email_not_confirmed" })).toBe(EMAIL_NOT_CONFIRMED);
-    expect(EMAIL_NOT_CONFIRMED).toMatch(/Amber Notes on your iPhone or Mac/);
+    expect(EMAIL_NOT_CONFIRMED).toMatch(/Pinto Notes on your iPhone or Mac/);
     expect(EMAIL_NOT_CONFIRMED).not.toMatch(/[\u2013\u2014]/);
     expect(signInError(429, null)).toMatch(/Too many attempts/);
     expect(signInError(500, null)).toMatch(/Check your connection/);

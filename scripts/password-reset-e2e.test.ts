@@ -127,7 +127,7 @@ Deno.test({ name: "password reset end to end", sanitizeResources: false, sanitiz
       assertEquals([again.status, await again.json()], [200, { sent: true }]);
       const mail = await mailTo(email);
       assert(mail, "the reset email arrived");
-      assertEquals(mail.Subject, "Reset your Amber Notes password");
+      assertEquals(mail.Subject, "Reset your Pinto Notes password");
       assertEquals(await mailTo(`nobody-${tag}@example.com`), null);
       const hrefs = [...mail.HTML.matchAll(/href="([^"]+reset-password[^"]+)"/g)].map((m) => m[1].replaceAll("&amp;", "&"));
       assert(hrefs.length >= 2 && hrefs.every((h) => h === hrefs[0]), "every link in the email is the same");

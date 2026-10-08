@@ -396,7 +396,7 @@ struct KeyGateView: View {
         }
         guard Self.sameAccount(before: before, after: after) else {
             await backend.signOut()
-            throw KeyGateFailure(message: "That Google account signs in to a different Amber Notes account. Nothing was deleted.")
+            throw KeyGateFailure(message: "That Google account signs in to a different Pinto Notes account. Nothing was deleted.")
         }
         try await startFreshAfterSignIn()
     }
@@ -463,7 +463,7 @@ struct KeyGateView: View {
 
     private var unreachable: some View {
         VStack(spacing: 18) {
-            heading("Can't reach Amber Notes", Copy.unreachable)
+            heading("Can't reach Pinto Notes", Copy.unreachable)
             mainButton("Try again", id: "e2ee.retry", enabled: true) { await crypto.restart() }
             signOut
         }
@@ -529,9 +529,9 @@ enum KeyCopy {
     static let recoveryFormat = "28 letters and numbers, in groups of four."
     static let recoveryHint = "If another device still opens your notes, it shows the key in Settings › Security."
     static let mismatch = "The key on this device isn't your account's current key."
-    static let unreachable = "Connect to the internet. This device checks your key with Amber Notes before opening your notes."
+    static let unreachable = "Connect to the internet. This device checks your key with Pinto Notes before opening your notes."
     static let startFreshMessage = [
-        "Without a device that has your key, or a recovery key you saved, the notes stored with Amber Notes can't be opened by anyone, including us. AI connections you approved can still open them until they're disconnected.",
+        "Without a device that has your key, or a recovery key you saved, the notes stored with Pinto Notes can't be opened by anyone, including us. AI connections you approved can still open them until they're disconnected.",
         "Starting fresh deletes them from our server and disconnects every AI. This device gets a new key and a new recovery key, and your account starts empty.",
     ]
     static let signInAgain = "To delete your notes, sign in again first."

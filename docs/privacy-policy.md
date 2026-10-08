@@ -4,6 +4,7 @@ Last updated: 6 October 2026
 
 ## The short version
 
+- Pinto Notes was called Amber Notes until October 2026. Same app, same service, and this policy covers both names.
 - Your notes are yours. Your notes, their titles, folder names, file names and files, and earlier versions are encrypted on your iPhone or Mac with a key only your devices hold, before they're uploaded. We store the encrypted copies so they sync, and we can't read them.
 - Some details stay readable to us, such as your email address, dates and sizes, and how your notes are organized. The section on end-to-end encryption lists all of them, and its limits.
 - No ads, no tracking and no third-party analytics in the apps, and we never sell or share your data.
@@ -18,9 +19,9 @@ Last updated: 6 October 2026
 
 ## Who we are
 
-Amber Notes is made by Emil Wagman, an individual developer in Sweden. He is the controller of the personal data described here. Questions about privacy go to **hello@ambernotes.app**.
+Pinto Notes is made by Emil Wagman, an individual developer in Sweden. He is the controller of the personal data described here. Questions about privacy go to **hello@ambernotes.app**.
 
-This policy covers the Amber Notes apps for iPhone and Mac, the service that lets AI assistants connect to your notes, and the website at ambernotes.app, including shared note pages.
+This policy covers the Pinto Notes apps for iPhone and Mac, the service that lets AI assistants connect to your notes, and the website at ambernotes.app, including shared note pages.
 
 ## What we collect
 
@@ -79,7 +80,7 @@ We count how features are used on our own server to improve the app. We never sh
 
 - how many notes an AI connection changed on each day;
 - which steps of the first-run setup you've completed;
-- if you answer it, how you heard about Amber Notes: the choice you tap, and any words you add under Something else. We only look at it added up across accounts;
+- if you answer it, how you heard about Pinto Notes: the choice you tap, and any words you add under Something else. We only look at it added up across accounts;
 - a random identifier for each installation of the app and its platform (iPhone or Mac), to count how many devices an account uses. It isn't linked to your device's hardware or advertising identifiers.
 
 **Visits to the website**
@@ -230,7 +231,7 @@ Everything else on the connect page stays in its memory and is gone when you clo
 
 ## Children
 
-Amber Notes isn't directed at children under 13, or in the EU under the age your country sets for consenting to online services (up to 16). If you believe a child has given us personal data, write to us and we'll delete it.
+Pinto Notes isn't directed at children under 13, or in the EU under the age your country sets for consenting to online services (up to 16). If you believe a child has given us personal data, write to us and we'll delete it.
 
 ## Security
 

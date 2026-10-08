@@ -27,7 +27,7 @@ enum AppleNotesBridge {
         if let error {
             let code = error[NSAppleScript.errorNumber] as? Int
             if code == -1743 {
-                throw Failure.script("Amber Notes isn't allowed to read Apple Notes. Turn it on in System Settings → Privacy & Security → Automation.")
+                throw Failure.script("Pinto Notes isn't allowed to read Apple Notes. Turn it on in System Settings → Privacy & Security → Automation.")
             }
             throw Failure.script(error[NSAppleScript.errorMessage] as? String ?? "Apple Notes didn't answer.")
         }

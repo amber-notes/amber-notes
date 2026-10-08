@@ -58,13 +58,13 @@
 		<true/>
 	</dict>
 	<key>NSAppleEventsUsageDescription</key>
-	<string>Amber Notes reads the Apple Notes you choose to import. It never changes them.</string>
+	<string>Pinto Notes reads the Apple Notes you choose to import. It never changes them.</string>
 	<key>NSCalendarsFullAccessUsageDescription</key>
 	<string>A note that is an app can show today's events, such as a meeting prep note. Nothing from your calendar leaves this device.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>Amber Notes uses the camera to scan the code on a device you add, and to take photos for a note that is an app.</string>
+	<string>Pinto Notes uses the camera to scan the code on a device you add, and to take photos for a note that is an app.</string>
 	<key>NSFaceIDUsageDescription</key>
-	<string>Amber Notes uses Face ID to open your locked notes, show your recovery key, approve AI connections and add a device.</string>
+	<string>Pinto Notes uses Face ID to open your locked notes, show your recovery key, approve AI connections and add a device.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>A note that is an app can use your location once, such as a trip log noting where you are.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>

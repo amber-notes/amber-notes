@@ -260,7 +260,7 @@ struct ConnectNotifier {
     /// "Allow ChatGPT to use your notes?" / "Requested from Chrome on a Mac. Open Amber Notes to allow it."
     static func content(_ ask: ConnectAsk, who: String?) -> (title: String, body: String) {
         let from = ask.started_from.isEmpty ? "a web browser" : ask.started_from
-        return ("Allow \(who ?? "an AI") to use your notes?", "Requested from \(from). Open Amber Notes to allow it.")
+        return ("Allow \(who ?? "an AI") to use your notes?", "Requested from \(from). Open Pinto Notes to allow it.")
     }
 
     static let system = ConnectNotifier(

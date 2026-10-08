@@ -101,7 +101,7 @@ describe("website PostHog", () => {
   });
 
   it("has no event of its own for Send myself the link", () => {
-    const send = link("mailto:?subject=Amber%20Notes&body=https%3A%2F%2Fambernotes.app");
+    const send = link("mailto:?subject=Pinto%20Notes&body=https%3A%2F%2Fambernotes.app");
     expect(clickEvent(send, new URL("https://ambernotes.app/"))).toBeNull();
   });
 

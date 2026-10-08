@@ -67,7 +67,7 @@ describe("the visitor's platform, before first paint", () => {
 
 describe("Send myself the link", () => {
   it("is an email to nobody yet, with the link in it", () => {
-    expect(mailLink("https://ambernotes.app")).toBe("mailto:?subject=Amber%20Notes&body=https%3A%2F%2Fambernotes.app");
+    expect(mailLink("https://ambernotes.app")).toBe("mailto:?subject=Pinto%20Notes&body=https%3A%2F%2Fambernotes.app");
     expect(mailLink("https://ambernotes.app/download")).toContain("body=https%3A%2F%2Fambernotes.app%2Fdownload");
   });
 
@@ -75,7 +75,7 @@ describe("Send myself the link", () => {
     const share = vi.fn(async () => {});
     const event = { preventDefault: vi.fn() };
     sendLink({ share }, event, "https://ambernotes.app");
-    expect(share).toHaveBeenCalledWith({ title: "Amber Notes", url: "https://ambernotes.app" });
+    expect(share).toHaveBeenCalledWith({ title: "Pinto Notes", url: "https://ambernotes.app" });
     expect(event.preventDefault).toHaveBeenCalledOnce();
   });
 
