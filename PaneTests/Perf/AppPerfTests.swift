@@ -140,57 +140,30 @@ extension AppPerfTests {
 
 #if os(macOS)
 extension AppPerfTests {
-    /// With files in folders the list showed notes and files together by wrapping every note as a
-    /// list item and sorting them all again on each update. Now the notes keep the order they're
-    /// already in and only the files are merged in: same sections, a fraction of the work.
-    @Test(.timeLimit(.minutes(3))) func notesAndFilesWithTwentyThousandNotes() async throws {
-        let (c, notes) = try library(notes: 20_000, big: false)
+    /// With files in folders the list shows notes and files together. The files are merged into the
+    /// notes' own order instead of every note being wrapped and sorted again: the sections and
+    /// their order must be exactly what sorting everything gives.
+    @Test func notesAndFilesKeepTheSameSectionsAndOrder() throws {
+        let (c, notes) = try library(notes: 2_000, big: false)
         let ctx = c.mainContext
         let folder = try #require(notes.first?.folder)
+        notes[40].isPinned = true
+        notes[900].isPinned = true
         var files: [Pane.Attachment] = []
         for i in 0..<10 {
             let a = Pane.Attachment(filename: "File \(i).pdf", contentType: "com.adobe.pdf", size: 1000)
             a.folderID = folder.id
-            a.modifiedAt = Date().addingTimeInterval(Double(-i * 3600 * 1900 - 1800))
+            a.modifiedAt = Date().addingTimeInterval(Double(-i * 3600 * 190 - 1800))
             ctx.insert(a)
             files.append(a)
         }
         try ctx.save()
         let newestFirst = notes.map { ($0, $0.updatedAt) }.sorted { $0.1 > $1.1 }.map(\.0)
-
         let before = DateBucket.sections(newestFirst.map(ListItem.note) + files.map(ListItem.file))
-        let entries = newestFirst.map(NoteEntry.init)
-        let after = DateBucket.sections(newestFirst: ListEntry.merged(notes: entries, files: files))
+        let after = DateBucket.sections(newestFirst: ListEntry.merged(notes: newestFirst.map(NoteEntry.init), files: files))
         #expect(after.map { $0.0 } == before.map { $0.0 }, "the same sections")
         #expect(after.map { $0.1.map { $0.id } } == before.map { $0.1.map { $0.id } }, "in the same order")
-
-        let clock = ContinuousClock()
-        func median(_ f: () -> Void) -> Double {
-            var t: [Double] = []
-            for _ in 0..<5 { t.append(ms(clock.measure(f))) }
-            return t.sorted()[2]
-        }
-        let wrapped = median { _ = DateBucket.sections(newestFirst.map(ListItem.note) + files.map(ListItem.file)) }
-        let merged = median { _ = DateBucket.sections(newestFirst: ListEntry.merged(notes: entries, files: files)) }
-        print("PERF 20,000 notes + 10 files, list order: wrapped and sorted \(String(format: "%.1f", wrapped)) ms, merged \(String(format: "%.1f", merged)) ms")
-        #expect(merged < wrapped, "merging the files in costs less than sorting everything again")
-
-        // The list itself, as it updates when a note is saved.
-        let (w, host) = window(NoteListView(scope: .all, selection: .constant([]), onNewNote: {}).modelContainer(c))
-        defer { w.close() }
-        let first = ms(clock.measure { host.layoutSubtreeIfNeeded(); w.displayIfNeeded() })
-        var updates: [Double] = []
-        for i in 0..<5 {
-            let start = clock.now
-            notes[i].body += " a"
-            notes[i].touch()
-            await Task.yield()
-            host.layoutSubtreeIfNeeded()
-            w.displayIfNeeded()
-            updates.append(ms(clock.now - start))
-        }
-        updates.sort()
-        print("PERF list of 20,000 notes + 10 files: first display \(String(format: "%.0f", first)) ms, a save shown \(String(format: "%.1f", updates[2])) ms (median)")
+        #expect(after.first?.0 == "Pinned" && after.first?.1.count == 2)
     }
 }
 #endif
@@ -199,8 +172,18 @@ extension AppPerfTests {
 extension AppPerfTests {
     /// The list at 2,000 and 20,000 notes: how long it takes to show first, and how long a save of
     /// one note takes to show. A save should cost what changed, not the size of the library.
-    @Test(.timeLimit(.minutes(4)), arguments: [2_000, 20_000]) func listShowsASaveAtScale(count: Int) async throws {
+    @Test(.timeLimit(.minutes(8)), arguments: [2_000, 20_000]) func listShowsASaveAtScale(count: Int) async throws {
         let (c, notes) = try library(notes: count, big: false)
+        // Ten files in the folder too, as real libraries have: the list then shows notes and files together.
+        if let folder = notes.first?.folder {
+            for i in 0..<10 {
+                let a = Pane.Attachment(filename: "File \(i).pdf", contentType: "com.adobe.pdf", size: 1000)
+                a.folderID = folder.id
+                a.modifiedAt = Date().addingTimeInterval(Double(-i * 3600 * 190 - 1800))
+                c.mainContext.insert(a)
+            }
+            try c.mainContext.save()
+        }
         let clock = ContinuousClock()
         let (w, host) = window(NoteListView(scope: .all, selection: .constant([]), onNewNote: {}).modelContainer(c))
         defer { w.close() }

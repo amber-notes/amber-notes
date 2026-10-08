@@ -214,6 +214,130 @@ import Testing
         #expect(updates.value == 1)
     }
 
+    /// Undo and redo (⌘Z, ⇧⌘Z) after an edit, a move and a delete put notes back without going
+    /// through the app's own functions. The app has no undo for those today (the editor undoes
+    /// text, Recently Deleted undoes a delete), so the test gives the library an undo manager,
+    /// as it would have: after each undo and redo the list matches a fresh read of every note.
+    @Test func listEntriesFollowUndoAndRedo() async throws {
+        let c = try ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        let ctx = c.mainContext
+        let work = ctx.createFolder(named: "Work"), home = ctx.createFolder(named: "Home")
+        var notes: [Note] = []
+        for i in 0..<20 {
+            let n = ctx.createNote(in: .folder(work.id), body: "Note \(i)\n\ntext")
+            n.updatedAt = Date(timeIntervalSinceNow: -Double(i) * 3600)
+            notes.append(n)
+        }
+        try ctx.save()
+        let undo = UndoManager()
+        undo.groupsByEvent = false
+        ctx.undoManager = undo
+        let library = LibraryNotes()
+        _ = library.entries(in: ctx)
+        func check(_ what: Comment) async throws {
+            try? await Task.sleep(for: .milliseconds(60))
+            let have = library.entries(in: ctx)
+            let want = try ctx.fetch(FetchDescriptor<Note>()).map(NoteEntry.init).sorted { $0.date > $1.date }
+            #expect(have.map(\.id) == want.map(\.id), what)
+            #expect(have.map(\.date) == want.map(\.date), what)
+            #expect(have.map(\.trashed) == want.map(\.trashed), what)
+            #expect(have.map(\.folderID) == want.map(\.folderID), what)
+        }
+        var undone = 0
+        func step(_ name: String, _ change: () -> Void) async throws {
+            undo.beginUndoGrouping()
+            change()
+            ctx.processPendingChanges()
+            undo.endUndoGrouping()
+            try await check("\(name)")
+            guard undo.canUndo else { return }
+            let before = try ctx.fetch(FetchDescriptor<Note>()).map(NoteEntry.init).map { "\($0.date)\($0.trashed)\($0.folderID?.uuidString ?? "")" }
+            undo.undo()
+            ctx.processPendingChanges()
+            try await check("\(name), undone")
+            let after = try ctx.fetch(FetchDescriptor<Note>()).map(NoteEntry.init).map { "\($0.date)\($0.trashed)\($0.folderID?.uuidString ?? "")" }
+            if before != after { undone += 1 }
+            undo.redo()
+            ctx.processPendingChanges()
+            try await check("\(name), redone")
+        }
+        try await step("an edit") {
+            notes[12].body = "Note 12\n\nedited"
+            notes[12].updatedAt = .now
+        }
+        try await step("a move") { notes[5].folder = home }
+        try await step("a delete") { notes[7].trashedAt = .now }
+        print("PERF undo: \(undone) of 3 changes were put back by the library's undo manager")
+    }
+
+    /// Many notes at once: a sync pull that changes thousands, an import that adds thousands, and
+    /// an account switch that empties the library and fills it with another. After each the
+    /// entries are what a fresh read of every note gives, and nothing of the old account is left.
+    @Test(.timeLimit(.minutes(5))) func listEntriesFollowBulkChanges() async throws {
+        let c = try ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        let ctx = c.mainContext
+        let folder = ctx.createFolder(named: "Notes")
+        var notes: [Note] = []
+        for i in 0..<5000 {
+            let n = Note(body: "Note \(i)\n\ntext", folder: folder)
+            n.updatedAt = Date(timeIntervalSinceNow: -Double(i) * 60)
+            ctx.insert(n)
+            notes.append(n)
+        }
+        try ctx.save()
+        let library = LibraryNotes()
+        _ = library.entries(in: ctx)
+        func check(_ what: Comment) async throws {
+            try? await Task.sleep(for: .milliseconds(150))
+            let have = library.entries(in: ctx)
+            let want = try ctx.fetch(FetchDescriptor<Note>()).map(NoteEntry.init).sorted { $0.date > $1.date }
+            #expect(have.count == want.count, what)
+            #expect(Set(have.map(\.id)) == Set(want.map(\.id)), what)
+            // Equal dates may sit in either order; everything else must match position by position.
+            #expect(have.map(\.date) == want.map(\.date), what)
+            let byID = Dictionary(uniqueKeysWithValues: want.map { ($0.id, $0) })
+            #expect(have.allSatisfy { e in byID[e.id].map { $0.trashed == e.trashed && $0.pinned == e.pinned && $0.folderID == e.folderID && $0.deleted == e.deleted } ?? false }, what)
+        }
+        try await check("as loaded")
+
+        // A sync pull: 3,000 notes get new text and dates in one go, then one save.
+        let clock = ContinuousClock()
+        let pull = clock.measure {
+            for i in 0..<3000 {
+                notes[i].body = "Note \(i)\n\nfrom the other device"
+                notes[i].updatedAt = Date(timeIntervalSinceNow: -Double(i))
+            }
+            for i in 0..<200 { notes[4999 - i].trashedAt = .now }
+        }
+        try ctx.save()
+        try await check("a sync pull that changed thousands")
+        print("PERF 5,000 notes: 3,200 changed at once, applied in \(pull)")
+
+        // An import: 2,000 notes added, one save.
+        for i in 0..<2000 {
+            let n = Note(body: "Imported \(i)\n\ntext", folder: folder)
+            n.updatedAt = Date(timeIntervalSinceNow: -Double(i) * 7)
+            ctx.insert(n)
+        }
+        try ctx.save()
+        try await check("an import that added thousands")
+        #expect(library.entries(in: ctx).count == 7000)
+
+        // Another account signs in: this device's library is emptied (AccountLibrary) and the new
+        // account's notes arrive.
+        let old = Set(library.entries(in: ctx).map(\.id))
+        for n in try ctx.fetch(FetchDescriptor<Note>()) { ctx.delete(n) }
+        try ctx.save()
+        try await check("the library emptied")
+        #expect(library.entries(in: ctx).isEmpty)
+        let theirs = ctx.createFolder(named: "Theirs")
+        for i in 0..<50 { ctx.insert(Note(body: "Theirs \(i)\n\ntext", folder: theirs)) }
+        try ctx.save()
+        try await check("the other account's notes")
+        #expect(library.entries(in: ctx).count == 50)
+        #expect(old.isDisjoint(with: library.entries(in: ctx).map(\.id)), "nothing of the old account is left")
+    }
+
     /// The wiki index takes a save in note by note; what it ends up with is what building it again gives.
     @Test func wikiIndexTakesSavesNoteByNote() throws {
         let c = try ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
@@ -248,12 +372,13 @@ import Testing
 
     /// The editor writes the open note every 0.35 s while you type. With 2,000 notes each write
     /// used to fetch and sort every note twice (the list and the sidebar) and rebuild both twice.
-    @Test(.timeLimit(.minutes(3))) func savingTheOpenNoteInABigLibrary() async throws {
+    /// A write should cost the same in a library ten times the size.
+    @Test(.timeLimit(.minutes(8)), arguments: [2_000, 20_000]) func savingTheOpenNoteInABigLibrary(count: Int) async throws {
         let c = try ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
         let ctx = c.mainContext
         let folders = (0..<6).map { ctx.createFolder(named: "Folder \($0)") }
         var open: Note?
-        for i in 0..<2000 {
+        for i in 0..<count {
             let n = Note(body: "Note \(i)\n\nSome text for note \(i), with **bold** and a list:\n- one\n- two\n", folder: folders[i % folders.count])
             n.updatedAt = Date(timeIntervalSinceNow: -Double(i) * 3600)
             ctx.insert(n)
@@ -290,8 +415,11 @@ import Testing
         }
         times.sort()
         let median = times[times.count / 2]
-        print("PERF 2,000 notes: save of the open note → window updated, median \(String(format: "%.1f", median)) ms")
-        #expect(median < 120 * PerfBudget.slack, "a save while typing stays well under a tenth of a second")
+        print("PERF \(count) notes: save of the open note → window updated, median \(String(format: "%.1f", median)) ms")
+        #expect(median < (Self.typingBudgets[count] ?? 120) * PerfBudget.slack, "a save while typing with \(count) notes")
     }
+
+    /// Milliseconds on a developer's Mac (CI multiplies by its slack).
+    static let typingBudgets: [Int: Double] = [2_000: 120, 20_000: 240]
 }
 #endif
