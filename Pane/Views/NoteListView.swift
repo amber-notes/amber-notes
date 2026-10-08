@@ -362,6 +362,9 @@ struct NoteListView: View {
         #if os(macOS)
         // The Delete key (and Edit › Delete) on the focused list removes every selected note.
         .onDeleteCommand { if !selection.isEmpty { remove(selection) } }
+        // Dev: what each click did, for the file rows that sometimes don't select (Beta builds only).
+        .onAppear { RowClickLog.start() }
+        .onChange(of: selection) { old, new in RowClickLog.selection(old, new) }
         #endif
         .toolbar {
             #if os(iOS)

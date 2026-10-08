@@ -89,7 +89,10 @@ struct FileListRow: View {
             // The List's own drag hook: the table starts the drag past the drag threshold and keeps
             // its click-to-select. `.onDrag` put a mouse-down gesture on the row that took the click,
             // so a click on a file often selected nothing (dev 2610071608).
-            .itemProvider { FileOut.provider(for: file) { [sync] a in await sync?.download(a) ?? false } }
+            .itemProvider {
+                RowClickLog.dragStarted(file.id)
+                return FileOut.provider(for: file) { [sync] a in await sync?.download(a) ?? false }
+            }
             #else
             .onDrag {
                 FileOut.provider(for: file) { [sync] a in await sync?.download(a) ?? false }
