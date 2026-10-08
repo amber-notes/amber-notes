@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { connectCSP, newNonce } from "@/lib/connect-csp";
-import { allowedPath, functionRegion, MCP_HOST, sitePath, upstream, upstreamHeaders } from "@/lib/mcp-proxy";
+import { allowedPath, functionRegion, MCP_HOST, MCP_ROBOTS, sitePath, upstream, upstreamHeaders } from "@/lib/mcp-proxy";
 
 // Two jobs, each on its own requests.
 //
@@ -9,7 +9,8 @@ import { allowedPath, functionRegion, MCP_HOST, sitePath, upstream, upstreamHead
 //    carrying only the headers MCP needs, and the response streams back. The function names this
 //    host in its OAuth metadata and counts the caller's address for rate limits because the proxy
 //    says so with a shared secret (MCP_PROXY_SECRET). Without the secret the proxy doesn't run.
-//    The favicon and OpenAI's domain challenge on that host are the site's own files.
+//    The favicon and OpenAI's domain challenge on that host are the site's own files, and its
+//    robots.txt asks crawlers to stay out.
 //
 // 2. The connect pages (/connect, and /open/connect where the universal link lands in a browser) get
 //    a per-response nonce, a strict CSP and no referrer. /connect may also call the Supabase project.
@@ -39,6 +40,7 @@ function proxy(req: NextRequest) {
   // anywhere in nextUrl, the query included, to "localhost", which breaks a loopback redirect_uri
   // (Codex, VS Code). skipMiddlewareUrlNormalize in next.config.ts keeps req.url raw.
   const raw = new URL(req.url);
+  if (raw.pathname === "/robots.txt") return new NextResponse(MCP_ROBOTS, { headers: { "content-type": "text/plain; charset=utf-8" } });
   if (sitePath(raw.pathname)) return NextResponse.next();
   const supabase = process.env.SUPABASE_URL;
   const secret = process.env.MCP_PROXY_SECRET;
