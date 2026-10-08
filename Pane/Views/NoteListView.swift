@@ -15,7 +15,8 @@ struct NoteListView: View {
 
     /// Every note, fetched again only when a save adds or deletes one (see LibraryNotes).
     @State private var library = LibraryNotes()
-    private var notes: [Note] { library.notes(in: context) }
+    /// Newest first, as plain values: nothing here reads a note from the store.
+    private var entries: [NoteEntry] { library.entries(in: context) }
     /// Files kept in folders on their own, listed with the notes.
     @Query(filter: #Predicate<Attachment> { $0.folderID != nil && $0.deletedAt == nil }) private var folderFiles: [Attachment]
     @State private var search = ""
@@ -63,27 +64,22 @@ struct NoteListView: View {
         return settled && !whatsNew.held && !connecting && !sharingHowTo
     }
 
-    /// Every note, last edited first; each date read once.
-    private var newestFirst: [Note] {
-        notes.map { ($0, $0.updatedAt) }.sorted { $0.1 > $1.1 }.map(\.0)
-    }
-
-    private func scoped(from all: [Note]) -> [Note] {
-        all.filter { n in
-            guard n.deletedAt == nil else { return false }
+    private func scoped(from all: [NoteEntry]) -> [NoteEntry] {
+        all.filter { e in
+            guard !e.deleted else { return false }
             // Sub-notes live inside their parent, not in the list. (Few notes have a
             // parent, so looking each one up is cheaper than indexing every note.)
-            if n.parentID != nil, context.isNested(n) { return false }
+            if e.parentID != nil, context.isNested(e.note) { return false }
             switch scope {
-            case .all: return n.trashedAt == nil
-            case .trash: return n.trashedAt != nil
-            case .folder(let id): return n.trashedAt == nil && n.folder?.id == id
+            case .all: return !e.trashed
+            case .trash: return e.trashed
+            case .folder(let id): return !e.trashed && e.folderID == id
             }
         }
     }
 
-    private var filtered: [Note] {
-        let all = newestFirst
+    private var filtered: [NoteEntry] {
+        let all = entries
         return filtered(from: scoped(from: all), all: all)
     }
 
@@ -106,8 +102,8 @@ struct NoteListView: View {
     }
 
     /// What the list shows, in its order: notes and files together, by date.
-    private var orderedItems: [ListItem] {
-        DateBucket.sections(filtered.map(ListItem.note) + filteredFiles(from: scopedFiles).map(ListItem.file)).flatMap(\.1)
+    private var orderedItems: [ListEntry] {
+        DateBucket.sections(newestFirst: ListEntry.merged(notes: filtered, files: filteredFiles(from: scopedFiles))).flatMap(\.1)
     }
 
     /// "12 notes, 3 files", or just the notes when the folder has no files.
@@ -118,12 +114,12 @@ struct NoteListView: View {
         return notes == 0 ? f : n + ", " + f
     }
 
-    /// `all` is every note, newest first: sorted once and shared with `scoped`.
-    private func filtered(from scoped: [Note], all: [Note]) -> [Note] {
+    /// `all` is every note, newest first, shared with `scoped`. A search reads the notes' text.
+    private func filtered(from scoped: [NoteEntry], all: [NoteEntry]) -> [NoteEntry] {
         let q = search.trimmingCharacters(in: .whitespaces)
         guard !q.isEmpty else { return scoped }
-        let base = scope == .trash ? scoped : all.filter { $0.deletedAt == nil && $0.trashedAt == nil }
-        return base.filter { $0.body.localizedStandardContains(q) }
+        let base = scope == .trash ? scoped : all.filter { !$0.deleted && !$0.trashed }
+        return base.filter { $0.note.body.localizedStandardContains(q) }
     }
 
     private var title: String {
@@ -136,7 +132,7 @@ struct NoteListView: View {
 
     var body: some View {
         // Worked out once per update and handed down: the list asks many times.
-        let all = newestFirst
+        let all = entries
         let scopedNotes = scoped(from: all)
         let visible = filtered(from: scopedNotes, all: all)
         let files = scopedFiles
@@ -148,7 +144,7 @@ struct NoteListView: View {
             #endif
     }
 
-    private func list(_ scopedNotes: [Note], _ visible: [Note], _ scopedFiles: [Attachment], _ visibleFiles: [Attachment], _ folders: [Folder]) -> some View {
+    private func list(_ scopedNotes: [NoteEntry], _ visible: [NoteEntry], _ scopedFiles: [Attachment], _ visibleFiles: [Attachment], _ folders: [Folder]) -> some View {
         List(selection: $selection) {
             // An ask to connect an AI whose sheet was closed without an answer: always a way back.
             if scope != .trash, search.isEmpty, let ask = connectCenter.waiting().first {
@@ -220,18 +216,17 @@ struct NoteListView: View {
                     .listRowSeparator(.hidden)
                     .selectionDisabled()
             }
-            // Without files the notes go straight in: wrapping each one as a list item, and sorting
-            // them again as items, was about a third of each save with 5,000 notes.
+            // Without files the notes go straight in, in the order they're kept in.
             if visibleFiles.isEmpty {
-                ForEach(DateBucket.sections(visible), id: \.0) { section in
-                    dateSection(section) { noteRow($0) }
+                ForEach(DateBucket.sections(newestFirst: visible.map { ($0, $0.date) }), id: \.0) { section in
+                    dateSection(section) { noteRow($0.note) }
                 }
             } else {
-                ForEach(DateBucket.sections(visible.map(ListItem.note) + visibleFiles.map(ListItem.file)), id: \.0) { section in
+                ForEach(DateBucket.sections(newestFirst: ListEntry.merged(notes: visible, files: visibleFiles)), id: \.0) { section in
                     dateSection(section) { item in
                         switch item {
-                        case .note(let note):
-                            noteRow(note)
+                        case .note(let entry):
+                            noteRow(entry.note)
                         case .file(let file):
                             FileListRow(file: file, query: search, showFolder: scope == .all || !search.isEmpty, remove: { remove([file.id]) })
                                 .tag(file.id)
@@ -587,7 +582,7 @@ struct NoteListView: View {
 
     /// Step 3's prompt adds to "To-do": make sure there is one.
     private func ensureToDoNote() {
-        let exists = notes.contains { $0.deletedAt == nil && $0.trashedAt == nil && $0.title.caseInsensitiveCompare("To-do") == .orderedSame }
+        let exists = entries.contains { !$0.deleted && !$0.trashed && $0.note.title.caseInsensitiveCompare("To-do") == .orderedSame }
         guard !exists else { return }
         let home = context.allFolders().first { $0.name == "Notes" && $0.parent == nil }
         _ = context.createNote(in: home.map { .folder($0.id) } ?? .all, body: "To-do\n\n")
@@ -784,41 +779,175 @@ struct NoteListView: View {
     }
 }
 
-/// Every note in the library, for the list. A query of every note fetched and wrapped all of them
-/// again after any change at all: each save while you type, and again when sync marks the note
-/// sent (with 2,000 notes about half of each save's time). Here they're fetched when the list
-/// first shows and again only when a save adds or deletes notes. Everything else the list shows
-/// (dates, folders, trash, pins) it reads from the notes themselves, so those changes still update
-/// it, through observation.
+/// What the list needs to know about a note to place it: plain values, read from the note once
+/// and again only when the note changes.
+struct NoteEntry: Identifiable, DatedListItem {
+    let note: Note
+    let id: UUID
+    var date: Date
+    var pinned: Bool
+    var trashed: Bool
+    var deleted: Bool
+    var folderID: UUID?
+    var parentID: UUID?
+
+    init(_ note: Note) {
+        self.note = note
+        id = note.id
+        date = note.updatedAt
+        pinned = note.isPinned
+        trashed = note.trashedAt != nil
+        deleted = note.deletedAt != nil
+        folderID = note.folder?.id
+        parentID = note.parentID
+    }
+
+    var listDate: Date { date }
+    var pinnedInList: Bool { pinned && !trashed }
+}
+
+/// A row of the list when files sit among the notes.
+enum ListEntry: Identifiable, DatedListItem {
+    case note(NoteEntry)
+    case file(Attachment)
+
+    var id: UUID {
+        switch self {
+        case .note(let e): e.id
+        case .file(let f): f.id
+        }
+    }
+
+    var listDate: Date {
+        switch self {
+        case .note(let e): e.date
+        case .file(let f): f.listDate
+        }
+    }
+
+    var pinnedInList: Bool {
+        if case .note(let e) = self { return e.pinnedInList }
+        return false
+    }
+
+    /// Notes in order, newest first, with files merged in where their dates fall: the notes keep
+    /// their order, and only the few files are sorted.
+    static func merged(notes: [NoteEntry], files: [Attachment]) -> [(ListEntry, Date)] {
+        let sortedFiles = files.map { ($0, $0.listDate) }.sorted { $0.1 > $1.1 }
+        var out: [(ListEntry, Date)] = []
+        out.reserveCapacity(notes.count + sortedFiles.count)
+        var f = 0
+        for n in notes {
+            while f < sortedFiles.count, sortedFiles[f].1 > n.date {
+                out.append((.file(sortedFiles[f].0), sortedFiles[f].1))
+                f += 1
+            }
+            out.append((.note(n), n.date))
+        }
+        while f < sortedFiles.count {
+            out.append((.file(sortedFiles[f].0), sortedFiles[f].1))
+            f += 1
+        }
+        return out
+    }
+}
+
+/// Every note in the library, for the list, newest first.
+///
+/// The list used to read each note's date, folder, trash and parent from the store on every
+/// update, sort them all and group them: about 100,000 reads to show one save with 20,000 notes
+/// (close to a second). Here each note is read once into a `NoteEntry` and kept in order. Each
+/// note is watched on its own: when one changes, only its entry is read again and moved. Notes a
+/// save adds or deletes are fetched again (a save says so). So showing a change costs what
+/// changed, plus a pass over plain values.
 @MainActor @Observable
 final class LibraryNotes {
-    /// Goes up with each new fetch; reading it is what updates the list.
+    /// Goes up with each change to the entries; reading it is what updates the list.
     private var generation = 0
-    @ObservationIgnored private var all: [Note] = []
+    @ObservationIgnored private var sorted: [NoteEntry] = []
     @ObservationIgnored private weak var context: ModelContext?
     @ObservationIgnored private var observer: NSObjectProtocol?
+    /// Notes that changed since the entries were last brought up to date.
+    @ObservationIgnored private var changed: Set<UUID> = []
+    @ObservationIgnored private var flushScheduled = false
+    /// Goes up with each fetch, so a watch from before it is ignored.
+    @ObservationIgnored private var epoch = 0
 
-    func notes(in context: ModelContext) -> [Note] {
+    func entries(in context: ModelContext) -> [NoteEntry] {
         if self.context !== context { start(context) }
         _ = generation
-        return all
+        return sorted
     }
 
     private func start(_ context: ModelContext) {
         self.context = context
-        all = (try? context.fetch(FetchDescriptor<Note>())) ?? []
+        load()
         if let observer { NotificationCenter.default.removeObserver(observer) }
         observer = NotificationCenter.default.addObserver(forName: ModelContext.didSave, object: context, queue: nil) { [weak self] n in
             let keys = [ModelContext.NotificationKey.insertedIdentifiers, .deletedIdentifiers].map(\.rawValue)
             let changed = keys.contains { !((n.userInfo?[$0] as? [PersistentIdentifier]) ?? []).isEmpty }
             guard changed else { return }
-            MainActor.assumeIsolated { self?.refetch() }
+            MainActor.assumeIsolated {
+                self?.load()
+                self?.generation += 1
+            }
         }
     }
 
-    private func refetch() {
+    /// Every note, read once, sorted, and watched.
+    private func load() {
         guard let context else { return }
-        all = (try? context.fetch(FetchDescriptor<Note>())) ?? []
+        epoch += 1
+        changed = []
+        let notes = (try? context.fetch(FetchDescriptor<Note>())) ?? []
+        sorted = notes.map { watched($0) }.sorted { $0.date > $1.date }
+    }
+
+    /// The note's entry as it is now; the next change to what it holds marks the note changed.
+    private func watched(_ note: Note) -> NoteEntry {
+        let id = note.id, epoch = self.epoch
+        return withObservationTracking { NoteEntry(note) } onChange: { [weak self] in
+            // Called as the note is about to change, on the thread changing it (the main one:
+            // the library's context lives there). The entry is read again once it has.
+            Task { @MainActor in self?.noteChanged(id, epoch: epoch) }
+        }
+    }
+
+    private func noteChanged(_ id: UUID, epoch: Int) {
+        guard epoch == self.epoch else { return }
+        changed.insert(id)
+        guard !flushScheduled else { return }
+        flushScheduled = true
+        // Several changes in a row (a save sets the text, the date and the sync mark) are one update.
+        Task { @MainActor in self.flush() }
+    }
+
+    private func flush() {
+        flushScheduled = false
+        guard !changed.isEmpty else { return }
+        let ids = changed
+        changed = []
+        var moved: [NoteEntry] = []
+        sorted.removeAll { e in
+            guard ids.contains(e.id) else { return false }
+            // A note deleted for good is dropped by the fetch its save brings.
+            if e.note.modelContext != nil { moved.append(watched(e.note)) }
+            return true
+        }
+        if moved.count > 64 {
+            // A sync or an import changed many at once: one sort beats that many insertions.
+            sorted = (sorted + moved).sorted { $0.date > $1.date }
+        } else {
+            for e in moved.sorted(by: { $0.date > $1.date }) {
+                // Before the first entry that isn't newer.
+                var low = 0, high = sorted.count
+                while low < high {
+                    let mid = (low + high) / 2
+                    if sorted[mid].date > e.date { low = mid + 1 } else { high = mid }
+                }
+                sorted.insert(e, at: low)
+            }
+        }
         generation += 1
     }
 }

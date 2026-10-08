@@ -137,3 +137,79 @@ extension AppPerfTests {
     }
 }
 #endif
+
+#if os(macOS)
+extension AppPerfTests {
+    /// With files in folders the list shows notes and files together. The files are merged into the
+    /// notes' own order instead of every note being wrapped and sorted again: the sections and
+    /// their order must be exactly what sorting everything gives.
+    @Test func notesAndFilesKeepTheSameSectionsAndOrder() throws {
+        let (c, notes) = try library(notes: 2_000, big: false)
+        let ctx = c.mainContext
+        let folder = try #require(notes.first?.folder)
+        notes[40].isPinned = true
+        notes[900].isPinned = true
+        var files: [Pane.Attachment] = []
+        for i in 0..<10 {
+            let a = Pane.Attachment(filename: "File \(i).pdf", contentType: "com.adobe.pdf", size: 1000)
+            a.folderID = folder.id
+            a.modifiedAt = Date().addingTimeInterval(Double(-i * 3600 * 190 - 1800))
+            ctx.insert(a)
+            files.append(a)
+        }
+        try ctx.save()
+        let newestFirst = notes.map { ($0, $0.updatedAt) }.sorted { $0.1 > $1.1 }.map(\.0)
+        let before = DateBucket.sections(newestFirst.map(ListItem.note) + files.map(ListItem.file))
+        let after = DateBucket.sections(newestFirst: ListEntry.merged(notes: newestFirst.map(NoteEntry.init), files: files))
+        #expect(after.map { $0.0 } == before.map { $0.0 }, "the same sections")
+        #expect(after.map { $0.1.map { $0.id } } == before.map { $0.1.map { $0.id } }, "in the same order")
+        #expect(after.first?.0 == "Pinned" && after.first?.1.count == 2)
+    }
+}
+#endif
+
+#if os(macOS)
+extension AppPerfTests {
+    /// The list at 2,000 and 20,000 notes: how long it takes to show first, and how long a save of
+    /// one note takes to show. A save should cost what changed, not the size of the library.
+    @Test(.timeLimit(.minutes(8)), arguments: [2_000, 20_000]) func listShowsASaveAtScale(count: Int) async throws {
+        let (c, notes) = try library(notes: count, big: false)
+        // Ten files in the folder too, as real libraries have: the list then shows notes and files together.
+        if let folder = notes.first?.folder {
+            for i in 0..<10 {
+                let a = Pane.Attachment(filename: "File \(i).pdf", contentType: "com.adobe.pdf", size: 1000)
+                a.folderID = folder.id
+                a.modifiedAt = Date().addingTimeInterval(Double(-i * 3600 * 190 - 1800))
+                c.mainContext.insert(a)
+            }
+            try c.mainContext.save()
+        }
+        let clock = ContinuousClock()
+        let (w, host) = window(NoteListView(scope: .all, selection: .constant([]), onNewNote: {}).modelContainer(c))
+        defer { w.close() }
+        let first = ms(clock.measure { host.layoutSubtreeIfNeeded(); w.displayIfNeeded() })
+        try? await Task.sleep(for: .milliseconds(300))
+        var saves: [Double] = []
+        for i in 0..<9 {
+            let start = clock.now
+            notes[i * 7 + 3].body += " a"
+            notes[i * 7 + 3].touch()
+            // The list hears of the change once the main queue turns, as in the app.
+            try? await Task.sleep(for: .milliseconds(2))
+            host.layoutSubtreeIfNeeded()
+            w.displayIfNeeded()
+            saves.append(ms(clock.now - start))
+            try? await Task.sleep(for: .milliseconds(50))
+        }
+        saves.sort()
+        let save = saves[saves.count / 2]
+        print("PERF list of \(count) notes: first display \(String(format: "%.0f", first)) ms, a save shown \(String(format: "%.1f", save)) ms (median)")
+        let budget = Self.listBudgets[count] ?? (first: 4000, save: 1000)
+        #expect(first < budget.first * PerfBudget.slack, "first display of \(count) notes")
+        #expect(save < budget.save * PerfBudget.slack, "a save shown with \(count) notes")
+    }
+
+    /// Milliseconds on a developer's Mac (CI multiplies by its slack).
+    static let listBudgets: [Int: (first: Double, save: Double)] = [2_000: (first: 400, save: 100), 20_000: (first: 2000, save: 400)]
+}
+#endif
