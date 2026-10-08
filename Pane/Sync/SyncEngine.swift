@@ -767,6 +767,10 @@ final class SyncEngine {
                 continue
             }
             do {
+                // Edited here, before the new bytes go over the old: the server's version is kept.
+                if a.bytesEdited, !a.uploaded, a.deletedAt == nil, FileStore.exists(a) {
+                    try await keepServerVersion(client, a, path: path)
+                }
                 if !a.uploaded, a.deletedAt == nil {
                     guard FileStore.exists(a) else { continue }
                     let data = try Data(contentsOf: FileStore.url(for: a.id, filename: a.filename))
@@ -777,6 +781,7 @@ final class SyncEngine {
                 }
                 try await client.from("attachments").upsert(AttachmentDTO(a, path: path)).execute()
                 a.dirty = false
+                a.bytesEdited = false
                 // Deleted for good here: the sealed bytes leave Storage too, with its earlier versions
                 // (the row stays as a tombstone).
                 if a.deletedAt != nil {
@@ -794,6 +799,31 @@ final class SyncEngine {
             }
         }
         return false
+    }
+
+    /// A file edited here is about to replace what the server has. That version is kept first, as
+    /// the AI's replacements keep theirs (folder_files.ts writeFile): its sealed bytes copied to
+    /// <path>.v<n>, a row in attachment_versions, the newest 10 kept. The edit's content version
+    /// goes past the server's, even if the AI replaced the file meanwhile.
+    private func keepServerVersion(_ client: SupabaseClient, _ a: Attachment, path: String) async throws {
+        struct Row: Decodable { var meta_ct: String; var size: Int64; var content_version: Int; var updated_at: Date }
+        let rows: [Row] = try await client.from("attachments").select("meta_ct,size,content_version,updated_at").eq("id", value: a.id).execute().value
+        // Never went up: there's nothing to keep.
+        guard let row = rows.first else { return }
+        if row.content_version >= a.contentVersion { a.contentVersion = row.content_version + 1 }
+        struct Kept: Decodable { var id: Int64; var storage_path: String }
+        let kept: [Kept] = try await client.from("attachment_versions").select("id,storage_path").eq("attachment_id", value: a.id)
+            .order("id", ascending: false).execute().value
+        let versionPath = FileVersions.nextPath(path, kept: kept.map(\.storage_path))
+        _ = try await client.storage.from("files").copy(from: path, to: versionPath)
+        struct Version: Encodable { var attachment_id: UUID; var meta_ct: String; var size: Int64; var storage_path: String; var client: String; var made_at: Date }
+        try await client.from("attachment_versions").insert(Version(attachment_id: a.id, meta_ct: row.meta_ct, size: row.size, storage_path: versionPath,
+                                                                    client: "Amber Notes", made_at: row.updated_at)).execute()
+        let gone = kept.dropFirst(FileVersions.kept - 1)
+        if !gone.isEmpty {
+            try await client.from("attachment_versions").delete().in("id", values: gone.map { String($0.id) }).execute()
+            _ = try? await client.storage.from("files").remove(paths: gone.map(\.storage_path))
+        }
     }
 
     /// A file's bytes from Storage, opened with the account's key.
@@ -1527,7 +1557,12 @@ struct AttachmentDTO: Codable {
         self.init(id: a.id, filename: String(a.filename.prefix(255)), content_type: a.contentType, size: a.size,
                   storage_path: path, created_at: a.createdAt, updated_at: .now, deleted_at: a.deletedAt,
                   folder_id: a.folderID, trashed_at: a.trashedAt)
+        // New bytes from this device (a text file edited here): other devices fetch them again.
+        if a.bytesEdited { sendsContentVersion = a.contentVersion }
     }
+
+    /// Sent only with bytes edited here; otherwise the server's count stays as it is.
+    var sendsContentVersion: Int?
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -1566,6 +1601,7 @@ struct AttachmentDTO: Codable {
         try c.encode(deleted_at, forKey: .deleted_at)
         try c.encode(folder_id, forKey: .folder_id)
         try c.encode(trashed_at, forKey: .trashed_at)
+        if let v = sendsContentVersion { try c.encode(v, forKey: .content_version) }
     }
 }
 

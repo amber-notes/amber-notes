@@ -89,7 +89,10 @@ struct FileListRow: View {
             // The List's own drag hook: the table starts the drag past the drag threshold and keeps
             // its click-to-select. `.onDrag` put a mouse-down gesture on the row that took the click,
             // so a click on a file often selected nothing (dev 2610071608).
-            .itemProvider { FileOut.provider(for: file) { [sync] a in await sync?.download(a) ?? false } }
+            .itemProvider {
+                RowClickLog.dragStarted(file.id)
+                return FileOut.provider(for: file) { [sync] a in await sync?.download(a) ?? false }
+            }
             #else
             .onDrag {
                 FileOut.provider(for: file) { [sync] a in await sync?.download(a) ?? false }
@@ -274,6 +277,10 @@ struct FileDetailView: View {
                 CSVTableView(url: url, separator: CSVTable.separator(file.filename))
                     .id(url)
                     .accessibilityIdentifier("file.table")
+            } else if FileKinds.isText(file.filename) {
+                // Code and text files open as text: coloured, editable, and HTML can be previewed safely.
+                CodeFileView(file: file, url: url)
+                    .id(url)
             } else {
                 FilePreview(url: url)
                     .id(url)

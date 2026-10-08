@@ -102,7 +102,15 @@ extension EditorPerfTests {
             var steps: [Double] = []
             // 15 frames from 760 to 990 points wide, and back: the sidebar's width.
             let widths = (0...15).map { 760 + 230 * Double($0) / 15 }
-            for w in widths + widths.reversed() {
+            // One pass untimed first: the first layout at each width fills caches the rest reuse.
+            for w in widths {
+                h.window.setContentSize(NSSize(width: w, height: 900))
+                h.scroll.frame.size = NSSize(width: w, height: 900)
+                h.window.contentView?.layoutSubtreeIfNeeded()
+                h.view.layoutCards(animated: false)
+                h.window.displayIfNeeded()
+            }
+            for w in widths.reversed() + widths {
                 steps.append(ms(clock.measure {
                     h.window.setContentSize(NSSize(width: w, height: 900))
                     h.scroll.frame.size = NSSize(width: w, height: 900)
@@ -119,10 +127,10 @@ extension EditorPerfTests {
         }
         let reference = medians["80 lines"] ?? 0
         // (name, a frame's budget on a developer's Mac, at most this many times the 80-line note).
-        // The tables note varies more than plain text between runners: 6 to 13 times the 80-line
-        // note over the first six CI runs, so its ratio has room; the ceiling is what catches a
-        // slowdown of everything.
-        for (name, budget, ratio) in [("80 lines", 4.0, 1.0), ("5000 lines", 8.0, 4.0), ("blocks", 16.0, 20.0)] {
+        // The tables note ran 6.7 to 7.8 times the 80-line note over three CI runs once the timing
+        // suites had a process of their own (up to 13 times beside the other suites); the ceiling
+        // is what catches a slowdown of everything.
+        for (name, budget, ratio) in [("80 lines", 4.0, 1.0), ("5000 lines", 8.0, 4.0), ("blocks", 16.0, 10.0)] {
             let median = medians[name] ?? .infinity
             if PerfBudget.slack > 1 {
                 if name != "80 lines" {

@@ -4,7 +4,7 @@
 //
 //   deno run -A e2e/screens.ts --out <dir>
 import { parseArgs } from "@std/cli/parse-args";
-import puppeteer from "npm:puppeteer-core@23.11.1";
+import puppeteer from "npm:puppeteer-core@25.12.0";
 
 const { out } = parseArgs(Deno.args, { string: ["out"] });
 if (!out) throw new Error("--out <dir>");

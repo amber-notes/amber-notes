@@ -37,10 +37,13 @@ Add File, drops and the share sheet take only these; anything else is refused wi
 | PDF | Quick Look | Quick Look | its text, by page (unpdf); a scan says it has no text | write (bytes) |
 | JPEG, PNG, GIF, WebP | Quick Look | Quick Look | as an image | write (bytes) |
 | HEIC | Quick Look | Quick Look | says it can't; raw for the bytes | write (bytes) |
-| TXT, Markdown, JSON, XML, YAML, HTML, CSS, code (py, swift, js, ts, sh, sql, …) | Quick Look | Quick Look | as text with line numbers | edit and write, like a note |
+| TXT, Markdown, JSON, XML, YAML, CSS, code (py, swift, js, ts, sh, sql, …) | as code: coloured, editable | as code: coloured, editable | as text with line numbers | edit and write, like a note |
+| HTML (html, htm) | as code, editable; Preview shows the page locked down | the same | as text with line numbers | edit and write, like a note |
 | CSV, TSV | as a table | as a table | as text with line numbers | edit and write, like a note |
 | Word (docx), Excel (xlsx), PowerPoint (pptx) | Quick Look | Quick Look | their text (paragraphs, sheets as rows, slides) | write (bytes) |
 | Pages, Numbers, Keynote | Quick Look | Quick Look | says it can't; raw for the bytes | write (bytes) |
+
+The HTML Preview runs no script, loads nothing (a content rule blocks every URL, with a `default-src 'none'` policy on top), allows only its own first load, submits no form, keeps nothing (a non-persistent store), and hands a clicked web link to the browser (`LockedHTML` in `CodeFileView.swift`; `PaneTests/HTMLPreviewTests.swift` checks a hostile page against a listener). A text file edited in the app goes up as a new `content_version`, past the server's, so other devices fetch it again; the version it replaces is kept first in `attachment_versions` (bytes copied to `<path>.v<n>`, the newest 10 kept), as the AI's replacements are, so the edit can be undone from history (`made_by` "Amber Notes").
 
 Every row but iWork was opened on both platforms (screenshots in `docs/Evidence/folder-files/kinds/`). No real iWork file was at hand (the only sample on the machine is a 2011 stub Quick Look refuses), so iWork rests on Quick Look's documented support.
 
