@@ -86,7 +86,7 @@ export async function extract(bytes: Uint8Array, name: string, type: string): Pr
 
 /** Word, Excel and PowerPoint (Office Open XML): the text in reading order, cheaply, from the zip. */
 async function officeText(bytes: Uint8Array, e: string): Promise<string> {
-  const { unzipSync, strFromU8 } = await import("npm:fflate@0.8.2");
+  const { unzipSync, strFromU8 } = await import("npm:fflate@0.8.3");
   const zip = unzipSync(bytes);
   const xml = (p: string) => zip[p] ? strFromU8(zip[p]) : "";
   const unescape = (s: string) => s.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, "\"").replace(/&apos;/g, "'").replace(/&amp;/g, "&");

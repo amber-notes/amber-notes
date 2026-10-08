@@ -4,7 +4,7 @@
 // account.e2e.test.ts covers the storage side (files and photos) against the real local stack.
 import { assert, assertEquals, assertStringIncludes } from "jsr:@std/assert@1";
 import type { PGlite } from "npm:@electric-sql/pglite@0.2.17";
-import { strFromU8, unzipSync } from "npm:fflate@0.8.2";
+import { strFromU8, unzipSync } from "npm:fflate@0.8.3";
 import { asUser, newUser, schemaDB, sqlFor } from "../mcp/pglite.ts";
 import { collect, zip } from "./export.ts";
 import * as sealed from "../mcp/sealed.ts";

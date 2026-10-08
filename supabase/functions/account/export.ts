@@ -7,7 +7,7 @@
 // Notes are end-to-end encrypted: the server can't read them, so the notes themselves are exported
 // by the app on the device (Settings › Privacy & Security). data.json lists them by id, folder and
 // date, without their encrypted text, which nobody but the account's devices can open.
-import { strToU8, zipSync } from "npm:fflate@0.8.2";
+import { strToU8, zipSync } from "npm:fflate@0.8.3";
 import type { Sql } from "npm:postgres@3.4.5";
 
 export type Export = { name: string; files: Record<string, string> };
