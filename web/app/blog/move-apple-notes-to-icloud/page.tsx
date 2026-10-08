@@ -110,7 +110,7 @@ export default function Page() {
 
       <h2>Moving to another notes app</h2>
       <p>
-        Pinto Notes, the notes app for iPhone and Mac that I make, syncs every note between your devices once you sign in, and ChatGPT
+        Amber Notes, the notes app for iPhone and Mac that I make, syncs every note between your devices once you sign in, and ChatGPT
         and Claude can read and edit those notes after you approve them. <a href="/blog/move-from-apple-notes">Moving from Apple
         Notes</a> takes one import on your Mac and leaves Apple Notes as it was.
       </p>

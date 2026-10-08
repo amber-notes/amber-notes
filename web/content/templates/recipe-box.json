@@ -12,7 +12,7 @@
   "folder": "Recipes",
   "note": "Recipe box\n\nYour recipes, cleaned up and filed: one sub-note each, with the ingredients as a checklist you can tick off while you cook.\n\n## Weeknight\n\n## Weekend\n\n## Baking\n\n## Want to try\n",
   "prompt": {
-    "default": "Use my Pinto Notes note \"Recipe box\". When I paste a recipe, clean it up: a title, servings and time on one line, the ingredients as a checklist, and short numbered steps, without the life story. Save it as a sub-note with create_sub_note under \"Weeknight\", \"Weekend\" or \"Baking\", whichever fits. Recipes I want to try later go under \"Want to try\" as a bullet with append_to_note. When I ask what to cook, search the box with search_notes."
+    "default": "Use my Amber Notes note \"Recipe box\". When I paste a recipe, clean it up: a title, servings and time on one line, the ingredients as a checklist, and short numbered steps, without the life story. Save it as a sub-note with create_sub_note under \"Weeknight\", \"Weekend\" or \"Baking\", whichever fits. Recipes I want to try later go under \"Want to try\" as a bullet with append_to_note. When I ask what to cook, search the box with search_notes."
   },
   "asks": [
     "Save this recipe: …",

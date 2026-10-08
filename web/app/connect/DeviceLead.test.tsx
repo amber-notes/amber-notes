@@ -10,7 +10,7 @@ const screen = (props: Partial<Parameters<typeof DeviceScreen>[0]> = {}) => rend
   <DeviceScreen lead="iphone" devices={{ iphone: true, mac: false }} number={null} action="type" openLink="https://ambernotes.app/open/connect?request=x" onRecover={() => {}} {...props} />,
 );
 
-describe("where the account has Pinto Notes", () => {
+describe("where the account has Amber Notes", () => {
   it("reads two yes-or-no answers, or nothing", () => {
     expect(parseDevices({ asked: true, devices: { iphone: true, mac: false } })).toEqual({ iphone: true, mac: false });
     for (const none of [null, {}, { devices: null }, { devices: { iphone: true } }, { devices: { iphone: "yes", mac: true } }]) expect(parseDevices(none)).toBeNull();
@@ -42,8 +42,8 @@ describe("where the account has Pinto Notes", () => {
 describe("the signed-in screen", () => {
   it("says what to do as the heading, in one sentence under the picture, with two quiet ways out", () => {
     const t = text(screen({ onResend: async () => null }));
-    expect(t).toContain("Open Pinto Notes on your iPhone");
-    expect(t).toContain("Pinto Notes sent a notification to your iPhone. Open the notification to approve this connection.");
+    expect(t).toContain("Open Amber Notes on your iPhone");
+    expect(t).toContain("Amber Notes sent a notification to your iPhone. Open the notification to approve this connection.");
     expect(t).toContain("Send it again");
     expect(t).toContain("Use your recovery key");
     expect(t).not.toContain("Mac");
@@ -61,31 +61,31 @@ describe("the signed-in screen", () => {
 
   it("shows the notification in the server's own words, with the app's mark and name", () => {
     const html = screen();
-    expect(text(html)).toContain("Pinto Notes now An AI connection request Open Pinto Notes to see it.");
+    expect(text(html)).toContain("Amber Notes now An AI connection request Open Amber Notes to see it.");
     expect(html).toContain('src="/mark-256.png"');
   });
 
   it("puts the number in the heading and the sentence: typed for apps before 1.2, compared from 1.2", () => {
     const typed = text(screen({ number: "42" }));
     expect(typed).toContain("Type 42 on your iPhone");
-    expect(typed).toContain("Open the notification from Pinto Notes, type 42, then choose Allow. If Pinto Notes shows no number box, choose Don't allow.");
+    expect(typed).toContain("Open the notification from Amber Notes, type 42, then choose Allow. If Amber Notes shows no number box, choose Don't allow.");
     const compared = text(screen({ number: "42", action: "compare" }));
     expect(compared).toContain("Check that your iPhone shows 42");
-    expect(compared).toContain("Open the notification from Pinto Notes and check that it shows 42, then choose Allow. If the number is different, choose Don't allow.");
-    expect(numberTitle("thisMac", "07", "type")).toBe("Type 07 in Pinto Notes");
+    expect(compared).toContain("Open the notification from Amber Notes and check that it shows 42, then choose Allow. If the number is different, choose Don't allow.");
+    expect(numberTitle("thisMac", "07", "type")).toBe("Type 07 in Amber Notes");
     expect(numberTitle("mac", "07", "compare")).toBe("Check that your Mac shows 07");
-    expect(numberBody("thisMac", "07", "type")).toBe("Type 07 in Pinto Notes, then choose Allow. If Pinto Notes shows no number box, choose Don't allow.");
+    expect(numberBody("thisMac", "07", "type")).toBe("Type 07 in Amber Notes, then choose Allow. If Amber Notes shows no number box, choose Don't allow.");
   });
 
   it("leads with one button on the device the browser is on, and says what to do if nothing opens", () => {
     const html = screen({ lead: "thisMac", devices: { iphone: true, mac: true } });
     expect(html).toContain('href="https://ambernotes.app/open/connect?request=x"');
     const t = text(html);
-    expect(t).toContain("Open Pinto Notes on this Mac");
+    expect(t).toContain("Open Amber Notes on this Mac");
     expect(t).toContain("Nothing opened? Open the notification on your iPhone instead.");
-    expect(text(screen({ lead: "thisMac", devices: { iphone: false, mac: true } }))).toContain("Pinto Notes may be on another Mac.");
-    expect(text(screen({ lead: "thisIphone" }))).toContain("Open Pinto Notes on this iPhone");
-    expect(text(screen({ lead: "mac", devices: { iphone: false, mac: true } }))).toContain("Open Pinto Notes on your Mac");
+    expect(text(screen({ lead: "thisMac", devices: { iphone: false, mac: true } }))).toContain("Amber Notes may be on another Mac.");
+    expect(text(screen({ lead: "thisIphone" }))).toContain("Open Amber Notes on this iPhone");
+    expect(text(screen({ lead: "mac", devices: { iphone: false, mac: true } }))).toContain("Open Amber Notes on your Mac");
     // Sending again is for the notification on an iPhone.
     expect(text(screen({ lead: "mac", devices: { iphone: false, mac: true }, onResend: async () => null }))).not.toContain("Send it again");
   });
@@ -129,7 +129,7 @@ describe("the parts every connect screen shares", () => {
   it("puts the site's logo at the top, linking home, and no other way out of the flow", () => {
     for (const html of [renderToStaticMarkup(<ConnectCard><p>x</p></ConnectCard>), renderToStaticMarkup(<ConnectCard request><p>x</p></ConnectCard>)]) {
       const bar = html.match(/<header[^>]*>([\s\S]*?)<\/header>/)?.[1] ?? "";
-      expect(text(bar)).toBe("Pinto Notes");
+      expect(text(bar)).toBe("Amber Notes");
       expect([...bar.matchAll(/href="([^"]+)"/g)].map((m) => m[1])).toEqual(["/"]);
     }
   });

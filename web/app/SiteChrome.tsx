@@ -85,9 +85,9 @@ export default function SiteChrome({ version, stars, children }: { version: stri
   return (
     <div className="site">
       <header className="site-header">
-        <a className="site-brand" href="/" aria-current={current("/")} aria-label="Pinto Notes home" onClick={toTop}>
+        <a className="site-brand" href="/" aria-current={current("/")} aria-label="Amber Notes home" onClick={toTop}>
           <img src="/mark-256.png" alt="" width={34} height={34} />
-          <span className="site-name">Pinto Notes</span>
+          <span className="site-name">Amber Notes</span>
           {version && <span className="site-badge">v{version}</span>}
         </a>
         <nav className="site-nav" aria-label="Site">
@@ -121,14 +121,14 @@ export default function SiteChrome({ version, stars, children }: { version: stri
           </nav>
           <span className="site-footsep" aria-hidden="true" />
           <div className="site-social">
-            <a href={GITHUB} target="_blank" rel="noopener noreferrer" aria-label="Pinto Notes on GitHub"><GitHubGlyph /></a>
+            <a href={GITHUB} target="_blank" rel="noopener noreferrer" aria-label="Amber Notes on GitHub"><GitHubGlyph /></a>
             <a href={X_URL} target="_blank" rel="me noopener noreferrer" aria-label="Emil Wagman on X"><XGlyph /></a>
             <a href={LINKEDIN_URL} target="_blank" rel="me noopener noreferrer" aria-label="Emil Wagman on LinkedIn"><LinkedInGlyph /></a>
           </div>
         </div>
         <p className="site-credit">Made by <a className="site-maker" href={MAKER_URL} target="_blank" rel="me noopener">Emil Wagman</a> at <a className="site-maker" href="https://incredible.one" target="_blank" rel="noopener">Incredible</a>. Works with ChatGPT and Claude; not affiliated with Apple, OpenAI or Anthropic.</p>
         <svg className="site-wordmark" viewBox="0 0 1000 170" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
-          <text x="500" y="160" textAnchor="middle" textLength="980" lengthAdjust="spacingAndGlyphs">Pinto Notes</text>
+          <text x="500" y="160" textAnchor="middle" textLength="980" lengthAdjust="spacingAndGlyphs">Amber Notes</text>
         </svg>
       </footer>
     </div>

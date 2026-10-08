@@ -10,7 +10,7 @@ import TryApp from "./TryApp";
 // keeps in the tab, or a QR code from /connect scanned on a phone without the app. Then it tries the
 // app's own scheme once, with a button for a second try; a scanned code's #s=…&k=… goes along.
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Open Pinto Notes", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Open Amber Notes", robots: { index: false, follow: false } };
 
 export default async function OpenConnect({ searchParams }: { searchParams: Promise<{ request?: string }> }) {
   const { request } = await searchParams;
@@ -25,11 +25,11 @@ export default async function OpenConnect({ searchParams }: { searchParams: Prom
   const href = appLink(request);
   return (
     <ConnectCard>
-      <h1 className={styles.title}>Opening Pinto Notes</h1>
+      <h1 className={styles.title}>Opening Amber Notes</h1>
       <p className={styles.lede}>Choose Allow in the app to finish connecting. If it didn't open, try again.</p>
       <TryApp href={href} />
       <p className={styles.small}>
-        Don't have it? <a href="/download">Get Pinto Notes</a>
+        Don't have it? <a href="/download">Get Amber Notes</a>
       </p>
     </ConnectCard>
   );

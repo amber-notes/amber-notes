@@ -39,9 +39,9 @@ export function ScanScreen({ to, link, macLink, onNotify, onRecover }: {
     <>
       <h1 className={styles.title}>Scan with your iPhone</h1>
       <AccessLine to={to} />
-      <QRCode link={link} label="QR code to connect with Pinto Notes on your iPhone" />
+      <QRCode link={link} label="QR code to connect with Amber Notes on your iPhone" />
       <p className={styles.hint}>Open the Camera and point it at the code.</p>
-      {macLink && <a className={styles.secondary} href={macLink}>Open Pinto Notes on this Mac</a>}
+      {macLink && <a className={styles.secondary} href={macLink}>Open Amber Notes on this Mac</a>}
       <BottomLinks>
         <button type="button" className={styles.link} onClick={onNotify}>Get a notification instead</button>
         <button type="button" className={styles.link} onClick={onRecover}>No iPhone? Use your recovery key</button>
@@ -98,8 +98,8 @@ export function NotifyScreen({ number, onScan, lead = "any", devices = null, ope
         </>
       ) : (
         <>
-          <h1 className={styles.title}>Open Pinto Notes on your iPhone or Mac</h1>
-          <p className={styles.lede}>Open the notification from Pinto Notes to approve this connection.</p>
+          <h1 className={styles.title}>Open Amber Notes on your iPhone or Mac</h1>
+          <p className={styles.lede}>Open the notification from Amber Notes to approve this connection.</p>
         </>
       )}
       <BottomLinks>
@@ -156,7 +156,7 @@ export function RecoverScreen({ to, signedIn, recoveryKey, onRecoveryKey, access
   return (
     <>
       <h1 className={styles.title}>Use your recovery key</h1>
-      {noDevices && <p className={styles.lede}>No iPhone or Mac has opened Pinto Notes on this account in the last 30 days.</p>}
+      {noDevices && <p className={styles.lede}>No iPhone or Mac has opened Amber Notes on this account in the last 30 days.</p>}
       <p className={styles.lede}>Enter your recovery key to allow <b>{where}</b>. Only do this if you just started connecting it yourself.</p>
       <form className={styles.form} method="post" onSubmit={onSubmit}>
         <label className={styles.field}>
@@ -293,9 +293,9 @@ export function EmailFirst({ email, password, onEmail, onPassword, busy, ready, 
       {step.kind === "apple" && <p className={styles.said} role="status">{NO_PASSWORD}</p>}
       {step.kind === "none" ? (
         <div className={styles.said} role="status">
-          <p><b>No Pinto Notes account uses this email.</b></p>
-          <p>Accounts start in the app on your iPhone or Mac, which makes your notes&apos; key. Get Pinto Notes, sign up there, then connect again.</p>
-          <a className={styles.primary} href={APP_STORE_LIVE ? APP_STORE_URL : "/download"}>Get Pinto Notes</a>
+          <p><b>No Amber Notes account uses this email.</b></p>
+          <p>Accounts start in the app on your iPhone or Mac, which makes your notes&apos; key. Get Amber Notes, sign up there, then connect again.</p>
+          <a className={styles.primary} href={APP_STORE_LIVE ? APP_STORE_URL : "/download"}>Get Amber Notes</a>
         </div>
       ) : (
         <>

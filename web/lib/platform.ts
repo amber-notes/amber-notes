@@ -22,7 +22,7 @@ export const platformScript = `(function(){try{var n=navigator,d=document.docume
 /// The address of "Send myself the link": an email to nobody yet, with the link in it. It works
 /// without scripts, and it's what opens where the browser has no share sheet.
 export function mailLink(url: string): string {
-  return `mailto:?subject=${encodeURIComponent("Pinto Notes")}&body=${encodeURIComponent(url)}`;
+  return `mailto:?subject=${encodeURIComponent("Amber Notes")}&body=${encodeURIComponent(url)}`;
 }
 
 /// A click on "Send myself the link": the system's share sheet where the browser has one (phones,
@@ -30,7 +30,7 @@ export function mailLink(url: string): string {
 export function sendLink(nav: { share?: (data: { title: string; url: string }) => Promise<void> }, event: { preventDefault(): void }, url: string): void {
   if (typeof nav.share !== "function") return;
   event.preventDefault();
-  nav.share({ title: "Pinto Notes", url }).catch(() => { /* closed without sending */ });
+  nav.share({ title: "Amber Notes", url }).catch(() => { /* closed without sending */ });
 }
 
 /// Ends a preview: forgets it, and loads the page again without ?as= so the real platform is read.

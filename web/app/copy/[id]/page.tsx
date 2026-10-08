@@ -9,7 +9,7 @@ import CopyPrompt from "./CopyPrompt";
 // prompts the emails use (lib/try-prompts.json, the same list as
 // supabase/functions/lifecycle/prompts.json): a page that copied any text from its address could be
 // used to put someone else's words in a person's clipboard.
-export const metadata: Metadata = { title: "Ask Claude · Pinto Notes", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Ask Claude · Amber Notes", robots: { index: false, follow: false } };
 
 export function generateStaticParams() {
   return PROMPTS.map((p) => ({ id: p.id }));

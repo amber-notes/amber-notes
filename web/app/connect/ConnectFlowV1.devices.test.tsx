@@ -80,7 +80,7 @@ const MAC = { platform: "MacIntel", ua: "Mozilla/5.0 (Macintosh; Intel Mac OS X 
 const signedOutAt = (calls: Call[]) => calls.findIndex((c) => c.url.startsWith(`${SUPABASE}/auth/v1/logout`));
 
 describe("the page public apps use, before signing in", () => {
-  it("shows \"Pinto Notes on this Mac? Open it\" only on a Mac", async () => {
+  it("shows \"Amber Notes on this Mac? Open it\" only on a Mac", async () => {
     for (const [on, shown] of [[MAC, true], [{ platform: "Win32", ua: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" }, false], [{ platform: "iPhone", ua: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)" }, false]] as const) {
       vi.spyOn(navigator, "platform", "get").mockReturnValue(on.platform);
       vi.spyOn(navigator, "userAgent", "get").mockReturnValue(on.ua);
@@ -96,10 +96,10 @@ describe("the page public apps use, before signing in", () => {
 });
 
 describe("the page public apps use, once you've signed in", () => {
-  it("says Open Pinto Notes on your iPhone when the account has one, with no waiting line", async () => {
+  it("says Open Amber Notes on your iPhone when the account has one, with no waiting line", async () => {
     const server = await signIn({ iphone: true, mac: false });
-    await until(() => heading() === "Open Pinto Notes on your iPhone");
-    expect(container.textContent).toContain("Pinto Notes sent a notification to your iPhone.");
+    await until(() => heading() === "Open Amber Notes on your iPhone");
+    expect(container.textContent).toContain("Amber Notes sent a notification to your iPhone.");
     expect(container.textContent).not.toContain("iPhone or Mac");
     expect(container.textContent).not.toContain("Waiting");
     // Still signed in: the recovery key won't ask for the password again.
@@ -108,7 +108,7 @@ describe("the page public apps use, once you've signed in", () => {
 
   it("sends the notification again with the page's pickup secret, and says so", async () => {
     const server = await signIn({ iphone: true, mac: false });
-    await until(() => heading() === "Open Pinto Notes on your iPhone");
+    await until(() => heading() === "Open Amber Notes on your iPhone");
     const again = [...container.querySelectorAll("button")].find((b) => b.textContent === "Send it again")!;
     await act(async () => again.click());
     await until(() => container.textContent!.includes("Sent again."));
@@ -119,15 +119,15 @@ describe("the page public apps use, once you've signed in", () => {
 
   it("leads with one button on a Mac whose account has the Mac app", async () => {
     await signIn({ iphone: true, mac: true }, MAC);
-    await until(() => heading() === "Open Pinto Notes on this Mac");
-    const open = [...container.querySelectorAll("a")].find((a) => a.textContent === "Open Pinto Notes")!;
+    await until(() => heading() === "Open Amber Notes on this Mac");
+    const open = [...container.querySelectorAll("a")].find((a) => a.textContent === "Open Amber Notes")!;
     expect(open.getAttribute("href")).toBe(`https://ambernotes.app/open/connect?request=${ID}`);
     expect(container.textContent).toContain("Nothing opened? Open the notification on your iPhone instead.");
   });
 
   it("names both, as before, when the server doesn't say", async () => {
     await signIn(undefined);
-    await until(() => heading() === "Open Pinto Notes on your iPhone or Mac");
+    await until(() => heading() === "Open Amber Notes on your iPhone or Mac");
   });
 
   it("goes to the recovery key, still signed in, when no app was seen lately", async () => {
@@ -143,7 +143,7 @@ describe("the page public apps use, once you've signed in", () => {
 describe("the recovery key after asking your devices", () => {
   it("never asks for the password a second time, and shows only the key and Allow", async () => {
     const server = await signIn({ iphone: true, mac: false });
-    await until(() => heading() === "Open Pinto Notes on your iPhone");
+    await until(() => heading() === "Open Amber Notes on your iPhone");
     const signIns = () => server.calls.filter((c) => c.url.includes("grant_type=password")).length;
     expect(signIns()).toBe(1);
     await act(async () => [...container.querySelectorAll("button")].find((b) => b.textContent === "Use your recovery key")!.click());

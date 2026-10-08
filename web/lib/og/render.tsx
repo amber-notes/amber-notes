@@ -45,7 +45,7 @@ export function renderCard({ theme, title, sub, chips = [], art, titleSize = 74 
         <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", padding: "64px 0 64px 72px", width: art === "phone" ? 780 : typeof art === "object" ? 640 : 760 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
             <img src={mark} width={64} height={64} style={{ borderRadius: 15, boxShadow: "0 2px 6px rgba(60,30,5,0.18)" }} />
-            <div style={{ fontSize: 32, fontWeight: 800, color: t.ink, letterSpacing: -0.6 }}>Pinto Notes</div>
+            <div style={{ fontSize: 32, fontWeight: 800, color: t.ink, letterSpacing: -0.6 }}>Amber Notes</div>
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
@@ -119,7 +119,7 @@ export function renderTemplateCard({ slug, title, tagline, ground, ink }: { slug
         <div style={{ position: "relative", display: "flex", flexDirection: "column", justifyContent: "space-between", padding: "60px 0 60px 68px", width: 600, color }}>
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
             <img src={mark} width={56} height={56} style={{ borderRadius: 13, boxShadow: "0 2px 6px rgba(40,20,0,0.25)" }} />
-            <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: -0.6 }}>Pinto Notes</div>
+            <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: -0.6 }}>Amber Notes</div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
             <div style={{ fontSize: title.length > 18 ? 62 : 74, fontWeight: 800, lineHeight: 1.02, letterSpacing: -3 }}>{title}</div>

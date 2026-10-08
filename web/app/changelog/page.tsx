@@ -5,8 +5,8 @@ import { changelog } from "@/lib/changelog";
 
 export const dynamic = "force-static";
 export const metadata: Metadata = pageMetadata({
-  title: "Changelog · Pinto Notes",
-  description: "What's new in each version of Pinto Notes for Mac and iPhone.",
+  title: "Changelog · Amber Notes",
+  description: "What's new in each version of Amber Notes for Mac and iPhone.",
   path: "/changelog",
 });
 

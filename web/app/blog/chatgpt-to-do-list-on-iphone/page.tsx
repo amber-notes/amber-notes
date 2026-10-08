@@ -8,13 +8,13 @@ export const metadata = postMetadata("chatgpt-to-do-list-on-iphone", { title: "C
 
 const FAQ = [
   { q: "Can ChatGPT keep a to-do list?", a: [
-    "Not one you can tick off outside the chat. Connected to a notes app with an MCP server, like Pinto Notes, it can add to a checklist note, tick items and tidy the list, and you see the result in the notes app on your phone and Mac.",
+    "Not one you can tick off outside the chat. Connected to a notes app with an MCP server, like Amber Notes, it can add to a checklist note, tick items and tidy the list, and you see the result in the notes app on your phone and Mac.",
   ] },
   { q: "Does it work from the ChatGPT app on my iPhone?", a: [
-    "Use ChatGPT on chatgpt.com for this: you add Pinto Notes there, and OpenAI documents custom apps on the web only, so I can't promise it in the ChatGPT phone app. " + (APP_STORE_LIVE ? "The Pinto Notes iPhone app, where you see and tick the list, is on the App Store." : "The Pinto Notes iPhone app, where you see and tick the list, is coming soon to the App Store; the Mac app is out now."),
+    "Use ChatGPT on chatgpt.com for this: you add Amber Notes there, and OpenAI documents custom apps on the web only, so I can't promise it in the ChatGPT phone app. " + (APP_STORE_LIVE ? "The Amber Notes iPhone app, where you see and tick the list, is on the App Store." : "The Amber Notes iPhone app, where you see and tick the list, is coming soon to the App Store; the Mac app is out now."),
   ] },
   { q: "What if ChatGPT gets it wrong?", a: [
-    "Every change keeps the previous version, and Pinto Notes shows what ChatGPT changed with an Undo, so a wrong edit is one tap to put back.",
+    "Every change keeps the previous version, and Amber Notes shows what ChatGPT changed with an Undo, so a wrong edit is one tap to put back.",
   ] },
 ];
 
@@ -27,7 +27,7 @@ export default function Page() {
     >
       <h2>What you need</h2>
       <ul>
-        <li>Pinto Notes, signed in: {APP_STORE_LIVE ? "on your iPhone and Mac." : "the Mac app now, the iPhone app once it's on the App Store."}</li>
+        <li>Amber Notes, signed in: {APP_STORE_LIVE ? "on your iPhone and Mac." : "the Mac app now, the iPhone app once it's on the App Store."}</li>
         <li>ChatGPT connected to it. It takes a few minutes on chatgpt.com, on Plus or higher (check what your plan allows; OpenAI&apos;s docs differ on editing): <a href="/blog/connect-chatgpt-to-your-notes">how to connect ChatGPT to your notes</a>.</li>
         <li>A note called something like &ldquo;To do&rdquo;, with a checklist in it. In the app, the checklist button in the toolbar (or ⌘⇧L on a Mac) starts one. Or ask ChatGPT to create it.</li>
       </ul>
@@ -41,7 +41,7 @@ export default function Page() {
         <li>&ldquo;Plan Sunday&apos;s paella for eight and add what I need to Groceries.&rdquo;</li>
       </ul>
       <p>
-        Behind these, ChatGPT uses the small tools Pinto Notes gives it: <code>append_to_note</code> to add items,{" "}
+        Behind these, ChatGPT uses the small tools Amber Notes gives it: <code>append_to_note</code> to add items,{" "}
         <code>set_checklist_item</code> to tick one by its text, and <code>edit_note</code> for a precise change. It doesn&apos;t rewrite the
         whole note, so the rest of your list stays as it was. The <a href="/blog/mcp-server">MCP server page</a> lists every tool.
       </p>
@@ -60,7 +60,7 @@ export default function Page() {
       <h2>Sharing a list</h2>
       <ul>
         <li><strong>Send someone the list:</strong> open the note and choose Share, then Share Link. Anyone with the link can read it as a web page. Stop Sharing takes it down.</li>
-        <li><strong>Save something into your notes from another app:</strong> on iPhone, share text, a link, a photo or a PDF to Pinto Notes from the share sheet, and it&apos;s saved as a new note ChatGPT can find later.</li>
+        <li><strong>Save something into your notes from another app:</strong> on iPhone, share text, a link, a photo or a PDF to Amber Notes from the share sheet, and it&apos;s saved as a new note ChatGPT can find later.</li>
       </ul>
 
       <h2>Other assistants</h2>

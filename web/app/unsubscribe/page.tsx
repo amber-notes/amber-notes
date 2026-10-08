@@ -7,7 +7,7 @@ import { ButtonRow, EmptyState, Foot, Shell, Sign, Stage, TopBar, ui } from "@/l
 // link changes nothing, because mail scanners open links: the button does it, by posting to
 // /unsubscribe/confirm, which mail apps' own unsubscribe buttons post to as well (RFC 8058).
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Stop these emails · Pinto Notes", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Stop these emails · Amber Notes", robots: { index: false, follow: false } };
 
 type Search = Record<string, string | string[] | undefined>;
 
@@ -39,7 +39,7 @@ export default async function Unsubscribe({ searchParams }: { searchParams: Prom
             }>
             {failed
               ? <span role="status">That didn&apos;t go through. Try again in a moment, or write to hello@ambernotes.app.</span>
-              : "No more tips and check-ins from Emil about getting started with Pinto Notes. Emails about your account, like a password reset, still arrive."}
+              : "No more tips and check-ins from Emil about getting started with Amber Notes. Emails about your account, like a password reset, still arrive."}
           </EmptyState>
         )}
       </Stage>

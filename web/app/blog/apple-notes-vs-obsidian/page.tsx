@@ -37,7 +37,7 @@ export default function Page() {
       <div className="tableWrap">
         <table>
           <thead>
-            <tr><th scope="col"></th><th scope="col">Apple Notes</th><th scope="col">Obsidian</th><th scope="col">Pinto Notes</th></tr>
+            <tr><th scope="col"></th><th scope="col">Apple Notes</th><th scope="col">Obsidian</th><th scope="col">Amber Notes</th></tr>
           </thead>
           <tbody>
             {ROWS.map(([what, apple, obsidian, amber]) => (
@@ -74,7 +74,7 @@ export default function Page() {
         <a href="/blog/notes-apps-with-mcp">notes apps with an MCP server, compared</a> covers the other apps.
       </p>
       <p>
-        Pinto Notes is my middle ground: it feels like Apple Notes, keeps every note as markdown underneath, and has an MCP server in the cloud,
+        Amber Notes is my middle ground: it feels like Apple Notes, keeps every note as markdown underneath, and has an MCP server in the cloud,
         so ChatGPT, Claude, Claude Code, Codex and Incredible can use your notes from any device. It keeps files and photos in notes too, like
         the trip documents above. It doesn&apos;t have plugins, and it isn&apos;t a folder of files on your disk.{" "}
         <a href="/blog/move-from-apple-notes">Moving from Apple Notes</a> is one import on your Mac.
@@ -84,7 +84,7 @@ export default function Page() {
       <ul>
         <li><strong>You want to own plain files and tinker:</strong> Obsidian.</li>
         <li><strong>You want notes that are simply there on your iPhone and Mac:</strong> Apple Notes.</li>
-        <li><strong>You want the Apple Notes feel, and your AI using your notes:</strong> Pinto Notes. <a href="/blog/apple-notes-vs-notion">Apple Notes vs Notion</a> covers the other popular choice.</li>
+        <li><strong>You want the Apple Notes feel, and your AI using your notes:</strong> Amber Notes. <a href="/blog/apple-notes-vs-notion">Apple Notes vs Notion</a> covers the other popular choice.</li>
       </ul>
     </PostPage>
   );

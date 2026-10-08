@@ -39,6 +39,6 @@ describe("the blog's lists", () => {
     expect(html).toMatch(/<span class="[^"]*h1[^"]*" data-a="[^"]+" data-b="[^"]+"><\/span>/);
     const text = html.replace(/<[^>]+>/g, "");
     expect(text.split("Guides to connecting ChatGPT, Claude, Gemini").length).toBe(2); // once as text; the copy is only an attribute
-    expect(text).not.toContain("The Pinto Notes blog");
+    expect(text).not.toContain("The Amber Notes blog");
   });
 });

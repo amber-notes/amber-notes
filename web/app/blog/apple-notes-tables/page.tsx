@@ -102,7 +102,7 @@ export default function Page() {
 
       <h2>When you want a table that does more</h2>
       <p>
-        Pinto Notes, the notes app for iPhone and Mac that I make, keeps tables just as plain to edit, but lets you give a column a type.
+        Amber Notes, the notes app for iPhone and Mac that I make, keeps tables just as plain to edit, but lets you give a column a type.
         On a Mac it&apos;s Format, Table (Option-Command-T), or the Table button. The handle above a column sets it to Text, Number, Date
         or Yes/No, and a Yes/No column becomes a tap instead of typing. With a date column, Show Trend draws a number column as a line over
         time, with its average. It doesn&apos;t do sums or formulas either, and you can&apos;t set column widths, which fit the text. A table too
@@ -123,7 +123,7 @@ export default function Page() {
       ) : (
         <p>
           The iPhone app is coming soon to the App Store, with the same tables. <a href="/blog/move-from-apple-notes">Moving from
-          Apple Notes</a> brings your existing tables across in one import on your Mac, and <a href="/blog/amber-notes-vs-apple-notes">Pinto
+          Apple Notes</a> brings your existing tables across in one import on your Mac, and <a href="/blog/amber-notes-vs-apple-notes">Amber
           Notes vs Apple Notes</a> compares the rest.
         </p>
       )}

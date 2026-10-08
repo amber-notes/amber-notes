@@ -6,12 +6,12 @@
     "Personal"
   ],
   "audience": "For anyone building a few small daily habits.",
-  "description": "A daily habit tracker your AI fills in. Tell ChatGPT or Claude what you did today and it logs the row in Pinto Notes.",
+  "description": "A daily habit tracker your AI fills in. Tell ChatGPT or Claude what you did today and it logs the row in Amber Notes.",
   "tagline": "Tick off a few small habits every day.",
   "folder": "Habits",
   "note": "Habit tracker\n\nOne row a day. Tick it off yourself, or tell your AI what you did and it logs the row.\n\n<!-- pane-table: Date=date; Walk=choice Yes|No; Read=choice Yes|No; No phone in bed=choice Yes|No; Water (glasses)=number; Note=text -->\n| Date | Walk | Read | No phone in bed | Water (glasses) | Note |\n| --- | --- | --- | --- | --- | --- |\n\n## Habits\n- Walk: 30 minutes outside\n- Read: 20 pages\n- No phone in bed: it charges in the kitchen\n- Water: 8 glasses\n\n## Weekly check-in\n",
   "prompt": {
-    "default": "Use my Pinto Notes note \"Habit tracker\". When I tell you what I did today, log one row with log_table_row: Yes or No for Walk, Read and No phone in bed, Water (glasses) as a number, and anything else in Note. If today already has a row, it gets updated, which is fine. When I ask for my week, read the table with read_table and add three short lines under \"Weekly check-in\" with append_to_note: what went well, what slipped, and one thing to try next week."
+    "default": "Use my Amber Notes note \"Habit tracker\". When I tell you what I did today, log one row with log_table_row: Yes or No for Walk, Read and No phone in bed, Water (glasses) as a number, and anything else in Note. If today already has a row, it gets updated, which is fine. When I ask for my week, read the table with read_table and add three short lines under \"Weekly check-in\" with append_to_note: what went well, what slipped, and one thing to try next week."
   },
   "asks": [
     "Log today: walked, read 30 pages, 6 glasses of water, phone in bed again.",

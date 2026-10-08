@@ -13,7 +13,7 @@
   "folder": "Personal",
   "note": "Job hunt\n\nEvery application, where it stands, and what happens next. Paste a job ad and your AI files it.\n\n<!-- pane-table: Company=text; Role=text; Stage=choice Saved|Applied|Interview|Offer|Rejected|Withdrawn; Next step=text; Link=text -->\n| Company | Role | Stage | Next step | Link |\n| --- | --- | --- | --- | --- |\n\n## This week\n\n## Interview prep\n\n## People I've talked to\n",
   "prompt": {
-    "default": "Use my Pinto Notes note \"Job hunt\". When I paste a job ad or a link, add a row with log_table_row: Company, Role, Stage Saved, and the Link. When I tell you I applied or heard back, update that row's Stage and Next step with edit_note (read the note with read_note first). Before an interview, add five likely questions and my talking points under \"Interview prep\" with append_to_note, under a \"###\" heading with the company name. When I ask what's next, list the follow-ups under \"This week\" as a checklist."
+    "default": "Use my Amber Notes note \"Job hunt\". When I paste a job ad or a link, add a row with log_table_row: Company, Role, Stage Saved, and the Link. When I tell you I applied or heard back, update that row's Stage and Next step with edit_note (read the note with read_note first). Before an interview, add five likely questions and my talking points under \"Interview prep\" with append_to_note, under a \"###\" heading with the company name. When I ask what's next, list the follow-ups under \"This week\" as a checklist."
   },
   "asks": [
     "Save this one: Senior designer at Northwind, …",

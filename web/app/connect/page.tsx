@@ -11,7 +11,7 @@ import styles from "./connect.module.css";
 // Where an AI's sign-in lands (the MCP server's /authorize sends it here). It says what the app calls itself;
 // you approve on your iPhone or Mac, or here with your recovery key. See lib/connect.ts.
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Connect to Pinto Notes", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Connect to Amber Notes", robots: { index: false, follow: false } };
 
 export default async function Connect({ searchParams }: { searchParams: Promise<{ request?: string; problem?: string; recover?: string; code?: string; error?: string; qr?: string }> }) {
   const { request, problem, recover, code, error, qr } = await searchParams;

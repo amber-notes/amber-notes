@@ -8,7 +8,7 @@ import SealedNote from "./SealedNote";
 // and a new link take this one down at once.
 export const dynamic = "force-dynamic";
 // The title isn't known here (it's sealed), so link previews say only this much.
-export const metadata: Metadata = { title: "A shared note · Pinto Notes", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "A shared note · Amber Notes", robots: { index: false, follow: false } };
 
 type Props = { params: Promise<{ id: string }> };
 

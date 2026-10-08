@@ -1,6 +1,6 @@
 ---
 name: Feature request
-about: Suggest something Pinto Notes could do
+about: Suggest something Amber Notes could do
 labels: enhancement
 ---
 

@@ -9,13 +9,13 @@ const load = async (env: Record<string, string>) => {
 describe("the app's links on the staging site", () => {
   afterEach(() => vi.unstubAllEnvs());
 
-  it("default to Pinto Notes", async () => {
+  it("default to Amber Notes", async () => {
     const { scheme, connect } = await load({ NEXT_PUBLIC_APP_SCHEME: "", NEXT_PUBLIC_APP_LINK_ORIGIN: "" });
     expect(scheme.appURL("history")).toBe("ambernotes://history");
     expect(connect.universalLink("ABC")).toBe("https://ambernotes.app/open/connect?request=abc");
   });
 
-  it("open Pinto Notes Beta when the site is built for it", async () => {
+  it("open Amber Notes Beta when the site is built for it", async () => {
     const { connect, open } = await load({ NEXT_PUBLIC_APP_SCHEME: "ambernotes-beta", NEXT_PUBLIC_APP_LINK_ORIGIN: "https://amber-notes-staging.vercel.app/" });
     expect(connect.appLink("ABC")).toBe("ambernotes-beta://connect?request=abc");
     expect(connect.universalLink("ABC")).toBe("https://amber-notes-staging.vercel.app/open/connect?request=abc");

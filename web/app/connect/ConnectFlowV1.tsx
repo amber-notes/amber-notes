@@ -38,10 +38,10 @@ const OAUTH_PKCE = "amber.connect.pkce";
 const POLL_MS = 2000;
 /// After this long without an answer the page says where the request shows, and points to the recovery key.
 export const NUDGE_MS = 20_000;
-const OFFLINE = "Couldn't reach Pinto Notes. Check your connection and try again.";
+const OFFLINE = "Couldn't reach Amber Notes. Check your connection and try again.";
 const SIGNED_OUT = "Your sign-in ran out. Sign in again to use your recovery key.";
 /// While Sign in with Apple is off on the web: an account made with it has no password, so it allows in the app.
-export const APPLE_INSTEAD = "Signed up with Apple? Allow it in Pinto Notes instead: open the app on this computer, or connect from your iPhone.";
+export const APPLE_INSTEAD = "Signed up with Apple? Allow it in Amber Notes instead: open the app on this computer, or connect from your iPhone.";
 const EXPIRED: View = { kind: "ended", title: "This request has expired", text: "Start connecting again from ChatGPT, Claude or the other app you were using." };
 
 export default function ConnectFlowV1({ requestId, supabaseURL, anonKey, label, recover, authCode, authError }: {
@@ -166,7 +166,7 @@ export default function ConnectFlowV1({ requestId, supabaseURL, anonKey, label, 
         case "denied":
           if (step.redirect) return leave(step.redirect, false);
           return end({ kind: "ended", title: "Not connected", text: "The request was declined. You can close this page." });
-        case "answeredInApp": return end({ kind: "ended", title: "Finished in Pinto Notes", text: "You can close this page." });
+        case "answeredInApp": return end({ kind: "ended", title: "Finished in Amber Notes", text: "You can close this page." });
         case "delivered": return end({ kind: "ended", title: "Answered in another window", text: "If connecting didn't finish, start again from the other app." });
         case "expired": return end(EXPIRED);
       }
@@ -411,7 +411,7 @@ export default function ConnectFlowV1({ requestId, supabaseURL, anonKey, label, 
       }
       setRequest(info.request);
       if (!info.row) {
-        setFailure("Set up Pinto Notes on your iPhone or Mac first.");
+        setFailure("Set up Amber Notes on your iPhone or Mac first.");
         return;
       }
       setView({ kind: "working", text: "Checking your recovery key…" });
@@ -508,7 +508,7 @@ export default function ConnectFlowV1({ requestId, supabaseURL, anonKey, label, 
           />
           {(onMac || !APPLE_ON_WEB) && (
             <div className={styles.quiet}>
-              {onMac && <p>Pinto Notes on this Mac? <a href={universalLink(requestId)}>Open it</a></p>}
+              {onMac && <p>Amber Notes on this Mac? <a href={universalLink(requestId)}>Open it</a></p>}
               {!APPLE_ON_WEB && <p>{APPLE_INSTEAD}</p>}
             </div>
           )}
@@ -531,21 +531,21 @@ export default function ConnectFlowV1({ requestId, supabaseURL, anonKey, label, 
             <>
               <h1 className={styles.title}>Approve on your iPhone or Mac</h1>
               <MatchNumber number={number} />
-              <p className={styles.lede}>Type this number in Pinto Notes, then choose Allow. If Pinto Notes shows no number box, choose Don't allow.</p>
+              <p className={styles.lede}>Type this number in Amber Notes, then choose Allow. If Amber Notes shows no number box, choose Don't allow.</p>
             </>
           ) : (
             <>
-              <h1 className={styles.title}>Open Pinto Notes on your iPhone or Mac</h1>
-              <p className={styles.lede}>Pinto Notes asks you to approve this connection. A number then shows here for you to type in the app.</p>
+              <h1 className={styles.title}>Open Amber Notes on your iPhone or Mac</h1>
+              <p className={styles.lede}>Amber Notes asks you to approve this connection. A number then shows here for you to type in the app.</p>
             </>
           )}
           {nudge && (
             <p className={styles.small} role="status">
-              Open Pinto Notes on your iPhone or Mac to see the request. No device nearby? Use your recovery key below.
+              Open Amber Notes on your iPhone or Mac to see the request. No device nearby? Use your recovery key below.
             </p>
           )}
-          <a className={styles.secondary} href={universalLink(requestId)}>Open Pinto Notes</a>
-          <p className={styles.small}>Use this button if Pinto Notes is on this computer.</p>
+          <a className={styles.secondary} href={universalLink(requestId)}>Open Amber Notes</a>
+          <p className={styles.small}>Use this button if Amber Notes is on this computer.</p>
           <button type="button" className={styles.link} onClick={showRecovery}>No device nearby? Use your recovery key</button>
         </>
       )}

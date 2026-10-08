@@ -161,17 +161,17 @@ export default function Page() {
       <h2 id="amber-notes">If you&apos;re moving to another app</h2>
       <p>
         Locked notes can&apos;t be read without the password, so exporters and importers leave them behind. That includes
-        Pinto Notes&apos; <a href="/blog/move-from-apple-notes">import from Apple Notes</a>: unlock the notes you need first, or they stay
+        Amber Notes&apos; <a href="/blog/move-from-apple-notes">import from Apple Notes</a>: unlock the notes you need first, or they stay
         behind in Apple Notes.
       </p>
       <p>
-        Pinto Notes, the notes app for iPhone and Mac that I make, has locked notes too, and they work the same way: encrypted with your
+        Amber Notes, the notes app for iPhone and Mac that I make, has locked notes too, and they work the same way: encrypted with your
         notes password on your device, unreadable to us and to any AI you connect, and impossible to recover if you forget the password. It
-        says so when you set one. Everything else in Pinto Notes is end-to-end encrypted as well, and ChatGPT and Claude can still
+        says so when you set one. Everything else in Amber Notes is end-to-end encrypted as well, and ChatGPT and Claude can still
         use your other notes once you approve them; <a href="/blog/encrypted-notes-app-for-ai">how that works</a> has the details.
       </p>
-      <Figure shot={SHOTS.notesPassword} caption="Setting a notes password in Pinto Notes on a Mac. Like Apple's, it can't be recovered if you forget it." />
-      <PostCta slug="forgot-apple-notes-password" position="how-amber-helps" title="Try Pinto Notes on your Mac">
+      <Figure shot={SHOTS.notesPassword} caption="Setting a notes password in Amber Notes on a Mac. Like Apple's, it can't be recovered if you forget it." />
+      <PostCta slug="forgot-apple-notes-password" position="how-amber-helps" title="Try Amber Notes on your Mac">
         <p>Locked notes for what&apos;s private, end-to-end encryption for everything else, and notes ChatGPT and Claude can use when you allow it.</p>
       </PostCta>
     </PostPage>

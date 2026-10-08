@@ -149,7 +149,7 @@ export default function Page() {
 
       <h2>If you want an assistant to do the sorting</h2>
       <p>
-        Pinto Notes, the notes app for iPhone and Mac that I make, has no tags or Smart Folders. It has folders, sub-folders, pins and
+        Amber Notes, the notes app for iPhone and Mac that I make, has no tags or Smart Folders. It has folders, sub-folders, pins and
         search across every word, and you can connect ChatGPT or Claude to it after approving them on your device. Then the job a Smart Folder does,
         like &quot;find every note about the kitchen renovation&quot;, becomes a request: the assistant searches your notes and lists them,
         or moves them into one folder. {APP_STORE_LIVE ? null : <>The Mac app is out now, and the iPhone app is coming soon to the App

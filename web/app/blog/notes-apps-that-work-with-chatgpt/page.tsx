@@ -4,14 +4,14 @@ import { SHOTS } from "@/lib/posts";
 
 export const dynamic = "force-static";
 export const metadata = postMetadata("notes-apps-that-work-with-chatgpt", {
-  title: "Notes apps that work with ChatGPT (2026) · Pinto Notes",
+  title: "Notes apps that work with ChatGPT (2026) · Amber Notes",
 });
 
 type Row = { app: string; how: string; search: string; write: string };
 
 // Checked against OpenAI's help pages and each app's own documentation on 30 September 2026.
 const ROWS: Row[] = [
-  { app: "Pinto Notes", how: "Its own MCP server, added as an app in Developer mode", search: "Yes", write: "Yes: create, edit, append, tick items; you approve it, and every change can be undone" },
+  { app: "Amber Notes", how: "Its own MCP server, added as an app in Developer mode", search: "Yes", write: "Yes: create, edit, append, tick items; you approve it, and every change can be undone" },
   { app: "Notion", how: "The Notion app in ChatGPT; Notion's MCP server for read and write", search: "Yes", write: "Through Notion's MCP server" },
   { app: "OneNote", how: "A OneNote plugin built by OpenAI", search: "Finds and summarizes notes", write: "Creates or updates notes through supported actions" },
   { app: "Evernote", how: "Evernote's hosted MCP server (beta)", search: "Yes", write: "Creates notes" },
@@ -22,10 +22,10 @@ const ROWS: Row[] = [
 
 const FAQ = [
   { q: "Which notes app works best with ChatGPT?", a: [
-    "For searching and editing all your notes from ChatGPT, you need an app it can connect to: Pinto Notes, Notion, OneNote, Evernote and Hjarni can. Which is best depends on where your notes are today and whether you want ChatGPT to write, not just read.",
+    "For searching and editing all your notes from ChatGPT, you need an app it can connect to: Amber Notes, Notion, OneNote, Evernote and Hjarni can. Which is best depends on where your notes are today and whether you want ChatGPT to write, not just read.",
   ] },
   { q: "Do I need a paid ChatGPT plan?", a: [
-    "OneNote and Notion appear in ChatGPT's own list of apps; OpenAI's help pages say which plans have them. Adding any other app yourself, such as Pinto Notes, Evernote's MCP server or Hjarni, needs Developer mode, which is on Plus, Pro, Business, Enterprise and Edu. Check what your plan allows: OpenAI's pages differ on whether such apps can edit on every plan.",
+    "OneNote and Notion appear in ChatGPT's own list of apps; OpenAI's help pages say which plans have them. Adding any other app yourself, such as Amber Notes, Evernote's MCP server or Hjarni, needs Developer mode, which is on Plus, Pro, Business, Enterprise and Edu. Check what your plan allows: OpenAI's pages differ on whether such apps can edit on every plan.",
   ] },
   { q: "Can ChatGPT read my Apple Notes?", a: [
     "Only the note you have open, in the ChatGPT app on a Mac. It can't search your other notes or save changes, because Apple Notes has no API it could connect to.",
@@ -36,7 +36,7 @@ export default function Page() {
   return (
     <PostPage
       slug="notes-apps-that-work-with-chatgpt"
-      intro={<>More notes apps now say they work with ChatGPT, but that can mean very different things: reading the note you have open, searching all of them, or writing changes back. Here&apos;s how the main ones compare in September 2026. I make Pinto Notes, so I&apos;ve described the others the way their makers do.</>}
+      intro={<>More notes apps now say they work with ChatGPT, but that can mean very different things: reading the note you have open, searching all of them, or writing changes back. Here&apos;s how the main ones compare in September 2026. I make Amber Notes, so I&apos;ve described the others the way their makers do.</>}
       faq={FAQ}
     >
       <h2>Three levels of &ldquo;works with ChatGPT&rdquo;</h2>
@@ -69,16 +69,16 @@ export default function Page() {
       <h2>How to choose</h2>
       <ul>
         <li><strong>Your notes are in Notion or OneNote already:</strong> connect that. Moving is more work than it&apos;s worth.</li>
-        <li><strong>You like Apple Notes and want ChatGPT to use them:</strong> Apple Notes can&apos;t do it, so the notes have to move. Pinto Notes works like Apple Notes and imports them in one go on your Mac. <a href="/blog/move-from-apple-notes">Here&apos;s how to move</a>.</li>
-        <li><strong>You want ChatGPT to edit, not just read:</strong> check what happens after a bad edit. In Pinto Notes you see what changed, with Undo, and every earlier version is kept.</li>
+        <li><strong>You like Apple Notes and want ChatGPT to use them:</strong> Apple Notes can&apos;t do it, so the notes have to move. Amber Notes works like Apple Notes and imports them in one go on your Mac. <a href="/blog/move-from-apple-notes">Here&apos;s how to move</a>.</li>
+        <li><strong>You want ChatGPT to edit, not just read:</strong> check what happens after a bad edit. In Amber Notes you see what changed, with Undo, and every earlier version is kept.</li>
         <li><strong>You use more than ChatGPT:</strong> an MCP server works with Claude, Claude Code, Codex and Incredible too. <a href="/blog/notes-apps-with-mcp">Notes apps with an MCP server, compared</a> covers that side.</li>
       </ul>
 
-      <Figure shot={SHOTS.consent} caption="In Pinto Notes, ChatGPT gets access only when you choose Allow, read and edit or read only." />
+      <Figure shot={SHOTS.consent} caption="In Amber Notes, ChatGPT gets access only when you choose Allow, read and edit or read only." />
 
       <h2>Setting it up</h2>
       <p>
-        For Pinto Notes, it takes a few minutes on chatgpt.com, which is where OpenAI documents custom apps.{" "}
+        For Amber Notes, it takes a few minutes on chatgpt.com, which is where OpenAI documents custom apps.{" "}
         <a href="/blog/connect-chatgpt-to-your-notes">How to connect ChatGPT to your notes</a> has every step. If you&apos;re deciding
         between Apple Notes and something ChatGPT can reach, <a href="/blog/apple-notes-api">Apple Notes API: what exists</a> explains why
         Apple Notes stays out of reach.

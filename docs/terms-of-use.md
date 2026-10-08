@@ -4,8 +4,7 @@ Last updated: 2 October 2026
 
 ## The short version
 
-- Pinto Notes was called Amber Notes until October 2026. Same app, same service, and these terms cover both names.
-- Pinto Notes is free. You can use it as long as you follow these terms.
+- Amber Notes is free. You can use it as long as you follow these terms.
 - Your notes are yours. We only use them to store, sync and show them the way you ask.
 - Don't use shared pages for anything illegal or harmful. We take down pages that break these rules.
 - Connecting an AI assistant is your choice, and you can disconnect it at any time.
@@ -14,9 +13,9 @@ Last updated: 2 October 2026
 
 ## About these terms
 
-These terms are an agreement between you and Emil Wagman, an individual developer in Sweden ("we"), about your use of the Pinto Notes apps for iPhone and Mac, the service that lets AI assistants connect to your notes, and the website at ambernotes.app, including shared note pages (together, "Pinto Notes").
+These terms are an agreement between you and Emil Wagman, an individual developer in Sweden ("we"), about your use of the Amber Notes apps for iPhone and Mac, the service that lets AI assistants connect to your notes, and the website at ambernotes.app, including shared note pages (together, "Amber Notes").
 
-By creating an account or using Pinto Notes, you agree to these terms and to our [Privacy Policy](/privacy). If you got the app from the App Store, Apple's [Licensed Application End User License Agreement](https://www.apple.com/legal/internet-services/itunes/dev/stdeula/) also applies.
+By creating an account or using Amber Notes, you agree to these terms and to our [Privacy Policy](/privacy). If you got the app from the App Store, Apple's [Licensed Application End User License Agreement](https://www.apple.com/legal/internet-services/itunes/dev/stdeula/) also applies.
 
 ## Your account
 
@@ -26,13 +25,13 @@ By creating an account or using Pinto Notes, you agree to these terms and to our
 
 ## Your notes are yours
 
-You own everything you write and add to Pinto Notes. You give us only the permission we need to run the service for you: to store your notes, sync them between your devices, back them up, show a note to the people you share it with, and let an AI assistant you connected read or change them. That permission ends when you delete the content or your account, apart from backups, which roll over.
+You own everything you write and add to Amber Notes. You give us only the permission we need to run the service for you: to store your notes, sync them between your devices, back them up, show a note to the people you share it with, and let an AI assistant you connected read or change them. That permission ends when you delete the content or your account, apart from backups, which roll over.
 
 We don't read your notes, and we don't use them to train AI models or for advertising.
 
 ## Acceptable use
 
-You may not use Pinto Notes, and in particular shared pages, to publish or send:
+You may not use Amber Notes, and in particular shared pages, to publish or send:
 
 - anything illegal, or that helps someone break the law;
 - sexual content involving minors, or anything that exploits or endangers children;
@@ -52,21 +51,21 @@ You also may not try to reach other people's notes, overload or disrupt the serv
 
 ## AI connections
 
-- Connecting an AI assistant is your choice. You approve each connection in Pinto Notes or on ambernotes.app and choose whether it may only read or also edit your notes.
+- Connecting an AI assistant is your choice. You approve each connection in Amber Notes or on ambernotes.app and choose whether it may only read or also edit your notes.
 - An assistant you connect acts for you. Its maker's own terms and privacy policy cover what happens in that assistant. We're not responsible for what an assistant does with your notes, or for the changes it makes, though every change keeps the previous version so you can undo it.
 - You can disconnect any assistant at any time in **Settings → Connect an AI**.
 
 ## Limits
 
-To keep Pinto Notes working for everyone, each account has limits, for example on note size, total storage, uploads and share links. The app tells you if you reach one.
+To keep Amber Notes working for everyone, each account has limits, for example on note size, total storage, uploads and share links. The app tells you if you reach one.
 
 ## A free service
 
-Pinto Notes is free. We may change, pause or end features, or the service as a whole. If we end the service, we'll tell you at least 30 days before and give you a way to take your notes with you.
+Amber Notes is free. We may change, pause or end features, or the service as a whole. If we end the service, we'll tell you at least 30 days before and give you a way to take your notes with you.
 
 ## No warranty
 
-We work hard to keep Pinto Notes reliable, but it's provided as it is and as available, without warranties that it will always work or never lose data. Keep copies of anything you can't afford to lose.
+We work hard to keep Amber Notes reliable, but it's provided as it is and as available, without warranties that it will always work or never lose data. Keep copies of anything you can't afford to lose.
 
 ## Liability
 
@@ -79,11 +78,11 @@ To the extent the law allows, we're not liable for indirect or consequential los
 
 ## Open source
 
-The Pinto Notes source code is open source under the MIT License, at [github.com/amber-notes/amber-notes](https://github.com/amber-notes/amber-notes). The license covers the code. These terms cover your use of the Pinto Notes service we run.
+The Amber Notes source code is open source under the MIT License, at [github.com/amber-notes/amber-notes](https://github.com/amber-notes/amber-notes). The license covers the code. These terms cover your use of the Amber Notes service we run.
 
 ## Changes to these terms
 
-When these terms change, the date at the top changes. If a change matters to you, we'll tell you in the app before it takes effect. If you keep using Pinto Notes after that, the new terms apply.
+When these terms change, the date at the top changes. If a change matters to you, we'll tell you in the app before it takes effect. If you keep using Amber Notes after that, the new terms apply.
 
 ## Law and disputes
 

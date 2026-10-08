@@ -9,9 +9,9 @@ const render = (place: (typeof PLACES)[number], appStoreLive = false) => renderT
 const other = (html: string) => html.slice(html.indexOf('<div class="pi pi-other'), html.includes('<div class="pi pi-ios') ? html.indexOf('<div class="pi pi-ios') : undefined);
 
 describe("what Windows, Android and Linux see in place of Download for Mac", () => {
-  it("says Pinto Notes is for iPhone and Mac, and where the iPhone app stands until it's out", () => {
-    expect(text(other(render("hero")))).toBe("Pinto Notes is for iPhone and Mac. The iPhone app is coming to the App Store soon.Send myself the linkDownload for Mac");
-    expect(text(other(render("hero", true)))).toBe("Pinto Notes is for iPhone and Mac.Send myself the linkSee it on the App StoreDownload for Mac");
+  it("says Amber Notes is for iPhone and Mac, and where the iPhone app stands until it's out", () => {
+    expect(text(other(render("hero")))).toBe("Amber Notes is for iPhone and Mac. The iPhone app is coming to the App Store soon.Send myself the linkDownload for Mac");
+    expect(text(other(render("hero", true)))).toBe("Amber Notes is for iPhone and Mac.Send myself the linkSee it on the App StoreDownload for Mac");
   });
 
   it("never asks about, names or hints at another platform", () => {
@@ -25,9 +25,9 @@ describe("what Windows, Android and Linux see in place of Download for Mac", () 
   });
 
   it("offers one thing to do: send themselves the link, by email where there's no share sheet", () => {
-    expect(render("hero")).toContain('<a class="pi-send" href="mailto:?subject=Pinto%20Notes&amp;body=https%3A%2F%2Fambernotes.app">Send myself the link</a>');
-    expect(render("band")).toContain('href="mailto:?subject=Pinto%20Notes&amp;body=https%3A%2F%2Fambernotes.app"');
-    expect(render("download")).toContain('href="mailto:?subject=Pinto%20Notes&amp;body=https%3A%2F%2Fambernotes.app%2Fdownload"');
+    expect(render("hero")).toContain('<a class="pi-send" href="mailto:?subject=Amber%20Notes&amp;body=https%3A%2F%2Fambernotes.app">Send myself the link</a>');
+    expect(render("band")).toContain('href="mailto:?subject=Amber%20Notes&amp;body=https%3A%2F%2Fambernotes.app"');
+    expect(render("download")).toContain('href="mailto:?subject=Amber%20Notes&amp;body=https%3A%2F%2Fambernotes.app%2Fdownload"');
   });
 
   it("links to the App Store only once the app is there", () => {
@@ -53,7 +53,7 @@ describe("what an iPhone sees in place of Download for Mac", () => {
 
   it("says the iPhone app is coming, with the Mac download second, and invents no link", () => {
     const html = ios(render("hero"));
-    expect(text(html)).toBe("Pinto Notes for iPhone is coming to the App Store soon. It&#x27;s on Mac today.Download for Mac");
+    expect(text(html)).toBe("Amber Notes for iPhone is coming to the App Store soon. It&#x27;s on Mac today.Download for Mac");
     expect(html).not.toMatch(/https?:|testflight/i);
     expect(html).not.toContain("<button");
   });

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { OPEN_WAIT_MS, openEvent, openRequested, validAppLink, withoutOpen } from "./open-in-app";
 
-describe("opening Pinto Notes from the page", () => {
+describe("opening Amber Notes from the page", () => {
   it("only tries a template's or a shared note's app link", () => {
     expect(validAppLink("ambernotes://template/habit-tracker")).toBe(true);
     expect(validAppLink("ambernotes://copy/abcdefghijklmnopqrstuvwx")).toBe(true);

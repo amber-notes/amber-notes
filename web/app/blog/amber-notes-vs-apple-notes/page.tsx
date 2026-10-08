@@ -4,7 +4,7 @@ import { PostPage, postMetadata } from "@/lib/PostPage";
 import { SHOTS } from "@/lib/posts";
 
 export const dynamic = "force-static";
-export const metadata = postMetadata("amber-notes-vs-apple-notes", { title: "Pinto Notes vs Apple Notes: an honest comparison" });
+export const metadata = postMetadata("amber-notes-vs-apple-notes", { title: "Amber Notes vs Apple Notes: an honest comparison" });
 
 const ROWS: [string, string, string][] = [
   ["Price", "Free", "Free"],
@@ -17,7 +17,7 @@ const ROWS: [string, string, string][] = [
   ["Share a note", "As a read-only web page, with a link you can stop", "Invite people to edit with you"],
   ["Lock a note with a password", "Yes", "Yes"],
   ["Drawing, handwriting, scanning documents", "No", "Yes"],
-  ["Sync", "Pinto Notes' own sync, on servers in Frankfurt, Germany (EU)", "iCloud"],
+  ["Sync", "Amber Notes' own sync, on servers in Frankfurt, Germany (EU)", "iCloud"],
   ["End-to-end encryption", "Every note, with the key in iCloud Keychain; while an AI you approved works, our server opens the notes it asks for", "With Advanced Data Protection turned on; locked notes always"],
   ["Open source", "Yes (MIT)", "No"],
 ];
@@ -26,13 +26,13 @@ export default function Page() {
   return (
     <PostPage
       slug="amber-notes-vs-apple-notes"
-      intro={<>I love Apple Notes, and I built Pinto Notes to feel just like it, with the few things I always missed: an AI that can use my notes, and a history of every change. Here&apos;s where the two differ, including what Apple Notes still does better.</>}
+      intro={<>I love Apple Notes, and I built Amber Notes to feel just like it, with the few things I always missed: an AI that can use my notes, and a history of every change. Here&apos;s where the two differ, including what Apple Notes still does better.</>}
     >
       <h2>At a glance</h2>
       <div className="tableWrap">
         <table>
           <thead>
-            <tr><th scope="col"></th><th scope="col">Pinto Notes</th><th scope="col">Apple Notes</th></tr>
+            <tr><th scope="col"></th><th scope="col">Amber Notes</th><th scope="col">Apple Notes</th></tr>
           </thead>
           <tbody>
             {ROWS.map(([what, amber, apple]) => (
@@ -44,7 +44,7 @@ export default function Page() {
 
       <h2>The big difference: your AI can use it</h2>
       <p>
-        In Pinto Notes, ChatGPT, Claude, Claude Code, Codex and Incredible can search your notes, read them, write new ones and edit the
+        In Amber Notes, ChatGPT, Claude, Claude Code, Codex and Incredible can search your notes, read them, write new ones and edit the
         ones you have, through MCP. You approve each assistant in the app and choose read-only, or read and edit. When one changes a note, you see what
         changed, with Undo, and the previous version stays in the note&apos;s history.{" "}
         <a href="/blog/connect-chatgpt-to-your-notes">How to connect ChatGPT to your notes</a> takes a few minutes.
@@ -71,13 +71,13 @@ export default function Page() {
       <h2>Who each one is for</h2>
       <p>
         If you want your notes to stay exactly where they are and never talk to an AI, Apple Notes is great. If you already ask ChatGPT or
-        Claude for help every day and want the result in your notes instead of copying and pasting, Pinto Notes is made for that.
+        Claude for help every day and want the result in your notes instead of copying and pasting, Amber Notes is made for that.
       </p>
 
       <h2>Try it without giving anything up</h2>
       <p>
         The import only reads Apple Notes, so you can bring everything over and keep using both. <a href="/blog/move-from-apple-notes">Here&apos;s how to move</a>,
-        or <a href="/download">download Pinto Notes for Mac</a>.
+        or <a href="/download">download Amber Notes for Mac</a>.
       </p>
     </PostPage>
   );

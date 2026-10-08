@@ -10,8 +10,8 @@ import s from "./privacy.module.css";
 
 export const dynamic = "force-static";
 export const metadata: Metadata = pageMetadata({
-  title: "Privacy & Security · Pinto Notes",
-  description: "What Pinto Notes stores and where, what's encrypted and what stays readable, what happens when you connect an AI, every log we keep and for how long.",
+  title: "Privacy & Security · Amber Notes",
+  description: "What Amber Notes stores and where, what's encrypted and what stays readable, what happens when you connect an AI, every log we keep and for how long.",
   path: PRIVACY_PATH,
   index: true,
 });
@@ -117,7 +117,7 @@ export default function PrivacySecurity() {
             Cookie settings at the bottom of the page changes your answer. It also counts Mac downloads as daily totals. None of this
             touches your notes or your computer.
           </p>
-          <p>The apps count a few things on our own server, so we can tell whether Pinto Notes works for people. Kept for 12 months, never shared:</p>
+          <p>The apps count a few things on our own server, so we can tell whether Amber Notes works for people. Kept for 12 months, never shared:</p>
           <ul>
             {COUNTS.map((c) => <li key={c}>{c.charAt(0).toUpperCase() + c.slice(1)}.</li>)}
           </ul>

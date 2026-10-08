@@ -1,7 +1,7 @@
 import { renderCard } from "@/lib/og/render";
 
 export { size, contentType } from "@/lib/og/render";
-export const alt = "Pinto Notes: the notes app your AI can actually use. A note open on an iPhone.";
+export const alt = "Amber Notes: the notes app your AI can actually use. A note open on an iPhone.";
 
 export default function OpenGraphImage() {
   return renderCard({

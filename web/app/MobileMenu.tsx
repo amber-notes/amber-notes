@@ -72,9 +72,9 @@ export default function MobileMenu({ path, stars: built, appStoreLive = APP_STOR
       >
         <div ref={sheet} className="site-sheet" tabIndex={-1} onClick={(e) => { if ((e.target as Element).closest("a")) close(true); }}>
           <div className="site-sheet-top">
-            <a className="site-brand" href="/" aria-current={current(path === "/")} aria-label="Pinto Notes home">
+            <a className="site-brand" href="/" aria-current={current(path === "/")} aria-label="Amber Notes home">
               <img src="/mark-256.png" alt="" width={34} height={34} />
-              <span className="site-name">Pinto Notes</span>
+              <span className="site-name">Amber Notes</span>
             </a>
             <button type="button" className="site-menu-button site-menu-close" aria-label="Close menu" onClick={() => close()}>
               <span aria-hidden="true" /><span aria-hidden="true" />
@@ -100,7 +100,7 @@ export default function MobileMenu({ path, stars: built, appStoreLive = APP_STOR
             <div className="site-sheet-for site-sheet-ios">
               {appStoreLive
                 ? <a className="site-sheet-cta" href={APP_STORE_URL} target="_blank" rel="noopener noreferrer"><AppleGlyph /> Download for iPhone</a>
-                : <p>Pinto Notes for iPhone is coming to the App Store soon.</p>}
+                : <p>Amber Notes for iPhone is coming to the App Store soon.</p>}
               <a className="site-sheet-cta site-sheet-cta-quiet" href="/download"><AppleGlyph /> Download for Mac</a>
             </div>
             {/* Windows, Android and Linux: the header's own words there. */}

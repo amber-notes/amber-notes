@@ -119,7 +119,7 @@ export default function Page() {
 
       <h2>A notes app that shows its sync</h2>
       <p>
-        Apple Notes doesn&apos;t show when it last synced. Pinto Notes, the notes app for iPhone and Mac that I make, syncs through its own
+        Apple Notes doesn&apos;t show when it last synced. Amber Notes, the notes app for iPhone and Mac that I make, syncs through its own
         end-to-end encrypted service rather than iCloud, so iCloud storage doesn&apos;t affect it. Its Settings show the sync status, such as
         &ldquo;last synced 9:41&rdquo; or the reason it can&apos;t sync right now, next to a Sync Now button. If the same note changed on two
         devices before they synced, the newer edit wins and the other is kept as a conflicted copy, so neither is lost.

@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 /// The site's address and the facts every page's metadata and structured data share.
 
 export const SITE_URL = "https://ambernotes.app";
-export const SITE_NAME = "Pinto Notes";
+export const SITE_NAME = "Amber Notes";
 export const X_URL = "https://x.com/EmilWagman";
 export const X_HANDLE = "@EmilWagman";
 export const LINKEDIN_URL = "https://www.linkedin.com/in/emil-wagman-52a907287/";
@@ -44,7 +44,7 @@ type Page = {
 };
 
 /// The site's own share card (app/opengraph-image.tsx), for pages without one of their own.
-export const DEFAULT_SHARE_IMAGE = { url: "/opengraph-image", alt: "Pinto Notes: the notes app your AI can actually use. A note open on an iPhone." };
+export const DEFAULT_SHARE_IMAGE = { url: "/opengraph-image", alt: "Amber Notes: the notes app your AI can actually use. A note open on an iPhone." };
 
 /// Title, description, canonical, robots, Open Graph and Twitter for one page. Next.js replaces
 /// (doesn't merge) openGraph and twitter between layouts and pages, so each page gets all of it.

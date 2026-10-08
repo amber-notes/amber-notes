@@ -32,7 +32,7 @@ type View =
 /// the page ever stores.
 const OAUTH_PKCE = "amber.connect.pkce";
 export const POLL_MS = 2000;
-const OFFLINE = "Couldn't reach Pinto Notes. Check your connection and try again.";
+const OFFLINE = "Couldn't reach Amber Notes. Check your connection and try again.";
 const EXPIRED: View = { kind: "ended", title: "This request has expired", text: "Start connecting again from ChatGPT, Claude or the other app you were using." };
 const LOST: View = { kind: "ended", title: "Couldn't finish here", text: "Start connecting again from the other app." };
 
@@ -161,7 +161,7 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
         case "denied":
           if (step.redirect) return leave(step.redirect, false);
           return end({ kind: "ended", title: "Not connected", text: "The request was declined. You can close this page." });
-        case "answeredInApp": return end({ kind: "ended", title: "Finished in Pinto Notes", text: "You can close this page." });
+        case "answeredInApp": return end({ kind: "ended", title: "Finished in Amber Notes", text: "You can close this page." });
         case "delivered": return end({ kind: "ended", title: "Answered in another window", text: "If connecting didn't finish, start again from the other app." });
         case "expired": return end(EXPIRED);
       }
@@ -446,7 +446,7 @@ export default function ConnectFlow({ requestId, supabaseURL, anonKey, label, re
       }
       setRequest(info.request);
       if (!info.row) {
-        setFailure("Set up Pinto Notes on your iPhone or Mac first.");
+        setFailure("Set up Amber Notes on your iPhone or Mac first.");
         return;
       }
       setView({ kind: "working", text: "Checking your recovery key…" });

@@ -7,13 +7,13 @@
     "Personal"
   ],
   "audience": "For homeowners and renters who forget the filter until it's a problem.",
-  "description": "A home maintenance schedule your AI keeps: what's due, when it was last done, and a monthly checklist in Pinto Notes.",
+  "description": "A home maintenance schedule your AI keeps: what's due, when it was last done, and a monthly checklist in Amber Notes.",
   "tagline": "What's due around the house, and when.",
   "seoTitle": "Home maintenance checklist template for ChatGPT",
   "folder": "Home",
   "note": "Home maintenance\n\nThe jobs that keep a home working, how often they're due, and when you last did them.\n\n<!-- pane-table: Task=text; Every=choice Month|3 months|6 months|Year; Last done=text; Next due=text -->\n| Task | Every | Last done | Next due |\n| --- | --- | --- | --- |\n\n## This month\n\n## Who to call\n- Plumber:\n- Electrician:\n\n## Appliances\n",
   "prompt": {
-    "default": "Use my Pinto Notes note \"Home maintenance\". When I tell you about a recurring job, add a row with log_table_row: Task, Every, Last done and Next due as yyyy-mm-dd. At the start of a month, when I ask, read the table with read_table and add what's due this month under \"This month\" as a checklist with append_to_note. When I say I've done one, update its Last done and Next due with edit_note and tick it with set_checklist_item. Keep model numbers and warranty dates I mention under \"Appliances\"."
+    "default": "Use my Amber Notes note \"Home maintenance\". When I tell you about a recurring job, add a row with log_table_row: Task, Every, Last done and Next due as yyyy-mm-dd. At the start of a month, when I ask, read the table with read_table and add what's due this month under \"This month\" as a checklist with append_to_note. When I say I've done one, update its Last done and Next due with edit_note and tick it with set_checklist_item. Keep model numbers and warranty dates I mention under \"Appliances\"."
   },
   "asks": [
     "Add: clean the dishwasher filter every month, last done 1 September.",

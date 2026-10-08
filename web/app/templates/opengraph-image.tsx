@@ -1,7 +1,7 @@
 import { renderCard } from "@/lib/og/render";
 
 export { size, contentType } from "@/lib/og/render";
-export const alt = "Pinto Notes templates: note templates that ChatGPT, Claude and Claude Code fill in for you.";
+export const alt = "Amber Notes templates: note templates that ChatGPT, Claude and Claude Code fill in for you.";
 
 export default function OpenGraphImage() {
   return renderCard({

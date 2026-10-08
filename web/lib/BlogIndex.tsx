@@ -12,22 +12,22 @@ import s from "../app/blog/blog.module.css";
 /// links to their own pages, and previous, numbered and next links at the bottom. Every page is
 /// static. Page 1 is the list's own address; later pages are <address>/page/<n>.
 
-const LEDE = <>Guides to connecting <b>ChatGPT, Claude and Codex</b> to your notes, Apple Notes how-tos, and fair comparisons. Written by the person building Pinto Notes.</>;
+const LEDE = <>Guides to connecting <b>ChatGPT, Claude and Codex</b> to your notes, Apple Notes how-tos, and fair comparisons. Written by the person building Amber Notes.</>;
 
 /// What each category's page says under its title (and in search results).
 const ABOUT: Record<Category, string> = {
   "Guides": "Guides to connecting ChatGPT, Claude, Gemini, Claude Code and Codex to your notes, and getting things done with them.",
   "Apple Notes": "How-tos for Apple Notes: exporting, recovering, passwords, what's new, and what AI can and can't do with it.",
   "Comparisons": "Notes apps compared fairly: Apple Notes, Notion, Obsidian, and the ones ChatGPT and Claude can use.",
-  "Building Pinto Notes": "How Pinto Notes is built: encryption, AI access, and the decisions behind them.",
+  "Building Amber Notes": "How Amber Notes is built: encryption, AI access, and the decisions behind them.",
 };
 
 /// The two longest titles and ledes of the lists' first pages. Each list reserves room for them
 /// (an invisible copy drawn by CSS from these attributes, never page text), so every list's title
 /// block is one height and the chips under it don't move when switching between them.
 const fit = (texts: string[]) => [...texts].sort((a, b) => b.length - a.length);
-const FIT_TITLE = () => fit(["The Pinto Notes blog", ...categories()]);
-const FIT_LEDE = () => fit(["Guides to connecting ChatGPT, Claude and Codex to your notes, Apple Notes how-tos, and fair comparisons. Written by the person building Pinto Notes.", ...categories().map((c) => ABOUT[c])]);
+const FIT_TITLE = () => fit(["The Amber Notes blog", ...categories()]);
+const FIT_LEDE = () => fit(["Guides to connecting ChatGPT, Claude and Codex to your notes, Apple Notes how-tos, and fair comparisons. Written by the person building Amber Notes.", ...categories().map((c) => ABOUT[c])]);
 
 /// Each post's ground as a dot on its category's chip: the ground's own hue, deepened so it reads at
 /// 12 px on the cream page the way the templates' cover colours do (the card tints are too pale).
@@ -57,10 +57,10 @@ export function blogMetadata(category: Category | null, page: number): Metadata 
   const l = list(category);
   const name = category ?? "Blog";
   const suffix = page > 1 ? `, page ${page}` : "";
-  const description = category ? ABOUT[category] : "Guides and comparisons from the maker of Pinto Notes: connecting ChatGPT, Claude and Codex to your notes, Apple Notes how-tos, and more.";
+  const description = category ? ABOUT[category] : "Guides and comparisons from the maker of Amber Notes: connecting ChatGPT, Claude and Codex to your notes, Apple Notes how-tos, and more.";
   return pageMetadata({
-    title: category ? `${name}${suffix} · Blog · Pinto Notes` : `Blog${suffix} · Pinto Notes`,
-    shareTitle: category ? `${name} on the Pinto Notes blog` : "The Pinto Notes blog",
+    title: category ? `${name}${suffix} · Blog · Amber Notes` : `Blog${suffix} · Amber Notes`,
+    shareTitle: category ? `${name} on the Amber Notes blog` : "The Amber Notes blog",
     description: page > 1 ? `Page ${page} of ${pageCount(l.posts)}. ${description}` : description,
     path: pagePath(l.base, page),
   });
@@ -84,7 +84,7 @@ export function BlogIndex({ category, page }: { category: Category | null; page:
         <div className={s.hero}>
           <div className={s.heroText}>
             <h1 className={`${s.h1} rise`} style={{ "--i": 0 } as React.CSSProperties}>
-              {category ?? <>The Pinto Notes <mark className={home.mark}>blog</mark></>}{page > 1 && <span className={s.pageNote}>, page {page}</span>}
+              {category ?? <>The Amber Notes <mark className={home.mark}>blog</mark></>}{page > 1 && <span className={s.pageNote}>, page {page}</span>}
             </h1>
             <p className={`${s.lede} rise`} style={{ "--i": 1 } as React.CSSProperties}>{category ? ABOUT[category] : LEDE}</p>
           </div>

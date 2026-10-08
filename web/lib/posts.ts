@@ -2,7 +2,7 @@
 /// sitemap, /llms.txt, "More posts" and "All posts" all read it. `draft` posts are noindex and
 /// stay out of every list until they're approved.
 
-export type Category = "Guides" | "Apple Notes" | "Comparisons" | "Building Pinto Notes";
+export type Category = "Guides" | "Apple Notes" | "Comparisons" | "Building Amber Notes";
 
 /// A real capture of the app, in public/blog. `window` says whether the capture already has the
 /// Mac window around it (true), or is a sheet or form that the page frames in a window (false).
@@ -40,28 +40,28 @@ const thumb = (ground: Ground, name: string, width: number, height: number, alt:
 export const AUTHOR = { name: "Emil Wagman", avatar: "/emil-wagman.jpg" };
 
 export const SHOTS = {
-  connectChatGPT: { src: "/blog/amber-notes-connect-chatgpt-steps.webp", alt: "Connect ChatGPT in Pinto Notes on a Mac: a Copy Address and Open ChatGPT button, then four steps: turn on Developer mode, add Pinto Notes in Plugins, paste the address and choose OAuth, then Allow.", width: 1120, height: 610, window: false, title: "Connect ChatGPT" },
-  connectClaude: { src: "/blog/amber-notes-connect-claude-steps.webp", alt: "Connect Claude in Pinto Notes on a Mac: an Add to Claude button, a note that it works on every Claude plan, then the steps: choose Add, then Connect, then Allow.", width: 1120, height: 590, window: false, title: "Connect Claude" },
-  consent: { src: "/blog/amber-notes-allow-chatgpt-access.webp", alt: "Pinto Notes asking \"Allow ChatGPT to use your notes?\" with a choice of Read and Edit or Read Only, and Allow and Don't Allow buttons.", width: 840, height: 700, window: false, title: "Pinto Notes" },
-  connectList: { src: "/blog/amber-notes-connect-an-ai.webp", alt: "Settings in Pinto Notes on a Mac: Connect an AI lists ChatGPT, Claude, Claude Code and Codex, with what's connected below.", width: 1040, height: 720, window: false, title: "Settings" },
-  consentE2ee: { src: "/blog/amber-notes-allow-chatgpt-encrypted-notes.webp", alt: "Pinto Notes on a Mac asking \"Allow ChatGPT to use your notes?\": access goes to chatgpt.com, a choice of Read and Edit or Read Only, and a line saying that while it's connected it can read everything except locked notes.", width: 840, height: 712, window: false, title: "Pinto Notes" },
-  notesPassword: { src: "/blog/amber-notes-locked-notes-password.webp", alt: "Pinto Notes on a Mac: Create a password for your locked notes, with Password, Verify and Hint fields, and the warning that if you forget this password, your locked notes can't be recovered, not even by us.", width: 880, height: 600, window: false, title: "Locked Notes" },
+  connectChatGPT: { src: "/blog/amber-notes-connect-chatgpt-steps.webp", alt: "Connect ChatGPT in Amber Notes on a Mac: a Copy Address and Open ChatGPT button, then four steps: turn on Developer mode, add Amber Notes in Plugins, paste the address and choose OAuth, then Allow.", width: 1120, height: 610, window: false, title: "Connect ChatGPT" },
+  connectClaude: { src: "/blog/amber-notes-connect-claude-steps.webp", alt: "Connect Claude in Amber Notes on a Mac: an Add to Claude button, a note that it works on every Claude plan, then the steps: choose Add, then Connect, then Allow.", width: 1120, height: 590, window: false, title: "Connect Claude" },
+  consent: { src: "/blog/amber-notes-allow-chatgpt-access.webp", alt: "Amber Notes asking \"Allow ChatGPT to use your notes?\" with a choice of Read and Edit or Read Only, and Allow and Don't Allow buttons.", width: 840, height: 700, window: false, title: "Amber Notes" },
+  connectList: { src: "/blog/amber-notes-connect-an-ai.webp", alt: "Settings in Amber Notes on a Mac: Connect an AI lists ChatGPT, Claude, Claude Code and Codex, with what's connected below.", width: 1040, height: 720, window: false, title: "Settings" },
+  consentE2ee: { src: "/blog/amber-notes-allow-chatgpt-encrypted-notes.webp", alt: "Amber Notes on a Mac asking \"Allow ChatGPT to use your notes?\": access goes to chatgpt.com, a choice of Read and Edit or Read Only, and a line saying that while it's connected it can read everything except locked notes.", width: 840, height: 712, window: false, title: "Amber Notes" },
+  notesPassword: { src: "/blog/amber-notes-locked-notes-password.webp", alt: "Amber Notes on a Mac: Create a password for your locked notes, with Password, Verify and Hint fields, and the warning that if you forget this password, your locked notes can't be recovered, not even by us.", width: 880, height: 600, window: false, title: "Locked Notes" },
   coworkAllow: { src: "/blog/claude-wants-access-to-control-notes-macos.webp", alt: "The macOS prompt that appears when Claude first uses the Apple Notes extension: \u201cClaude\u201d wants access to control \u201cNotes\u201d. Allowing control will provide access to documents and data in \u201cNotes\u201d, and to perform actions within that app. Buttons: Don\u2019t Allow and Allow.", width: 520, height: 532, window: true },
   notesDefaultAccount: { src: "/blog/notes-default-account.webp", alt: "The General settings of Apple Notes on a Mac running macOS 26: Sort notes by Date Edited, New notes start with Title, and Default account set to iCloud, which Siri uses when creating notes.", width: 1093, height: 298, window: true },
   notesTableMenu: { src: "/blog/notes-format-table-menu.webp", alt: "The Format menu of Apple Notes on a Mac running macOS 26, at Table (Option-Command-T), with Convert to Text and Reverse Table Direction below it.", width: 700, height: 436, window: true },
   notesSmartFolderFilters: { src: "/blog/notes-smart-folder-filters.webp", alt: "The first pop-up menu of a Smart Folder rule in Apple Notes on a Mac running macOS 26, with Tags checked above Date Created, Date Edited, Shared, Mentions, Checklists, Attachments, Folders, Quick Notes, Pinned Notes and Locked Notes.", width: 560, height: 800, window: true },
   notesExportMenu: { src: "/blog/notes-export-menu.webp", alt: "The File menu of Apple Notes on a Mac running macOS 26, open at Export as, with PDF and Markdown in the submenu and Markdown selected.", width: 700, height: 453, window: true },
-  importSheet: { src: "/blog/amber-notes-import-from-apple-notes.webp", alt: "The Import from Apple Notes sheet in Pinto Notes on a Mac: notes picked, Keep Apple Notes folders and Also bring over pinned notes ticked, and an Import 1,284 Notes button.", width: 1980, height: 1800, window: true },
-  aiEdit: { src: "/blog/amber-notes-chatgpt-edit-undo.webp", alt: "A Groceries note in Pinto Notes on a Mac. The five lines ChatGPT just added are tinted, and a bar at the bottom says ChatGPT changed 5 lines, with Undo.", width: 1260, height: 1520, window: false, title: "Groceries" },
-  history: { src: "/blog/amber-notes-version-history-chatgpt.webp", alt: "Version history for a Groceries note in Pinto Notes on a Mac: versions by you on iPhone and Mac, ChatGPT and Claude Code, with the lines that differ tinted and a Restore This Version button.", width: 1800, height: 1200, window: false, title: "Groceries" },
-  welcome: { src: "/blog/amber-notes-markdown-welcome-note.webp", alt: "The Welcome to Pinto Notes note on a Mac: markdown that styles itself as you type, a checklist, bullets, inline code and a table.", width: 1250, height: 950, window: false, title: "Welcome to Pinto Notes" },
+  importSheet: { src: "/blog/amber-notes-import-from-apple-notes.webp", alt: "The Import from Apple Notes sheet in Amber Notes on a Mac: notes picked, Keep Apple Notes folders and Also bring over pinned notes ticked, and an Import 1,284 Notes button.", width: 1980, height: 1800, window: true },
+  aiEdit: { src: "/blog/amber-notes-chatgpt-edit-undo.webp", alt: "A Groceries note in Amber Notes on a Mac. The five lines ChatGPT just added are tinted, and a bar at the bottom says ChatGPT changed 5 lines, with Undo.", width: 1260, height: 1520, window: false, title: "Groceries" },
+  history: { src: "/blog/amber-notes-version-history-chatgpt.webp", alt: "Version history for a Groceries note in Amber Notes on a Mac: versions by you on iPhone and Mac, ChatGPT and Claude Code, with the lines that differ tinted and a Restore This Version button.", width: 1800, height: 1200, window: false, title: "Groceries" },
+  welcome: { src: "/blog/amber-notes-markdown-welcome-note.webp", alt: "The Welcome to Amber Notes note on a Mac: markdown that styles itself as you type, a checklist, bullets, inline code and a table.", width: 1250, height: 950, window: false, title: "Welcome to Amber Notes" },
   historyBurst: { src: "/blog/amber-notes-version-history-restore.webp", alt: "Version history for a Groceries note on a Mac: versions by you on iPhone and Mac, ChatGPT and Claude Code, with the lines that differ tinted and a Restore This Version button.", width: 1800, height: 1200, window: false, title: "Groceries" },
-  iphoneList: { src: "/blog/amber-notes-iphone-notes-edited-by-ai.webp", alt: "Pinto Notes on iPhone: the note list, with Groceries marked Edited by ChatGPT, Standup notes Edited by Claude Code and Lisbon Edited by Claude.", width: 1206, height: 2622, window: false, phone: true },
-  tracker: { src: "/blog/amber-notes-evening-tracker-table.webp", alt: "An Evening tracker note in Pinto Notes on a Mac: a table with a row per day and typed columns for work hours, energy, mood and yes-or-no habits.", width: 1250, height: 900, window: false, title: "Evening tracker" },
-  lisbon: { src: "/blog/amber-notes-lisbon-trip-note.webp", alt: "A Lisbon trip note in Pinto Notes on a Mac: a plan checklist, a list of places, a linked Hotel booking sub-note, and a table of where to eat.", width: 1250, height: 1420, window: false, title: "Lisbon" },
-  iphoneFiles: { src: "/blog/amber-notes-iphone-files-in-a-note.webp", alt: "Pinto Notes on iPhone in dark mode: a Trip documents note holding a PDF, a CSV file, a photo and a link.", width: 1206, height: 2622, window: false, phone: true },
-  iphoneGroceries: { src: "/blog/amber-notes-iphone-chatgpt-edited-checklist.webp", alt: "A Groceries checklist in Pinto Notes on iPhone. The five items ChatGPT just added are tinted, and a bar says ChatGPT changed 5 lines, with Undo.", width: 1206, height: 2622, window: false, phone: true },
-  standup: { src: "/blog/amber-notes-claude-code-standup-note.webp", alt: "Standup notes in Pinto Notes on a Mac. The line Claude Code just added is tinted, and a bar at the bottom says Claude Code changed 1 line, with Undo.", width: 1250, height: 1420, window: false, title: "Standup notes" },
+  iphoneList: { src: "/blog/amber-notes-iphone-notes-edited-by-ai.webp", alt: "Amber Notes on iPhone: the note list, with Groceries marked Edited by ChatGPT, Standup notes Edited by Claude Code and Lisbon Edited by Claude.", width: 1206, height: 2622, window: false, phone: true },
+  tracker: { src: "/blog/amber-notes-evening-tracker-table.webp", alt: "An Evening tracker note in Amber Notes on a Mac: a table with a row per day and typed columns for work hours, energy, mood and yes-or-no habits.", width: 1250, height: 900, window: false, title: "Evening tracker" },
+  lisbon: { src: "/blog/amber-notes-lisbon-trip-note.webp", alt: "A Lisbon trip note in Amber Notes on a Mac: a plan checklist, a list of places, a linked Hotel booking sub-note, and a table of where to eat.", width: 1250, height: 1420, window: false, title: "Lisbon" },
+  iphoneFiles: { src: "/blog/amber-notes-iphone-files-in-a-note.webp", alt: "Amber Notes on iPhone in dark mode: a Trip documents note holding a PDF, a CSV file, a photo and a link.", width: 1206, height: 2622, window: false, phone: true },
+  iphoneGroceries: { src: "/blog/amber-notes-iphone-chatgpt-edited-checklist.webp", alt: "A Groceries checklist in Amber Notes on iPhone. The five items ChatGPT just added are tinted, and a bar says ChatGPT changed 5 lines, with Undo.", width: 1206, height: 2622, window: false, phone: true },
+  standup: { src: "/blog/amber-notes-claude-code-standup-note.webp", alt: "Standup notes in Amber Notes on a Mac. The line Claude Code just added is tinted, and a bar at the bottom says Claude Code changed 1 line, with Undo.", width: 1250, height: 1420, window: false, title: "Standup notes" },
 } satisfies Record<string, Shot>;
 
 export const posts: Post[] = [
@@ -158,7 +158,7 @@ export const posts: Post[] = [
     date: "2026-10-01",
     updated: "2026-10-02",
     image: SHOTS.history,
-    thumb: thumb("night", "thumb-restore-dark", 846, 558, "An earlier version of a Groceries note in Pinto Notes, in dark mode"),
+    thumb: thumb("night", "thumb-restore-dark", 846, 558, "An earlier version of a Groceries note in Amber Notes, in dark mode"),
     draft: false,
   },
   {
@@ -170,7 +170,7 @@ export const posts: Post[] = [
     date: "2026-10-01",
     updated: "2026-10-01",
     image: SHOTS.connectList,
-    thumb: thumb("linen", "thumb-consent-local", 826, 545, "Pinto Notes asking to let an app on this computer use your notes"),
+    thumb: thumb("linen", "thumb-consent-local", 826, 545, "Amber Notes asking to let an app on this computer use your notes"),
     draft: false,
   },
   {
@@ -182,19 +182,19 @@ export const posts: Post[] = [
     date: "2026-10-01",
     updated: "2026-10-01",
     image: SHOTS.notesPassword,
-    thumb: thumb("pearl", "thumb-notes-password", 896, 591, "Pinto Notes asking you to create a password for locked notes"),
+    thumb: thumb("pearl", "thumb-notes-password", 896, 591, "Amber Notes asking you to create a password for locked notes"),
     draft: false,
   },
   {
     slug: "encrypted-notes-app-for-ai",
     title: "An encrypted notes app that ChatGPT and Claude can use",
-    description: "Pinto Notes encrypts every note on your iPhone or Mac and still lets ChatGPT and Claude read and edit them. How it works, its limits, and how others compare.",
+    description: "Amber Notes encrypts every note on your iPhone or Mac and still lets ChatGPT and Claude read and edit them. How it works, its limits, and how others compare.",
     excerpt: "Every note is encrypted on your devices, and ChatGPT and Claude can still use them once you approve. How, what stays readable, and how Apple Notes, Standard Notes, Notesnook, Obsidian and Notion compare.",
-    category: "Building Pinto Notes",
+    category: "Building Amber Notes",
     date: "2026-10-01",
     updated: "2026-10-01",
     image: SHOTS.consentE2ee,
-    thumb: thumb("dusk", "thumb-consent-e2ee", 826, 545, "Pinto Notes asking to let ChatGPT use your notes"),
+    thumb: thumb("dusk", "thumb-consent-e2ee", 826, 545, "Amber Notes asking to let ChatGPT use your notes"),
     draft: false,
   },
   {
@@ -230,7 +230,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-09-30",
     image: SHOTS.welcome,
-    thumb: thumb("blush", "thumb-markdown-title", 714, 471, "The Welcome to Pinto Notes note, written in Markdown"),
+    thumb: thumb("blush", "thumb-markdown-title", 714, 471, "The Welcome to Amber Notes note, written in Markdown"),
     draft: false,
   },
   {
@@ -242,7 +242,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-10-02",
     image: SHOTS.connectChatGPT,
-    thumb: thumb("paper", "thumb-connect-chatgpt", 704, 572, "The steps to connect ChatGPT in Pinto Notes"),
+    thumb: thumb("paper", "thumb-connect-chatgpt", 704, 572, "The steps to connect ChatGPT in Amber Notes"),
     draft: false,
   },
   {
@@ -254,7 +254,7 @@ export const posts: Post[] = [
     date: "2026-09-30",
     updated: "2026-10-02",
     image: SHOTS.connectClaude,
-    thumb: thumb("leaf", "thumb-connect-claude", 704, 451, "The steps to connect Claude in Pinto Notes"),
+    thumb: thumb("leaf", "thumb-connect-claude", 704, 451, "The steps to connect Claude in Amber Notes"),
     draft: false,
   },
   {
@@ -295,33 +295,33 @@ export const posts: Post[] = [
   },
   {
     slug: "move-from-apple-notes",
-    title: "How to move from Apple Notes to Pinto Notes",
+    title: "How to move from Apple Notes to Amber Notes",
     description: "Import all your Apple Notes on your Mac, with folders, checklists and tables. Apple Notes stays untouched.",
     excerpt: "Bring every note over in one go on your Mac, folders and pins included. Nothing in Apple Notes changes, so you can take your time.",
     category: "Apple Notes",
     date: "2026-09-30",
     updated: "2026-09-30",
     image: SHOTS.importSheet,
-    thumb: thumb("soft", "thumb-import", 750, 523, "Notes picked for import from Apple Notes into Pinto Notes"),
+    thumb: thumb("soft", "thumb-import", 750, 523, "Notes picked for import from Apple Notes into Amber Notes"),
     draft: false,
   },
   {
     slug: "notes-in-claude-code-and-codex",
     title: "Use your notes from Claude Code and Codex",
-    description: "Add Pinto Notes to Claude Code or Codex in one step, and let your coding agent read and write your notes.",
+    description: "Add Amber Notes to Claude Code or Codex in one step, and let your coding agent read and write your notes.",
     excerpt: "Let your coding agent write the standup or keep a work log, in the same notes you read on your phone. One command for Claude Code, a few lines for Codex.",
     category: "Guides",
     date: "2026-09-30",
     updated: "2026-10-01",
     image: SHOTS.connectList,
-    thumb: thumb("dark", "thumb-connect-list", 704, 566, "Connect an AI in Pinto Notes: ChatGPT, Claude, Claude Code and Codex"),
+    thumb: thumb("dark", "thumb-connect-list", 704, 566, "Connect an AI in Amber Notes: ChatGPT, Claude, Claude Code and Codex"),
     draft: false,
   },
   {
     slug: "amber-notes-vs-apple-notes",
-    title: "Pinto Notes vs Apple Notes",
-    description: "What Pinto Notes adds, what Apple Notes still does better, and who each one is for.",
-    excerpt: "Pinto Notes is built to feel like Apple Notes, with a few things it always missed. Where they differ, including what Apple Notes still does better.",
+    title: "Amber Notes vs Apple Notes",
+    description: "What Amber Notes adds, what Apple Notes still does better, and who each one is for.",
+    excerpt: "Amber Notes is built to feel like Apple Notes, with a few things it always missed. Where they differ, including what Apple Notes still does better.",
     category: "Comparisons",
     date: "2026-09-30",
     updated: "2026-10-01",
@@ -331,14 +331,14 @@ export const posts: Post[] = [
   },
   {
     slug: "mcp-server",
-    title: "The Pinto Notes MCP server",
+    title: "The Amber Notes MCP server",
     description: "The server address, how sign-in and approval work, and every tool an AI app can call.",
     excerpt: "For developers and curious people: the address, how an AI app signs in and gets approved, and every tool it can call.",
     category: "Guides",
     date: "2026-09-30",
     updated: "2026-10-02",
     image: SHOTS.consent,
-    thumb: thumb("amber", "thumb-consent", 854, 528, "Pinto Notes asking to let ChatGPT use your notes, with Allow and Don't Allow"),
+    thumb: thumb("amber", "thumb-consent", 854, 528, "Amber Notes asking to let ChatGPT use your notes, with Allow and Don't Allow"),
     draft: false,
   },
   {
@@ -356,7 +356,7 @@ export const posts: Post[] = [
   {
     slug: "notes-apps-that-work-with-chatgpt",
     title: "Notes apps that work with ChatGPT",
-    description: "Which notes apps ChatGPT can search and write to in 2026, compared fairly: Notion, OneNote, Evernote, Apple Notes, Google Keep, Pinto Notes and more.",
+    description: "Which notes apps ChatGPT can search and write to in 2026, compared fairly: Notion, OneNote, Evernote, Apple Notes, Google Keep, Amber Notes and more.",
     excerpt: "\u201cWorks with ChatGPT\u201d can mean reading the note you have open, or searching and editing all of them. The main notes apps, compared.",
     category: "Comparisons",
     date: "2026-09-30",
@@ -416,7 +416,7 @@ export const posts: Post[] = [
   {
     slug: "work-log-with-claude-code",
     title: "Keep a work log with Claude Code",
-    description: "Let Claude Code write your standup, keep a daily log and fill in a tracker in your notes, with one instruction and the Pinto Notes MCP server.",
+    description: "Let Claude Code write your standup, keep a daily log and fill in a tracker in your notes, with one instruction and the Amber Notes MCP server.",
     excerpt: "Your standup, a daily log and a tracker, written by Claude Code as you work, in notes you can read on your phone.",
     category: "Guides",
     date: "2026-09-30",
@@ -449,7 +449,7 @@ export const published = () => posts.filter((p) => !p.draft);
 
 /// Categories that have at least one published post, in a fixed order.
 export const categories = (): Category[] =>
-  (["Guides", "Apple Notes", "Comparisons", "Building Pinto Notes"] as Category[]).filter((c) => published().some((p) => p.category === c));
+  (["Guides", "Apple Notes", "Comparisons", "Building Amber Notes"] as Category[]).filter((c) => published().some((p) => p.category === c));
 
 export const categoryAnchor = (c: Category) => c.toLowerCase().replace(/\s+/g, "-");
 

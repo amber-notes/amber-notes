@@ -191,20 +191,20 @@ export default function Page() {
       <h2 id="amber-notes">If you want your AI to work in your notes</h2>
       <p>
         iOS 27 makes Apple Notes a nicer place to write, and Siri can now help in it. It doesn&apos;t let ChatGPT or Claude keep a list for you, fix a note while you&apos;re
-        on the train, or write your standup into it. That&apos;s the gap I built Pinto Notes for: a notes app for iPhone and Mac that looks and
+        on the train, or write your standup into it. That&apos;s the gap I built Amber Notes for: a notes app for iPhone and Mac that looks and
         works like Apple Notes, with a server built in that ChatGPT, Claude, Claude Code, Codex and Incredible can use to search, read and
         edit your notes. You approve each app once, every AI change shows up tinted with an Undo, and older versions stay in the history.
       </p>
       <Loop src="/blog/loops/amber-notes-chatgpt-edit.mp4" poster="/blog/loops/amber-notes-chatgpt-edit.webp" width={1120} height={1136}
-        label="A Lisbon trip note in Pinto Notes on a Mac. ChatGPT changes day 3 to Sintra and adds a dinner spot to the table; the two changed lines turn amber, a bar says ChatGPT changed 2 lines with Undo, and the tint fades."
-        caption="ChatGPT edits a note in Pinto Notes: the two lines it changed are tinted, with an Undo, then the tint fades." />
+        label="A Lisbon trip note in Amber Notes on a Mac. ChatGPT changes day 3 to Sintra and adds a dinner spot to the table; the two changed lines turn amber, a bar says ChatGPT changed 2 lines with Undo, and the tint fades."
+        caption="ChatGPT edits a note in Amber Notes: the two lines it changed are tinted, with an Undo, then the tint fades." />
       <p>
         <a href="/blog/connect-chatgpt-to-your-notes">Connecting ChatGPT or Claude</a> takes a couple of minutes. For the full comparison,
-        including what Apple Notes still does better, see <a href="/blog/amber-notes-vs-apple-notes">Pinto Notes vs Apple Notes</a>,
+        including what Apple Notes still does better, see <a href="/blog/amber-notes-vs-apple-notes">Amber Notes vs Apple Notes</a>,
         and the <a href="/templates">free templates</a> are ready-made notes, like a trip plan or a weekly review, to start from.
       </p>
       <PostCta slug="apple-notes-ios-27" position="how-amber-helps" title="Notes ChatGPT and Claude can work in">
-        <p>Pinto Notes looks and works like Apple Notes, and imports your notes from it on the Mac.</p>
+        <p>Amber Notes looks and works like Apple Notes, and imports your notes from it on the Mac.</p>
       </PostCta>
     </PostPage>
   );

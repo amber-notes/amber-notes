@@ -135,7 +135,7 @@ async function run(pending: Pending, password: string, auth: ResetAuth): Promise
     if (result === "weak") return { kind: "error", message: "Choose a longer password, one that isn't easy to guess." };
     return { kind: "error", message: "Your password wasn't changed. Try again in a moment." };
   } catch {
-    return { kind: "error", message: "Can't reach Pinto Notes. Check your connection and try again." };
+    return { kind: "error", message: "Can't reach Amber Notes. Check your connection and try again." };
   }
 }
 

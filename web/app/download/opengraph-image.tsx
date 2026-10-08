@@ -1,7 +1,7 @@
 import { renderCard } from "@/lib/og/render";
 
 export { size, contentType } from "@/lib/og/render";
-export const alt = "Download Pinto Notes for Mac. Free, for macOS 26 or later.";
+export const alt = "Download Amber Notes for Mac. Free, for macOS 26 or later.";
 
 export default function OpenGraphImage() {
   return renderCard({

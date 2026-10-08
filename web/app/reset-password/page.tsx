@@ -8,7 +8,7 @@ import ResetPassword from "./ResetPassword";
 // page reads it in the browser and spends it only when Save is pressed (lib/password-reset.ts). The
 // server only tells a link Supabase refused (an error in the query) from everything else.
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Reset your password · Pinto Notes", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Reset your password · Amber Notes", robots: { index: false, follow: false } };
 
 export default async function ResetPasswordPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const raw = await searchParams;

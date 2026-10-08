@@ -70,8 +70,8 @@ describe("a shared page", () => {
 
   it("mentions the app once, after the note", () => {
     const html = page();
-    expect(html.match(/Get Pinto Notes/g)).toHaveLength(1);
-    expect(html.indexOf("Get Pinto Notes")).toBeGreaterThan(html.indexOf('<article class="note">'));
+    expect(html.match(/Get Amber Notes/g)).toHaveLength(1);
+    expect(html.indexOf("Get Amber Notes")).toBeGreaterThan(html.indexOf('<article class="note">'));
   });
 });
 

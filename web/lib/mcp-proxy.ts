@@ -2,14 +2,6 @@
 import { MCP_URL } from "./facts";
 
 export const MCP_HOST = new URL(MCP_URL).host;
-/// The new name's address for the same server, served alongside MCP_HOST (never instead of it:
-/// connectors people already added call mcp.ambernotes.app).
-export const NEW_MCP_HOST = "mcp.pintonotes.com";
-
-/// The public address for a request that came in on `host`, or null when this isn't an MCP host.
-export function mcpPublicURL(host: string): string | null {
-  return host === MCP_HOST || host === NEW_MCP_HOST ? `https://${host}` : null;
-}
 
 /// The only paths the server has. Anything else, and anything encoded that could walk out of the
 /// function's path (%2f, %5c, backslashes, dots), never reaches Supabase.
@@ -51,13 +43,13 @@ export function functionRegion(value: string | undefined): string | null {
   return /^[a-z]{2}-[a-z]+-\d$/.test(r) ? r : null;
 }
 
-export function upstreamHeaders(incoming: Headers, secret: string, region: string | null = null, publicURL: string = MCP_URL): Headers {
+export function upstreamHeaders(incoming: Headers, secret: string, region: string | null = null): Headers {
   const headers = new Headers();
   for (const h of PASS) {
     const v = incoming.get(h);
     if (v !== null) headers.set(h, v);
   }
-  headers.set("x-mcp-public-url", publicURL);
+  headers.set("x-mcp-public-url", MCP_URL);
   headers.set("x-mcp-proxy-secret", secret);
   // Vercel sets these itself and drops what a client sent.
   const ip = incoming.get("x-real-ip") ?? incoming.get("x-forwarded-for")?.split(",")[0].trim();

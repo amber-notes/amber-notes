@@ -8,7 +8,7 @@ import { redirect } from "next/navigation";
 // adds a fresh copy. A browser that lands here goes back to the template's page (/t/<id>), as
 // /open/template and /open/copy do since the open-card pages went (#212).
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Open Pinto Notes", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Open Amber Notes", robots: { index: false, follow: false } };
 
 type Props = { params: Promise<{ id: string }> };
 

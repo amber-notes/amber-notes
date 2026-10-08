@@ -5,14 +5,14 @@ import { SHOTS } from "@/lib/posts";
 
 export const dynamic = "force-static";
 export const metadata = postMetadata("best-notes-app-for-ai-agents", {
-  title: "The best notes app for AI agents (2026) · Pinto Notes",
+  title: "The best notes app for AI agents (2026) · Amber Notes",
 });
 
 type Row = { app: string; remote: string; writes: string; undo: string; approval: string; read: string };
 
 // Checked against each app's own documentation on 30 September 2026.
 const ROWS: Row[] = [
-  { app: "Pinto Notes", remote: "Yes, built in", writes: "Line edits, appends, checklist ticks, table rows", undo: "Undo, and every version kept", approval: "OAuth plus Allow in the app; read only or read and edit", read: DEVICES },
+  { app: "Amber Notes", remote: "Yes, built in", writes: "Line edits, appends, checklist ticks, table rows", undo: "Undo, and every version kept", approval: "OAuth plus Allow in the app; read only or read and edit", read: DEVICES },
   { app: "Notion", remote: "Yes, official", writes: "Pages, databases, blocks, comments", undo: "Page history (length depends on plan)", approval: "OAuth, with your workspace permissions", read: "Web, desktop, phone" },
   { app: "Evernote", remote: "Yes, official (beta)", writes: "Creates notes", undo: "Note history", approval: "OAuth", read: "Web, desktop, phone" },
   { app: "Obsidian", remote: "No; community plugins on your computer", writes: "Depends on the plugin", undo: "File recovery snapshots on that computer", approval: "Depends on the plugin", read: "Desktop, phone" },
@@ -22,7 +22,7 @@ const ROWS: Row[] = [
 
 const FAQ = [
   { q: "What is the best notes app for AI agents?", a: [
-    "One the agent can reach wherever it runs, that lets it make small, precise changes, and that keeps every version so you can undo a bad edit. In September 2026, Pinto Notes and Notion meet all three; Evernote's server is in beta and only creates notes.",
+    "One the agent can reach wherever it runs, that lets it make small, precise changes, and that keeps every version so you can undo a bad edit. In September 2026, Amber Notes and Notion meet all three; Evernote's server is in beta and only creates notes.",
   ] },
   { q: "Why does a remote MCP server matter?", a: [
     "Agents in ChatGPT, Claude and Incredible run in the cloud. They can only reach a server on the internet, not an app on your Mac. A remote server also works from Claude Code and Codex on any computer.",
@@ -62,9 +62,9 @@ export default function Page() {
         More detail on each, with links to their own pages, is in <a href="/blog/notes-apps-with-mcp">notes apps with an MCP server, compared</a>.
       </p>
 
-      <h2>Where Pinto Notes fits</h2>
+      <h2>Where Amber Notes fits</h2>
       <p>
-        I built Pinto Notes for exactly this: a notes app that works like Apple Notes, with an MCP server made for agents. The tools are small
+        I built Amber Notes for exactly this: a notes app that works like Apple Notes, with an MCP server made for agents. The tools are small
         and exact. <code>edit_note</code> replaces text that must match once, <code>append_to_note</code> adds under a heading,{" "}
         <code>set_checklist_item</code> ticks one item, and <code>log_table_row</code> adds a row to a tracker and checks each value against
         its column. Every change keeps the previous version, which the agent can list with <code>note_history</code> and you can restore in

@@ -88,9 +88,9 @@ function OpenSheet({ onRetry, onClose }: { onRetry: () => void; onClose: () => v
   return (
     <div ref={sheet} className="open-sheet" role="dialog" aria-modal="false" aria-labelledby={id} tabIndex={-1}>
       <p className="open-sheet-title" id={id}>Didn&apos;t open?</p>
-      <p className="open-sheet-text">Pinto Notes isn&apos;t on this device yet, or the browser didn&apos;t hand the link over.</p>
+      <p className="open-sheet-text">Amber Notes isn&apos;t on this device yet, or the browser didn&apos;t hand the link over.</p>
       <div className="open-sheet-actions">
-        <a className="open-sheet-get" href="/download/mac"><AppleGlyph /> Get Pinto Notes for Mac</a>
+        <a className="open-sheet-get" href="/download/mac"><AppleGlyph /> Get Amber Notes for Mac</a>
         {APP_STORE_LIVE && <a className="open-sheet-iphone" href={APP_STORE_URL} target="_blank" rel="noopener noreferrer">Get it for iPhone</a>}
       </div>
       <p className="open-sheet-again">Already have it? <button type="button" onClick={onRetry}>Try again</button></p>

@@ -6,13 +6,13 @@
     "Work"
   ],
   "audience": "For anyone who leaves meetings with messy notes and a vague sense of who does what.",
-  "description": "Paste rough meeting notes or a transcript and your AI turns them into decisions and action items in Pinto Notes.",
+  "description": "Paste rough meeting notes or a transcript and your AI turns them into decisions and action items in Amber Notes.",
   "tagline": "Decisions and action items from every meeting.",
   "seoTitle": "Meeting notes to action items template for AI",
   "folder": "Work",
   "note": "Meeting notes\n\nAfter a meeting, paste your rough notes or the transcript into your AI. The summary and action items land here, newest meeting first.\n\n## Open action items\n\n## Meetings\n",
   "prompt": {
-    "default": "Use my Pinto Notes note \"Meeting notes\". After a meeting I'll paste my rough notes or a transcript. Add a section at the start of \"Meetings\" with append_to_note (at_start): a \"###\" heading with the meeting name and date, a two-line summary, and the decisions as bullets. Add each action item under \"Open action items\" as a checklist line like \"- [ ] Owner: task (due date)\". If something is unclear, ask me before writing it. When I say an item is done, tick it with set_checklist_item."
+    "default": "Use my Amber Notes note \"Meeting notes\". After a meeting I'll paste my rough notes or a transcript. Add a section at the start of \"Meetings\" with append_to_note (at_start): a \"###\" heading with the meeting name and date, a two-line summary, and the decisions as bullets. Add each action item under \"Open action items\" as a checklist line like \"- [ ] Owner: task (due date)\". If something is unclear, ask me before writing it. When I say an item is done, tick it with set_checklist_item."
   },
   "asks": [
     "Here are my notes from the pricing sync: …",

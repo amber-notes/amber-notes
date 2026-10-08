@@ -88,7 +88,7 @@ export default function Page() {
   return (
     <PostPage
       slug="obsidian-mcp"
-      intro={<>Search for an Obsidian MCP server and you get a long list of GitHub projects. I went through the main ones in September 2026 and checked each against its own README and release history. Here&apos;s how they work, what each can do, how to set up the best one in Claude, and the limits they share. I make Pinto Notes, a different notes app, so weigh that part with that in mind.</>}
+      intro={<>Search for an Obsidian MCP server and you get a long list of GitHub projects. I went through the main ones in September 2026 and checked each against its own README and release history. Here&apos;s how they work, what each can do, how to set up the best one in Claude, and the limits they share. I make Amber Notes, a different notes app, so weigh that part with that in mind.</>}
       faq={FAQ}
     >
       <h2>How Obsidian works with AI</h2>
@@ -235,18 +235,18 @@ export default function Page() {
       </p>
       <p>
         If you want ChatGPT, or Claude on your phone, to use your notes without a computer left on, the notes have to live somewhere with
-        a server on the internet. That&apos;s why I built Pinto Notes: a free, open-source notes app for iPhone and Mac with an MCP server
+        a server on the internet. That&apos;s why I built Amber Notes: a free, open-source notes app for iPhone and Mac with an MCP server
         built in, at <code>{MCP_URL}</code>. It&apos;s a different app, not an Obsidian plugin.
       </p>
       <ul>
         <li>It works from ChatGPT, Claude on the web, desktop and iPhone, Claude Code, Codex and Incredible, and your Mac doesn&apos;t need to be on.</li>
-        <li>You approve each AI app in Pinto Notes and choose Read Only, or Read and Edit.</li>
+        <li>You approve each AI app in Amber Notes and choose Read Only, or Read and Edit.</li>
         <li>An AI can search, read, create and edit notes, tick checklist items, move and pin notes, and manage folders.</li>
         <li>When an AI changes a note, you see what changed, with Undo, and the previous version stays in the note&apos;s history.</li>
       </ul>
-      <Figure shot={SHOTS.connectList} caption="Connect an AI in Pinto Notes on a Mac: ChatGPT, Claude, Claude Code and Codex." />
+      <Figure shot={SHOTS.connectList} caption="Connect an AI in Amber Notes on a Mac: ChatGPT, Claude, Claude Code and Codex." />
       <p>
-        Be clear about the trade. Notes are stored as Markdown, but in Pinto Notes&apos; sync, not as a folder of files on your disk.
+        Be clear about the trade. Notes are stored as Markdown, but in Amber Notes&apos; sync, not as a folder of files on your disk.
         There are no plugins, it runs only on iPhone and Mac, and there&apos;s no import from Obsidian today.{" "}
         {APP_STORE_LIVE
           ? "The Mac app is a free download and the iPhone app is on the App Store."
@@ -254,7 +254,7 @@ export default function Page() {
       </p>
       <p>
         <a href="/blog/apple-notes-vs-obsidian">Apple Notes vs Obsidian</a> compares Obsidian with the simplest option. The{" "}
-        <a href="/blog/mcp-server">MCP server page</a> lists every Pinto Notes tool. For other notes apps with a server of their own, see{" "}
+        <a href="/blog/mcp-server">MCP server page</a> lists every Amber Notes tool. For other notes apps with a server of their own, see{" "}
         <a href="/blog/notes-apps-with-mcp">notes apps with an MCP server, compared</a>, and for the same question about Apple&apos;s
         app, <a href="/blog/apple-notes-mcp">Apple Notes MCP servers compared</a>.
       </p>

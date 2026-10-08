@@ -13,7 +13,7 @@ export default function Instructions({ title, folder, intro, variants, asks }: {
           Your AI creates a note called <b>&ldquo;{title}&rdquo;</b> in your {folder} folder, or finds the one you already have, and learns how to
           keep it. {intro}
         </p>
-        <p className={s.promptWhere}>Paste it once into a chat in ChatGPT or Claude with Pinto Notes turned on, or into Claude Code.</p>
+        <p className={s.promptWhere}>Paste it once into a chat in ChatGPT or Claude with Amber Notes turned on, or into Claude Code.</p>
       </div>
       <div className={s.asks}>
         <p className={s.asksLabel}>Then just talk to it</p>

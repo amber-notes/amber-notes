@@ -28,17 +28,17 @@ const src = (k: Shot) => `${FRAMES.dir}${FILE[k]}.webp`;
 const srcSet = (k: Shot) => `${FRAMES.dir}${FILE[k]}-800.webp 800w, ${FRAMES.dir}${FILE[k]}-1180.webp 1180w, ${src(k)} 2360w`;
 const SIZES = "(min-width: 1440px) 1290px, 92vw";
 const ALT: Record<Shot, string> = {
-  before: "Pinto Notes on a Mac",
+  before: "Amber Notes on a Mac",
   listed: "A new note, Lisbon, 4 days in May, arriving in the list marked Written by ChatGPT",
-  written: "The new note, Lisbon, 4 days in May, that ChatGPT just wrote in Pinto Notes, tinted amber",
-  writtenPlain: "The Lisbon, 4 days in May note in Pinto Notes",
+  written: "The new note, Lisbon, 4 days in May, that ChatGPT just wrote in Amber Notes, tinted amber",
+  writtenPlain: "The Lisbon, 4 days in May note in Amber Notes",
   edited: "The Lisbon note with day 3 swapped for Sintra and a dinner spot added to the table, both tinted amber",
   editedPlain: "The Lisbon note after the edit",
 };
 
 type Ask = { ask: string; answer: string; land: Shot; plain: Shot; pill: string; pillAlt: string };
 const ASKS: Ask[] = [
-  { ask: "Plan 4 days in Lisbon for us and save it to my notes", answer: "Done. I wrote “Lisbon, 4 days in May” in Pinto Notes: a day-by-day plan, where to eat and what to pack.",
+  { ask: "Plan 4 days in Lisbon for us and save it to my notes", answer: "Done. I wrote “Lisbon, 4 days in May” in Amber Notes: a day-by-day plan, where to eat and what to pack.",
     land: "written", plain: "writtenPlain", pill: "pill-chatgpt-wrote-note.webp", pillAlt: "ChatGPT wrote this note. Undo" },
   { ask: "Swap day 3 for a day trip to Sintra, and add a dinner spot", answer: "Changed day 3 to Sintra and added Cervejaria Trindade for dinner. Nothing else moved.",
     land: "edited", plain: "editedPlain", pill: "pill-chatgpt-2-lines.webp", pillAlt: "ChatGPT changed 2 lines. Undo" },
@@ -204,8 +204,8 @@ export default function Demo() {
               {ASKS.map((a, k) => (
                 <div key={a.ask} className={d.pair} hidden={view.sent <= k && !view.reset}>
                   {(view.sent > k || view.reset) && <div className={d.me}>{a.ask}</div>}
-                  {view.thinking && view.sent === k + 1 && view.answered === k && <div className={d.thinking}><span className={d.tool}>Talking to Pinto Notes…</span></div>}
-                  {(view.answered > k || view.reset) && <div className={d.ai}><span className={d.tool}>Used Pinto Notes</span><p>{a.answer}</p></div>}
+                  {view.thinking && view.sent === k + 1 && view.answered === k && <div className={d.thinking}><span className={d.tool}>Talking to Amber Notes…</span></div>}
+                  {(view.answered > k || view.reset) && <div className={d.ai}><span className={d.tool}>Used Amber Notes</span><p>{a.answer}</p></div>}
                 </div>
               ))}
             </div>

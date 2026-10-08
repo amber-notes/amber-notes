@@ -7,10 +7,10 @@ import PlatformNote from "../PlatformNote";
 import styles from "./download.module.css";
 
 export const metadata: Metadata = pageMetadata({
-  title: "Download Pinto Notes for Mac",
-  description: "Download Pinto Notes, the free notes app for Mac that ChatGPT and Claude can read and edit. Needs macOS 26 or later. Updates install themselves.",
+  title: "Download Amber Notes for Mac",
+  description: "Download Amber Notes, the free notes app for Mac that ChatGPT and Claude can read and edit. Needs macOS 26 or later. Updates install themselves.",
   path: "/download",
-  image: { url: "/download/opengraph-image", alt: "Download Pinto Notes for Mac. Free, for macOS 26 or later." },
+  image: { url: "/download/opengraph-image", alt: "Download Amber Notes for Mac. Free, for macOS 26 or later." },
 });
 
 /// Written by scripts/release-mac.sh next to the DMG it uploads (public/downloads/<file>).
@@ -35,7 +35,7 @@ export default function Download() {
     <div className={styles.wrap}>
       <section className={styles.hero}>
         <img className={`${styles.icon} rise`} style={r(0)} src="/mark-256.png" alt="" width={128} height={128} />
-        <h1 className={`${styles.title} rise`} style={r(1)}>Download Pinto Notes for Mac</h1>
+        <h1 className={`${styles.title} rise`} style={r(1)}>Download Amber Notes for Mac</h1>
         {release ? (
           <>
             <p className={`${styles.meta} rise`} style={r(2)}>
@@ -67,7 +67,7 @@ export default function Download() {
             <div className={styles.folder}><span>A</span></div>
           </div>
           <strong>2. Drag it to Applications</strong>
-          <span>Drop Pinto Notes on the Applications folder.</span>
+          <span>Drop Amber Notes on the Applications folder.</span>
         </div>
         <div className={`${styles.step} rise`} style={r(7)}>
           <div className={styles.art} aria-hidden="true">
@@ -79,7 +79,7 @@ export default function Download() {
       </section>
 
       <section className={`${styles.more} rise`} style={r(8)}>
-        <p><strong>Updates install themselves.</strong> Pinto Notes checks once a day, or choose Pinto Notes › Check for Updates…</p>
+        <p><strong>Updates install themselves.</strong> Amber Notes checks once a day, or choose Amber Notes › Check for Updates…</p>
         <p><strong>Syncs with your iPhone.</strong> Your notes live in the cloud and sync with the iPhone app, coming soon to the App Store.</p>
         <p><a href="/changelog">See what's new in each version</a></p>
       </section>

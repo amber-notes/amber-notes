@@ -6,7 +6,7 @@ import { MCP_TOOLS, type McpTool } from "@/lib/mcp-tools";
 import { AGENT_INSTALLS } from "@/lib/agent-installs";
 
 export const dynamic = "force-static";
-export const metadata = postMetadata("mcp-server", { title: "Pinto Notes MCP server: address, sign-in and tools" });
+export const metadata = postMetadata("mcp-server", { title: "Amber Notes MCP server: address, sign-in and tools" });
 
 const KIND: Record<McpTool["kind"], string> = { read: "reads", write: "changes", destructive: "changes; can remove or replace" };
 
@@ -14,7 +14,7 @@ export default function Page() {
   return (
     <PostPage
       slug="mcp-server"
-      intro={<>Pinto Notes, the notes app for iPhone and Mac, has a remote MCP server built in. This page is for developers and anyone curious how it works: the address, how an AI app signs in and gets approved, and every tool it can call.</>}
+      intro={<>Amber Notes, the notes app for iPhone and Mac, has a remote MCP server built in. This page is for developers and anyone curious how it works: the address, how an AI app signs in and gets approved, and every tool it can call.</>}
     >
       <h2>The address</h2>
       <pre><code>{MCP_URL}</code></pre>
@@ -25,7 +25,7 @@ export default function Page() {
       </ul>
 
       <h2>How access works</h2>
-      <p>There are two ways in. Both need a Pinto Notes account, and both are approved by the person.</p>
+      <p>There are two ways in. Both need an Amber Notes account, and both are approved by the person.</p>
       <p className="label"><strong>Sign in with OAuth (ChatGPT, Claude and other apps)</strong></p>
       <ol>
         <li>An unauthenticated request gets a 401 with a <code>WWW-Authenticate</code> header pointing to the protected resource metadata, at the address above plus <code>/.well-known/oauth-protected-resource</code>.</li>
@@ -33,7 +33,7 @@ export default function Page() {
         <li>The authorization server metadata is at the address above plus <code>/.well-known/oauth-authorization-server</code>.</li>
         <li>
           The authorization step opens <code>ambernotes.app/connect</code>. The person signs in there (email and password, or Sign in
-          with Apple), and the page shows a two-digit number. Pinto Notes on their iPhone or Mac asks &ldquo;Allow [app] to use your
+          with Apple), and the page shows a two-digit number. Amber Notes on their iPhone or Mac asks &ldquo;Allow [app] to use your
           notes?&rdquo; and where access goes; they type the number, choose Read and Edit or Read Only, then Allow. With no device
           nearby, they can approve on the page with their recovery key.
         </li>
@@ -41,13 +41,13 @@ export default function Page() {
       </ol>
       <p className="label"><strong>Access token (Claude Code, Codex and scripts)</strong></p>
       <p>
-        In Pinto Notes, Settings, Connect an AI, Claude Code or Codex creates a token starting with <code>pane_</code>, read only or read
+        In Amber Notes, Settings, Connect an AI, Claude Code or Codex creates a token starting with <code>pane_</code>, read only or read
         and edit. Send it as <code>Authorization: Bearer pane_…</code>. The <a href="/blog/notes-in-claude-code-and-codex">Claude Code
         and Codex guide</a> has the exact setup.
       </p>
       <Figure shot={SHOTS.connectList} caption="Settings, Connect an AI: guided setup for each app, and everything that's connected." />
       <p>
-        Every connection shows up in Pinto Notes under Connected, and the person can disconnect it at any time. Each tool call runs as
+        Every connection shows up in Amber Notes under Connected, and the person can disconnect it at any time. Each tool call runs as
         that person, with row-level security, so a token can only ever reach its owner&apos;s notes. Calls are rate limited per account.
       </p>
       <p>
@@ -98,7 +98,7 @@ export default function Page() {
       ))}
       <p className="label"><strong>With a token instead of signing in</strong></p>
       <p>
-        Any of these tools can use an access token instead. In Pinto Notes, open Settings, Connect an AI, Codex, and choose Create
+        Any of these tools can use an access token instead. In Amber Notes, open Settings, Connect an AI, Codex, and choose Create
         Access Token. The token works in any MCP client; send it as an <code>Authorization: Bearer pane_…</code> header, the way the{" "}
         <a href="/blog/notes-in-claude-code-and-codex">Claude Code and Codex guide</a> shows. It&apos;s shown once, so keep it private.
       </p>

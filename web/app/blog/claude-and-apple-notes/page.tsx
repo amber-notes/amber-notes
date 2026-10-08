@@ -53,7 +53,7 @@ export default function Page() {
             <tr><th scope="row">Copy and paste</th><td>Anywhere</td><td>Read what you paste; you copy the answer back</td><td>None</td></tr>
             <tr><th scope="row">Anthropic&apos;s Read and Write Apple Notes extension</th><td>Claude desktop app on your Mac</td><td>Read, create and update notes; checklists turn into plain bullets when it updates a note</td><td>Install it from the connectors directory in Claude for Mac</td></tr>
             <tr><th scope="row">Community Apple Notes MCP server</th><td>Claude Desktop or Claude Code on your Mac</td><td>Search, read, create and edit, depending on the server</td><td>Install it and edit Claude&apos;s config; allow Automation in macOS</td></tr>
-            <tr><th scope="row">A notes app with its own MCP server, like Pinto Notes</th><td>Claude on the web, desktop, iPhone and Claude Code</td><td>Search, read, create and edit, with your approval and Undo</td><td>Import your notes once, then add a custom connector</td></tr>
+            <tr><th scope="row">A notes app with its own MCP server, like Amber Notes</th><td>Claude on the web, desktop, iPhone and Claude Code</td><td>Search, read, create and edit, with your approval and Undo</td><td>Import your notes once, then add a custom connector</td></tr>
           </tbody>
         </table>
       </div>
@@ -113,20 +113,20 @@ export default function Page() {
 
       <h2>Option 3: move your notes to an app Claude can reach</h2>
       <p>
-        Pinto Notes is a free, open-source notes app for iPhone and Mac that works like Apple Notes and has an MCP server built in. You
+        Amber Notes is a free, open-source notes app for iPhone and Mac that works like Apple Notes and has an MCP server built in. You
         import your Apple Notes once, on your Mac, then open <a href={CLAUDE_DIRECTORY_URL} rel="noopener">Amber Notes in Claude&apos;s connector directory</a> and
         choose Connect to Claude. After that Claude can search,
         read and edit your notes from claude.ai, the desktop app, the iPhone app and Claude Code.
       </p>
-      <Figure shot={SHOTS.consent} caption="Whichever AI asks, Pinto Notes shows this sheet. Here it names ChatGPT; for Claude it names Claude." />
+      <Figure shot={SHOTS.consent} caption="Whichever AI asks, Amber Notes shows this sheet. Here it names ChatGPT; for Claude it names Claude." />
       <ul>
-        <li>You approve Claude in Pinto Notes on your iPhone or Mac, typing the number your browser shows, and choose Read Only, or Read and Edit.</li>
-        <li>Checklists stay checklists: Pinto Notes stores notes as Markdown, and Claude ticks an item without rewriting the note.</li>
-        <li>When Claude changes a note, Pinto Notes shows what changed, with Undo, and keeps the previous version.</li>
+        <li>You approve Claude in Amber Notes on your iPhone or Mac, typing the number your browser shows, and choose Read Only, or Read and Edit.</li>
+        <li>Checklists stay checklists: Amber Notes stores notes as Markdown, and Claude ticks an item without rewriting the note.</li>
+        <li>When Claude changes a note, Amber Notes shows what changed, with Undo, and keeps the previous version.</li>
         <li>Amber Notes is listed in Claude&apos;s connector directory, so there&apos;s no address to paste. If your Claude app doesn&apos;t show the listing, add <code>https://mcp.ambernotes.app</code> as a custom connector instead; that works on every plan, and the free plan includes one.</li>
       </ul>
       <p>
-        The catch: your notes move to Pinto Notes, so you&apos;d write there instead of in Apple Notes. The import leaves Apple Notes
+        The catch: your notes move to Amber Notes, so you&apos;d write there instead of in Apple Notes. The import leaves Apple Notes
         untouched, so you can try it and go back. <a href="/blog/move-from-apple-notes">How to move from Apple Notes</a>, then{" "}
         <a href="/blog/connect-chatgpt-to-your-notes">connect Claude</a>. For Claude Code, see{" "}
         <a href="/blog/notes-in-claude-code-and-codex">using your notes from Claude Code and Codex</a>.

@@ -7,10 +7,10 @@ export const metadata = postMetadata("work-log-with-claude-code");
 
 const FAQ = [
   { q: "Can Claude Code write my standup?", a: [
-    "Yes. With Pinto Notes connected, ask it to summarize the day's commits and add them under today's date in your Standup notes. It appends to the note instead of rewriting it, and you can undo the change in the app.",
+    "Yes. With Amber Notes connected, ask it to summarize the day's commits and add them under today's date in your Standup notes. It appends to the note instead of rewriting it, and you can undo the change in the app.",
   ] },
   { q: "How do I make Claude Code log my work automatically?", a: [
-    "Add an instruction to your project's CLAUDE.md, such as \"When I say we're done for the day, add a short summary to my Work log note in Pinto Notes\". Claude Code reads CLAUDE.md at the start of every session.",
+    "Add an instruction to your project's CLAUDE.md, such as \"When I say we're done for the day, add a short summary to my Work log note in Amber Notes\". Claude Code reads CLAUDE.md at the start of every session.",
   ] },
 ];
 
@@ -23,12 +23,12 @@ export default function Page() {
     >
       <h2>Set it up once</h2>
       <ol>
-        <li>Add Pinto Notes to Claude Code: one command, or the Add to Claude Code button on a Mac. <a href="/blog/notes-in-claude-code-and-codex">Use your notes from Claude Code and Codex</a> has the details.</li>
+        <li>Add Amber Notes to Claude Code: one command, or the Add to Claude Code button on a Mac. <a href="/blog/notes-in-claude-code-and-codex">Use your notes from Claude Code and Codex</a> has the details.</li>
         <li>Create the notes you want it to write to, for example Standup notes and Work log, in a Work folder.</li>
         <li>Tell Claude Code how to use them, in your project&apos;s <code>CLAUDE.md</code>:</li>
       </ol>
       <pre><code>{`## Notes
-- Standups go in the "Standup notes" note in Pinto Notes: append under today's date.
+- Standups go in the "Standup notes" note in Amber Notes: append under today's date.
 - When I say we're done for the day, add three lines to "Work log":
   what shipped, what's blocked, what's next.
 - Log hours in the "Timesheet" table with log_table_row.`}</code></pre>
@@ -40,7 +40,7 @@ export default function Page() {
         was.
       </p>
       <p>
-        In Pinto Notes the new lines are tinted, and the bar at the bottom says what Claude Code changed, with Undo, like the picture at the top.
+        In Amber Notes the new lines are tinted, and the bar at the bottom says what Claude Code changed, with Undo, like the picture at the top.
       </p>
       <p>
         To skip the setup, add the <a href="/templates/daily-standup">standup notes template</a>: the note and the prompt for Claude Code,
@@ -65,7 +65,7 @@ export default function Page() {
       <h2>Reading it back</h2>
       <ul>
         <li>&ldquo;What did I do last week?&rdquo; <code>search_notes</code> and <code>read_note</code> find it.</li>
-        <li>On your phone, the log is just a note: open it in Pinto Notes.</li>
+        <li>On your phone, the log is just a note: open it in Amber Notes.</li>
         <li>Every change Claude Code makes keeps the previous version. If a summary goes wrong, restore the earlier one from the note&apos;s history.</li>
       </ul>
       <p>
