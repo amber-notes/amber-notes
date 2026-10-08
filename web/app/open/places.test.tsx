@@ -10,10 +10,10 @@ describe("the places the onboarding emails open", () => {
     ["connect-ai", ConnectAI, "Connect an AI", "/blog/connect-chatgpt-to-your-notes"],
     ["import", Import, "Import from Apple Notes", "/blog/move-from-apple-notes"],
     ["history", History, "Show Version History", null],
-  ] as const)("/open/%s tries the app, then says how by hand, with Open in Amber Notes and the download", (place, Page, step, guide) => {
+  ] as const)("/open/%s tries the app, then says how by hand, with Open in Pinto Notes and the download", (place, Page, step, guide) => {
     const html = renderToStaticMarkup(<Page />);
     expect(html).toContain(`href="ambernotes://${place}"`);
-    expect(html).toContain("Open in Amber Notes");
+    expect(html).toContain("Open in Pinto Notes");
     expect(html).toContain('href="/download/mac"');
     expect(html).toContain(step);
     if (guide) expect(html).toContain(`href="${guide}"`);

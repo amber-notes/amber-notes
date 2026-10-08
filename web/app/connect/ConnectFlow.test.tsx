@@ -144,7 +144,7 @@ describe("the connect page's QR code", () => {
     vi.stubGlobal("fetch", fakeServer(() => ({ state: "asked" })).fetch);
     render();
     await until(() => !!container.querySelector("svg path"));
-    const mac = [...container.querySelectorAll("a")].find((a) => a.textContent === "Open Amber Notes on this Mac");
+    const mac = [...container.querySelectorAll("a")].find((a) => a.textContent === "Open Pinto Notes on this Mac");
     const link = decodeQRMarkup(container.innerHTML)!;
     expect(mac?.getAttribute("href")).toBe(link.replace("https://ambernotes.app/open/connect?", "ambernotes://connect?"));
   });
@@ -154,7 +154,7 @@ describe("the connect page's QR code", () => {
     vi.stubGlobal("fetch", fakeServer(() => ({ state: "asked" })).fetch);
     render();
     await until(() => !!container.querySelector("svg path"));
-    expect(container.textContent).not.toContain("Open Amber Notes on this Mac");
+    expect(container.textContent).not.toContain("Open Pinto Notes on this Mac");
   });
 
   it("says when the request has expired", async () => {
@@ -179,7 +179,7 @@ describe("the connect page's QR code", () => {
     };
     await act(async () => { type("#connect-email", "me@example.com"); type("#connect-password", "test-only"); });
     await act(async () => container.querySelector<HTMLFormElement>("form")!.requestSubmit());
-    await until(() => server.calls.some((c) => c.url === `${MCP}/connect/ask`) && heading() === "Open Amber Notes on your iPhone or Mac");
+    await until(() => server.calls.some((c) => c.url === `${MCP}/connect/ask`) && heading() === "Open Pinto Notes on your iPhone or Mac");
 
     const scan = server.calls.find((c) => c.url === `${MCP}/connect/scan`)!;
     const ask = server.calls.find((c) => c.url === `${MCP}/connect/ask`)!;
@@ -217,10 +217,10 @@ describe("naming the device once you've signed in", () => {
   }
   const signedOut = (calls: Call[]) => calls.findIndex((c) => c.url.startsWith(`${SUPABASE}/auth/v1/logout`));
 
-  it("says Open Amber Notes on your iPhone when the account has one, and sends the notification again when asked", async () => {
+  it("says Open Pinto Notes on your iPhone when the account has one, and sends the notification again when asked", async () => {
     const server = await signInForANotification({ iphone: true, mac: false });
-    await until(() => heading() === "Open Amber Notes on your iPhone");
-    expect(container.textContent).toContain("Amber Notes sent a notification to your iPhone.");
+    await until(() => heading() === "Open Pinto Notes on your iPhone");
+    expect(container.textContent).toContain("Pinto Notes sent a notification to your iPhone.");
     expect(container.textContent).not.toContain("Waiting");
     expect(container.querySelector('[role="status"]')).toBeNull();
     expect(signedOut(server.calls)).toBe(-1);

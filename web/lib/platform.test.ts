@@ -67,27 +67,27 @@ describe("the visitor's platform, before first paint", () => {
 
 describe("Send myself the link", () => {
   it("is an email to nobody yet, with the link in it", () => {
-    expect(mailLink("https://ambernotes.app")).toBe("mailto:?subject=Amber%20Notes&body=https%3A%2F%2Fambernotes.app");
-    expect(mailLink("https://ambernotes.app/download")).toContain("body=https%3A%2F%2Fambernotes.app%2Fdownload");
+    expect(mailLink("https://pintonotes.com")).toBe("mailto:?subject=Pinto%20Notes&body=https%3A%2F%2Fpintonotes.com");
+    expect(mailLink("https://pintonotes.com/download")).toContain("body=https%3A%2F%2Fpintonotes.com%2Fdownload");
   });
 
   it("opens the share sheet where the browser has one, in place of the email", () => {
     const share = vi.fn(async () => {});
     const event = { preventDefault: vi.fn() };
-    sendLink({ share }, event, "https://ambernotes.app");
-    expect(share).toHaveBeenCalledWith({ title: "Amber Notes", url: "https://ambernotes.app" });
+    sendLink({ share }, event, "https://pintonotes.com");
+    expect(share).toHaveBeenCalledWith({ title: "Pinto Notes", url: "https://pintonotes.com" });
     expect(event.preventDefault).toHaveBeenCalledOnce();
   });
 
   it("lets the email open where there's no share sheet", () => {
     const event = { preventDefault: vi.fn() };
-    sendLink({}, event, "https://ambernotes.app");
+    sendLink({}, event, "https://pintonotes.com");
     expect(event.preventDefault).not.toHaveBeenCalled();
   });
 
   it("stays quiet when the share sheet is closed without sending", async () => {
     const share = vi.fn(async () => { throw new DOMException("cancelled", "AbortError"); });
-    expect(() => sendLink({ share }, { preventDefault() {} }, "https://ambernotes.app")).not.toThrow();
+    expect(() => sendLink({ share }, { preventDefault() {} }, "https://pintonotes.com")).not.toThrow();
     await Promise.resolve();
   });
 });

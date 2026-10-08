@@ -12,7 +12,7 @@
   "folder": "Study",
   "note": "Study notes and flashcards\n\nNotes for each topic, and flashcards your AI quizzes you on. Cards you miss go back to box 1; cards you know move up to box 5.\n\n## Notes\n\n## Flashcards\n<!-- pane-table: Question=text; Answer=text; Topic=text; Box=scale 1-5 -->\n| Question | Answer | Topic | Box |\n| --- | --- | --- | --- |\n",
   "prompt": {
-    "default": "Use my Amber Notes note \"Study notes and flashcards\". When I paste lecture notes or a chapter, add a tidy summary under \"Notes\" with append_to_note, under a \"###\" heading with the topic, and make five to ten flashcards from it with log_table_row: Question, Answer, Topic, and Box 1. When I say \"quiz me\", read the table with read_table and ask me one card at a time, lowest box first, without showing the answer. After each answer, tell me if I was right and update its Box with edit_note: up one when I get it right, back to 1 when I don't."
+    "default": "Use my Pinto Notes note \"Study notes and flashcards\". When I paste lecture notes or a chapter, add a tidy summary under \"Notes\" with append_to_note, under a \"###\" heading with the topic, and make five to ten flashcards from it with log_table_row: Question, Answer, Topic, and Box 1. When I say \"quiz me\", read the table with read_table and ask me one card at a time, lowest box first, without showing the answer. After each answer, tell me if I was right and update its Box with edit_note: up one when I get it right, back to 1 when I don't."
   },
   "asks": [
     "Here are my notes on cell respiration: …",

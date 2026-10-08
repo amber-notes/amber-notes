@@ -200,6 +200,12 @@ Deno.test("metadata at the Supabase address is unchanged, and a spoofed alias is
   assertEquals(publicBase(new Request(FUNCTION, { headers: { "x-mcp-public-url": `${ALIAS}/`, "x-mcp-proxy-secret": "proxy-secret" } })), ALIAS);
 });
 
+Deno.test("the new name's address is an alias too, next to the old one", () => {
+  const proxied = (url: string) => new Request(FUNCTION, { headers: { "x-mcp-public-url": url, "x-mcp-proxy-secret": "proxy-secret" } });
+  assertEquals(publicBase(proxied("https://mcp.pintonotes.com")), "https://mcp.pintonotes.com");
+  assertEquals(publicBase(proxied("https://mcp.ambernotes.app")), "https://mcp.ambernotes.app");
+});
+
 Deno.test("/authorize sends the browser to the web consent page", async () => {
   const { sql } = await db();
   const clientId = await register(sql, "proxy");
@@ -377,7 +383,7 @@ Deno.test("a name is cleaned: no control, format or direction characters, one li
 });
 
 Deno.test("trusted names are recognized through spacing, case, digits and look-alike letters", () => {
-  for (const n of ["ChatGPT", "chat gpt", "Open AI", "CLAUDE", "Cl4ude", "Сlaude", "Anthropic Connector", "Amber Notes", "amber-notes sync", "ChаtGPT"]) {
+  for (const n of ["ChatGPT", "chat gpt", "Open AI", "CLAUDE", "Cl4ude", "Сlaude", "Anthropic Connector", "Amber Notes", "amber-notes sync", "Pinto Notes", "pinto-notes sync", "ChаtGPT"]) {
     assert(claimsATrustedName(n), n);
   }
   for (const n of ["Notion", "Incredible", "My Script", "Cursor"]) assert(!claimsATrustedName(n), n);

@@ -6,7 +6,7 @@ import { validSlug } from "@/lib/shared";
 import { ButtonRow, Card, EmptyState, Field, Foot, Shell, Sign, Stage, Status, TopBar, ui } from "@/lib/ui";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Report a page · Amber Notes" };
+export const metadata: Metadata = { title: "Report a page · Pinto Notes" };
 
 const MESSAGES: Record<ReportOutcome, { title: string; text: string; again?: boolean }> = {
   received: { title: "Thanks, we got your report", text: "We review reports within 24 hours and take down pages that break the terms of use." },

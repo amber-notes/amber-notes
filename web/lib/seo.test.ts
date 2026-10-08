@@ -23,9 +23,9 @@ describe("search and AI crawlers", () => {
 
   it("lists published posts in the sitemap, and never drafts", () => {
     const urls = sitemap().map((e) => e.url);
-    expect(urls).toContain("https://ambernotes.app/blog");
+    expect(urls).toContain("https://pintonotes.com/blog");
     expect(urls.some((u) => new URL(u).pathname.startsWith("/guides"))).toBe(false);
-    for (const p of posts) expect(urls.includes(`https://ambernotes.app/blog/${p.slug}`)).toBe(!p.draft);
+    for (const p of posts) expect(urls.includes(`https://pintonotes.com/blog/${p.slug}`)).toBe(!p.draft);
   });
 
   it("lists every capture a post shows in the image sitemap, each with alt text and a file", () => {
@@ -35,11 +35,11 @@ describe("search and AI crawlers", () => {
       // Every figure names its capture from SHOTS, so the sitemap can find it.
       expect([...src.matchAll(/<Figure\b/g)].length, p.slug).toBe([...src.matchAll(/<Figure\s+shot=\{SHOTS\.\w+\}/g)].length);
       const shots = postShots(p.slug);
-      const images = entries.find((e) => e.url === `https://ambernotes.app/blog/${p.slug}`)?.images ?? [];
+      const images = entries.find((e) => e.url === `https://pintonotes.com/blog/${p.slug}`)?.images ?? [];
       expect(shots.length, p.slug).toBeGreaterThan(0);
       for (const s of shots) {
         expect(s, p.slug).toBeDefined();
-        expect(images, p.slug).toContain(`https://ambernotes.app${s.src}`);
+        expect(images, p.slug).toContain(`https://pintonotes.com${s.src}`);
         expect(s.alt.trim(), s.src).not.toBe("");
         expect(existsSync(new URL(`../public${s.src}`, import.meta.url)), s.src).toBe(true);
       }
@@ -72,7 +72,7 @@ describe("search and AI crawlers", () => {
 
   it("writes /llms.txt with the one-line description, the MCP address and the published posts only", () => {
     const txt = llmsTxt();
-    expect(txt.startsWith("# Amber Notes\n\n> Amber Notes is a free, open-source notes app for iPhone and Mac")).toBe(true);
+    expect(txt.startsWith("# Pinto Notes\n\n> Pinto Notes is a free, open-source notes app for iPhone and Mac")).toBe(true);
     expect(txt).toContain(MCP_URL);
     expect(txt).toContain("Incredible");
     expect(txt).toContain("https://emilwagman.com");
@@ -133,7 +133,7 @@ describe("the blog", () => {
 
   it("gives every published post a unique search title of at most 60 characters and a unique description of 70 to 160", () => {
     const pub = published();
-    const searchTitle = (slug: string, title: string) => postSource(slug).match(/postMetadata\("[^"]+", \{\s*title: "([^"]+)"/)?.[1] ?? `${title} · Amber Notes`;
+    const searchTitle = (slug: string, title: string) => postSource(slug).match(/postMetadata\("[^"]+", \{\s*title: "([^"]+)"/)?.[1] ?? `${title} · Pinto Notes`;
     const titles = pub.map((p) => searchTitle(p.slug, p.title));
     for (const [i, t] of titles.entries()) expect(t.length, pub[i].slug).toBeLessThanOrEqual(60);
     for (const p of pub) {
@@ -196,7 +196,7 @@ describe("blog pages", () => {
   });
 
   it("lists every page of the index and of each category in the sitemap, and never /page/1", () => {
-    const urls = sitemap().map((e) => e.url.replace("https://ambernotes.app", ""));
+    const urls = sitemap().map((e) => e.url.replace("https://pintonotes.com", ""));
     for (let i = 1; i <= pageCount(all); i++) expect(urls).toContain(pagePath("/blog", i));
     for (const c of categories()) expect(urls).toContain(categoryPath(c));
     expect(urls.some((u) => u.endsWith("/page/1"))).toBe(false);

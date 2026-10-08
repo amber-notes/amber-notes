@@ -10,10 +10,10 @@ import { WHAT_IT_IS } from "@/lib/facts";
 
 export const dynamic = "force-static";
 export const metadata: Metadata = pageMetadata({
-  title: "Help and FAQ · Amber Notes",
+  title: "Help and FAQ · Pinto Notes",
   description: "How to import your Apple Notes, connect ChatGPT, Claude, Claude Code, Codex or Incredible, sync your iPhone and Mac, share a note, and get help.",
   path: "/help",
-  image: { url: "/help/opengraph-image", alt: "Amber Notes help: importing Apple Notes, connecting your AI, sync and sharing." },
+  image: { url: "/help/opengraph-image", alt: "Pinto Notes help: importing Apple Notes, connecting your AI, sync and sharing." },
 });
 
 const rise = (i: number) => ({ className: "rise", style: { "--i": i } as React.CSSProperties });

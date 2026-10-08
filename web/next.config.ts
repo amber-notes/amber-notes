@@ -32,13 +32,13 @@ const security = [
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), interest-cohort=()" },
 ];
 
-// ambernotes.app is the site's address. The old vercel.app address sends the site's own pages there
+// pintonotes.com is the site's address. The old vercel.app address sends the site's own pages there
 // (308, path kept). Everything installed apps and links out in the world reach it for stays put on
 // both hosts: the appcast and downloads (Sparkle), shared notes and their report pages, and the
 // privacy, terms and support pages the apps and the App Store link to. www goes to the apex at the
 // domain level, in the Vercel project.
 const OLD_HOST = "amber-notes.vercel.app";
-const SITE = "https://ambernotes.app";
+const SITE = "https://pintonotes.com";
 const MOVED = ["/", "/help", "/download", "/changelog", "/connect"];
 
 // The connect pages (/connect, /open/connect) and /reset-password get their CSP, with a nonce, from middleware.ts.
@@ -66,7 +66,7 @@ const config: NextConfig = {
       // Page 1 of the blog and of each category lives at the list's own address.
       { source: "/blog/page/1", destination: "/blog", permanent: true },
       { source: "/blog/category/:category/page/1", destination: "/blog/category/:category", permanent: true },
-      // A link with "&" where its "?" should be (ambernotes.app/&utm_source=…) lands on /&…, a 404.
+      // A link with "&" where its "?" should be (pintonotes.com/&utm_source=…) lands on /&…, a 404.
       { source: "/:junk(&.*)", destination: "/", permanent: true },
       // "Use template" and "Use this note" open Amber Notes from the template's or note's page
       // (lib/open-in-app.ts). Their universal links reach the app directly where it's installed; a
@@ -101,7 +101,7 @@ const config: NextConfig = {
       { source: "/reset-password", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }, { key: "Cache-Control", value: "no-store" }, ...connectSecurity] },
       { source: "/open/connect", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }, { key: "Cache-Control", value: "no-store" }, ...connectSecurity] },
       // Apple's servers fetch this for the app's universal links (https://ambernotes.app/open/…):
-      // JSON, straight from ambernotes.app, no redirect. The file is public/.well-known/.
+      // JSON, straight from pintonotes.com, no redirect. The file is public/.well-known/.
       {
         source: "/.well-known/apple-app-site-association",
         headers: [{ key: "Content-Type", value: "application/json" }, { key: "Cache-Control", value: "public, max-age=3600" }, { key: "X-Content-Type-Options", value: "nosniff" }],

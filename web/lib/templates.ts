@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { renderNote, summary, withoutTitle } from "./render";
-import { SITE_URL } from "./site";
+import { APP_LINK_URL, SITE_URL } from "./site";
 
 /// The template library. A template is a note structure plus the instructions that let ChatGPT,
 /// Claude or Claude Code fill it in through the Amber Notes MCP tools. Each one is a JSON file in
@@ -98,7 +98,7 @@ export const anchor = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-")
 export const searchTitle = (t: Template) => t.seoTitle ?? `${t.title} template for ChatGPT and Claude`;
 export const templatePath = (slug: string) => `/templates/${slug}`;
 /// The universal link the app opens (https://ambernotes.app/open/template/<slug>).
-export const useLink = (slug: string) => `${SITE_URL}/open/template/${slug}`;
+export const useLink = (slug: string) => `${APP_LINK_URL}/open/template/${slug}`;
 /// The same, as the site's own buttons link it: a path, so a preview or local build stays on itself.
 export const usePath = (slug: string) => `/open/template/${slug}`;
 export const appLink = (slug: string) => `ambernotes://template/${slug}`;
@@ -108,7 +108,7 @@ export const noteTitle = (t: Template) => t.note.split("\n")[0];
 /// The prompt's first step: the AI makes the note itself (create_note, which every installed app's
 /// MCP server has), so a template works without the app opening any link.
 export function createStep(t: Template): string {
-  return `First, look for a note called "${noteTitle(t)}" in my Amber Notes with search_notes. If there isn't one, create it with create_note in the folder "${t.folder}", using exactly the markdown at the end of this message, the <!-- pane-table --> line included (it gives the table's columns their types).`;
+  return `First, look for a note called "${noteTitle(t)}" in my Pinto Notes with search_notes. If there isn't one, create it with create_note in the folder "${t.folder}", using exactly the markdown at the end of this message, the <!-- pane-table --> line included (it gives the table's columns their types).`;
 }
 
 /// The template's markdown, fenced, for the end of the prompt.
