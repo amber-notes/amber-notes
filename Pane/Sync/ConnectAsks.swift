@@ -120,6 +120,8 @@ final class ConnectAsks {
             while true {
                 do { try await sleep(Self.tick) } catch { return }
                 guard let self, !Task.isCancelled, !self.stopped else { return }
+                // No network: nothing to look at. Coming back looks at once (the app's onChange).
+                guard NetworkPath.shared.isUp else { continue }
                 ticks += 1
                 guard Self.looks(expecting: self.center.expecting > 0, ticksSinceLook: ticks) else { continue }
                 ticks = 0

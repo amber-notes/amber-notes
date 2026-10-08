@@ -43,9 +43,26 @@ struct PaneApp: App {
         _backend = State(initialValue: backend)
         // Before sync: it hooks start fresh into this instance.
         AccountCrypto.shared = AccountCrypto(store: inMemory ? MemoryAccountKeyStore() : KeychainAccountKeyStore())
+        // Launching signed in with the key here: the session and the key this device kept, read
+        // once before anything is drawn, so the first frame is the notes (not the card, then the
+        // key check, then the notes). Both are checked with the server quietly afterwards.
+        if !args.contains("-signout"), let account = backend.restoreHeldSession() {
+            AccountCrypto.shared.openHeld(account: account)
+        }
         // Which device this is, for the list of devices that hold the key: in a Keychain item that stays on it.
         DeviceIdentity.shared = DeviceIdentity(store: inMemory ? MemoryDeviceIdentityStore() : KeychainDeviceIdentityStore())
         KeyDevices.shared = KeyDevices()
+        // Whether there's a network at all: nothing polls without one, and coming back syncs at once.
+        if !PaneApp.isUnitTestHost {
+            NetworkPath.shared.start()
+            AccountCrypto.shared.networkUp = { NetworkPath.shared.isUp }
+            #if DEBUG || QA
+            DebugOffline.realtime = { up in
+                guard let realtime = backend.client?.realtimeV2 else { return }
+                Task { if up { await realtime.connect() } else { realtime.disconnect() } }
+            }
+            #endif
+        }
         let sync = SyncEngine(backend: backend, context: container.mainContext)
         _sync = State(initialValue: sync)
         // "What's new" after a major update: decided before anything is drawn or seeded, while
@@ -56,6 +73,9 @@ struct PaneApp: App {
         }
         // With sync on, the library is seeded after the first pull so devices don't duplicate it.
         if backend.client == nil { Seed.ensureLibrary(container.mainContext, demo: args.contains("-demo")) }
+        #if DEBUG || QA
+        DebugOffline.prepareFiles(context)
+        #endif
         // Version history: the server's, or a made-up one for demos (`-demo -demoHistory`).
         let historyStore: NoteHistoryStore = args.contains("-demoHistory") ? DemoHistoryStore(context: context)
             : backend.client.map { SupabaseHistoryStore(client: $0) } ?? EmptyHistoryStore()
@@ -144,8 +164,10 @@ struct PaneApp: App {
         #if os(macOS)
         .defaultSize(width: 1180, height: 760)
         // Test and capture runs always start with the notes window, whatever was saved last time.
-        .defaultLaunchBehavior(ProcessInfo.processInfo.arguments.contains("-uitest") ? .presented : .automatic)
-        .restorationBehavior(ProcessInfo.processInfo.arguments.contains("-uitest") ? .disabled : .automatic)
+        // The notes window opens where WindowFrameMemory says, every launch: macOS's own window
+        // restoration put it somewhere first, and then it moved.
+        .defaultLaunchBehavior(.presented)
+        .restorationBehavior(.disabled)
         .defaultWindowPlacement { _, context in
             // Open at a comfortable size, centred, whatever screen is showing.
             let screen = context.defaultDisplay.visibleRect
@@ -338,6 +360,23 @@ enum WindowProbe {
     }
 }
 
+/// Shapes its window the moment it's given one, before the window is first drawn: the first frame
+/// on screen is already the card, or the notes where you left them, never a default frame that
+/// then moves. The window stays see-through for that moment, so not even a frame of it shows.
+final class ShaperView: NSView {
+    var shape: ((NSWindow) -> Void)?
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        guard let window, let shape else { return }
+        let shown = window.alphaValue
+        window.alphaValue = 0
+        shape(window)
+        WindowProbe.log("first", from: window.frame, to: window.frame)
+        DispatchQueue.main.async { window.alphaValue = shown }
+    }
+}
+
 /// Signed out, the window is just the sign-in card: small, no title bar.
 /// Signed in, it becomes the normal three-column window, back where you left it.
 private struct WindowShaper: NSViewRepresentable {
@@ -358,58 +397,68 @@ private struct WindowShaper: NSViewRepresentable {
     }
 
     func makeCoordinator() -> Coordinator { Coordinator() }
-    func makeNSView(context: Context) -> NSView { NSView() }
 
-    func updateNSView(_ view: NSView, context: Context) {
+    func makeNSView(context: Context) -> ShaperView {
+        let view = ShaperView()
+        view.shape = { [coordinator = context.coordinator] window in apply(window, coordinator) }
+        return view
+    }
+
+    func updateNSView(_ view: ShaperView, context: Context) {
         let coordinator = context.coordinator
+        view.shape = { window in apply(window, coordinator) }
         DispatchQueue.main.async {
             guard let window = view.window else { return }
-            guard !compact || cardSize.height > 0 else { return }
-            remember(window, coordinator)
-            // Shape only when switching between the card and the notes window, never on
-            // ordinary updates: resizing it yourself must stick.
-            guard coordinator.applied != compact else {
-                if compact { fitCard(window, coordinator) }
-                return
-            }
-            // At launch (including a signed-in launch that briefly looked signed out) the window
-            // just appears in place, the notes where you left them; only a real sign-in or
-            // sign-out animates, and grows or shrinks the window where it is.
-            let launching = Date().timeIntervalSince(coordinator.created) <= 1.5
-            let animate = !launching
-            let wasCard = coordinator.applied
-            coordinator.applied = compact
-            coordinator.remembering = false
-            // No system title bar or toolbar while signed out: just the card and the window buttons.
-            window.toolbar?.isVisible = !compact
-            // Notes' full-height toolbar with large buttons; compact only for the sign-in card.
-            window.toolbarStyle = compact ? .unifiedCompact : .unified
-            // No line under the bar: the columns run up under it (see RootView).
-            window.titlebarSeparatorStyle = .none
-            // The card runs under a see-through title bar: one surface, just the window buttons on it.
-            window.titlebarAppearsTransparent = compact
-            if compact { window.styleMask.insert(.fullSizeContentView) }
-            // Card mode keeps close and minimise; zoom makes no sense for a fixed-size card.
-            window.standardWindowButton(.zoomButton)?.isEnabled = !compact
-            window.contentMinSize = compact ? CGSize(width: 300, height: 300) : CGSize(width: 760, height: 520)
-            if compact {
-                CardWindow.lock(window)
-                coordinator.fittedCard = nil
-                fitCard(window, coordinator, animate: animate)
-            } else {
-                CardWindow.unlock(window)
-            }
-            if !compact, WindowFrameMemory.enabled {
-                let screen = (window.screen ?? NSScreen.main)?.visibleFrame
-                // Launching signed in: the notes where you left them. Just signed in: the notes
-                // grow out of the card, which stays where you put it.
-                let frame = launching || wasCard != true
-                    ? WindowFrameMemory.frame(saved: WindowFrameMemory.saved, screens: NSScreen.screens.map(\.visibleFrame), main: screen ?? window.frame)
-                    : CardWindow.notesFrame(from: window.frame, saved: WindowFrameMemory.saved, screen: screen)
-                WindowProbe.log("notes", from: window.frame, to: frame)
-                window.setFrame(frame, display: true, animate: animate)
-                coordinator.remembering = true
-            }
+            apply(window, coordinator)
+        }
+    }
+
+    private func apply(_ window: NSWindow, _ coordinator: Coordinator) {
+        guard !compact || cardSize.height > 0 else { return }
+        remember(window, coordinator)
+        // Shape only when switching between the card and the notes window, never on
+        // ordinary updates: resizing it yourself must stick.
+        guard coordinator.applied != compact else {
+            if compact { fitCard(window, coordinator) }
+            return
+        }
+        // At launch (including a signed-in launch that briefly looked signed out) the window
+        // just appears in place, the notes where you left them; only a real sign-in or
+        // sign-out animates, and grows or shrinks the window where it is.
+        let wasCard = coordinator.applied
+        let launching = wasCard == nil || Date().timeIntervalSince(coordinator.created) <= 1.5
+        let animate = !launching
+        coordinator.applied = compact
+        coordinator.remembering = false
+        // No system title bar or toolbar while signed out: just the card and the window buttons.
+        window.toolbar?.isVisible = !compact
+        // Notes' full-height toolbar with large buttons; compact only for the sign-in card.
+        window.toolbarStyle = compact ? .unifiedCompact : .unified
+        // No line under the bar: each column's own ground runs up under it (see RootView).
+        window.titlebarSeparatorStyle = .none
+        // The card runs under a see-through title bar: one surface, just the window buttons on it.
+        window.titlebarAppearsTransparent = compact
+        if compact { window.styleMask.insert(.fullSizeContentView) }
+        // Card mode keeps close and minimise; zoom makes no sense for a fixed-size card.
+        window.standardWindowButton(.zoomButton)?.isEnabled = !compact
+        window.contentMinSize = compact ? CGSize(width: 300, height: 300) : CGSize(width: 760, height: 520)
+        if compact {
+            CardWindow.lock(window)
+            coordinator.fittedCard = nil
+            fitCard(window, coordinator, animate: animate)
+        } else {
+            CardWindow.unlock(window)
+        }
+        if !compact, WindowFrameMemory.enabled {
+            let screen = (window.screen ?? NSScreen.main)?.visibleFrame
+            // Launching signed in: the notes where you left them. Just signed in: the notes
+            // grow out of the card, which stays where you put it.
+            let frame = launching || wasCard != true
+                ? WindowFrameMemory.frame(saved: WindowFrameMemory.saved, screens: NSScreen.screens.map(\.visibleFrame), main: screen ?? window.frame)
+                : CardWindow.notesFrame(from: window.frame, saved: WindowFrameMemory.saved, screen: screen)
+            WindowProbe.log("notes", from: window.frame, to: frame)
+            window.setFrame(frame, display: true, animate: animate)
+            coordinator.remembering = true
         }
     }
 
@@ -542,21 +591,23 @@ struct AppGate: View {
     /// The notes stay closed until this device has the account's key; the first time it does,
     /// one screen says what that means. Just signed in, before the key check has started, it's
     /// the key screen too (the library flashed by for a few frames).
-    private var keyGateShown: Bool {
+    private var keyGateShown: Bool { Self.keyGateShown(crypto: crypto, backend: backend) }
+
+    static func keyGateShown(crypto: AccountCrypto, backend: Backend) -> Bool {
         (crypto.phase != .ready && crypto.phase != .off) || crypto.needsWelcome
             || (backend.client != nil && crypto.account != backend.userID)
     }
 
-    #if os(macOS)
     /// The window is the card from the welcome until the notes open.
-    private var cardShown: Bool {
+    private var cardShown: Bool { Self.cardShown(crypto: crypto, backend: backend) }
+
+    static func cardShown(crypto: AccountCrypto, backend: Backend) -> Bool {
         switch backend.state {
         case .signedOut: true
-        case .signedIn: keyGateShown
+        case .signedIn: keyGateShown(crypto: crypto, backend: backend)
         case .disabled: false
         }
     }
-    #endif
 
     private var gate: some View {
         Group {
@@ -582,6 +633,7 @@ struct AppGate: View {
                 RootView()
                     .environment(backend)
                     .environment(sync)
+                    .environment(\.networkReach, sync.reach)
                     .environment(setup)
                     .shareAskSheet(shareAsk)
                     .heardFromSheet(heardFrom)
@@ -720,6 +772,13 @@ struct AppGate: View {
         }
         #endif
         .onReceive(NotificationCenter.default.publisher(for: .paneNoteClosed)) { _ in askToShareSoon() }
+        // Back online: the key check and AI connection asks look now (sync does so itself).
+        .onChange(of: NetworkPath.shared.isUp) { _, up in
+            guard up, case .signedIn = backend.state else { return }
+            Task { await AccountCrypto.shared.networkReturned() }
+            if let connectAsks { Task { await connectAsks.refresh() } }
+            if let notices { Task { await notices.refresh() } }
+        }
         .onAppear { context.drainInbox() }
     }
 

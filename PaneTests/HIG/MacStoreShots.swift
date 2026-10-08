@@ -15,7 +15,7 @@ import Testing
     static let main = CGSize(width: 1280, height: 800)
 
     static func window(_ view: some View, size: CGSize, dark: Bool) -> NSWindow {
-        let w = KeyableWindow(contentRect: CGRect(x: -30000, y: -30000, width: size.width, height: size.height),
+        let w = KeyableWindow(contentRect: CGRect(x: -20000, y: -20000, width: size.width, height: size.height),
                               styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
                               backing: .buffered, defer: false)
         w.isReleasedWhenClosed = false
@@ -23,7 +23,7 @@ import Testing
         // The test host is never the active app; draw controls as they look in your front window.
         w.contentViewController = NSHostingController(rootView: view.environment(\.controlActiveState, .key))
         w.setContentSize(size)
-        w.setFrameOrigin(CGPoint(x: -30000, y: -30000))
+        w.setFrameOrigin(CGPoint(x: -20000, y: -20000))
         w.orderFrontRegardless()
         return w
     }
@@ -64,7 +64,8 @@ import Testing
     ]
 
     @Test func storeFrames() async throws {
-        guard let dir = ProcessInfo.processInfo.environment["AMBER_STORE_FRAMES"].map({ URL(fileURLWithPath: $0) }) else { return }
+        // Captured by window id from the shell, so on screen: CI only (AppSnapshotTests.onScreenAllowed).
+        guard let dir = AppSnapshotTests.onScreenDir("AMBER_STORE_FRAMES") else { return }
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let client = SupabaseClient(supabaseURL: URL(string: "http://127.0.0.1:9")!, supabaseKey: "capture")
 

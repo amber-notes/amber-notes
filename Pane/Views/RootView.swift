@@ -263,7 +263,7 @@ struct RootView: View {
                     .id(id)
             } else if let id = selectedNote, let file = context.attachment(id), file.folderID != nil, file.deletedAt == nil {
                 // A file kept in the folder: its preview.
-                FileDetailView(file: file, onNewNote: newNote)
+                FileDetailView(file: file, onNewNote: newNote, onOpenFile: { selectedNote = $0 })
                     .id(id)
             } else {
                 Group {

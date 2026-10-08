@@ -2,8 +2,8 @@ import SwiftData
 import SwiftUI
 
 #if os(macOS)
-/// The account at the foot of the sidebar: your photo and name. Clicking it opens Settings,
-/// which starts with your account. Signing out lives there, last, behind a confirmation, so
+/// The account at the foot of the sidebar: your photo and name. Clicking it opens Settings at
+/// Account. Signing out lives there, last, behind a confirmation, so
 /// a slip of the mouse here can never sign you out.
 struct AccountButton: View {
     let email: String
@@ -14,7 +14,10 @@ struct AccountButton: View {
     private var name: String { profile.name ?? email }
 
     var body: some View {
-        Button { openSettings() } label: {
+        Button {
+            SettingsRoute.shared.open(.account)
+            openSettings()
+        } label: {
             HStack(spacing: 8) {
                 AvatarView(photo: profile.photo, name: name, size: 22)
                 Text(name)
@@ -200,6 +203,7 @@ struct SidebarView: View {
         #if os(iOS)
         .scrollContentBackground(.hidden)
         .background(Color(Palette.foldersGround).ignoresSafeArea())
+        .safeAreaInset(edge: .bottom, spacing: 0) { OfflineLine(sync: sync).animation(.easeOut(duration: 0.25), value: sync?.reach) }
         #else
         // A little of the icon's brown inside the sidebar's glass, which stays vibrant.
         .background(Color(Palette.sidebarWarmth).ignoresSafeArea())
@@ -267,9 +271,13 @@ struct SidebarView: View {
         #if os(macOS)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if let backend, case .signedIn(let email) = backend.state {
-                AccountButton(email: backend.displayEmail ?? email, backend: backend)
-                    .padding(.horizontal, 10)
-                    .padding(.bottom, 10)
+                VStack(alignment: .leading, spacing: 4) {
+                    OfflineLine(sync: sync)
+                    AccountButton(email: backend.displayEmail ?? email, backend: backend)
+                        .padding(.horizontal, 10)
+                }
+                .padding(.bottom, 10)
+                .animation(.easeOut(duration: 0.25), value: sync?.reach)
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .paneNewFolder)) { _ in startNewFolder(nil) }
@@ -360,6 +368,7 @@ struct SidebarView: View {
 /// skipping its updates kept the sidebar's selection from following some clicks on folder rows.
 private struct FolderTree: View {
     @Environment(\.modelContext) private var context
+    @Environment(SyncEngine.self) private var sync: SyncEngine?
     let folder: Folder
     /// Live files per folder, counted once for the whole tree.
     let files: [UUID: Int]
@@ -444,6 +453,14 @@ private struct FolderTree: View {
     @ViewBuilder private var menuItems: some View {
         Button("New Folder Inside", systemImage: "folder.badge.plus") { newSub(folder) }
         Button("Rename", systemImage: "pencil") { rename(folder) }
+        if let sync {
+            // Its files fetched to this device as they arrive, so they open offline.
+            let kept = sync.keptChanged >= 0 && sync.keepsDownloaded(folder.id)
+            Toggle(isOn: Binding(get: { kept }, set: { sync.setKeepsDownloaded(folder.id, $0) })) {
+                Label("Keep Files Downloaded", systemImage: "arrow.down.circle")
+            }
+            .accessibilityIdentifier("folder.keepDownloaded")
+        }
         if folder.parent != nil {
             Button("Move to Top Level", systemImage: "arrow.up.to.line") { context.move(folder, into: nil) }
         }

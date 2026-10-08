@@ -79,7 +79,10 @@ import Testing
         private(set) var creates = 0
         private(set) var startedFresh: [String] = []
 
+        private(set) var fetches = 0
+
         func fetch() async throws -> ServerKeyState {
+            fetches += 1
             if hangs { try await Task.sleep(for: .seconds(3600)) }
             if offline { throw URLError(.notConnectedToInternet) }
             return ServerKeyState(key: row, generation: generation)
@@ -123,11 +126,12 @@ import Testing
     let server = FakeServer()
     let defaults = UserDefaults(suiteName: "key-startup-\(UUID())")!
 
-    /// Runs the loops in the background at once: their waits only yield. The fetch's time limit
-    /// (12 s) gets a sleep that throws, which sets no limit; a limit that only yields races the
-    /// fake server's answer, and on a busy machine it wins and the device looks unreachable.
+    /// Runs the loops in the background at once: their waits only yield. The fetch's time limits
+    /// (12 s, and 1 s with the key here) get a sleep that throws, which sets no limit; a limit that
+    /// only yields races the fake server's answer, and on a busy machine it wins and the device
+    /// looks unreachable.
     static let loopsRunAtOnce: @Sendable (Duration) async throws -> Void = { wait in
-        if wait >= .seconds(12) { throw CancellationError() }
+        if wait >= .seconds(12) || wait == AccountCrypto.defaultQuickCheck { throw CancellationError() }
         await Task.yield()
     }
 
@@ -314,7 +318,7 @@ import Testing
         #expect(crypto.phase == .waiting && !crypto.recoveryKeySaved)
         try await crypto.recover(typed: k.recoveryText)
         #expect(crypto.phase == .ready)
-        #expect(crypto.recoveryKeySaved && server.row?.recovery_saved_at != nil, "Privacy & Security says Saved, here and on other devices")
+        #expect(crypto.recoveryKeySaved && server.row?.recovery_saved_at != nil, "Settings › Security says Saved, here and on other devices")
         crypto.signedOut()
     }
 
@@ -494,6 +498,94 @@ import Testing
         crypto.signedOut()
     }
 
+    /// A plane's Wi-Fi before you pay, or a dead connection: requests hang instead of failing.
+    /// With the key here the notes open after the quick check, not after the full 12 s; the
+    /// key is checked once the server answers.
+    @Test func aHungServerDoesNotHoldBackTheNotesWhenTheKeyIsHere() async throws {
+        let k = try existingKey()
+        let keychain = FakeKeychain(cloud: cloud)
+        keychain.synced[user] = k
+        server.hangs = true
+        let crypto = AccountCrypto(store: keychain, defaults: defaults, retryInterval: .seconds(3600),
+                                   fetchTimeout: .seconds(12), quickCheck: .milliseconds(100))
+        let t = ContinuousClock.now
+        await crypto.attach(account: user, server: server)
+        let took = ContinuousClock.now - t
+        print("PERF key check on a hung server with the key here: notes open after \(took)")
+        #expect(crypto.phase == .ready && crypto.unverified && E2EE.sealer != nil)
+        #expect(took < .seconds(2), "not the full 12 s")
+        server.hangs = false
+        await crypto.recheck()
+        #expect(crypto.phase == .ready && !crypto.unverified, "checked once the server answers")
+        crypto.signedOut()
+    }
+
+    /// Without the key there's nothing to open: startup waits the full limit for the server.
+    @Test func aHungServerWithoutTheKeyStillGetsTheFullWait() async throws {
+        _ = try existingKey()
+        server.hangs = true
+        let crypto = AccountCrypto(store: FakeKeychain(cloud: Cloud(), autoReceive: false), defaults: defaults, retryInterval: .seconds(3600),
+                                   fetchTimeout: .milliseconds(400), quickCheck: .milliseconds(10))
+        let t = ContinuousClock.now
+        await crypto.attach(account: user, server: server)
+        #expect(ContinuousClock.now - t >= .milliseconds(380))
+        #expect(crypto.phase == .unreachable)
+        crypto.signedOut()
+    }
+
+    /// Hours offline: with no network at all the key check doesn't run; on a network that lets
+    /// nothing through it runs less and less often, up to once a minute.
+    @Test func longOfflineChecksTheKeyRarelyAndNotAtAllWithoutANetwork() async throws {
+        let k = try existingKey()
+        final class Waits: @unchecked Sendable { var list: [Duration] = [] }
+        let waits = Waits()
+        let keychain = FakeKeychain(cloud: cloud)
+        keychain.synced[user] = k
+        server.offline = true
+        let crypto = AccountCrypto(store: keychain, defaults: defaults, retryInterval: .seconds(10), sleep: { wait in
+            // The fetch's time limits: none.
+            if wait == .seconds(12) || wait == AccountCrypto.defaultQuickCheck { throw CancellationError() }
+            waits.list.append(wait)
+            if waits.list.count >= 6 { throw CancellationError() }
+            await Task.yield()
+        })
+        var up = false
+        crypto.networkUp = { up }
+        await crypto.attach(account: user, server: server)
+        #expect(crypto.phase == .ready && crypto.unverified)
+        await crypto.waitForBackground()
+        #expect(server.fetches == 1, "no network: only the startup read")
+        #expect(waits.list.allSatisfy { $0 == .seconds(10) }, "and nothing backs off while it waits for one")
+
+        // A network that lets nothing through.
+        waits.list = []
+        up = true
+        crypto.signedOut()
+        await crypto.attach(account: user, server: server)
+        await crypto.waitForBackground()
+        #expect(waits.list == [.seconds(10), .seconds(20), .seconds(40), .seconds(60), .seconds(60), .seconds(60)])
+        print("PERF key check on a network that lets nothing through: waits \(waits.list)")
+
+        // The network is back: checked at once.
+        server.offline = false
+        await crypto.networkReturned()
+        #expect(crypto.phase == .ready && !crypto.unverified)
+        crypto.signedOut()
+    }
+
+    @Test func comingBackOnlineWithoutTheKeyStartsAgainAtOnce() async throws {
+        let k = try existingKey()
+        let (crypto, keychain) = device()
+        server.offline = true
+        await crypto.attach(account: user, server: server)
+        #expect(crypto.phase == .unreachable)
+        server.offline = false
+        keychain.synced[user] = k
+        await crypto.networkReturned()
+        #expect(crypto.phase == .ready && !crypto.unverified)
+        crypto.signedOut()
+    }
+
     @Test func offlineWithAKeyTheServerNoLongerHas() async throws {
         let (crypto, keychain) = device()
         keychain.synced[user] = StoredKey.generate()
@@ -625,7 +717,7 @@ import Testing
         #expect(keychain.previous[user] == old)
         #expect(crypto.recoveryKeyChanged && crypto.recoveryKeyChangeNeedsSaying)
         crypto.recoveryKeyChangeShown()
-        #expect(crypto.recoveryKeyChanged && !crypto.recoveryKeyChangeNeedsSaying, "Privacy & Security keeps saying it")
+        #expect(crypto.recoveryKeyChanged && !crypto.recoveryKeyChangeNeedsSaying, "Settings › Security keeps saying it")
         crypto.signedOut()
         // Said once: not again on the next launch, until the new key is saved.
         await crypto.attach(account: user, server: server)

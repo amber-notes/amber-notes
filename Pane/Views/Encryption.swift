@@ -528,7 +528,7 @@ enum KeyCopy {
     static let keychainHelp = "Check that iCloud Keychain is on here and on your other device: Settings › [your name] › iCloud › Passwords and Keychain."
     #endif
     static let recoveryFormat = "28 letters and numbers, in groups of four."
-    static let recoveryHint = "If another device still opens your notes, it shows the key in Settings › Privacy & Security."
+    static let recoveryHint = "If another device still opens your notes, it shows the key in Settings › Security."
     static let mismatch = "The key on this device isn't your account's current key."
     static let unreachable = "Connect to the internet. This device checks your key with Amber Notes before opening your notes."
     static let startFreshMessage = [

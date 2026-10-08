@@ -85,6 +85,12 @@ struct FileListRow: View {
     var body: some View {
         FileRow(file: file, showFolder: showFolder)
             // Out to Finder, Mail or the Desktop (the file itself), or onto a sidebar folder.
+            #if os(macOS)
+            // The List's own drag hook: the table starts the drag past the drag threshold and keeps
+            // its click-to-select. `.onDrag` put a mouse-down gesture on the row that took the click,
+            // so a click on a file often selected nothing (dev 2610071608).
+            .itemProvider { FileOut.provider(for: file) { [sync] a in await sync?.download(a) ?? false } }
+            #else
             .onDrag {
                 FileOut.provider(for: file) { [sync] a in await sync?.download(a) ?? false }
             } preview: {
@@ -92,6 +98,7 @@ struct FileListRow: View {
                     .padding(.horizontal, 12).padding(.vertical, 8)
                     .glassEffect(.regular, in: .capsule)
             }
+            #endif
             .swipeActions(edge: .trailing) {
                 Button(file.trashedAt == nil ? "Delete" : "Delete Forever…", systemImage: "trash", role: .destructive, action: remove)
             }
@@ -124,6 +131,12 @@ struct FileRow: View {
                         .monospacedDigit()
                         .foregroundStyle(Color.muted)
                         .lineLimit(1)
+                    // On the server, not here yet: it needs the network to open.
+                    if file.uploaded, !FileStore.exists(file) {
+                        Image(systemName: "arrow.down.circle")
+                            .foregroundStyle(Color.muted)
+                            .accessibilityHidden(true)
+                    }
                 }
                 .font(RowMetrics.detail)
                 if showFolder, let id = file.folderID, let f = context.folder(id) {
@@ -142,8 +155,15 @@ struct FileRow: View {
         .padding(.leading, RowMetrics.leading)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(file.filename)
-        .accessibilityValue("File, \(file.kindText), \(file.sizeText)")
+        .accessibilityValue("File, \(file.kindText), \(file.sizeText)\(file.uploaded && !FileStore.exists(file) ? ", not downloaded" : "")")
         .accessibilityIdentifier("file.\(file.filename)")
+    }
+}
+
+@MainActor
+enum FileCopy {
+    static func notDownloaded(_ name: String) -> String {
+        "\u{201C}\(name)\u{201D} isn\u{2019}t on this \(Backend.device) yet. It downloads when you\u{2019}re back online. To have a folder\u{2019}s files with you offline, choose Keep Files Downloaded on the folder."
     }
 }
 
@@ -201,8 +221,13 @@ struct FileDetailView: View {
     @State private var confirmForever = false
     @State private var exporting = false
     let onNewNote: () -> Void
+    /// Opens another file (the next picture in the folder).
+    var onOpenFile: (UUID) -> Void = { _ in }
 
-    enum Load: Equatable { case checking, downloading, ready(URL), failed }
+    /// The folder's pictures in the list's order (newest first), for the arrow keys and swipes.
+    private var pictures: [Attachment] { context.pictures(besides: file) }
+
+    enum Load: Equatable { case checking, downloading, ready(URL), failed, notDownloaded }
 
     var body: some View {
         content
@@ -214,7 +239,8 @@ struct FileDetailView: View {
             #endif
             .safeAreaInset(edge: .bottom, spacing: 0) { if file.trashedAt != nil { trashBanner } }
             .toolbar { toolbar }
-            .task(id: "\(file.id)\(file.filename)") { await load() }
+            // Back online, a file that wasn't here is fetched by itself.
+            .task(id: "\(file.id)\(file.filename)\(sync?.reach == .online)") { await load() }
             .alert("Rename File", isPresented: $renaming) {
                 TextField("Name", text: $nameDraft)
                     .accessibilityIdentifier("file.renameField")
@@ -235,7 +261,11 @@ struct FileDetailView: View {
     private var content: some View {
         switch state {
         case .ready(let url):
-            if file.type.conforms(to: .pdf) {
+            if file.isImage {
+                // Pictures view like Preview's and Photos': fit, zoom, pan, turn, step through the folder.
+                ImageViewer(file: file, url: url, neighbours: pictures, open: onOpenFile)
+                    .id(url)
+            } else if file.type.conforms(to: .pdf) {
                 // PDFs read like Preview: zoom, pages, contents, Find.
                 PDFReader(url: url)
                     .id(url)
@@ -258,6 +288,13 @@ struct FileDetailView: View {
                     .font(.callout)
                     .foregroundStyle(Color.muted)
             }
+        case .notDownloaded:
+            ContentUnavailableView {
+                Label("Not downloaded yet", systemImage: "arrow.down.circle")
+            } description: {
+                Text(FileCopy.notDownloaded(file.filename))
+            }
+            .accessibilityIdentifier("file.notDownloaded")
         case .failed:
             ContentUnavailableView {
                 Label("Can't open this file yet", systemImage: file.symbol)
@@ -272,6 +309,8 @@ struct FileDetailView: View {
 
     private func load() async {
         if FileStore.exists(file) { state = .ready(FileStore.url(for: file.id, filename: file.filename)); return }
+        // Offline there's nothing to wait for: said at once, and fetched when the network is back.
+        if let sync, sync.reach == .offline { state = .notDownloaded; return }
         state = .downloading
         if await sync?.download(file) == true, FileStore.exists(file) {
             state = .ready(FileStore.url(for: file.id, filename: file.filename))
@@ -329,6 +368,10 @@ struct FileDetailView: View {
         ToolbarItem {
             Menu {
                 if file.trashedAt == nil {
+                    if file.isImage, case .ready(let url) = state {
+                        Button("Copy Image", systemImage: "doc.on.doc") { ImageClipboard.copy(url: url, name: file.filename) }
+                            .accessibilityIdentifier("file.copyImage")
+                    }
                     Button(FileOut.exportTitle, systemImage: FileOut.exportSymbol) { exporting = true }
                         .disabled(!FileStore.exists(file))
                         .accessibilityIdentifier("file.export")

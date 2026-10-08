@@ -68,13 +68,13 @@ import Testing
         for f in folders { _ = ctx.createNote(in: .folder(f.id), body: "In \(f.name)\n\ntext") }
         try ctx.save()
         UserDefaults.standard.removeObject(forKey: "lastScope")
-        let w = NSWindow(contentRect: CGRect(x: -30000, y: -30000, width: 1180, height: 760),
-                         styleMask: [.titled, .closable, .resizable, .fullSizeContentView], backing: .buffered, defer: false)
+        // Borderless, far off every screen and never shown: nothing appears on anyone's display.
+        let w = NSWindow(contentRect: CGRect(x: -20000, y: -20000, width: 1180, height: 760),
+                         styleMask: [.borderless], backing: .buffered, defer: false)
         w.isReleasedWhenClosed = false
         w.contentViewController = NSHostingController(rootView: RootView().modelContainer(c))
-        w.setFrameOrigin(CGPoint(x: -30000, y: -30000))
+        w.setFrameOrigin(CGPoint(x: -20000, y: -20000))
         defer { w.orderOut(nil); w.close() }
-        w.orderFrontRegardless()
         func settle() async {
             for _ in 0..<3 {
                 w.contentView?.layoutSubtreeIfNeeded()
@@ -203,14 +203,14 @@ import Testing
         }
         try ctx.save()
         let note = try #require(open)
-        let w = NSWindow(contentRect: CGRect(x: -30000, y: -30000, width: 1180, height: 760),
-                         styleMask: [.titled, .closable, .resizable, .fullSizeContentView], backing: .buffered, defer: false)
+        // Borderless, far off every screen and never shown: nothing appears on anyone's display.
+        let w = NSWindow(contentRect: CGRect(x: -20000, y: -20000, width: 1180, height: 760),
+                         styleMask: [.borderless], backing: .buffered, defer: false)
         w.isReleasedWhenClosed = false
         w.contentViewController = NSHostingController(rootView: RootView().modelContainer(c))
         w.setContentSize(CGSize(width: 1180, height: 760))
-        w.setFrameOrigin(CGPoint(x: -30000, y: -30000))
+        w.setFrameOrigin(CGPoint(x: -20000, y: -20000))
         defer { w.orderOut(nil); w.close() }
-        w.orderFrontRegardless()
         NoteOpener.shared.request = note.id
         for _ in 0..<3 {
             w.contentView?.layoutSubtreeIfNeeded()
