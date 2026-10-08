@@ -200,7 +200,7 @@ export default function Page() {
         caption="ChatGPT edits a note in Pinto Notes: the two lines it changed are tinted, with an Undo, then the tint fades." />
       <p>
         <a href="/blog/connect-chatgpt-to-your-notes">Connecting ChatGPT or Claude</a> takes a couple of minutes. For the full comparison,
-        including what Apple Notes still does better, see <a href="/blog/amber-notes-vs-apple-notes">Pinto Notes vs Apple Notes</a>,
+        including what Apple Notes still does better, see <a href="/blog/pinto-notes-vs-apple-notes">Pinto Notes vs Apple Notes</a>,
         and the <a href="/templates">free templates</a> are ready-made notes, like a trip plan or a weekly review, to start from.
       </p>
       <PostCta slug="apple-notes-ios-27" position="how-amber-helps" title="Notes ChatGPT and Claude can work in">

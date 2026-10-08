@@ -4,7 +4,7 @@ import { PostPage, postMetadata } from "@/lib/PostPage";
 import { SHOTS } from "@/lib/posts";
 
 export const dynamic = "force-static";
-export const metadata = postMetadata("amber-notes-vs-apple-notes", { title: "Pinto Notes vs Apple Notes: an honest comparison" });
+export const metadata = postMetadata("pinto-notes-vs-apple-notes", { title: "Pinto Notes vs Apple Notes: an honest comparison" });
 
 const ROWS: [string, string, string][] = [
   ["Price", "Free", "Free"],
@@ -25,7 +25,7 @@ const ROWS: [string, string, string][] = [
 export default function Page() {
   return (
     <PostPage
-      slug="amber-notes-vs-apple-notes"
+      slug="pinto-notes-vs-apple-notes"
       intro={<>I love Apple Notes, and I built Pinto Notes to feel just like it, with the few things I always missed: an AI that can use my notes, and a history of every change. Here&apos;s where the two differ, including what Apple Notes still does better.</>}
     >
       <h2>At a glance</h2>
