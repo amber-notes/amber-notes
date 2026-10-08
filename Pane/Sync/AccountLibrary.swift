@@ -22,9 +22,9 @@ enum AccountLibrary {
         let previous = defaults.string(forKey: ownerKey)
         defaults.set(id, forKey: ownerKey)
         guard let previous, previous != id else { return false }
-        // Gone for good. (`context.delete(folder)` would be Library's delete, which only moves a
-        // folder to Recently Deleted and marks it to go up: the old account's folders then stayed
-        // here and were pushed into the new account, which refused them.)
+        // Gone for good. (Before 2026-10-08 `context.delete(folder)` here was Library's delete, now
+        // `trash`, which only moves a folder to Recently Deleted and marks it to go up: the old
+        // account's folders stayed and were pushed into the next account, and back into their own.)
         context.wipeLocalLibrary(files: files)
         memoryKeys.forEach { defaults.removeObject(forKey: $0) }
         // The sync cursor was keyed with either spelling of the old id.

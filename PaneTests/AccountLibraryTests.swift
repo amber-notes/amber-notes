@@ -35,7 +35,7 @@ import Testing
         #expect(!FileManager.default.fileExists(atPath: files.path))
     }
 
-    /// Folders too, deleted ones included: `context.delete(folder)` is Library's delete (to Recently
+    /// Folders too, deleted ones included: `context.delete(folder)` was Library's delete (to Recently
     /// Deleted, marked to go up), so the old account's folders stayed and were pushed into the new one.
     @Test func anotherAccountRemovesTheFoldersForGood() throws {
         let (ctx, defaults, files) = try setup()
@@ -43,7 +43,7 @@ import Testing
         let trip = ctx.createFolder(named: "Trip")
         _ = ctx.createFolder(named: "Days", parent: trip)
         let gone = ctx.createFolder(named: "Old")
-        ctx.delete(gone)
+        ctx.trash(gone)
         for f in ctx.allFoldersIncludingDeleted() { f.serverVersion = 1; f.dirty = false }
         try ctx.save()
 

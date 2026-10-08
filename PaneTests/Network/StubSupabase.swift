@@ -48,6 +48,15 @@ final class StubSupabase: URLProtocol, @unchecked Sendable {
         set { lock.withLock { _tooFast = newValue } }
     }
 
+    nonisolated(unsafe) private static var _account: String?
+    /// Row-level security, for tests that switch accounts: the account making the requests sees and
+    /// changes only its own rows, and writing over another account's row is refused (42501), as on
+    /// the real server. Nil (the default): one account, every row visible.
+    static var account: UUID? {
+        get { lock.withLock { _account.flatMap(UUID.init(uuidString:)) } }
+        set { lock.withLock { _account = newValue?.uuidString.lowercased() } }
+    }
+
     nonisolated(unsafe) private static var _sessionLifetime: TimeInterval = 3600
     nonisolated(unsafe) private static var _refusesRefresh = false
     nonisolated(unsafe) private static var _failing: [(method: String, path: String, skip: Int, applied: Bool)] = []
@@ -74,7 +83,7 @@ final class StubSupabase: URLProtocol, @unchecked Sendable {
     static func reset() {
         lock.withLock {
             tables = [:]; _requests = []; _bodies = []; _objects = [:]; _rpcCalls = []; _rpcAnswers = [:]; _tooFast = false
-            _sessionLifetime = 3600; _refusesRefresh = false; _failing = []
+            _sessionLifetime = 3600; _refusesRefresh = false; _failing = []; _account = nil
         }
     }
 
@@ -199,7 +208,8 @@ final class StubSupabase: URLProtocol, @unchecked Sendable {
         }
         return lock.withLock { () -> (Int, Data) in
             var list = tables[name] ?? []
-            let matches = { (r: [String: Any]) in filters(query).allSatisfy { $0(r) } }
+            let mine = { (r: [String: Any]) in _account == nil || r["_owner"] as? String == _account }
+            let matches = { (r: [String: Any]) in mine(r) && filters(query).allSatisfy { $0(r) } }
             // As the server's triggers do (pane_over('not_yours')): a row can only point at a folder
             // or a parent note the server already has.
             if method == "POST" || method == "PATCH", let missing = danglingReference(name, decodeRows(body)) {
@@ -220,6 +230,9 @@ final class StubSupabase: URLProtocol, @unchecked Sendable {
                 for var r in incoming {
                     r["id"] = (r["id"] as? String)?.lowercased()
                     if let i = list.firstIndex(where: { $0["id"] as? String == r["id"] as? String }) {
+                        if !mine(list[i]) {
+                            return (403, Data(#"{"code":"42501","message":"new row violates row-level security policy"}"#.utf8))
+                        }
                         if prefer.contains("ignore-duplicates") { continue }
                         var merged = list[i]
                         for (k, v) in r { merged[k] = v }
@@ -228,6 +241,7 @@ final class StubSupabase: URLProtocol, @unchecked Sendable {
                         out.append(merged)
                     } else {
                         r["version"] = 0
+                        if let owner = _account { r["_owner"] = owner }
                         bump(&r)
                         list.append(r)
                         out.append(r)
@@ -278,7 +292,7 @@ final class StubSupabase: URLProtocol, @unchecked Sendable {
     private static func danglingReference(_ table: String, _ rows: [[String: Any]]) -> String? {
         func has(_ t: String, _ id: Any?) -> Bool {
             guard let id = (id as? String)?.lowercased() else { return true }   // none, or null
-            return (tables[t] ?? []).contains { ($0["id"] as? String)?.lowercased() == id }
+            return (tables[t] ?? []).contains { ($0["id"] as? String)?.lowercased() == id && (_account == nil || $0["_owner"] as? String == _account) }
                 || rows.contains { ($0["id"] as? String)?.lowercased() == id && t == table }
         }
         for r in rows {

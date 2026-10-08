@@ -451,7 +451,7 @@ final class SyncEngine {
                 f.dirty = true
             } else if !f.isDeleted {
                 // A kept folder keeps its parents, so whatever goes here holds nothing kept. Gone
-                // for good: Library's delete(folder) would move it to Recently Deleted instead.
+                // for good: Library's trash(folder) would move it to Recently Deleted instead.
                 erase(f)
                 removed += 1
             }
@@ -552,6 +552,12 @@ final class SyncEngine {
                     f.dirty = false
                 }
             } catch {
+                // A deletion the server says isn't this account's to make: never this account's
+                // folder, so it goes from here instead of being tried again on every launch.
+                if f.deletedAt != nil, Self.notThisAccounts(error) {
+                    dropForeignFolders([f.id])
+                    continue
+                }
                 switch Self.refusal(error) {
                 case .tooFast?: try? context.save(); return true
                 case .refused(let why)?: refuse(f.id, f.updatedAt, "A folder couldn't sync: \(why)")
@@ -712,7 +718,7 @@ final class SyncEngine {
     /// Deleted folders waiting to go up that say they were on the server, and that the server
     /// doesn't have for this account (it shows each account only its own rows). Before 2026-10-08 a
     /// switch to another account left the previous account's folders here, deleted and marked to go
-    /// up (AccountLibrary used Library's delete); every sync then pushed them into the new account
+    /// up (AccountLibrary's delete was Library's soft delete); every sync then pushed them into the new account
     /// and the server refused each one. Asked once per sync while there are any; normally none.
     private func foreignFolders(_ client: SupabaseClient, among dirty: [Folder]) async throws -> Set<UUID> {
         let suspects = dirty.filter { $0.deletedAt != nil && $0.serverVersion > 0 }.map(\.id)
@@ -727,6 +733,14 @@ final class SyncEngine {
         return Set(suspects).subtracting(found)
     }
 
+    /// The server refused a row as another account's: row-level security, or a folder or parent
+    /// that isn't this account's (`not_yours`). Not the key checks (`wrong_key`, `no_key`).
+    nonisolated static func notThisAccounts(_ error: Error) -> Bool {
+        guard let p = error as? PostgrestError else { return false }
+        if p.code == "PT413" { return p.hint == "not_yours" }
+        return p.code == "42501" && p.hint != "wrong_key" && p.hint != "no_key"
+    }
+
     /// Removes them for good: they're tombstones of folders that were never this account's.
     private func dropForeignFolders(_ ids: Set<UUID>) {
         let all = context.allFoldersIncludingDeleted()
@@ -734,9 +748,7 @@ final class SyncEngine {
             // Children that are this account's (none, normally) move to the top level first.
             for c in all where c.parent?.id == f.id && !ids.contains(c.id) { c.parent = nil }
         }
-        // SwiftData's delete, not Library's delete(folder).
-        func erase<T: PersistentModel>(_ m: T) { context.delete(m) }
-        for f in all where ids.contains(f.id) { erase(f) }
+        for f in all where ids.contains(f.id) { context.erase(f) }
         try? context.save()
         log.notice("removed \(ids.count) folders left by another account")
     }

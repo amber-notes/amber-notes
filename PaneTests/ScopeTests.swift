@@ -34,7 +34,7 @@ import Testing
         let home = ctx.createFolder(named: "Notes")
         let work = ctx.createFolder(named: "Work")
         let q4 = ctx.createFolder(named: "Q4 planning", parent: work)
-        ctx.delete(work)
+        ctx.trash(work)
         #expect(q4.deletedAt != nil)
         let n = ctx.createNote(in: .folder(q4.id), body: "Typed after the delete")
         #expect(n.folder?.id == home.id)
