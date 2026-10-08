@@ -93,7 +93,8 @@ cat > "$DIST/ExportDeveloperID.plist" <<EOF
 EOF
 xcodebuild -exportArchive -archivePath "$DIST/AmberNotes.xcarchive" -exportOptionsPlist "$DIST/ExportDeveloperID.plist" \
   -exportPath "$DIST/export" -allowProvisioningUpdates "${auth[@]}" | grep -E "error|EXPORT" || true
-APP="$DIST/export/Amber Notes$([[ $CHANNEL == beta ]] && echo " Beta").app"
+APP="$DIST/export/Amber Notes.app"
+[[ $CHANNEL == beta ]] && APP="$DIST/export/Amber Notes Beta.app"
 [[ -d $APP ]] || { echo "Export failed." >&2; exit 1; }
 codesign --verify --deep --strict "$APP"
 
