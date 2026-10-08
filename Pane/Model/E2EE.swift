@@ -429,7 +429,7 @@ struct ServerKey: Codable, Equatable, Sendable {
     var recovery_saved_at: Date?
 }
 
-/// How a device came to hold the key, as the list in Privacy & Security says it.
+/// How a device came to hold the key, as the list in Settings › Security says it.
 enum KeyHow: String, Codable, Sendable {
     /// Made on it (the account's first device).
     case made
@@ -703,7 +703,7 @@ final class AccountCrypto {
     /// "Your notes are encrypted": once per account on each device, when the key is first here.
     private(set) var needsWelcome = false
     /// The account started fresh since this device's key was made, so the recovery key it had is
-    /// void: said once (`recoveryKeyChangeShown`), and in Privacy & Security until the new one is saved.
+    /// void: said once (`recoveryKeyChangeShown`), and in Settings › Security until the new one is saved.
     private(set) var recoveryKeyChanged = false
     private(set) var recoveryKeyChangeNeedsSaying = false
     /// How the key got here, when it arrived while the app was running (nil: it was already here).
@@ -759,7 +759,7 @@ final class AccountCrypto {
     var allowsSync: Bool { phase == .ready || phase == .off }
     var dataKey: SymmetricKey? { isReady ? key?.key : nil }
     var keyID: String? { isReady ? key?.keyID : nil }
-    /// The recovery key, for Settings › Privacy & Security (behind Face ID or Touch ID there).
+    /// The recovery key, for Settings › Security (behind Face ID or Touch ID there).
     var recoveryKeyText: String? { isReady ? key?.recoveryText : nil }
     var recoverySavedAt: Date? { serverKey?.recovery_saved_at }
     /// The recovery key is saved somewhere: printed, exported or copied on some device, or typed
@@ -1044,7 +1044,7 @@ final class AccountCrypto {
         store.save(k, account: account, slot: .synced)
         store.remove(account: account, slot: .pending)
         open(k, verified: true, how: .recovery)
-        // Typing the recovery key proves it's saved somewhere: Privacy & Security says so, here
+        // Typing the recovery key proves it's saved somewhere: Settings › Security says so, here
         // and on the account's other devices. Offline, this device remembers and tells the server later.
         if current.recovery_saved_at == nil || recoveryKeyChanged {
             defaults.set(true, forKey: Self.recoveryProvenKey(account))

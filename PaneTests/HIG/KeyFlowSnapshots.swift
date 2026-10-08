@@ -4,7 +4,7 @@ import SwiftUI
 import Testing
 @testable import Pane
 
-/// The key screens a device without the account's key sees, and Privacy & Security after
+/// The key screens a device without the account's key sees, and Settings › Security after
 /// unlocking with the recovery key, light and dark. Runs only when AMBER_HIG_SHOTS is set:
 /// `TEST_RUNNER_AMBER_HIG_SHOTS=/path scripts/qa-test.sh PaneTests/KeyFlowSnapshots`.
 @MainActor @Suite(.serialized) struct KeyFlowSnapshots {
@@ -25,7 +25,7 @@ import Testing
         try await AppSnapshotTests.shoot(KeyGateView(crypto: crypto, backend: backend, screen: .keychain), name: "key-wait-icloud-help-\(mode)", size: size, dark: dark, toolbar: false)
         crypto.signedOut()
 
-        // Unlocked with the recovery key: Privacy & Security says it's saved.
+        // Unlocked with the recovery key: Settings › Security says it's saved.
         (crypto, key) = try await Self.waitingDevice()
         try await crypto.recover(typed: key.recoveryText)
         try await AppSnapshotTests.render(Form { PrivacySecuritySection(crypto: crypto) }.formStyle(.grouped).frame(width: 520, height: 420),

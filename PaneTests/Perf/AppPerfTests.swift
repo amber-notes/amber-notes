@@ -88,6 +88,34 @@ import Testing
         let big = ms(clock.now - start)
         print("PERF switch to a normal note: median \(String(format: "%.1f", normal[normal.count / 2])) ms; to the 5000-line note: \(String(format: "%.1f", big)) ms")
     }
+
+    /// Settings: a click on a tab shows its page at once, the first visit included. Storage's
+    /// numbers come from the server off the main thread; drawing the page only formats them.
+    @Test func switchingSettingsTabs() async throws {
+        let view = try await AppSnapshotTests.settingsFixture()
+        let (w, host) = window(view.frame(width: 520, height: 700), width: 520)
+        defer { w.close(); ProfileStore.shared.showForPreview(name: nil, photo: nil) }
+        host.layoutSubtreeIfNeeded(); w.displayIfNeeded()
+        let clock = ContinuousClock()
+        func show(_ tab: SettingsTab) -> Double {
+            let start = clock.now
+            view.route.tab = tab
+            host.layoutSubtreeIfNeeded()
+            w.displayIfNeeded()
+            return ms(clock.now - start)
+        }
+        var first: [SettingsTab: Double] = [:]
+        for tab in SettingsTab.allCases { first[tab] = show(tab) }
+        var again: [Double] = []
+        for _ in 0..<4 { for tab in SettingsTab.allCases { again.append(show(tab)) } }
+        again.sort()
+        let slowestFirst = first.values.max() ?? 0
+        print("PERF settings tabs: first visit " + SettingsTab.allCases.map { "\($0.rawValue) \(String(format: "%.1f", first[$0] ?? 0))" }.joined(separator: ", ")
+              + " ms; switching back, median \(String(format: "%.1f", again[again.count / 2])) ms, slowest \(String(format: "%.1f", again.last ?? 0)) ms")
+        // A frame is 16 ms; a first visit builds the page, so it gets a little more.
+        #expect(again[again.count / 2] < 16 * PerfBudget.slack, "switching to a page already shown")
+        #expect(slowestFirst < 50 * PerfBudget.slack, "the first visit to a page")
+    }
 }
 #endif
 

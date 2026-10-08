@@ -614,6 +614,7 @@ private struct ShareLinkChrome: ViewModifier {
     private var profileIncomplete: Bool { profile.name == nil || profile.photo == nil }
 
     private func editProfile() {
+        SettingsRoute.shared.open(.account)
         #if os(macOS)
         openSettings()
         #else

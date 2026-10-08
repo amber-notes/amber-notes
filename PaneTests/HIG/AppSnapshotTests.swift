@@ -175,3 +175,82 @@ extension AppSnapshotTests {
     }
 }
 #endif
+
+#if os(macOS)
+extension AppSnapshotTests {
+    /// Settings as a signed-in account with everything filled in: a name, two AIs connected, a
+    /// key kept on two other devices, and 1.15 GB used.
+    static func settingsFixture() async throws -> SettingsView {
+        let backend = Backend(testClient: CaptureScreen.client, email: "sara@example.com")
+        ProfileStore.shared.showForPreview(name: "Sara Lind", photo: nil)
+        StorageStore.shared.usage = StorageUsage(used: 1_240_000_000, limit: 2_147_483_648, notes: 41_000_000, files: 900_000_000, apps: 12_000_000,
+                                                 deleted: 230_000_000, versions: 64_000_000)
+        let crypto = try await AddDeviceSnapshots.ready(backedUp: true, recoverySaved: true)
+        let route = SettingsRoute(defaults: UserDefaults(suiteName: "settings-shots-\(UUID())")!)
+        return SettingsView(backend: backend, sync: nil, crypto: crypto, devices: AddDeviceSnapshots.devices([AddDeviceSnapshots.added, AddDeviceSnapshots.stale]),
+                            connections: CaptureScreen.connections, route: route)
+    }
+
+    /// The Settings window at `tab`, drawn the way the Settings scene draws it: toolbar tabs with
+    /// a symbol and a title, the window as tall as the page.
+    static func settingsWindow(_ view: SettingsView, tab: SettingsTab, dark: Bool) -> NSWindow {
+        let tabs = NSTabViewController()
+        tabs.tabStyle = .toolbar
+        for t in view.tabs {
+            let page = NSHostingController(rootView: view.page(t).tint(Color(PColor.paneAccent)))
+            page.sizingOptions = .preferredContentSize
+            page.title = t.title
+            let item = NSTabViewItem(viewController: page)
+            item.label = t.title
+            item.image = NSImage(systemSymbolName: t.symbol, accessibilityDescription: nil)
+            tabs.addTabViewItem(item)
+        }
+        tabs.selectedTabViewItemIndex = view.tabs.firstIndex(of: tab) ?? 0
+        let window = NSWindow(contentViewController: tabs)
+        window.styleMask = [.titled, .closable]
+        window.toolbarStyle = .preference
+        window.isReleasedWhenClosed = false
+        window.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
+        window.setFrameOrigin(CGPoint(x: -30000, y: -30000))
+        return window
+    }
+
+    static func glassViews(in view: NSView) -> [NSView] {
+        (String(describing: type(of: view)).contains("Glass") ? [view] : []) + view.subviews.flatMap { glassViews(in: $0) }
+    }
+
+    @Test(arguments: [false, true])
+    func settingsTabs(dark: Bool) async throws {
+        // A titled window ordered in, for the toolbar: CI only (PANE_CI_WINDOWS, set in ci.yml),
+        // never on a developer's Mac. The pictures are attached to the results (the "snapshots" artifact).
+        guard ProcessInfo.processInfo.environment["PANE_CI_WINDOWS"] != nil else { return }
+        let view = try await Self.settingsFixture()
+        #expect(view.tabs == SettingsTab.allCases)
+        for tab in view.tabs {
+            let window = Self.settingsWindow(view, tab: tab, dark: dark)
+            window.orderFrontRegardless()
+            try? await Task.sleep(for: .seconds(1.2))
+            defer { window.orderOut(nil); window.close() }
+            let frame = try #require(window.contentView?.superview)
+            // The selected tab's glass capsule samples the screen behind it, which an offscreen
+            // drawing doesn't have (it comes out as a white block); the selected tab still shows
+            // by its label.
+            for glass in Self.glassViews(in: frame) where glass.frame.width < frame.bounds.width {
+                glass.alphaValue = 0
+                glass.layer?.opacity = 0
+            }
+            frame.layoutSubtreeIfNeeded()
+            frame.display()
+            let rep = try #require(frame.bitmapImageRepForCachingDisplay(in: frame.bounds))
+            frame.cacheDisplay(in: frame.bounds, to: rep)
+            let png = try #require(rep.representation(using: .png, properties: [:]))
+            Testing.Attachment.record(png, named: "mac-settings-\(tab.rawValue)-\(dark ? "dark" : "light").png")
+            if let dir = Self.dir {
+                try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+                try png.write(to: dir.appending(path: "mac-settings-\(tab.rawValue)-\(dark ? "dark" : "light").png"))
+            }
+        }
+        ProfileStore.shared.showForPreview(name: nil, photo: nil)
+    }
+}
+#endif

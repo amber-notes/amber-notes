@@ -55,6 +55,8 @@ struct StorageUsage: Codable, Equatable {
 final class StorageStore {
     static let shared = StorageStore()
     var usage: StorageUsage? = StorageStore.demo
+    /// When the server last answered: Settings asks again only after a while, not on every visit.
+    @ObservationIgnored private var fetchedAt: Date?
 
     /// Captures: `-uitest -demoStorage 1.86` is an account with 1.86 GB of 2 GB used.
     private static var demo: StorageUsage? {
@@ -64,9 +66,15 @@ final class StorageStore {
         return StorageUsage(used: Int64(gb * g), limit: Int64(2 * g), notes: 41_000_000, files: Int64((gb - 0.31) * g), apps: 12_000_000, deleted: 230_000_000, versions: 64_000_000)
     }
 
-    func refresh(_ client: SupabaseClient?) async {
+    /// Asks the server (off the main thread; only the answer lands here). `force` asks even
+    /// if it answered in the last half minute.
+    func refresh(_ client: SupabaseClient?, force: Bool = true) async {
         guard let client, Self.demo == nil else { return }
-        if let u: StorageUsage = try? await client.rpc("storage_usage").execute().value { usage = u }
+        if !force, let fetchedAt, Date.now.timeIntervalSince(fetchedAt) < 30 { return }
+        if let u: StorageUsage = try? await client.rpc("storage_usage").execute().value {
+            usage = u
+            fetchedAt = .now
+        }
     }
 }
 
@@ -77,7 +85,7 @@ struct StorageSection: View {
 
     var body: some View {
         StorageSectionBody(usage: store.usage)
-            .task { await store.refresh(client) }
+            .task { await store.refresh(client, force: false) }
     }
 }
 
@@ -123,33 +131,45 @@ struct StorageSectionBody: View {
             } else {
                 Text("Counting\u{2026}").foregroundStyle(.secondary)
             }
-        } header: {
-            Text("Storage")
         } footer: {
             Text("Notes, files and apps count as stored, encrypted. Recently Deleted and earlier versions count until they're deleted for good, after 30 days. Files can be up to 100 MB each.")
         }
     }
 }
 
-/// At the top of the list near the limit and at it: plain words, what to remove.
+/// At the top of the list near the limit and at it: plain words, what to remove. Clicking it
+/// opens Settings at Storage.
 struct StorageWarningRow: View {
     let usage: StorageUsage
+    var open: (() -> Void)? = nil
 
     var body: some View {
         if let w = usage.warning {
-            HStack(alignment: .top, spacing: 12) {
-                Image(systemName: usage.level == .full ? "externaldrive.fill.badge.xmark" : "externaldrive.fill.badge.exclamationmark")
-                    .font(.title3)
-                    .foregroundStyle(usage.level == .full ? Color.red : Color.orange)
-                    .frame(width: 32, height: 32)
-                    .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(w.title).font(.body.weight(.semibold))
-                    Text(w.detail).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            Button { open?() } label: {
+                HStack(alignment: .top, spacing: 12) {
+                    Image(systemName: usage.level == .full ? "externaldrive.fill.badge.xmark" : "externaldrive.fill.badge.exclamationmark")
+                        .font(.title3)
+                        .foregroundStyle(usage.level == .full ? Color.red : Color.orange)
+                        .frame(width: 32, height: 32)
+                        .accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(w.title).font(.body.weight(.semibold)).foregroundStyle(.primary)
+                        Text(w.detail).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer(minLength: 0)
+                    if open != nil {
+                        Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.tertiary)
+                            .frame(height: 32)
+                            .accessibilityHidden(true)
+                    }
                 }
+                .padding(.vertical, 2)
+                .contentShape(.rect)
             }
-            .padding(.vertical, 2)
+            .buttonStyle(.plain)
+            .help("Open Storage Settings")
             .accessibilityElement(children: .combine)
+            .accessibilityHint(open == nil ? "" : "Opens Storage in Settings")
             .accessibilityIdentifier("storage.warning")
         }
     }

@@ -2,8 +2,8 @@ import SwiftData
 import SwiftUI
 
 #if os(macOS)
-/// The account at the foot of the sidebar: your photo and name. Clicking it opens Settings,
-/// which starts with your account. Signing out lives there, last, behind a confirmation, so
+/// The account at the foot of the sidebar: your photo and name. Clicking it opens Settings at
+/// Account. Signing out lives there, last, behind a confirmation, so
 /// a slip of the mouse here can never sign you out.
 struct AccountButton: View {
     let email: String
@@ -15,7 +15,10 @@ struct AccountButton: View {
     private var name: String { profile.name ?? email }
 
     var body: some View {
-        Button { openSettings() } label: {
+        Button {
+            SettingsRoute.shared.open(.account)
+            openSettings()
+        } label: {
             HStack(spacing: 8) {
                 AvatarView(photo: profile.photo, name: name, size: 22)
                 Text(name)
