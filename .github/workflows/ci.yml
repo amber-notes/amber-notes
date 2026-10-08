@@ -129,6 +129,7 @@ jobs:
           supabase/functions/share-files/logic.test.ts scripts/e2ee-tool.test.ts
           supabase/functions/account/account.pglite.test.ts supabase/functions/_shared/hash.test.ts
           scripts/auth-emails.test.ts scripts/ops/daily-digest.test.ts supabase/functions/mcp/tool_errors.test.ts supabase/functions/lifecycle/logic.test.ts supabase/functions/lifecycle/emails.test.ts supabase/functions/lifecycle/assets.test.ts supabase/functions/lifecycle/lifecycle.pglite.test.ts
+          supabase/functions/mcp/rename.pglite.test.ts
 
   web:
     name: Share site

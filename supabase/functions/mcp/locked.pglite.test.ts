@@ -111,10 +111,10 @@ Deno.test("a note sealed with another password's key is refused; after a change 
 Deno.test("an old build can't write the notes of an account that locks notes", async () => {
   const { pg, a, me } = await setUp();
   const id = await note(pg, a, "Plan");
-  await refused(oldApp(pg, me, `update public.notes set body_ct = $2 where id = $1`, [id, await a.vault.sealBody(id, "Plan\n\nleaked")]), "Update Amber Notes");
+  await refused(oldApp(pg, me, `update public.notes set body_ct = $2 where id = $1`, [id, await a.vault.sealBody(id, "Plan\n\nleaked")]), "Update Pinto Notes");
   const other = crypto.randomUUID();
   await refused(oldApp(pg, me, `insert into public.notes (id, head_ct, body_ct) values ($1, $2, $3)`,
-    [other, await a.vault.sealHead(other, { title: "Copy" }), await a.vault.sealBody(other, "Copy")]), "Update Amber Notes");
+    [other, await a.vault.sealHead(other, { title: "Copy" }), await a.vault.sealBody(other, "Copy")]), "Update Pinto Notes");
   await edit(pg, a, id, "Plan\n\nfine");
   // An account without a notes password is left alone; so is the MCP server (no request headers).
   const b = await account(pg);
@@ -224,7 +224,7 @@ Deno.test("a password change naming another account's note changes nothing at al
 Deno.test("request headers that aren't valid JSON count as an old build", async () => {
   const { pg, a } = await setUp();
   const id = await note(pg, a, "Plan");
-  await refused(edit(pg, a, id, "Plan, edited", { "request.headers": "{not json" }), "Update Amber Notes");
+  await refused(edit(pg, a, id, "Plan, edited", { "request.headers": "{not json" }), "Update Pinto Notes");
 });
 
 Deno.test("locking a shared note stops its link, and a locked note can't be shared", async () => {
