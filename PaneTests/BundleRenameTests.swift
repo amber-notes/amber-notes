@@ -30,6 +30,22 @@ import Testing
         #expect(Self.destination("/private/var/folders/b8/x/T/AppTranslocation/6F1C/d/Amber Notes.app") == nil, "run by Gatekeeper from a random place")
     }
 
+    /// /Applications that this person can't write to: no move, no prompt, no second launch; the app runs as it is.
+    @Test func aFolderThatCannotBeWrittenLeavesTheAppAsItIs() throws {
+        let files = FileManager.default
+        let dir = files.temporaryDirectory.appendingPathComponent("bundle-rename-\(UUID().uuidString)", isDirectory: true)
+        let old = dir.appendingPathComponent(BundleRename.oldName, isDirectory: true)
+        try files.createDirectory(at: old.appendingPathComponent("Contents"), withIntermediateDirectories: true)
+        try files.setAttributes([.posixPermissions: 0o555], ofItemAtPath: dir.path)
+        defer {
+            try? files.setAttributes([.posixPermissions: 0o755], ofItemAtPath: dir.path)
+            try? files.removeItem(at: dir)
+        }
+        // Returns (it would end the process had it moved and reopened).
+        BundleRename.moveAndReopenIfNeeded(bundle: old, files: files)
+        #expect(try files.contentsOfDirectory(atPath: dir.path) == [BundleRename.oldName])
+    }
+
     @Test func aRealBundleMovesAndNothingElseDoes() throws {
         let files = FileManager.default
         let dir = files.temporaryDirectory.appendingPathComponent("bundle-rename-\(UUID().uuidString)", isDirectory: true)
