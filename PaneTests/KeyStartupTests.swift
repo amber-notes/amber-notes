@@ -318,7 +318,7 @@ import Testing
         #expect(crypto.phase == .waiting && !crypto.recoveryKeySaved)
         try await crypto.recover(typed: k.recoveryText)
         #expect(crypto.phase == .ready)
-        #expect(crypto.recoveryKeySaved && server.row?.recovery_saved_at != nil, "Privacy & Security says Saved, here and on other devices")
+        #expect(crypto.recoveryKeySaved && server.row?.recovery_saved_at != nil, "Settings › Security says Saved, here and on other devices")
         crypto.signedOut()
     }
 
@@ -717,7 +717,7 @@ import Testing
         #expect(keychain.previous[user] == old)
         #expect(crypto.recoveryKeyChanged && crypto.recoveryKeyChangeNeedsSaying)
         crypto.recoveryKeyChangeShown()
-        #expect(crypto.recoveryKeyChanged && !crypto.recoveryKeyChangeNeedsSaying, "Privacy & Security keeps saying it")
+        #expect(crypto.recoveryKeyChanged && !crypto.recoveryKeyChangeNeedsSaying, "Settings › Security keeps saying it")
         crypto.signedOut()
         // Said once: not again on the next launch, until the new key is saved.
         await crypto.attach(account: user, server: server)

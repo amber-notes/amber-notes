@@ -3,7 +3,7 @@ import Foundation
 import Observation
 
 // Where the key is kept: each device that holds the account's key lists itself on the server
-// (key_devices), and Settings › Privacy & Security shows the list. The server can't tell who has
+// (key_devices), and Settings › Security shows the list. The server can't tell who has
 // the key, so a row counts only when its tag (made with a subkey of the key) verifies, and a
 // removal only when its removal tag does.
 
@@ -140,7 +140,7 @@ enum KeyDeviceList {
     }
 }
 
-/// The devices that hold the account's key, for Privacy & Security, and this device's own row.
+/// The devices that hold the account's key, for Settings › Security, and this device's own row.
 @MainActor
 @Observable
 final class KeyDevices {

@@ -10,7 +10,7 @@ import UIKit
 /// Add a device, in words: the new device's screen, and the sheet on the device that has the key.
 enum AddDeviceCopy {
     static var gateTitle: String { "Open your notes on this \(InstallID.kind)" }
-    static let gateMessage = "On a device where Amber Notes already works, go to Settings \u{203A} Add a device and scan this code."
+    static let gateMessage = "On a device where Amber Notes already works, go to Settings \u{203A} Security \u{203A} Add a device and scan this code."
     /// Why the screen is there, before what to do: the notes exist, this device isn't linked yet.
     static var gateWhy: String { "This account already has notes on another device. Link this \(InstallID.kind) to open them here." }
     static let codeLead = "Can\u{2019}t scan? Type this code there:"
@@ -795,7 +795,7 @@ private struct CodeScanner: UIViewRepresentable {
 ///   `new-device`: the code a device without the key shows. `add-device`: the sheet as this device
 ///   opens it (the camera, or the typed code where there's no camera, as on a simulator).
 ///   `add-device-type`, `add-device-confirm`, `add-device-done`: the typed code, the question, "Added".
-///   `key-kept` (safe), `key-kept-unconfirmed`, `key-kept-only`: Privacy & Security in its three
+///   `key-kept` (safe), `key-kept-unconfirmed`, `key-kept-only`: Settings › Security in its three
 ///   states (PaneUITests/AddDeviceUITests taps Remove and Add a device on them).
 ///   `device-added-notice`: what every other device says after one is added. `key-checking`: just
 ///   signed in, on a server that takes the connection and never answers.

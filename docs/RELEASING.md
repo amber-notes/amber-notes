@@ -62,6 +62,16 @@ The site reads the public version from `web/content/release.json`, which `script
 
 So the Mac release of 1.2 turns the QR page on for everyone, iPhone included. Run it only once iPhone 1.2 is approved and released on the App Store, or people on iPhone 1.1.2 get a code they can't scan (the page's "Get a notification instead" still works for them). If the App Review notes describe the connect page, update them for the QR page at the same time.
 
+## Copy to change with the next release
+
+Text outside the app that names a Settings path the app changed. It describes the app people have now, so change it once the new app is public, then delete the item here.
+
+- **Settings tabs (#255):** the Privacy & Security section is now the Security tab, and Export Your Notes moved to Account.
+  - `web/content/privacy-policy.md` and `docs/privacy-policy.md`, two places: "Settings → Privacy & Security (→ Export Your Notes)" becomes "Settings → Account → Export Your Notes". This is the privacy policy: show Emil, and update its "Last updated" date.
+  - `web/app/privacy-security/page.tsx`, Export: "Settings → Account → Export Your Notes".
+  - `web/app/blog/back-up-apple-notes/page.tsx` (Export: Settings, Account), `web/app/blog/connect-chatgpt-to-your-notes/page.tsx` and `web/app/blog/encrypted-notes-app-for-ai/page.tsx` (recovery key: Settings, Security).
+  - `supabase/functions/account/export.ts`: the README in the data export says "Settings > Privacy & Security > Export Your Notes"; it becomes "Settings > Account > Export Your Notes" (a function deploy).
+
 ## Backend changes
 
 The functions reach Postgres through Supabase's transaction pooler, so a burst of requests can't use up the database's 60 connections (`supabase/functions/_shared/db.ts`, and what happened without it in `docs/Evidence/db-connections.md`). That needs one secret per project, set once: `supabase secrets set DB_POOLER_HOST=<host> --project-ref <ref>`, with the host from Project Settings > Database > Connection pooling (for production, `aws-1-eu-central-1.pooler.supabase.com`). After a deploy, the function's log says `{"event":"db","mode":"pooled","count":3,"ssl":true,"tls":"verify"}`. `"direct"` means the secret is missing. The pooled connection is TLS, checked against Supabase's root certificate, which is pinned in `supabase/functions/_shared/supabase-ca.ts` (valid until April 2031). If database calls start failing with a certificate error (Supabase rotated the root, or the runtime changed), `supabase secrets set DB_POOLER_TLS=off` turns TLS off without a deploy while the certificate is replaced; the log then says `"ssl":false,"tls":"off"`, and that is an incident to fix, not a setting to leave.

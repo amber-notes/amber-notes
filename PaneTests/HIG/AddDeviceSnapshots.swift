@@ -7,7 +7,7 @@ import UIKit
 #endif
 
 /// Add a device, screen by screen: the new device's code, the other ways in, the approving
-/// device's scanner, question and "Added", and "Where your key is kept" in Privacy & Security.
+/// device's scanner, question and "Added", and "Where your key is kept" in Settings › Security.
 /// iPhone at 375 points wide at the default and the largest text size, light and dark; the Mac's
 /// window and sheets, light and dark. Offscreen; runs only when AMBER_HIG_SHOTS is set. Mac:
 /// `TEST_RUNNER_AMBER_HIG_SHOTS=/path scripts/qa-test.sh PaneTests/AddDeviceSnapshots`; iPhone: the
@@ -101,7 +101,7 @@ import UIKit
         try await shoot(sheet(Self.sheet(old, .confirm(Self.mac))), "7-add-this-mac")
         try await shoot(sheet(Self.sheet(old, .confirm(Self.iPhone))), "7b-add-this-iphone")
         try await shoot(sheet(Self.sheet(old, .done(Self.mac))), "8-added")
-        // Privacy & Security: where the key is kept. Safe on evidence (a device seen lately),
+        // Settings › Security: where the key is kept. Safe on evidence (a device seen lately),
         // can't confirm (only a Keychain item, and a phone not seen for weeks), only this device.
         try await shoot(Self.privacy(old, Self.devices([Self.added, Self.stale])), "9-key-kept-safe")
         try await shoot(Self.privacy(old, Self.devices([Self.stale])), "9b-key-cant-confirm")
