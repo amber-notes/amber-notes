@@ -135,16 +135,26 @@ extension ModelContext {
     /// Only a missing parent is filled in; one already set is never changed. Returns how many.
     @discardableResult
     func backfillSubNoteParents() -> Int {
-        let notes = ((try? fetch(FetchDescriptor<Note>())) ?? []).filter { $0.deletedAt == nil }
-        let byID = Dictionary(notes.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
-        var filled = 0
-        for parent in notes where !parent.isLocked && parent.body.contains("pane-note:") {
+        // The store picks the notes whose text links a note, and then the few notes they link:
+        // reading every note's text here held up each return to the app (and launch), about
+        // 1.5 s with 20,000 notes.
+        let linking = (try? fetch(FetchDescriptor<Note>(predicate: #Predicate { $0.deletedAt == nil && $0.body.contains("pane-note:") }))) ?? []
+        var parentOf: [UUID: UUID] = [:]
+        for parent in linking where !parent.isLocked {
             for m in parent.body.matches(of: /pane-note:([0-9a-fA-F-]{36})/) {
-                guard let id = UUID(uuidString: String(m.1)), id != parent.id, let child = byID[id], child.parentID == nil else { continue }
-                child.parentID = parent.id
-                child.dirty = true
-                filled += 1
+                guard let id = UUID(uuidString: String(m.1)), id != parent.id, parentOf[id] == nil else { continue }
+                parentOf[id] = parent.id
             }
+        }
+        guard !parentOf.isEmpty else { return 0 }
+        let ids = Array(parentOf.keys)
+        let orphans = (try? fetch(FetchDescriptor<Note>(predicate: #Predicate { ids.contains($0.id) && $0.deletedAt == nil && $0.parentID == nil }))) ?? []
+        var filled = 0
+        for child in orphans {
+            guard let parent = parentOf[child.id] else { continue }
+            child.parentID = parent
+            child.dirty = true
+            filled += 1
         }
         if filled > 0 { try? save(); SyncSignal.changed() }
         return filled
