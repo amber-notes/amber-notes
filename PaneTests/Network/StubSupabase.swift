@@ -36,6 +36,7 @@ final class StubSupabase: URLProtocol, @unchecked Sendable {
     nonisolated(unsafe) private static var tables: [String: [[String: Any]]] = [:]
     nonisolated(unsafe) private static var clock = Date.now
     nonisolated(unsafe) private static var _requests: [String] = []
+    nonisolated(unsafe) private static var _requestTimes: [Date] = []
     nonisolated(unsafe) private static var _bodies: [String] = []
     nonisolated(unsafe) private static var _objects: [String: Data] = [:]
     nonisolated(unsafe) private static var _rpcCalls: [(name: String, params: [String: Any])] = []
@@ -73,13 +74,15 @@ final class StubSupabase: URLProtocol, @unchecked Sendable {
 
     static func reset() {
         lock.withLock {
-            tables = [:]; _requests = []; _bodies = []; _objects = [:]; _rpcCalls = []; _rpcAnswers = [:]; _tooFast = false
+            tables = [:]; _requests = []; _requestTimes = []; _bodies = []; _objects = [:]; _rpcCalls = []; _rpcAnswers = [:]; _tooFast = false
             _sessionLifetime = 3600; _refusesRefresh = false; _failing = []
         }
     }
 
     /// "METHOD /path?query" of every request that reached the server.
     static var requests: [String] { lock.withLock { _requests } }
+    /// Each request with when it reached the server, in order.
+    static var timedRequests: [(request: String, at: Date)] { lock.withLock { Array(zip(_requests, _requestTimes)) } }
     /// Every request body that reached the server, as text (bytes that aren't text come out as
     /// replacement characters).
     static var bodies: [String] { lock.withLock { _bodies } }
@@ -172,6 +175,7 @@ final class StubSupabase: URLProtocol, @unchecked Sendable {
         if body == nil, let s = request.httpBodyStream { body = NetFault.read(s) }
         lock.withLock {
             _requests.append("\(method) \(comps.path)?\(comps.query ?? "")")
+            _requestTimes.append(.now)
             if let body { _bodies.append(String(decoding: body, as: UTF8.self)) }
         }
         let path = comps.path
