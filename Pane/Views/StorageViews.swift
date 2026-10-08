@@ -43,9 +43,9 @@ struct StorageUsage: Codable, Equatable {
         switch level {
         case .fine: return nil
         case .nearlyFull:
-            return ("Amber Notes is almost full", "\(summary). Empty Recently Deleted or remove large files to keep adding notes and files.")
+            return ("Pinto Notes is almost full", "\(summary). Empty Recently Deleted or remove large files to keep adding notes and files.")
         case .full:
-            return ("Amber Notes is full", "All \(Self.size(limit)) are used\(big.isEmpty ? "" : " (\(big))"). New notes, changes that add text, and files won't sync until you empty Recently Deleted or remove large files.")
+            return ("Pinto Notes is full", "All \(Self.size(limit)) are used\(big.isEmpty ? "" : " (\(big))"). New notes, changes that add text, and files won't sync until you empty Recently Deleted or remove large files.")
         }
     }
 }

@@ -5,6 +5,8 @@
 # Called: the app, the site or a function sends requests here.
 ambernotes.app
 mcp.ambernotes.app
+pintonotes.com                # the same site under the new name (Pinto Notes); the app opens its /open/ links
+mcp.pintonotes.com            # the same MCP proxy under the new name
 api.push.apple.com            # APNs, from the functions
 api.sandbox.push.apple.com    # APNs for development builds
 api.resend.com                # email, from the functions

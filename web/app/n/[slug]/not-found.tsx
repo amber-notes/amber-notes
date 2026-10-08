@@ -5,7 +5,7 @@ export default function NotFound() {
     <Shell>
       <TopBar />
       <Stage>
-        <EmptyState title="This note isn’t shared" actions={<a className={ui.secondary} href="/">See what Amber Notes is</a>}>
+        <EmptyState title="This note isn’t shared" actions={<a className={ui.secondary} href="/">See what Pinto Notes is</a>}>
           The link may have been stopped, or the note moved to Recently Deleted. Ask whoever sent it for a new link.
         </EmptyState>
       </Stage>

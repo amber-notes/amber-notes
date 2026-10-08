@@ -800,7 +800,7 @@ final class NotePagesUITests: XCTestCase {
         // page's own attempt didn't reach Safari's question.
         let open = safari.buttons["Open"].firstMatch
         if !open.waitForExistence(timeout: 5) {
-            let link = safari.links.matching(NSPredicate(format: "label CONTAINS 'Open Amber Notes'")).firstMatch
+            let link = safari.links.matching(NSPredicate(format: "label CONTAINS 'Open Pinto Notes'")).firstMatch
             if link.waitForExistence(timeout: 3) { shot("w2-open-page"); link.tap() }
         }
         if open.waitForExistence(timeout: 6) { pause(0.8); shot("w2-open-in-app"); open.tap() }

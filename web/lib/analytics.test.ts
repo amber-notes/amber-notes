@@ -5,19 +5,19 @@ const send = (url: string) => analyticsEvent({ type: "pageview" as const, url })
 
 describe("website analytics", () => {
   it("counts public pages by their address alone", () => {
-    expect(send("https://ambernotes.app/")).toBe("https://ambernotes.app/");
-    expect(send("https://ambernotes.app/blog/some-post?ref=x#top")).toBe("https://ambernotes.app/blog/some-post");
-    expect(send("https://ambernotes.app/download")).toBe("https://ambernotes.app/download");
+    expect(send("https://pintonotes.com/")).toBe("https://pintonotes.com/");
+    expect(send("https://pintonotes.com/blog/some-post?ref=x#top")).toBe("https://pintonotes.com/blog/some-post");
+    expect(send("https://pintonotes.com/download")).toBe("https://pintonotes.com/download");
   });
 
   it("never counts shared notes, connect, password reset, report or universal-link pages", () => {
     for (const path of ["/n/abc123", "/n", "/connect", "/connect?code=1", "/open/connect", "/open/note/x", "/report/abc123", "/reset-password", "/reset-password?token_hash=abc&type=recovery", "/unsubscribe", "/unsubscribe?u=x&t=y"]) {
-      expect(send(`https://ambernotes.app${path}`), path).toBeNull();
+      expect(send(`https://pintonotes.com${path}`), path).toBeNull();
     }
   });
 
   it("doesn't mistake a page that only starts with those letters", () => {
-    expect(send("https://ambernotes.app/notes-app")).toBe("https://ambernotes.app/notes-app");
+    expect(send("https://pintonotes.com/notes-app")).toBe("https://pintonotes.com/notes-app");
   });
 
   it("drops anything it can't read", () => {

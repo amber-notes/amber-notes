@@ -345,7 +345,7 @@ final class Backend {
             return "That Apple ID already belongs to another account."
         }
         if !linking, lower.contains("private") || lower.contains("not allowed") || lower.contains("hook") {
-            return "This Apple ID isn't connected to an Amber Notes account yet. Sign in the old way once, then choose Connect Apple ID in Settings."
+            return "This Apple ID isn't connected to a Pinto Notes account yet. Sign in the old way once, then choose Connect Apple ID in Settings."
         }
         return raw
     }
@@ -406,7 +406,7 @@ final class Backend {
             return "We just sent a code. Wait a minute, then press Resend code."
         }
         if code == "otp_expired" || lower.contains("expired") || lower.contains("invalid") {
-            return "That code didn't work. Check the newest email from Amber Notes, or press Resend code."
+            return "That code didn't work. Check the newest email from Pinto Notes, or press Resend code."
         }
         return "Couldn't confirm your email. Try again in a moment."
     }

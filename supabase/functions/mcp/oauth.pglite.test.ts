@@ -200,6 +200,12 @@ Deno.test("metadata at the Supabase address is unchanged, and a spoofed alias is
   assertEquals(publicBase(new Request(FUNCTION, { headers: { "x-mcp-public-url": `${ALIAS}/`, "x-mcp-proxy-secret": "proxy-secret" } })), ALIAS);
 });
 
+Deno.test("the new name's address is an alias too, next to the old one", () => {
+  const proxied = (url: string) => new Request(FUNCTION, { headers: { "x-mcp-public-url": url, "x-mcp-proxy-secret": "proxy-secret" } });
+  assertEquals(publicBase(proxied("https://mcp.pintonotes.com")), "https://mcp.pintonotes.com");
+  assertEquals(publicBase(proxied("https://mcp.ambernotes.app")), "https://mcp.ambernotes.app");
+});
+
 Deno.test("/authorize sends the browser to the web consent page", async () => {
   const { sql } = await db();
   const clientId = await register(sql, "proxy");
@@ -377,7 +383,7 @@ Deno.test("a name is cleaned: no control, format or direction characters, one li
 });
 
 Deno.test("trusted names are recognized through spacing, case, digits and look-alike letters", () => {
-  for (const n of ["ChatGPT", "chat gpt", "Open AI", "CLAUDE", "Cl4ude", "Сlaude", "Anthropic Connector", "Amber Notes", "amber-notes sync", "ChаtGPT"]) {
+  for (const n of ["ChatGPT", "chat gpt", "Open AI", "CLAUDE", "Cl4ude", "Сlaude", "Anthropic Connector", "Amber Notes", "amber-notes sync", "Pinto Notes", "pinto-notes sync", "ChаtGPT"]) {
     assert(claimsATrustedName(n), n);
   }
   for (const n of ["Notion", "Incredible", "My Script", "Cursor"]) assert(!claimsATrustedName(n), n);
@@ -654,7 +660,7 @@ Deno.test("decide stores the code's hash and wrap, and answers without a code", 
   const sent = JSON.parse(body);
   // A hash that isn't one, or a wrap under another key, is refused before anything is decided.
   assertEquals((await decideAs(sql, me, { ...sent, code_hash: "nope" })).status, 400);
-  assertEquals((await decideAs(sql, me, { ...sent, code_wrap: undefined })).body.error, "Update Amber Notes to connect an AI.");
+  assertEquals((await decideAs(sql, me, { ...sent, code_wrap: undefined })).body.error, "Update Pinto Notes to connect an AI.");
   const stale = sent.code_wrap.replace(/^amb2\.[0-9a-f]{16}\./, `amb2.${hex(8)}.`);
   assertEquals((await decideAs(sql, me, { ...sent, code_wrap: stale })).status, 409);
   const r = await decideAs(sql, me, sent);
@@ -677,7 +683,7 @@ Deno.test("an account without a key can't approve: the app sets it up first", as
   const { requestId } = await pendingRequest(sql);
   const me = await newUser(pg, false);
   const r = await decideAs(sql, me, { id: requestId, allow: true, write: true, redirect_uri: CHATGPT, code_hash: hex(32), code_wrap: `amb2.${hex(8)}.AAAA` });
-  assertEquals([r.status, r.body.error], [409, "Set up Amber Notes on this device first."]);
+  assertEquals([r.status, r.body.error], [409, "Set up Pinto Notes on this device first."]);
   // Declining needs no key.
   const denied = await decideAs(sql, me, { id: requestId, allow: false, redirect_uri: CHATGPT });
   assertEquals(new URL(denied.body.redirect).searchParams.get("error"), "access_denied");
@@ -1280,7 +1286,7 @@ Deno.test("an ask pushes to every device of that account, generic words and the 
     const payload = sent[0].payload;
     assertEquals(payload.ask, requestId);
     // Fixed words: not the name the app gives itself.
-    assertEquals(payload.aps.alert, { title: "An AI connection request", body: "Open Amber Notes to see it." });
+    assertEquals(payload.aps.alert, { title: "An AI connection request", body: "Open Pinto Notes to see it." });
     assertEquals(Object.keys(payload).sort(), ["aps", "ask"]);
     // Apple said token 2 is gone: it's deleted.
     assertEquals((await app(pg, me.id, `select token from public.device_tokens`)).map((r: any) => r.token), [token(4)]);
@@ -1581,7 +1587,7 @@ Deno.test("an ask still answers when looking up the account's devices fails", as
   }
 });
 
-Deno.test("the ask says where the account has Amber Notes, in two yes-or-no answers, and only to that account", async () => {
+Deno.test("the ask says where the account has Pinto Notes, in two yes-or-no answers, and only to that account", async () => {
   const { sql, pg } = await db();
   const me = await newUser(pg), other = await newUser(pg);
   const devicesFor = async (user: User) => {

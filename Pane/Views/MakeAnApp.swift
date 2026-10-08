@@ -34,7 +34,7 @@ enum MakeAnApp {
     }
 
     static func prompt(title: String, body: String) -> String {
-        "In Amber Notes, make my note \u{201C}\(title)\u{201D} an app: \(idea(for: body)). Read the note first, keep its table or checklist as the data, and use set_note_page."
+        "In Pinto Notes, make my note \u{201C}\(title)\u{201D} an app: \(idea(for: body)). Read the note first, keep its table or checklist as the data, and use set_note_page."
     }
 
     // Notes the suggestion was shown on: once per note, never again.
@@ -144,7 +144,7 @@ struct MakeAppSheet: View {
         VStack(alignment: .leading, spacing: 16) {
             Image(systemName: NoteAppMark.symbol).font(.system(size: 34, weight: .semibold)).foregroundStyle(Color.amberInk)
             Text("Apps are made by your AI").font(.title2.weight(.bold))
-            Text("Connect ChatGPT or Claude to Amber Notes, then ask it to make this note an app: a tracker with streaks, a budget with totals, whatever the note needs. Connecting takes about 2 minutes.")
+            Text("Connect ChatGPT or Claude to Pinto Notes, then ask it to make this note an app: a tracker with streaks, a budget with totals, whatever the note needs. Connecting takes about 2 minutes.")
                 .foregroundStyle(.secondary)
             Button { connecting = true } label: { Text("Connect an AI").frame(maxWidth: .infinity) }
                 .buttonStyle(.amberProminent(height: 44, cornerRadius: 12))

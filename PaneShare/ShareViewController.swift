@@ -62,7 +62,7 @@ final class ShareModel {
                 context?.completeRequest(returningItems: nil)
             }
         } catch {
-            self.error = "Couldn't save. Open Amber Notes once, then try again."
+            self.error = "Couldn't save. Open Pinto Notes once, then try again."
         }
     }
 
@@ -80,7 +80,7 @@ struct ShareSheet: View {
                 Spacer()
                 HStack(spacing: 7) {
                     AppMark(size: 22)
-                    Text("Amber Notes").font(.headline)
+                    Text("Pinto Notes").font(.headline)
                 }
                 .accessibilityElement(children: .combine)
                 Spacer()

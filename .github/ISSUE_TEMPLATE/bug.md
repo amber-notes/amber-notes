@@ -10,4 +10,4 @@ labels: bug
 
 **Steps to reproduce**
 
-**Device and version** (for example: iPhone, iOS 26.1, Amber Notes 1.0)
+**Device and version** (for example: iPhone, iOS 26.1, Pinto Notes 1.0)

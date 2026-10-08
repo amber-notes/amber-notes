@@ -100,7 +100,7 @@ export function relayHeaders(req: Request, env: Env): Headers {
   return out;
 }
 
-const RETRY = "Couldn't reach Amber Notes just now. Try again.";
+const RETRY = "Couldn't reach Pinto Notes just now. Try again.";
 
 /// Hands the request to the home region when it should be, and gives its answer. `again` means
 /// this isolate should answer itself: it is home, relaying is off, or home couldn't be reached for

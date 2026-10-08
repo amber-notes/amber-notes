@@ -79,7 +79,7 @@ enum NotePageDevice {
 
     private static func createReminder(_ m: [String: Any]) async throws -> [String: Any] {
         guard let title = m["title"] as? String, !title.isEmpty, title.count <= 300 else { throw NotePage.OpError("A reminder needs a title.") }
-        guard try await events.requestFullAccessToReminders() else { throw Unavailable("Reminders isn't allowed for Amber Notes. You can allow it in Settings.") }
+        guard try await events.requestFullAccessToReminders() else { throw Unavailable("Reminders isn't allowed for Pinto Notes. You can allow it in Settings.") }
         let r = EKReminder(eventStore: events)
         r.title = title
         r.notes = (m["notes"] as? String).map { String($0.prefix(2000)) }
@@ -97,9 +97,9 @@ enum NotePageDevice {
     /// Only reminders this app made can be changed: the id comes from reminders.create.
     private static func changeReminder(_ m: [String: Any], delete: Bool) async throws -> [String: Any] {
         guard let id = m["id"] as? String else { throw NotePage.OpError("Send { id } from reminders.create.") }
-        guard try await events.requestFullAccessToReminders() else { throw Unavailable("Reminders isn't allowed for Amber Notes.") }
+        guard try await events.requestFullAccessToReminders() else { throw Unavailable("Reminders isn't allowed for Pinto Notes.") }
         guard let r = events.calendarItem(withIdentifier: id) as? EKReminder else { throw NotePage.OpError("That reminder isn't there any more.") }
-        guard made.contains(id) else { throw NotePage.OpError("Only reminders made by an app in Amber Notes can be changed.") }
+        guard made.contains(id) else { throw NotePage.OpError("Only reminders made by an app in Pinto Notes can be changed.") }
         if delete { try events.remove(r, commit: true) } else { r.isCompleted = true; try events.save(r, commit: true) }
         return [:]
     }
@@ -111,7 +111,7 @@ enum NotePageDevice {
     }
 
     private static func today() async throws -> [String: Any] {
-        guard try await events.requestFullAccessToEvents() else { throw Unavailable("Calendar isn't allowed for Amber Notes. You can allow it in Settings.") }
+        guard try await events.requestFullAccessToEvents() else { throw Unavailable("Calendar isn't allowed for Pinto Notes. You can allow it in Settings.") }
         let start = Calendar.current.startOfDay(for: .now)
         let end = Calendar.current.date(byAdding: .day, value: 1, to: start)!
         let iso = ISO8601DateFormatter()
@@ -130,7 +130,7 @@ enum NotePageDevice {
     private static func notify(_ m: [String: Any]) async throws -> [String: Any] {
         guard let title = m["title"] as? String, !title.isEmpty else { throw NotePage.OpError("A notification needs a title.") }
         let center = UNUserNotificationCenter.current()
-        guard try await center.requestAuthorization(options: [.alert, .sound]) else { throw Unavailable("Notifications aren't allowed for Amber Notes.") }
+        guard try await center.requestAuthorization(options: [.alert, .sound]) else { throw Unavailable("Notifications aren't allowed for Pinto Notes.") }
         let content = UNMutableNotificationContent()
         content.title = String(title.prefix(200))
         content.body = String(((m["body"] as? String) ?? "").prefix(1000))
@@ -532,7 +532,7 @@ private final class Locator: NSObject, CLLocationManagerDelegate {
         Task { @MainActor in
             switch status {
             case .notDetermined: break
-            case .denied, .restricted: finish(.failure(NotePageDevice.Unavailable("Location isn't allowed for Amber Notes.")))
+            case .denied, .restricted: finish(.failure(NotePageDevice.Unavailable("Location isn't allowed for Pinto Notes.")))
             default: manager.requestLocation()
             }
         }

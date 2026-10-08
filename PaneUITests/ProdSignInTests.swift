@@ -17,7 +17,7 @@ final class ProdSignInTests: XCTestCase {
         XCTAssertTrue(pw.waitForExistence(timeout: 10), "an existing account asks for its password")
         pw.tap(); pw.typeText(password)
         app.buttons["signin.submit"].tap()
-        let welcome = app.staticTexts["Welcome to Amber Notes"].firstMatch
+        let welcome = app.staticTexts["Welcome to Pinto Notes"].firstMatch
         XCTAssertTrue(welcome.waitForExistence(timeout: 30), "first sync should seed the library")
         Thread.sleep(forTimeInterval: 4) // let the seed push
         if let dir = env["PANE_SHOTS"] { try? XCUIScreen.main.screenshot().pngRepresentation.write(to: URL(fileURLWithPath: "\(dir)/01-signed-in.png")) }

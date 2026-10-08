@@ -546,7 +546,7 @@ final class ShareLinkStore {
         if text.contains("no such note") { return "Couldn’t share yet. Try again once the note has synced." }
         if text.contains("note_locked") || text.contains("locked note") { return "Locked notes can’t be shared." }
         if text.contains("not signed in") || text.contains("jwt") { return "Sign in to share notes." }
-        return "Couldn’t reach Amber Notes. Check your connection."
+        return "Couldn’t reach Pinto Notes. Check your connection."
     }
 
     static func copy(_ url: URL?) {

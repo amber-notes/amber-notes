@@ -11,7 +11,7 @@ final class AccessibilityUITests: XCTestCase {
         let pinned = app.descendants(matching: .any)["note.Evening tracker"].firstMatch
         XCTAssertTrue(pinned.waitForExistence(timeout: 3))
         XCTAssertEqual(pinned.value as? String, "Pinned")
-        app.staticTexts["Welcome to Amber Notes"].firstMatch.tap()
+        app.staticTexts["Welcome to Pinto Notes"].firstMatch.tap()
         let cell = app.descendants(matching: .any)["grid.1.0"].firstMatch
         XCTAssertTrue(cell.waitForExistence(timeout: 5))
         XCTAssertEqual(cell.label, "⌘B, Shortcut, row 1")
@@ -23,7 +23,7 @@ final class AccessibilityUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-uitest", "-demo", "-showFolders"]
         app.launch()
-        XCTAssertTrue(app.navigationBars["Amber Notes"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.navigationBars["Pinto Notes"].waitForExistence(timeout: 5))
         let travel = app.cells.containing(.any, identifier: "folder.Travel").firstMatch
         XCTAssertTrue(travel.waitForExistence(timeout: 3))
         let row = app.descendants(matching: .any).matching(identifier: "folder.Travel").firstMatch
@@ -37,7 +37,7 @@ final class AccessibilityUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-uitest", "-demo", "-showFolders", "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
         app.launch()
-        XCTAssertTrue(app.navigationBars["Amber Notes"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.navigationBars["Pinto Notes"].waitForExistence(timeout: 5))
         keep(app, "xxxl-folders")
         app.cells.containing(.any, identifier: "folder.Travel").firstMatch.tap()
         XCTAssertTrue(app.navigationBars["Travel"].waitForExistence(timeout: 3))
@@ -57,7 +57,7 @@ final class AccessibilityUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-uitest", "-demo", "-showFolders"]
         app.launch()
-        XCTAssertTrue(app.navigationBars["Amber Notes"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.navigationBars["Pinto Notes"].waitForExistence(timeout: 5))
         var unnamed = Self.unnamedButtons(app, screen: "folders")
         app.cells.containing(.any, identifier: "folder.Travel").firstMatch.tap()
         XCTAssertTrue(app.buttons["list.select"].waitForExistence(timeout: 5))

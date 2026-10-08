@@ -42,7 +42,7 @@ export const EMAILS: AuthEmail[] = [
   {
     file: "recovery.html",
     key: "recovery",
-    subject: "Reset your Amber Notes password",
+    subject: "Reset your Pinto Notes password",
     preview: "Choose a new password. The link works for one hour.",
     title: "Let's get you back in",
     line: "Press the button to choose a new password for {{ .Email }}.",
@@ -53,10 +53,10 @@ export const EMAILS: AuthEmail[] = [
   {
     file: "magic_link.html",
     key: "magic_link",
-    subject: "Your Amber Notes sign-in code",
+    subject: "Your Pinto Notes sign-in code",
     preview: "Your code is inside. It works for one hour.",
     title: "Here's your way in",
-    line: "Type this code in Amber Notes to sign in as {{ .Email }}.",
+    line: "Type this code in Pinto Notes to sign in as {{ .Email }}.",
     code: "{{ .Token }}",
     note: "The code works for one hour. Didn't ask for it? Ignore this email.",
     link: "{{ .ConfirmationURL }}",
@@ -65,17 +65,17 @@ export const EMAILS: AuthEmail[] = [
     // A code, not a link: the apps ask for it right after sign-up (docs/Technical/email-confirmation.md).
     file: "confirmation.html",
     key: "confirmation",
-    subject: "Confirm your email for Amber Notes",
+    subject: "Confirm your email for Pinto Notes",
     preview: "Your code is inside. It works for one hour.",
     title: "One quick check",
-    line: "Type this code in Amber Notes to confirm that {{ .Email }} is yours.",
+    line: "Type this code in Pinto Notes to confirm that {{ .Email }} is yours.",
     code: "{{ .Token }}",
-    note: "The code works for one hour. Didn't make an Amber Notes account? Ignore this email.",
+    note: "The code works for one hour. Didn't make a Pinto Notes account? Ignore this email.",
   },
   {
     file: "email_change.html",
     key: "email_change",
-    subject: "Confirm your new email for Amber Notes",
+    subject: "Confirm your new email for Pinto Notes",
     preview: "Confirm the change, and you'll sign in with your new address.",
     title: "New address, same notes",
     line: "Press the button to sign in with {{ .NewEmail }} instead of {{ .Email }}.",
@@ -86,10 +86,10 @@ export const EMAILS: AuthEmail[] = [
   {
     file: "invite.html",
     key: "invite",
-    subject: "You're invited to Amber Notes",
+    subject: "You're invited to Pinto Notes",
     preview: "Make your account, and you're in.",
     title: "Come on in",
-    line: "You're invited to make an Amber Notes account with {{ .Email }}.",
+    line: "You're invited to make a Pinto Notes account with {{ .Email }}.",
     button: { label: "Accept the invite", href: "{{ .ConfirmationURL }}" },
     note: "Not expecting this? Ignore this email.",
     link: "{{ .ConfirmationURL }}",
@@ -97,17 +97,17 @@ export const EMAILS: AuthEmail[] = [
   {
     file: "reauthentication.html",
     key: "reauthentication",
-    subject: "Your Amber Notes code",
+    subject: "Your Pinto Notes code",
     preview: "Type the code inside to confirm it's you.",
     title: "Just checking it's you",
-    line: "Type this code in Amber Notes to confirm it's you, {{ .Email }}.",
+    line: "Type this code in Pinto Notes to confirm it's you, {{ .Email }}.",
     code: "{{ .Token }}",
     note: "Didn't ask for a code? Ignore this email.",
   },
   {
     file: "password_changed.html",
     key: "password_changed_notification",
-    subject: "Your Amber Notes password was changed",
+    subject: "Your Pinto Notes password was changed",
     preview: "If this was you, there's nothing to do.",
     title: "Your password was changed",
     line: "If you didn't change the password for {{ .Email }}, reset it now.",
@@ -220,7 +220,7 @@ ${table(' width="100%" style="width:100%;max-width:520px;"')}
   <tr><td style="padding:0 4px 18px;">
     ${table()}<tr>
       <td style="padding-right:10px;">${table()}<tr><td width="28" height="28" align="center" valign="middle" bgcolor="#f0901a" style="width:28px;height:28px;background:#f0901a;border-radius:7px;text-align:center;"><img src="${ASSETS}/mark.png" width="28" height="28" alt="A" style="display:block;width:28px;height:28px;border:0;border-radius:7px;color:#fff4e6;font-family:${DISPLAY};font-size:16px;font-weight:800;line-height:28px;text-align:center;"></td></tr></table></td>
-      <td class="ink" style="font-family:${DISPLAY};font-size:18px;font-weight:700;color:#2a1d10;">Amber Notes</td>
+      <td class="ink" style="font-family:${DISPLAY};font-size:18px;font-weight:700;color:#2a1d10;">Pinto Notes</td>
     </tr></table>
   </td></tr>
   <tr><td class="window" bgcolor="${L.page}" style="background:${L.page};border:1px solid ${L.edge};border-radius:14px;">
@@ -242,7 +242,7 @@ ${body}
             <td valign="middle" style="padding-right:12px;">${table()}<tr><td width="44" height="44" align="center" valign="middle" bgcolor="#74604c" style="width:44px;height:44px;background:#74604c;border-radius:22px;text-align:center;"><img src="${ASSETS}/emil.jpg" width="44" height="44" alt="E" style="display:block;width:44px;height:44px;border:0;border-radius:22px;color:#fff4e6;font-family:${DISPLAY};font-size:19px;font-weight:700;line-height:44px;text-align:center;"></td></tr></table></td>
             <td valign="middle" style="font-family:${SANS};">
               <p class="ink" style="margin:0;font-size:16px;line-height:1.35;font-weight:600;color:${L.text};">Emil</p>
-              <p class="sec" style="margin:0;font-size:14px;line-height:1.4;color:${L.secondary};">I make Amber Notes. Just reply to reach me.</p>
+              <p class="sec" style="margin:0;font-size:14px;line-height:1.4;color:${L.secondary};">I make Pinto Notes. Just reply to reach me.</p>
             </td>
           </tr></table>
         </td></tr></table>
@@ -250,7 +250,7 @@ ${body}
     </table>
   </td></tr>
   <tr><td class="muted" style="padding:20px 8px 0;font-family:${SANS};font-size:13px;line-height:1.55;color:${L.muted};">
-    Amber Notes, made by Emil Wagman in Sweden. <a class="foot-lnk" href="${SITE}/help" style="color:${L.link};">Help</a> &middot; <a class="foot-lnk" href="${SITE}/privacy" style="color:${L.link};">Privacy</a>
+    Pinto Notes, made by Emil Wagman in Sweden. <a class="foot-lnk" href="${SITE}/help" style="color:${L.link};">Help</a> &middot; <a class="foot-lnk" href="${SITE}/privacy" style="color:${L.link};">Privacy</a>
   </td></tr>
 </table>
 </td></tr>

@@ -26,7 +26,7 @@ import { BASE_CSS_URI, GUIDE_URI, PAGE_INSTRUCTIONS, PAGE_PROMPTS, pageGuide } f
 import { AMBER_BASE_CSS } from "./amber-base.ts";
 
 const PROTOCOL_VERSIONS = ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"];
-export const INSTRUCTIONS = `Amber Notes is the user's personal notes app. Notes are markdown; the first line is the title.
+export const INSTRUCTIONS = `Pinto Notes is the user's personal notes app. Notes are markdown; the first line is the title.
 Start with get_overview or search_notes to find things. Read a note before editing it.
 Prefer edit_note (exact find/replace) and append_to_note over replace_note_body, so nothing else changes.
 Tables are markdown tables; trackers are tables with typed columns. Use read_table, then log_table_row (it validates values and, in trackers, upserts by date).
@@ -36,7 +36,7 @@ its parent. Use create_sub_note to make one; read it with read_note(id). Deleted
 and can be restored; every edit keeps the previous version (note_history / restore_revision).
 ${PAGE_INSTRUCTIONS}
 A note marked locked: true is locked by the user with a separate password: its title is visible here, and nothing else.
-It can't be read, searched or changed here; only the user can open it, in Amber Notes.`;
+It can't be read, searched or changed here; only the user can open it, in Pinto Notes.`;
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -88,7 +88,7 @@ async function authenticate(sql: Sql, p: Presented, req: Request): Promise<Calle
 
 /** Only the MCP endpoint, the OAuth paths and the well-known files exist. Anything else is most
  *  likely an old setup with the token in the address. */
-const TOKEN_IN_ADDRESS = "Tokens in the address aren't accepted. Put your token in an Authorization header instead (Amber Notes › Settings › Connect an AI).";
+const TOKEN_IN_ADDRESS = "Tokens in the address aren't accepted. Put your token in an Authorization header instead (Pinto Notes › Settings › Connect an AI).";
 
 /// Whether answering this request reads or writes the database. Discovery (the server card, the
 /// /.well-known/ documents), preflights and the answers that only say "sign in" or "use POST" don't,
@@ -121,7 +121,7 @@ export async function handleRequest(req: Request, sql: Sql): Promise<Response> {
   if (!presented && (req.method === "GET" || req.method === "POST")) return unauthorized(base);
   if (req.method === "GET") {
     // No server-initiated stream; clients fall back to plain POST.
-    return new Response("Amber Notes MCP server. POST JSON-RPC here.", { status: 405, headers: { ...cors, allow: "POST" } });
+    return new Response("Pinto Notes MCP server. POST JSON-RPC here.", { status: 405, headers: { ...cors, allow: "POST" } });
   }
   if (req.method === "DELETE") return new Response(null, { status: 204, headers: cors });
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405, headers: cors });
@@ -182,7 +182,7 @@ async function tokenHash(token: string): Promise<string> {
 }
 
 function unauthorized(base: string, error?: string) {
-  return json({ jsonrpc: "2.0", id: null, error: { code: -32001, message: "Sign in to Amber Notes to use your notes. In Amber Notes: Settings → Connect an AI." } }, 401,
+  return json({ jsonrpc: "2.0", id: null, error: { code: -32001, message: "Sign in to Pinto Notes to use your notes. In Pinto Notes: Settings → Connect an AI." } }, 401,
     { "www-authenticate": challenge(base, error) });
 }
 
@@ -290,7 +290,7 @@ let resources: Promise<{ uri: string; name: string; title: string; description: 
 const RESOURCES = () => resources ??= (async () => {
   const { APP_EXAMPLES } = await import("./app_examples.gen.ts");
   return [
-    { uri: GUIDE_URI, name: "note-pages-guide", title: "Building note pages", description: "How to build and edit Amber Notes pages: the window.amber API, data model, design rules and a starter page.", mimeType: "text/markdown", text: await pageGuide() },
+    { uri: GUIDE_URI, name: "note-pages-guide", title: "Building note pages", description: "How to build and edit Pinto Notes pages: the window.amber API, data model, design rules and a starter page.", mimeType: "text/markdown", text: await pageGuide() },
     { uri: BASE_CSS_URI, name: "amber-base-css", title: "amber-base.css", description: "The default stylesheet every note's app gets, before its own styles and in a cascade layer: override any rule, or opt out with <meta name=\"amber-base\" content=\"none\">.", mimeType: "text/css", text: AMBER_BASE_CSS },
     ...Object.entries(APP_EXAMPLES).flatMap(([name, ex]) => Object.entries(ex.files).map(([path, text]) => ({ uri: `amber://examples/${name}${path}`, name: `example-${name}${path.replace(/[/.]/g, "-")}`, title: `Example app ${name}: ${path}`, description: `A file of the ${name} example project.`, mimeType: path.endsWith(".md") ? "text/markdown" : path.endsWith(".css") ? "text/css" : path.endsWith(".html") ? "text/html" : "text/javascript", text: text as string }))),
   ];

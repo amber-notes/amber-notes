@@ -70,7 +70,7 @@ final class OfflineUITests: XCTestCase {
 
     /// Back to the folder list, from wherever launch put us.
     private func toFolders() {
-        for _ in 0..<3 where !app.navigationBars["Amber Notes"].exists { back(); _ = app.navigationBars["Amber Notes"].waitForExistence(timeout: 1.5) }
+        for _ in 0..<3 where !app.navigationBars["Pinto Notes"].exists { back(); _ = app.navigationBars["Pinto Notes"].waitForExistence(timeout: 1.5) }
     }
 
     func test1_WorkOfflineAndComeBack() throws {

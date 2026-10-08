@@ -100,7 +100,7 @@ struct SignInView: View {
                 VStack(spacing: 14) {
                     AppMark(size: 72)
                     // The website's display type: heavy and tight.
-                    Text("Sign in to Amber Notes")
+                    Text("Sign in to Pinto Notes")
                         .font(.title2.weight(.heavy))
                         .tracking(-0.6)
                         .foregroundStyle(Color.ink)
