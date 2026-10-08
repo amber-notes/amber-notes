@@ -60,6 +60,9 @@ enum Palette {
     static let sidebarWarmth = pair(brown, 0.055, brown, 0.05)
     /// The notes list: a little warmth, less than the sidebar.
     static let listGround = pair(0xFCFAF8, 0x252423)
+    /// The sidebar's glass with its warmth, as it reads in full screen (where nothing shows
+    /// through it): the ground of the toolbar strip over the sidebar there.
+    static let sidebarTop = pair(0xEDE9E6, 0x1A1713)
     #endif
 
     // Sign-in.
