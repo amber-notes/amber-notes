@@ -53,8 +53,18 @@ import WebKit
         w.setFrameOrigin(CGPoint(x: -20000, y: -20000))
         w.orderFrontRegardless()
         defer { w.orderOut(nil); w.close() }
-        try? await Task.sleep(for: .seconds(2.5))
         let v = try #require(w.contentView)
+        // The Preview loads once its block rules compile, which takes longer on a busy runner: wait
+        // for the page's load to finish, not for a fixed time.
+        if preview {
+            var loaded = false
+            for _ in 0..<300 {
+                if let web = Self.web(in: v), (web.navigationDelegate as? LockedHTMLDelegate)?.finished == true { loaded = true; break }
+                try await Task.sleep(for: .milliseconds(50))
+            }
+            #expect(loaded, "the Preview never finished loading")
+        }
+        try await Task.sleep(for: .seconds(1.5))
         v.layoutSubtreeIfNeeded()
         let rep = try #require(v.bitmapImageRepForCachingDisplay(in: v.bounds))
         v.cacheDisplay(in: v.bounds, to: rep)

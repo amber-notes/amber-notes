@@ -421,6 +421,12 @@ enum LockedHTML {
     var firstLoadDone = false
     /// Every navigation refused, for tests.
     var refused: [URL] = []
+    /// The page has loaded (its own first load finished), for tests to wait on.
+    private(set) var finished = false
+
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        if firstLoadDone { finished = true }
+    }
 
     /// Where a clicked link goes: the browser (a test puts its own here).
     var open: @MainActor (URL) -> Void = { url in
