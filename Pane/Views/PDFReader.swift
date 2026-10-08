@@ -56,7 +56,7 @@ final class PDFReaderModel {
         guard let v = view else { return }
         fitsWidth = false
         v.autoScales = false
-        v.scaleFactor = Self.step(from: v.scaleFactor, up: up)
+        PDFZoom.set(v, scale: Self.step(from: v.scaleFactor, up: up))
         scale = v.scaleFactor
     }
 
@@ -64,7 +64,7 @@ final class PDFReaderModel {
         guard let v = view else { return }
         fitsWidth = false
         v.autoScales = false
-        v.scaleFactor = 1
+        PDFZoom.set(v, scale: 1)
         scale = 1
     }
 
@@ -129,6 +129,51 @@ final class PDFReaderModel {
         if let p = v.currentPage { page = doc.index(for: p) + 1 }
         scale = v.scaleFactor
     }
+}
+
+/// Zooming that stays put: the point of the page at the middle of what's shown is still there after
+/// the new scale, in the same turn of the run loop, so the page never drifts and snaps back. A page
+/// narrower than the view stays centred (the clip view keeps it there).
+@MainActor enum PDFZoom {
+    static func set(_ v: PDFView, scale: CGFloat) {
+        #if os(macOS)
+        guard let doc = v.documentView, let scroll = doc.enclosingScrollView else { v.scaleFactor = scale; return }
+        let clip = scroll.contentView
+        let middle = v.convert(CGPoint(x: clip.bounds.midX, y: clip.bounds.midY), from: doc)
+        guard let page = v.page(for: middle, nearest: true) else { v.scaleFactor = scale; return }
+        let anchor = v.convert(middle, to: page)
+        v.scaleFactor = scale
+        v.layoutDocumentView()
+        doc.layoutSubtreeIfNeeded()
+        let now = doc.convert(v.convert(anchor, from: page), from: v)
+        let wanted = NSRect(x: now.x - clip.bounds.width / 2, y: now.y - clip.bounds.height / 2, width: clip.bounds.width, height: clip.bounds.height)
+        clip.scroll(to: clip.constrainBoundsRect(wanted).origin)
+        scroll.reflectScrolledClipView(clip)
+        #else
+        guard let scroll = v.subviews.compactMap({ $0 as? UIScrollView }).first ?? v.subviews.flatMap(\.subviews).compactMap({ $0 as? UIScrollView }).first else { v.scaleFactor = scale; return }
+        let b = scroll.bounds
+        let middle = v.convert(CGPoint(x: b.midX, y: b.midY), from: scroll)
+        guard let page = v.page(for: middle, nearest: true) else { v.scaleFactor = scale; return }
+        let anchor = v.convert(middle, to: page)
+        v.scaleFactor = scale
+        v.layoutIfNeeded()
+        let now = scroll.convert(v.convert(anchor, from: page), from: v)
+        let maxX = max(0, scroll.contentSize.width - b.width), maxY = max(0, scroll.contentSize.height - b.height)
+        scroll.contentOffset = CGPoint(x: min(max(now.x - b.width / 2, 0), maxX), y: min(max(now.y - b.height / 2, 0), maxY))
+        #endif
+    }
+
+    #if os(macOS)
+    /// Where the page shown in the middle sits in the visible area, for tests: its rectangle in the
+    /// clip view's coordinates, and the clip view's bounds.
+    static func placement(_ v: PDFView) -> (page: CGRect, visible: CGRect)? {
+        guard let doc = v.documentView, let clip = doc.enclosingScrollView?.contentView else { return nil }
+        let middle = v.convert(CGPoint(x: clip.bounds.midX, y: clip.bounds.midY), from: doc)
+        guard let page = v.page(for: middle, nearest: true) else { return nil }
+        let inView = v.convert(page.bounds(for: v.displayBox), from: page)
+        return (doc.convert(inView, from: v), clip.bounds)
+    }
+    #endif
 }
 
 extension PColor {
