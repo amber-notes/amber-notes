@@ -125,6 +125,94 @@ extension NetworkFaults {
         await engineB.stop()
     }
 
+    /// A store as the old build (1.1.2) left it after A -> B -> A, never synced since: A's own
+    /// folders marked deleted in one burst, in a store that's A's again. The server has those folders
+    /// for A, so only the burst gives them away. Signing in as A sends no deletion, and a full pull
+    /// brings the folders back.
+    @Test func oldSwitchTombstonesInTheirOwnAccountNeverDeleteAnything() async throws {
+        defaults.set(true, forKey: SyncEngine.resetKey(a))
+        StubSupabase.account = a
+        AccountLibrary.adopt(a, context: context, defaults: defaults)
+        let trip = context.createFolder(named: "Trip")
+        _ = context.createFolder(named: "Days", parent: trip)
+        _ = context.createFolder(named: "Work")
+        let notes = context.createFolder(named: "Notes")
+        context.createNote(in: .folder(notes.id), body: "Plan")
+        let first = engine(a)
+        await first.sync()
+        await first.stop()
+        let ids = Set(context.allFolders().map { $0.id.uuidString.lowercased() })
+        #expect(ids.count == 4)
+
+        // The old switch: every folder trashed at once, each marked to go up.
+        for f in context.allFolders() where f.parent == nil { context.trash(f) }
+        try context.save()
+
+        StubSupabase.resetLog()
+        AccountLibrary.adopt(a, context: context, defaults: defaults)   // same account: nothing wiped
+        let again = engine(a)
+        await again.sync()
+        await again.stop()
+        #expect(folderWrites == 0, "no folder deletion reached the server")
+        let server = StubSupabase.rows("folders").filter { ids.contains($0["id"] as? String ?? "") }
+        #expect(server.count == 4 && server.allSatisfy { $0["deleted_at"] == nil || $0["deleted_at"] is NSNull })
+        #expect(context.allFolders().count == 4, "pulled back, live")
+    }
+
+    /// The same tombstones in a store B owns (the old build's A -> B): A signing in wipes them.
+    @Test func oldSwitchTombstonesInAnotherAccountsStoreNeverReachTheirAccount() async throws {
+        defaults.set(true, forKey: SyncEngine.resetKey(a))
+        StubSupabase.account = a
+        AccountLibrary.adopt(a, context: context, defaults: defaults)
+        _ = context.createFolder(named: "Trip")
+        _ = context.createFolder(named: "Work")
+        let first = engine(a)
+        await first.sync()
+        await first.stop()
+        let ids = Set(context.allFolders().map { $0.id.uuidString.lowercased() })
+        // What 1.1.2's adopt(B) left: A's folders trashed and marked to go up, the store B's.
+        for f in context.allFolders() { context.trash(f) }
+        defaults.set(b.uuidString.lowercased(), forKey: AccountLibrary.ownerKey)
+        try context.save()
+
+        StubSupabase.resetLog()
+        #expect(AccountLibrary.adopt(a, context: context, defaults: defaults))
+        let again = engine(a)
+        await again.sync()
+        await again.stop()
+        #expect(folderWrites == 0)
+        let server = StubSupabase.rows("folders").filter { ids.contains($0["id"] as? String ?? "") }
+        #expect(server.count == 2 && server.allSatisfy { $0["deleted_at"] == nil || $0["deleted_at"] is NSNull })
+        #expect(context.allFolders().count == 2)
+    }
+
+    /// The burst rule against what a person does.
+    @Test func whatCountsAsTheOldSwitch() {
+        func folder(_ name: String, parent: Folder? = nil, deleted: Date) -> Folder {
+            let f = Folder(name: name, parent: parent)
+            f.deletedAt = deleted
+            f.serverVersion = 1
+            f.dirty = true
+            return f
+        }
+        let t = Date.now
+        // The old switch: every folder, top-level ones included, within moments.
+        let a1 = folder("A", deleted: t), a2 = folder("B", deleted: t.addingTimeInterval(0.3))
+        let a3 = folder("A inside", parent: a1, deleted: t.addingTimeInterval(0.6))
+        #expect(SyncEngine.switchLeftovers([a1, a2, a3]) == Set([a1.id, a2.id, a3.id]))
+        // A person deleting one folder: it and its sub-folders, one top-level folder.
+        let p1 = folder("Trip", deleted: t)
+        let p2 = folder("Days", parent: p1, deleted: t.addingTimeInterval(0.01))
+        #expect(SyncEngine.switchLeftovers([p1, p2]).isEmpty)
+        // Two folders deleted one after the other, after a question each.
+        let q1 = folder("Old", deleted: t), q2 = folder("Older", deleted: t.addingTimeInterval(4))
+        #expect(SyncEngine.switchLeftovers([q1, q2]).isEmpty)
+        // A folder made here and deleted before it ever synced isn't a tombstone of anything.
+        let n1 = folder("New", deleted: t), n2 = folder("Newer", deleted: t)
+        n1.serverVersion = 0; n2.serverVersion = 0
+        #expect(SyncEngine.switchLeftovers([n1, n2]).isEmpty)
+    }
+
     @Test func refusalsThatMeanAnotherAccountsRow() {
         #expect(SyncEngine.notThisAccounts(PostgrestError(hint: "not_yours", code: "PT413", message: "That folder or note doesn't exist.")))
         #expect(SyncEngine.notThisAccounts(PostgrestError(code: "42501", message: "new row violates row-level security policy")))
@@ -148,7 +236,8 @@ extension NetworkFaults {
         for i in 0..<250 {
             let f = Folder(name: "A's folder \(i)")
             f.serverVersion = 1
-            f.deletedAt = .now
+            // Marked by the old switch, an hour ago.
+            f.deletedAt = .now.addingTimeInterval(-3600 + Double(i) * 0.001)
             f.dirty = true
             context.insert(f)
             foreign.append(f.id)

@@ -538,6 +538,15 @@ final class SyncEngine {
         // refuses a row whose folder it doesn't have yet.
         var folders = ((try? context.fetch(FetchDescriptor<Folder>(predicate: #Predicate { $0.dirty }))) ?? [])
             .sorted { Self.depth($0) < Self.depth($1) } // parents first, for the foreign key
+        // What an account switch before 2026-10-08 left behind: never pushed as deletions.
+        let leftovers = Self.switchLeftovers(folders)
+        if !leftovers.isEmpty {
+            folders.removeAll { leftovers.contains($0.id) }
+            dropForeignFolders(leftovers)
+            // They may be this account's own folders: everything comes down again, as on the server.
+            defaults.removeObject(forKey: cursorKey)
+            log.notice("removed \(leftovers.count) folders an account switch had marked deleted; pulling everything again")
+        }
         let foreign = try await foreignFolders(client, among: folders)
         if !foreign.isEmpty {
             folders.removeAll { foreign.contains($0.id) }
@@ -731,6 +740,29 @@ final class SyncEngine {
             found.formUnion(rows.map(\.id))
         }
         return Set(suspects).subtracting(found)
+    }
+
+    /// Folders the old account switch marked deleted (AccountLibrary before 2026-10-08 soft-deleted the
+    /// whole library in one go), whichever account they belong to. Its mark: deletions waiting to go
+    /// up, of folders that were on the server, made in one burst (each within a second of the
+    /// previous) that takes two or more top-level folders. Nothing a person does makes that: a
+    /// folder is deleted one at a time, after a question, and only its own sub-folders go with it.
+    /// Such a deletion must never reach the server: back in its own account it deleted the account's
+    /// whole folder tree there.
+    nonisolated static func switchLeftovers(_ dirty: [Folder]) -> Set<UUID> {
+        let deleted = dirty.filter { $0.deletedAt != nil && $0.serverVersion > 0 }.sorted { $0.deletedAt! < $1.deletedAt! }
+        var out = Set<UUID>()
+        var burst: [Folder] = []
+        func close() {
+            if burst.filter({ $0.parent == nil }).count >= 2 { out.formUnion(burst.map(\.id)) }
+            burst = []
+        }
+        for f in deleted {
+            if let last = burst.last?.deletedAt, f.deletedAt!.timeIntervalSince(last) > 1 { close() }
+            burst.append(f)
+        }
+        close()
+        return out
     }
 
     /// The server refused a row as another account's: row-level security, or a folder or parent
