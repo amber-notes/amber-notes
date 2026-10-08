@@ -22,14 +22,10 @@ enum AccountLibrary {
         let previous = defaults.string(forKey: ownerKey)
         defaults.set(id, forKey: ownerKey)
         guard let previous, previous != id else { return false }
-        for n in (try? context.fetch(FetchDescriptor<Note>())) ?? [] { context.delete(n) }
-        for f in (try? context.fetch(FetchDescriptor<Folder>())) ?? [] { context.delete(f) }
-        for a in (try? context.fetch(FetchDescriptor<Attachment>())) ?? [] { context.delete(a) }
-        try? context.save()
-        try? FileManager.default.removeItem(at: files ?? FileStore.root)
-        AIEditStore.shared.forgetAll()
-        NotePageStore.shared.forgetAll()
-        NotePageDataStore.shared.forgetAll()
+        // Gone for good. (`context.delete(folder)` would be Library's delete, which only moves a
+        // folder to Recently Deleted and marks it to go up: the old account's folders then stayed
+        // here and were pushed into the new account, which refused them.)
+        context.wipeLocalLibrary(files: files)
         memoryKeys.forEach { defaults.removeObject(forKey: $0) }
         // The sync cursor was keyed with either spelling of the old id.
         for key in ["syncCursor.\(previous)", "syncCursor.\(previous.uppercased())"] { defaults.removeObject(forKey: key) }

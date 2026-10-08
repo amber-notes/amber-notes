@@ -35,6 +35,23 @@ import Testing
         #expect(!FileManager.default.fileExists(atPath: files.path))
     }
 
+    /// Folders too, deleted ones included: `context.delete(folder)` is Library's delete (to Recently
+    /// Deleted, marked to go up), so the old account's folders stayed and were pushed into the new one.
+    @Test func anotherAccountRemovesTheFoldersForGood() throws {
+        let (ctx, defaults, files) = try setup()
+        AccountLibrary.adopt(a, context: ctx, defaults: defaults, files: files)
+        let trip = ctx.createFolder(named: "Trip")
+        _ = ctx.createFolder(named: "Days", parent: trip)
+        let gone = ctx.createFolder(named: "Old")
+        ctx.delete(gone)
+        for f in ctx.allFoldersIncludingDeleted() { f.serverVersion = 1; f.dirty = false }
+        try ctx.save()
+
+        #expect(AccountLibrary.adopt(b, context: ctx, defaults: defaults, files: files))
+        #expect(ctx.allFoldersIncludingDeleted().isEmpty, "no folder of A's is left, deleted or not")
+        #expect(try ctx.fetchCount(FetchDescriptor<Folder>(predicate: #Predicate { $0.dirty })) == 0)
+    }
+
     @Test func theSameAccountKeepsEverything() throws {
         let (ctx, defaults, files) = try setup()
         AccountLibrary.adopt(a, context: ctx, defaults: defaults, files: files)

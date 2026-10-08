@@ -536,8 +536,13 @@ final class SyncEngine {
         problem = nil
         // Folders first: a file or note made offline in a new folder points at it, and the server
         // refuses a row whose folder it doesn't have yet.
-        let folders = ((try? context.fetch(FetchDescriptor<Folder>(predicate: #Predicate { $0.dirty }))) ?? [])
+        var folders = ((try? context.fetch(FetchDescriptor<Folder>(predicate: #Predicate { $0.dirty }))) ?? [])
             .sorted { Self.depth($0) < Self.depth($1) } // parents first, for the foreign key
+        let foreign = try await foreignFolders(client, among: folders)
+        if !foreign.isEmpty {
+            folders.removeAll { foreign.contains($0.id) }
+            dropForeignFolders(foreign)
+        }
         for f in folders where !isRefused(f.id, f.updatedAt) {
             let row = FolderDTO(f)
             do {
@@ -700,6 +705,40 @@ final class SyncEngine {
         log.error("server refused \(id, privacy: .public): \(message, privacy: .public)")
         refused[id] = edited
         problem = message
+    }
+
+    // MARK: Another account's folders
+
+    /// Deleted folders waiting to go up that say they were on the server, and that the server
+    /// doesn't have for this account (it shows each account only its own rows). Before 2026-10-08 a
+    /// switch to another account left the previous account's folders here, deleted and marked to go
+    /// up (AccountLibrary used Library's delete); every sync then pushed them into the new account
+    /// and the server refused each one. Asked once per sync while there are any; normally none.
+    private func foreignFolders(_ client: SupabaseClient, among dirty: [Folder]) async throws -> Set<UUID> {
+        let suspects = dirty.filter { $0.deletedAt != nil && $0.serverVersion > 0 }.map(\.id)
+        guard !suspects.isEmpty else { return [] }
+        struct Row: Decodable { var id: UUID }
+        var found = Set<UUID>()
+        for i in stride(from: 0, to: suspects.count, by: 200) {
+            let chunk = suspects[i ..< min(i + 200, suspects.count)].map { $0.uuidString.lowercased() }
+            let rows: [Row] = try await client.from("folders").select("id").in("id", values: chunk).execute().value
+            found.formUnion(rows.map(\.id))
+        }
+        return Set(suspects).subtracting(found)
+    }
+
+    /// Removes them for good: they're tombstones of folders that were never this account's.
+    private func dropForeignFolders(_ ids: Set<UUID>) {
+        let all = context.allFoldersIncludingDeleted()
+        for f in all where ids.contains(f.id) {
+            // Children that are this account's (none, normally) move to the top level first.
+            for c in all where c.parent?.id == f.id && !ids.contains(c.id) { c.parent = nil }
+        }
+        // SwiftData's delete, not Library's delete(folder).
+        func erase<T: PersistentModel>(_ m: T) { context.delete(m) }
+        for f in all where ids.contains(f.id) { erase(f) }
+        try? context.save()
+        log.notice("removed \(ids.count) folders left by another account")
     }
 
     /// `waits`: the row points at a folder or note the server doesn't have yet (made offline too,
