@@ -136,6 +136,8 @@ extension NetworkFaults {
     /// What the old switch left: B's library holding A's folders, deleted and marked to go up as if
     /// they'd been synced. The server has only B's own; the rest go for good, without a push.
     @Test func foldersLeftByAnotherAccountAreRemovedNotPushed() async throws {
+        // Its one-time encryption reset is long done (it would clear synced rows too).
+        defaults.set(true, forKey: SyncEngine.resetKey(b))
         let mine = context.createFolder(named: "Mine")
         let mineDeleted = context.createFolder(named: "Mine, deleted")
         let engineB = engine(b)
