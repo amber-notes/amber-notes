@@ -200,14 +200,21 @@ extension ModelContext {
         try? save()
     }
 
-    /// Deleting a folder sends its notes (and sub-folders' notes) to Recently Deleted.
-    func delete(_ folder: Folder) {
+    /// Deleting a folder sends its notes (and sub-folders' notes) to Recently Deleted, and the
+    /// deletion goes up with the next sync.
+    func trash(_ folder: Folder) {
         // Marked first, so a loop of folders can't recurse forever.
         folder.deletedAt = .now
         folder.touch()
-        for child in folder.liveChildren { delete(child) }
+        for child in folder.liveChildren { trash(child) }
         for note in folder.liveNotes { trash(note) }
         try? save()
+    }
+
+    /// Removes a folder from this device for good, without telling the server (SwiftData's delete).
+    func erase(_ folder: Folder) {
+        func remove<T: PersistentModel>(_ m: T) { delete(m) }
+        remove(folder)
     }
 
     /// Apple Notes keeps deleted notes for 30 days.

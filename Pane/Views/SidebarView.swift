@@ -297,7 +297,7 @@ struct SidebarView: View {
 
     private func performDelete(_ f: Folder) {
         if scope == .folder(f.id) { scope = .all }
-        withAnimation(.snappy) { context.delete(f) }
+        withAnimation(.snappy) { context.trash(f) }
     }
 }
 

@@ -387,7 +387,7 @@ final class SyncEngine {
                 f.dirty = true
             } else if !f.isDeleted {
                 // A kept folder keeps its parents, so whatever goes here holds nothing kept. Gone
-                // for good: Library's delete(folder) would move it to Recently Deleted instead.
+                // for good: Library's trash(folder) would move it to Recently Deleted instead.
                 erase(f)
                 removed += 1
             }
@@ -469,8 +469,13 @@ final class SyncEngine {
     private func push(_ client: SupabaseClient, sealer: Sealer) async throws -> Bool {
         problem = nil
         if try await pushFiles(client, sealer: sealer) { return true }
-        let folders = ((try? context.fetch(FetchDescriptor<Folder>(predicate: #Predicate { $0.dirty }))) ?? [])
+        var folders = ((try? context.fetch(FetchDescriptor<Folder>(predicate: #Predicate { $0.dirty }))) ?? [])
             .sorted { Self.depth($0) < Self.depth($1) } // parents first, for the foreign key
+        let foreign = try await foreignFolders(client, among: folders)
+        if !foreign.isEmpty {
+            folders.removeAll { foreign.contains($0.id) }
+            dropForeignFolders(foreign)
+        }
         for f in folders where !isRefused(f.id, f.updatedAt) {
             let row = FolderDTO(f)
             do {
@@ -480,6 +485,12 @@ final class SyncEngine {
                     f.dirty = false
                 }
             } catch {
+                // A deletion the server says isn't this account's to make: never this account's
+                // folder, so it goes from here instead of being tried again on every launch.
+                if f.deletedAt != nil, Self.notThisAccounts(error) {
+                    dropForeignFolders([f.id])
+                    continue
+                }
                 switch Self.refusal(error) {
                 case .tooFast?: try? context.save(); return true
                 case .refused(let why)?: refuse(f.id, f.updatedAt, "A folder couldn't sync: \(why)")
@@ -632,6 +643,46 @@ final class SyncEngine {
     }
 
     enum Refusal: Equatable, Sendable { case tooFast, refused(String) }
+
+    // MARK: Another account's folders
+
+    /// Deleted folders waiting to go up that say they were on the server, and that the server
+    /// doesn't have for this account (it shows each account only its own rows). Before 2026-10-08 a
+    /// switch to another account left the previous account's folders here, deleted and marked to go
+    /// up (AccountLibrary's delete was Library's soft delete); every sync then pushed them into the
+    /// new account and the server refused each one. Asked once per sync while there are any.
+    private func foreignFolders(_ client: SupabaseClient, among dirty: [Folder]) async throws -> Set<UUID> {
+        let suspects = dirty.filter { $0.deletedAt != nil && $0.serverVersion > 0 }.map(\.id)
+        guard !suspects.isEmpty else { return [] }
+        struct Row: Decodable { var id: UUID }
+        var found = Set<UUID>()
+        for i in stride(from: 0, to: suspects.count, by: 200) {
+            let chunk = suspects[i ..< min(i + 200, suspects.count)].map { $0.uuidString.lowercased() }
+            let rows: [Row] = try await client.from("folders").select("id").in("id", values: chunk).execute().value
+            found.formUnion(rows.map(\.id))
+        }
+        return Set(suspects).subtracting(found)
+    }
+
+    /// The server refused a row as another account's: row-level security, or a folder or parent
+    /// that isn't this account's (`not_yours`). Not the key checks (`wrong_key`, `no_key`).
+    nonisolated static func notThisAccounts(_ error: Error) -> Bool {
+        guard let p = error as? PostgrestError else { return false }
+        if p.code == "PT413" { return p.hint == "not_yours" }
+        return p.code == "42501" && p.hint != "wrong_key" && p.hint != "no_key"
+    }
+
+    /// Removes them for good: they're tombstones of folders that were never this account's.
+    private func dropForeignFolders(_ ids: Set<UUID>) {
+        let all = context.allFoldersIncludingDeleted()
+        for f in all where ids.contains(f.id) {
+            // Children that are this account's (none, normally) move to the top level first.
+            for c in all where c.parent?.id == f.id && !ids.contains(c.id) { c.parent = nil }
+        }
+        for f in all where ids.contains(f.id) { context.erase(f) }
+        try? context.save()
+        log.notice("removed \(ids.count) folders left by another account")
+    }
 
     /// Sorts a failed write: "too fast" (try again later), "refused" (this row as it stands
     /// can never go up: too big, over a limit, bad data), or nil (network and the like).

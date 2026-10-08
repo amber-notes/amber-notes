@@ -42,6 +42,14 @@ final class StubSupabase: URLProtocol, @unchecked Sendable {
     nonisolated(unsafe) private static var _rpcAnswers: [String: @Sendable ([String: Any]) -> Any] = [:]
 
     nonisolated(unsafe) private static var _tooFast = false
+    nonisolated(unsafe) private static var _account: String?
+    /// Row-level security, for tests that switch accounts: the account making the requests sees and
+    /// changes only its own rows, and writing over another account's row is refused (42501), as on
+    /// the real server. Nil (the default): one account, every row visible.
+    static var account: UUID? {
+        get { lock.withLock { _account.flatMap(UUID.init(uuidString:)) } }
+        set { lock.withLock { _account = newValue?.uuidString.lowercased() } }
+    }
     /// Writes are refused with PostgREST's "too many requests".
     static var tooFast: Bool {
         get { lock.withLock { _tooFast } }
@@ -49,8 +57,11 @@ final class StubSupabase: URLProtocol, @unchecked Sendable {
     }
 
     static func reset() {
-        lock.withLock { tables = [:]; _requests = []; _bodies = []; _objects = [:]; _rpcCalls = []; _rpcAnswers = [:]; _tooFast = false }
+        lock.withLock { tables = [:]; _requests = []; _bodies = []; _objects = [:]; _rpcCalls = []; _rpcAnswers = [:]; _tooFast = false; _account = nil }
     }
+
+    /// Forgets the requests and bodies seen so far; the tables stay.
+    static func resetLog() { lock.withLock { _requests = []; _bodies = [] } }
 
     /// "METHOD /path?query" of every request that reached the server.
     static var requests: [String] { lock.withLock { _requests } }
@@ -157,7 +168,8 @@ final class StubSupabase: URLProtocol, @unchecked Sendable {
         }
         return lock.withLock { () -> (Int, Data) in
             var list = tables[name] ?? []
-            let matches = { (r: [String: Any]) in filters(query).allSatisfy { $0(r) } }
+            let mine = { (r: [String: Any]) in _account == nil || r["_owner"] as? String == _account }
+            let matches = { (r: [String: Any]) in mine(r) && filters(query).allSatisfy { $0(r) } }
             switch method {
             case "GET":
                 var out = list.filter(matches)
@@ -173,6 +185,9 @@ final class StubSupabase: URLProtocol, @unchecked Sendable {
                 for var r in incoming {
                     r["id"] = (r["id"] as? String)?.lowercased()
                     if let i = list.firstIndex(where: { $0["id"] as? String == r["id"] as? String }) {
+                        if !mine(list[i]) {
+                            return (403, Data(#"{"code":"42501","message":"new row violates row-level security policy"}"#.utf8))
+                        }
                         if prefer.contains("ignore-duplicates") { continue }
                         var merged = list[i]
                         for (k, v) in r { merged[k] = v }
@@ -181,6 +196,7 @@ final class StubSupabase: URLProtocol, @unchecked Sendable {
                         out.append(merged)
                     } else {
                         r["version"] = 0
+                        if let owner = _account { r["_owner"] = owner }
                         bump(&r)
                         list.append(r)
                         out.append(r)
@@ -263,6 +279,10 @@ final class StubSupabase: URLProtocol, @unchecked Sendable {
                     guard let x = r[key] else { return false }
                     return "\(x)".lowercased() == want
                 }
+            }
+            if v.hasPrefix("in.("), v.hasSuffix(")") {
+                let want = Set(v.dropFirst(4).dropLast().split(separator: ",").map { $0.trimmingCharacters(in: CharacterSet(charactersIn: "\" ")).lowercased() })
+                return { r in r[key].map { want.contains("\($0)".lowercased()) } ?? false }
             }
             if v.lowercased() == "is.null" {
                 return { r in r[key] == nil || r[key] is NSNull }
