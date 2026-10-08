@@ -22,6 +22,9 @@ import Testing
         w.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
         w.collectionBehavior.insert(.fullScreenPrimary)
         w.contentViewController = NSHostingController(rootView: view)
+        // As the app's own window is shaped (WindowShaper).
+        w.toolbarStyle = .unified
+        NotesChrome.apply(to: w)
         w.setContentSize(size)
         w.setFrameOrigin(CGPoint(x: screen.minX, y: screen.maxY - w.frame.height))
         NSApp.activate()
