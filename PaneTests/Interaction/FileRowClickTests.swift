@@ -52,6 +52,21 @@ import Testing
         w.sendEvent(event(.leftMouseDown))
     }
 
+    /// A click as a hand makes it on a trackpad: the pointer moves a pixel or two between down and
+    /// up. Well under the drag threshold, so it's still a click.
+    static func jitteryClick(_ table: NSTableView, row: Int, in w: NSWindow) {
+        let r = table.rect(ofRow: row)
+        let p = table.convert(NSPoint(x: r.midX, y: r.midY), to: nil)
+        func event(_ type: NSEvent.EventType, dx: CGFloat) -> NSEvent {
+            NSEvent.mouseEvent(with: type, location: NSPoint(x: p.x + dx, y: p.y), modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
+                               windowNumber: w.windowNumber, context: nil, eventNumber: 0, clickCount: 1, pressure: type == .leftMouseUp ? 0 : 1)!
+        }
+        NSApp.postEvent(event(.leftMouseDragged, dx: 1), atStart: false)
+        NSApp.postEvent(event(.leftMouseDragged, dx: 2), atStart: false)
+        NSApp.postEvent(event(.leftMouseUp, dx: 2), atStart: false)
+        w.sendEvent(event(.leftMouseDown, dx: 0))
+    }
+
     @Test func clickingTwoFileRowsAlternatelySelectsEachEveryTime() async throws {
         guard Self.onCI else { return }
         let c = try ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
@@ -97,6 +112,70 @@ import Testing
                 #expect(selection.ids == [want], "round \(round + 1): a click on row \(row) selects \(want == book.id ? "Think_Python.pdf" : "sample.pdf")")
             }
         }
+    }
+
+    /// The whole window, as Emil has it: sidebar, list and detail, with a PDF restored as the open
+    /// item at launch, and clicks on the note list's rows.
+    @Test func inTheWholeWindowWithAPDFAlreadyOpen() async throws {
+        guard Self.onCI else { return }
+        let c = try ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        let ctx = c.mainContext
+        let folder = ctx.createFolder(named: "To Read")
+        _ = ctx.createFolder(named: "Notes")
+        let book = try FileStore.importData(DemoData.bookPDF(title: "Think Python", chapters: ["One", "Two", "Three"]), filename: "Think_Python.pdf", type: .pdf)
+        let sample = try FileStore.importData(DemoData.paperPDF(title: "Sample", lines: 5), filename: "sample.pdf", type: .pdf)
+        defer { FileStore.remove(book); FileStore.remove(sample) }
+        for (f, age) in [(book, 60.0), (sample, 120.0)] {
+            f.folderID = folder.id
+            f.modifiedAt = .now.addingTimeInterval(-age)
+            ctx.insert(f)
+        }
+        let note = ctx.createNote(in: .folder(folder.id), body: "Reading plan\n\nOne a week.")
+        note.updatedAt = .now.addingTimeInterval(-600)
+        try ctx.save()
+        let d = UserDefaults.standard
+        let keep = (d.object(forKey: "lastNote"), d.object(forKey: "lastScope"))
+        defer {
+            if let v = keep.0 { d.set(v, forKey: "lastNote") } else { d.removeObject(forKey: "lastNote") }
+            if let v = keep.1 { d.set(v, forKey: "lastScope") } else { d.removeObject(forKey: "lastScope") }
+        }
+        d.set(try JSONEncoder().encode(Scope.folder(folder.id)), forKey: "lastScope")
+        d.set(book.id.uuidString, forKey: "lastNote")
+        let w = KeyWindow(contentRect: CGRect(x: -20000, y: -20000, width: 1180, height: 760), styleMask: [.borderless], backing: .buffered, defer: false)
+        w.isReleasedWhenClosed = false
+        w.contentViewController = NSHostingController(rootView: RootView().modelContainer(c))
+        w.setContentSize(CGSize(width: 1180, height: 760))
+        w.setFrameOrigin(CGPoint(x: -20000, y: -20000))
+        defer { w.orderOut(nil); w.close() }
+        NSApp.activate(ignoringOtherApps: true)
+        w.makeKeyAndOrderFront(nil)
+        try? await Task.sleep(for: .seconds(2))
+        func tables(_ v: NSView?) -> [NSTableView] {
+            guard let v else { return [] }
+            return (v is NSTableView ? [v as! NSTableView] : []) + v.subviews.flatMap(tables)
+        }
+        // The note list: the table whose rows are notes and files (the sidebar's are folders).
+        let all = tables(w.contentView)
+        let list = try #require(all.first { t in
+            let x = t.convert(t.bounds, to: nil).minX
+            return x > 150 && x < 700
+        }, "the note list's table among \(all.count) tables")
+        let rows = (0 ..< list.numberOfRows).filter { list.rect(ofRow: $0).height > 30 }
+        try #require(rows.count >= 3, "two files and a note (rows: \(list.numberOfRows))")
+        let picks = [(rows[0], book.id, "Think_Python.pdf"), (rows[1], sample.id, "sample.pdf"), (rows[2], note.id, "the note")]
+        var log: [String] = []
+        for round in 0 ..< 10 {
+            for (row, id, name) in picks where round < 9 || name != "the note" {
+                // Every other round the pointer moves a pixel or two during the click, as on a trackpad.
+                if round % 2 == 1 { Self.jitteryClick(list, row: row, in: w) } else { Self.click(list, row: row, in: w) }
+                try? await Task.sleep(for: .milliseconds(400))
+                let selected = list.selectedRowIndexes.contains(row)
+                let opened = d.string(forKey: "lastNote") == id.uuidString
+                log.append("round \(round + 1)\(round % 2 == 1 ? " (pointer moved 2 px)" : "") \(name): row selected \(selected), opened \(opened)")
+                #expect(selected && opened, "round \(round + 1): a click on \(name) selects and opens it")
+            }
+        }
+        Testing.Attachment.record(log.joined(separator: "\n"), named: "file-row-clicks.txt")
     }
 }
 #endif
