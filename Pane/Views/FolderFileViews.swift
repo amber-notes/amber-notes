@@ -85,6 +85,12 @@ struct FileListRow: View {
     var body: some View {
         FileRow(file: file, showFolder: showFolder)
             // Out to Finder, Mail or the Desktop (the file itself), or onto a sidebar folder.
+            #if os(macOS)
+            // The List's own drag hook: the table starts the drag past the drag threshold and keeps
+            // its click-to-select. `.onDrag` put a mouse-down gesture on the row that took the click,
+            // so a click on a file often selected nothing (dev 2610071608).
+            .itemProvider { FileOut.provider(for: file) { [sync] a in await sync?.download(a) ?? false } }
+            #else
             .onDrag {
                 FileOut.provider(for: file) { [sync] a in await sync?.download(a) ?? false }
             } preview: {
@@ -92,6 +98,7 @@ struct FileListRow: View {
                     .padding(.horizontal, 12).padding(.vertical, 8)
                     .glassEffect(.regular, in: .capsule)
             }
+            #endif
             .swipeActions(edge: .trailing) {
                 Button(file.trashedAt == nil ? "Delete" : "Delete Forever…", systemImage: "trash", role: .destructive, action: remove)
             }
