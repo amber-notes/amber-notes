@@ -55,6 +55,7 @@ struct SettingsView: View {
                 Tab(tab.title, systemImage: tab.symbol, value: tab) { page(tab) }
             }
         }
+        .environment(\.networkReach, reach)
         .onChange(of: isSignedIn) { was, now in if was && !now { dismiss() } }
         #else
         NavigationStack(path: $path) {
@@ -71,6 +72,7 @@ struct SettingsView: View {
                         .navigationBarTitleDisplayMode(.inline)
                 }
         }
+        .environment(\.networkReach, reach)
         .consentHost(client: backend.client, active: isSignedIn)
         // A link, a card or the storage warning opens Settings at its page.
         .onChange(of: route.target, initial: true) { _, target in
@@ -86,6 +88,9 @@ struct SettingsView: View {
         if case .signedIn = backend.state { return true }
         return false
     }
+
+    /// Whether the server can be reached; signed out there's nothing that needs it.
+    private var reach: SyncEngine.Reach { isSignedIn ? sync?.reach ?? .online : .online }
 
     private var demoStorage: Bool { ProcessInfo.processInfo.arguments.contains("-demoStorage") }
 
@@ -142,6 +147,7 @@ struct SettingsView: View {
     /// You first, like the Apple Account at the top of Settings, then a row per page.
     private var root: some View {
         Form {
+            OfflineSection()
             if case .signedIn(let email) = backend.state {
                 Section {
                     NavigationLink(value: SettingsTab.account) {
@@ -163,6 +169,7 @@ struct SettingsView: View {
                         Label(AddDeviceCopy.sheetTitle, systemImage: "plus.circle")
                     }
                     .accessibilityIdentifier("settings.addDevice")
+                    .disabled(reach != .online)
                     .sheet(isPresented: $addingDevice) {
                         AddDeviceSheet(crypto: crypto, server: backend.client.map { SupabaseAddDevice(client: $0) })
                             .onDisappear { Task { await devices.refresh(crypto) } }
@@ -199,12 +206,33 @@ private struct SettingsPage<Content: View>: View {
     @ViewBuilder let content: Content
 
     var body: some View {
-        Form { content }
+        Form {
+            #if os(macOS)
+            // Every tab has something that needs the server; iPhone says it on the first screen.
+            OfflineSection()
+            #endif
+            content
+        }
             .formStyle(.grouped)
             #if os(macOS)
             .frame(width: SettingsLayout.width)
             .background(NoInitialFocus())
             #endif
+    }
+}
+
+/// At the top of Settings while the server can't be reached: what still works and what waits.
+private struct OfflineSection: View {
+    @Environment(\.networkReach) private var reach
+
+    var body: some View {
+        if reach != .online {
+            Section {
+                Label(OfflineCopy.settings, systemImage: OfflineCopy.symbol(reach))
+                    .foregroundStyle(Color.muted)
+                    .accessibilityIdentifier("settings.offline")
+            }
+        }
     }
 }
 
@@ -519,7 +547,8 @@ struct SyncStatusLabel: View {
         case .idle: Text("Waiting").foregroundStyle(.secondary)
         case .syncing: HStack(spacing: 6) { ProgressView().controlSize(.mini); Text("Syncing…") }
         case .synced(let d): Text("Syncing to your iPhone and Mac · \(Self.when(d))").foregroundStyle(.secondary)
-        case .offline(let why): Text(why).foregroundStyle(.orange)
+        // No network isn't a problem to fix: said plainly. Refusals and the like stay orange.
+        case .offline(let why): Text(why).foregroundStyle(why == SyncEngine.describe(URLError(.notConnectedToInternet)) ? AnyShapeStyle(.secondary) : AnyShapeStyle(.orange))
         }
     }
 

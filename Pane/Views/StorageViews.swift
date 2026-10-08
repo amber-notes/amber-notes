@@ -91,6 +91,7 @@ struct StorageSection: View {
 
 struct StorageSectionBody: View {
     let usage: StorageUsage?
+    @Environment(\.networkReach) private var reach
 
     var body: some View {
         Section {
@@ -124,6 +125,9 @@ struct StorageSectionBody: View {
                         Text(StorageUsage.size(part.bytes)).monospacedDigit()
                     }
                 }
+            } else if reach != .online {
+                Text("Counted when you\u{2019}re online.").foregroundStyle(.secondary)
+                    .accessibilityIdentifier("settings.storageOffline")
             } else {
                 Text("Counting\u{2026}").foregroundStyle(.secondary)
             }

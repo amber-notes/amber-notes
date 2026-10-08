@@ -124,6 +124,12 @@ struct FileRow: View {
                         .monospacedDigit()
                         .foregroundStyle(Color.muted)
                         .lineLimit(1)
+                    // On the server, not here yet: it needs the network to open.
+                    if file.uploaded, !FileStore.exists(file) {
+                        Image(systemName: "arrow.down.circle")
+                            .foregroundStyle(Color.muted)
+                            .accessibilityHidden(true)
+                    }
                 }
                 .font(RowMetrics.detail)
                 if showFolder, let id = file.folderID, let f = context.folder(id) {
@@ -142,8 +148,15 @@ struct FileRow: View {
         .padding(.leading, RowMetrics.leading)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(file.filename)
-        .accessibilityValue("File, \(file.kindText), \(file.sizeText)")
+        .accessibilityValue("File, \(file.kindText), \(file.sizeText)\(file.uploaded && !FileStore.exists(file) ? ", not downloaded" : "")")
         .accessibilityIdentifier("file.\(file.filename)")
+    }
+}
+
+@MainActor
+enum FileCopy {
+    static func notDownloaded(_ name: String) -> String {
+        "\u{201C}\(name)\u{201D} isn\u{2019}t on this \(Backend.device) yet. It downloads when you\u{2019}re back online. To have a folder\u{2019}s files with you offline, choose Keep Files Downloaded on the folder."
     }
 }
 
@@ -202,7 +215,7 @@ struct FileDetailView: View {
     @State private var exporting = false
     let onNewNote: () -> Void
 
-    enum Load: Equatable { case checking, downloading, ready(URL), failed }
+    enum Load: Equatable { case checking, downloading, ready(URL), failed, notDownloaded }
 
     var body: some View {
         content
@@ -214,7 +227,8 @@ struct FileDetailView: View {
             #endif
             .safeAreaInset(edge: .bottom, spacing: 0) { if file.trashedAt != nil { trashBanner } }
             .toolbar { toolbar }
-            .task(id: "\(file.id)\(file.filename)") { await load() }
+            // Back online, a file that wasn't here is fetched by itself.
+            .task(id: "\(file.id)\(file.filename)\(sync?.reach == .online)") { await load() }
             .alert("Rename File", isPresented: $renaming) {
                 TextField("Name", text: $nameDraft)
                     .accessibilityIdentifier("file.renameField")
@@ -258,6 +272,13 @@ struct FileDetailView: View {
                     .font(.callout)
                     .foregroundStyle(Color.muted)
             }
+        case .notDownloaded:
+            ContentUnavailableView {
+                Label("Not downloaded yet", systemImage: "arrow.down.circle")
+            } description: {
+                Text(FileCopy.notDownloaded(file.filename))
+            }
+            .accessibilityIdentifier("file.notDownloaded")
         case .failed:
             ContentUnavailableView {
                 Label("Can't open this file yet", systemImage: file.symbol)
@@ -272,6 +293,8 @@ struct FileDetailView: View {
 
     private func load() async {
         if FileStore.exists(file) { state = .ready(FileStore.url(for: file.id, filename: file.filename)); return }
+        // Offline there's nothing to wait for: said at once, and fetched when the network is back.
+        if let sync, sync.reach == .offline { state = .notDownloaded; return }
         state = .downloading
         if await sync?.download(file) == true, FileStore.exists(file) {
             state = .ready(FileStore.url(for: file.id, filename: file.filename))

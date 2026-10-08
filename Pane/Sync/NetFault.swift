@@ -21,6 +21,7 @@ enum AppNetwork {
 ///     -netOffline          every request fails at once: not connected
 ///     -netTimeoutAfter 5000  a request that would take longer than this fails as timed out
 ///                          (on its own: every request hangs, then times out)
+///     -netToggle           no fault at launch; offline and back while running (DebugOffline)
 ///
 /// Realtime's WebSocket doesn't go through URLProtocol; `-netOffline` keeps it from starting.
 final class NetFault: URLProtocol, @unchecked Sendable {
@@ -81,8 +82,10 @@ final class NetFault: URLProtocol, @unchecked Sendable {
         return Double(started.filter { $0.0 >= since }.count) / window
     }
 
+    /// `-netToggle`: through the fault layer even with no fault yet, so the debug toggle
+    /// (DebugOffline) can take the app offline and back while it runs.
     static func sessionFromLaunchArguments() -> URLSession? {
-        config.isActive ? session() : nil
+        config.isActive || ProcessInfo.processInfo.arguments.contains("-netToggle") ? session() : nil
     }
 
     /// A session whose requests go through the fault layer.

@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import Observation
 import Supabase
@@ -29,8 +30,15 @@ private let log = Logger(subsystem: "dev.emilwagman.pane", category: "sync")
 @Observable
 final class SyncEngine {
     enum Status: Equatable { case idle, syncing, offline(String), synced(Date) }
+    /// Whether the server can be reached, as far as this device knows: `offline` with no network
+    /// (NetworkPath, or a sync that failed as not connected), `unreachable` when there's a network
+    /// but the server didn't answer (a plane's Wi-Fi before you pay, a server that's down).
+    enum Reach: Equatable { case online, offline, unreachable }
 
     private(set) var status: Status = .idle
+    /// What the last sync found (see `Reach`); `reach` adds what the network path says.
+    private var lastReach = Reach.online
+    var reach: Reach { path.isUp ? lastReach : .offline }
     /// True once a sync has completed since launch.
     private(set) var hasSynced = false
     /// Bumps when a pull changed a note, so an open editor can refresh.
@@ -79,13 +87,19 @@ final class SyncEngine {
 
     /// Seals conflicted copies of locked notes; the app's vault unless a test gives its own.
     private let lockVault: NoteVault?
+    /// Whether there's a network at all: nothing polls while there isn't, and a sync runs the
+    /// moment it's back. Tests give each engine its own.
+    let path: NetworkPath
 
-    init(backend: Backend, context: ModelContext, defaults: UserDefaults = .standard, vault: NoteVault? = nil, crypto: AccountCrypto? = nil) {
+    init(backend: Backend, context: ModelContext, defaults: UserDefaults = .standard, vault: NoteVault? = nil, crypto: AccountCrypto? = nil,
+         path: NetworkPath = .shared) {
         self.backend = backend
         self.context = context
         self.defaults = defaults
         self.lockVault = vault
+        self.path = path
         SyncSignal.onChange = { [weak self] in self?.localChanged() }
+        path.watch { [weak self] up in self?.networkChanged(up: up) }
         // Start fresh removes the account's files from Storage through here. It happens when this
         // device doesn't have the key, long before sync starts, so it's set up front.
         (crypto ?? AccountCrypto.shared).removeAccountFiles = { [weak self] user in
@@ -160,6 +174,12 @@ final class SyncEngine {
     private func run(_ client: SupabaseClient, pulling: Bool) async {
         // The key can go (signed out, Start fresh) between runs.
         guard let sealer = Wire.sealer else { return }
+        // No network: nothing is tried (each read would be retried for seconds first). What's
+        // waiting goes up when it's back (networkChanged).
+        guard path.isUp else {
+            status = .offline(Self.describe(URLError(.notConnectedToInternet)))
+            return
+        }
         resetOldLibraryIfNeeded()
         adoptKeyIfChanged(sealer.keyID)
         if pulling { status = .syncing }
@@ -169,6 +189,9 @@ final class SyncEngine {
             await pushPageData(client, sealer: sealer)
             await pushAPIKeyNames(client, sealer: sealer)
             if pulling { try await pull(client); hasSynced = true }
+            // Only when it changes: views read it, and every write would redraw them.
+            if lastReach != .online { lastReach = .online }
+            if pulling { downloadKeptFiles() }
             if slowedDown {
                 // The server asked us to slow down: the rest goes up in a little while.
                 status = .offline("Syncing a lot of changes, continuing shortly")
@@ -181,7 +204,25 @@ final class SyncEngine {
         } catch {
             log.error("sync failed: \(String(describing: error), privacy: .public)")
             status = .offline(Self.describe(error))
+            if let r = Self.reach(after: error), r != lastReach { lastReach = r }
         }
+    }
+
+    /// What a failed sync says about the connection; nil when it's about something else.
+    nonisolated static func reach(after error: Error) -> Reach? {
+        guard let u = error as? URLError else { return nil }
+        switch u.code {
+        case .notConnectedToInternet, .networkConnectionLost, .dataNotAllowed, .internationalRoamingOff, .callIsActive: return .offline
+        case .cancelled: return nil
+        default: return .unreachable
+        }
+    }
+
+    /// The network went (nothing polls) or came back (everything that waited goes up now, and
+    /// whatever changed elsewhere comes down, without waiting for the next poll).
+    private func networkChanged(up: Bool) {
+        updateFallback()
+        if up, started { schedule(after: 0) }
     }
 
     /// Starts realtime and a first sync after sign-in.
@@ -228,11 +269,12 @@ final class SyncEngine {
                 joined = true
             }
         })
-        // A safety net for anything realtime missed.
+        // A safety net for anything realtime missed. Not while there's no network: coming back
+        // syncs at once (networkChanged).
         realtimeTasks.append(Task { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(60))
-                self?.schedule(after: 0)
+                if self?.path.isUp == true { self?.schedule(after: 0) }
             }
         })
     }
@@ -439,7 +481,7 @@ final class SyncEngine {
 
     /// Realtime joined or dropped. While it's down, edits from other devices come in by a
     /// poll every 8 s (30 s once nothing has changed for 5 minutes) instead of only the
-    /// minute pull; joining again stops it.
+    /// minute pull; joining again stops it, and so does losing the network.
     func realtimeChanged(up: Bool) {
         realtimeUp = up
         updateFallback()
@@ -453,7 +495,7 @@ final class SyncEngine {
 
     private func updateFallback() {
         var signedIn: Bool { if case .signedIn = backend.state { true } else { false } }
-        let wanted = started && active && !realtimeUp && backend.client != nil && signedIn
+        let wanted = started && active && !realtimeUp && path.isUp && backend.client != nil && signedIn
         if !wanted { fallback?.cancel(); fallback = nil; return }
         guard fallback == nil else { return }
         fallback = Task { [weak self] in
@@ -475,6 +517,8 @@ final class SyncEngine {
         fallback?.cancel()
         fallback = nil
         pending?.cancel()
+        keeping?.cancel()
+        keeping = nil
         pushLoop?.cancel()
         pushLoop = nil
         pushWanted = false
@@ -490,7 +534,8 @@ final class SyncEngine {
     /// wait; rows it refuses outright are set aside instead of failing the whole sync.
     private func push(_ client: SupabaseClient, sealer: Sealer) async throws -> Bool {
         problem = nil
-        if try await pushFiles(client, sealer: sealer) { return true }
+        // Folders first: a file or note made offline in a new folder points at it, and the server
+        // refuses a row whose folder it doesn't have yet.
         let folders = ((try? context.fetch(FetchDescriptor<Folder>(predicate: #Predicate { $0.dirty }))) ?? [])
             .sorted { Self.depth($0) < Self.depth($1) } // parents first, for the foreign key
         for f in folders where !isRefused(f.id, f.updatedAt) {
@@ -505,12 +550,15 @@ final class SyncEngine {
                 switch Self.refusal(error) {
                 case .tooFast?: try? context.save(); return true
                 case .refused(let why)?: refuse(f.id, f.updatedAt, "A folder couldn't sync: \(why)")
+                case .waits?: continue
                 case nil: throw error
                 }
             }
         }
+        if try await pushFiles(client, sealer: sealer) { return true }
 
-        let notes = (try? context.fetch(FetchDescriptor<Note>(predicate: #Predicate { $0.dirty }))) ?? []
+        // A sub-note made offline under a note made offline goes up after it.
+        let notes = Self.parentsFirst((try? context.fetch(FetchDescriptor<Note>(predicate: #Predicate { $0.dirty }))) ?? [])
         var pushedNotes: [UUID] = []
         for n in notes where !isRefused(n.id, n.updatedAt) {
             let sentAt = n.updatedAt
@@ -537,6 +585,7 @@ final class SyncEngine {
                 case .refused(let why)?:
                     refuse(n.id, n.updatedAt, "“\(n.title)” couldn't sync: \(why)")
                     continue
+                case .waits?: continue
                 case nil: throw error
                 }
             }
@@ -653,7 +702,21 @@ final class SyncEngine {
         problem = message
     }
 
-    enum Refusal: Equatable, Sendable { case tooFast, refused(String) }
+    /// `waits`: the row points at a folder or note the server doesn't have yet (made offline too,
+    /// and not up yet): tried again on the next sync, never set aside.
+    enum Refusal: Equatable, Sendable { case tooFast, refused(String), waits }
+
+    /// Dirty notes with each one after the dirty notes above it, so a parent made offline is on
+    /// the server before its sub-notes. Otherwise in the order given.
+    nonisolated static func parentsFirst(_ notes: [Note]) -> [Note] {
+        let byID = Dictionary(notes.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        func depth(_ n: Note) -> Int {
+            var d = 0, p = n.parentID
+            while let id = p, let parent = byID[id], d < 64 { d += 1; p = parent.parentID }
+            return d
+        }
+        return notes.enumerated().sorted { (depth($0.element), $0.offset) < (depth($1.element), $1.offset) }.map(\.element)
+    }
 
     /// Sorts a failed write: "too fast" (try again later), "refused" (this row as it stands
     /// can never go up: too big, over a limit, bad data), or nil (network and the like).
@@ -665,6 +728,7 @@ final class SyncEngine {
         if let p = error as? PostgrestError {
             switch p.code {
             case "PT429": return .tooFast
+            case "PT413" where p.hint == "not_yours": return .waits
             case "42501" where p.hint == "wrong_key" || p.hint == "no_key":
                 // The account's key changed on another device (Start fresh): this device gets the
                 // new one, and what it has goes up again (adoptKeyIfChanged).
@@ -724,6 +788,7 @@ final class SyncEngine {
                 switch Self.refusal(error) {
                 case .tooFast?: return true
                 case .refused(let why)?: refuse(a.id, a.createdAt, "“\(a.filename)” couldn't sync: \(why)")
+                case .waits?: continue
                 case nil: throw error
                 }
             }
@@ -736,6 +801,49 @@ final class SyncEngine {
         let data = try await client.storage.from("files").download(path: storagePath(user: user, id: id))
         return try sealer.openFile(data, id: id)
     }
+
+    // MARK: Files kept downloaded
+
+    /// Folders whose files are fetched to this device as they arrive, so they open on a plane
+    /// (a folder's ⋯ menu: Keep Files Downloaded). Only on this device.
+    nonisolated static let keptFoldersKey = "files.keepDownloaded"
+
+    func keepsDownloaded(_ folder: UUID) -> Bool { keptFolders.contains(folder) }
+
+    func setKeepsDownloaded(_ folder: UUID, _ keep: Bool) {
+        var kept = keptFolders
+        if keep { kept.insert(folder) } else { kept.remove(folder) }
+        defaults.set(kept.map(\.uuidString), forKey: Self.keptFoldersKey)
+        keptChanged += 1
+        if keep { downloadKeptFiles() }
+    }
+
+    private var keptFolders: Set<UUID> {
+        Set((defaults.stringArray(forKey: Self.keptFoldersKey) ?? []).compactMap(UUID.init(uuidString:)))
+    }
+    /// Bumps when the kept folders change, for menus that show the choice.
+    private(set) var keptChanged = 0
+    private var keeping: Task<Void, Never>?
+
+    /// The files in kept folders that are on the server and not here yet, fetched one at a time.
+    /// Stops when the network goes; the next sync carries on.
+    private func downloadKeptFiles() {
+        let kept = keptFolders
+        guard keeping == nil, path.isUp, !kept.isEmpty else { return }
+        let missing = ((try? context.fetch(FetchDescriptor<Attachment>(predicate: #Predicate { $0.uploaded && $0.deletedAt == nil }))) ?? [])
+            .filter { a in a.trashedAt == nil && a.folderID.map(kept.contains) == true && !FileStore.exists(a) }
+        guard !missing.isEmpty else { return }
+        keeping = Task { [weak self] in
+            for a in missing {
+                guard let self, self.path.isUp, !Task.isCancelled else { break }
+                _ = await self.download(a)
+            }
+            self?.keeping = nil
+        }
+    }
+
+    /// Tests: waits for the kept files being fetched.
+    func keptFilesSettled() async { await keeping?.value }
 
     /// Fetches a file's bytes from Storage to this device.
     func download(_ a: Attachment) async -> Bool {
@@ -790,22 +898,37 @@ final class SyncEngine {
             return saved
         }
         if sealed { return try await resolveSealedConflict(client, local: n, server: s) }
+        let copyID = Self.conflictCopyID(of: n.id, server: s.version)
         if s.updated_at > n.updatedAt {
             // Theirs is newer: keep it, and keep ours as a conflicted copy.
-            let copy = Note(body: Self.conflictCopy(of: n.body), folder: n.folder)
-            copy.createdAt = n.updatedAt
-            copy.updatedAt = n.updatedAt
-            context.insert(copy)
+            insertConflictCopy(copyID, body: Self.conflictCopy(of: n.body), folder: n.folder, at: n.updatedAt)
             apply(s, to: n)
             return server
         }
         // Ours is newer: it goes up, and theirs is kept here as a conflicted copy (the server
         // keeps it in note_revisions too), so neither edit is lost.
-        let copy = Note(body: Self.conflictCopy(of: s.body), folder: n.folder)
-        copy.createdAt = s.updated_at
-        copy.updatedAt = s.updated_at
-        context.insert(copy)
+        insertConflictCopy(copyID, body: Self.conflictCopy(of: s.body), folder: n.folder, at: s.updated_at)
         return try await client.from("notes").update(NoteDTO(n).patch).eq("id", value: n.id).select().execute().value
+    }
+
+    /// The conflicted copy made for a note against one server version always has the same id: when
+    /// the connection drops after the copy is made (the write that follows never answers), the next
+    /// push meets the same conflict and finds the copy instead of making a second one.
+    nonisolated static func conflictCopyID(of note: UUID, server version: Int64?) -> UUID {
+        var bytes = Array(SHA256.hash(data: Data("conflicted-copy|\(note.uuidString.lowercased())|\(version ?? -1)".utf8)).prefix(16))
+        bytes[6] = (bytes[6] & 0x0F) | 0x40
+        bytes[8] = (bytes[8] & 0x3F) | 0x80
+        return UUID(uuid: (bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
+                           bytes[8], bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15]))
+    }
+
+    private func insertConflictCopy(_ id: UUID, body: String, folder: Folder?, at date: Date) {
+        guard context.note(id) == nil else { return }
+        let copy = Note(body: body, folder: folder)
+        copy.id = id
+        copy.createdAt = date
+        copy.updatedAt = date
+        context.insert(copy)
     }
 
     /// A conflict where either side is locked. The loser is kept as a conflicted copy, and that
@@ -823,8 +946,10 @@ final class SyncEngine {
             problem = "“\(n.title)” was changed on another device while it was locked here. Enter your notes password to sync it."
             return []
         }
-        let copy = try vault.sealedCopy(of: Self.conflictCopy(of: loser), in: n.folder, at: theirsWins ? n.updatedAt : s.updated_at)
-        context.insert(copy)
+        let copyID = Self.conflictCopyID(of: n.id, server: s.version)
+        if context.note(copyID) == nil {
+            context.insert(try vault.sealedCopy(of: Self.conflictCopy(of: loser), in: n.folder, at: theirsWins ? n.updatedAt : s.updated_at, id: copyID))
+        }
         if theirsWins {
             apply(s, to: n)
             return [s]
