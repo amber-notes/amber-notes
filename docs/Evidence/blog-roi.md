@@ -43,7 +43,9 @@ the daily growth loop; the dated reading of each day is in [growth-log.md](growt
   visitor.
 - Still no visit that read a post clicked Download for Mac the same day. `blog_cta_clicked` and
   `blog_copy_clicked` haven't fired yet.
-- Search Console wasn't reached this time (see the 8 October log).
+- Search Console, last 7 days of Google's data (to 5 October): 674 impressions, 13 clicks. The same
+  posts lead (forgot-apple-notes-password, apple-notes-api, recover-deleted-apple-notes,
+  apple-notes-mcp). /blog/apple-notes-not-syncing is "Crawled, currently not indexed".
 
 ## 2 to 7 October 2026 (to 09:00 UTC on 7 October)
 

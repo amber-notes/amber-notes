@@ -17,10 +17,22 @@ assistants. Newest first. Research behind it: [seo-aeo-research-2026-09-30.md](s
   posts. New: the first real `blog_helper_used`, from a Google visitor on forgot-apple-notes-password
   who answered the chooser four times and left after 37 seconds. `blog_cta_clicked` and
   `blog_copy_clicked` still haven't fired.
-- **Google Search Console: not reached.** The Chrome extension is disconnected, Composio has no Search
-  Console connection, and there's no gcloud credential with Search Console access on this Mac. One
-  OAuth sign-in by Emil to Composio's Google Search Console toolkit would let this loop read it without
-  a browser.
+- **Google Search Console, last 7 days (Google's data to 5 October), read in Chrome:** 13 clicks, 674
+  impressions, 1.9% click rate, average position 10.1, 82 queries. Top by impressions: "forgot notes
+  password" 13, "apple notes api" 11, "amber notes" 10 (1 click), "i forgot my notes password" 5, "icloud
+  notes api" 4, "how to reset notes password" 4, "how to recover deleted icloud notes" 3, "how to restore
+  deleted notes" 3, "apple notes mcp" 3.
+- **Page indexing (last update 4 October):** 62 indexed, 22 not. Search Console's 7 October email was
+  about these reasons:
+  - Blocked due to unauthorized request (401): `https://mcp.ambernotes.app/`, the MCP server's root.
+    Fixed in its own PR: the MCP host now serves a robots.txt that disallows everything.
+  - Excluded by noindex: 8 `/open/template/*` universal links. By design.
+  - Page with redirect: http and www addresses. By design.
+  - Alternate page with proper canonical tag: 3 `/templates?category=...` filters. By design.
+  - Crawled, currently not indexed: `/blog/apple-notes-not-syncing`, `/templates/cornell-notes`, and
+    the favicon and OG images. The sync post is still a wall of text, so it's next in line for an
+    upgrade.
+  - Discovered, currently not indexed: `/blog/category/apple-notes` and `/blog/category/building-amber-notes`.
 - **Site health:** all 69 sitemap addresses answer 200. No 404s in the last day.
 
 Reading: traffic fell back to its pre-launch level. The posts people find from Google get read; the
@@ -60,7 +72,8 @@ next step is getting a reader from a post to the download, which hasn't happened
 
 - PostHog: `blog_helper_used` and `blog_copy_clicked` on both posts, and the first post visit followed
   by `download_mac_clicked`.
-- Search Console, once reachable: position for "apple notes mcp" and "apple notes templates".
+- Search Console: position for "apple notes mcp" and "apple notes templates"; Validate Fix on the 401
+  reason once the robots.txt PR is deployed.
 
 ## 7 October 2026: measured per post, "Recover deleted Apple Notes" upgraded, "Claude memory vs notes"
 
