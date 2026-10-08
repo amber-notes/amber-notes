@@ -41,57 +41,64 @@ import Testing
         editor.reflectScrolledClipView(editor.contentView)
     }
 
-    @Test(arguments: [false, true])
-    func window(dark: Bool) async throws {
-        guard let dir = WarmGreySnapshots.dir else { return }
-        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        let mode = dark ? "dark" : "light"
-        let c = try AppSnapshotTests.container()
-        try await AppSnapshotTests.withLastNote(c, "Welcome to Amber Notes") {
-            let w = Self.frontWindow(RootView().modelContainer(c).tint(Color(PColor.paneAccent)), dark: dark)
-            defer { w.orderOut(nil); w.close() }
-            try? await Task.sleep(for: .seconds(1.6))
-            try await WarmGreySnapshots.shoot(w, "mac-chrome-window-\(mode)", in: dir)
-            Self.scrollNote(w)
-            try? await Task.sleep(for: .seconds(0.6))
-            try await WarmGreySnapshots.shoot(w, "mac-chrome-window-scrolled-\(mode)", in: dir)
-            w.toggleFullScreen(nil)
-            for _ in 0..<40 where !w.styleMask.contains(.fullScreen) { try? await Task.sleep(for: .milliseconds(100)) }
-            try? await Task.sleep(for: .seconds(1.5))
-            try await WarmGreySnapshots.shoot(w, "mac-chrome-fullscreen-\(w.styleMask.contains(.fullScreen) ? "" : "FAILED-")\(mode)", in: dir)
-            Self.scrollNote(w)
-            try? await Task.sleep(for: .seconds(0.6))
-            try await WarmGreySnapshots.shoot(w, "mac-chrome-fullscreen-scrolled-\(mode)", in: dir)
-            w.toggleFullScreen(nil)
-            for _ in 0..<40 where w.styleMask.contains(.fullScreen) { try? await Task.sleep(for: .milliseconds(100)) }
-            try? await Task.sleep(for: .seconds(1))
+    static func tree(_ main: NSWindow) -> String {
+        var out = ""
+        func hex(_ c: CGColor?) -> String {
+            guard let c, let n = NSColor(cgColor: c)?.usingColorSpace(.sRGB) else { return "-" }
+            return String(format: "%02X%02X%02X/%.2f", Int(n.redComponent * 255), Int(n.greenComponent * 255), Int(n.blueComponent * 255), n.alphaComponent)
         }
+        func walk(_ v: NSView, _ depth: Int, _ top: CGFloat) {
+            let f = v.convert(v.bounds, to: nil)
+            guard f.maxY > top - 64, depth < 40 else { return }
+            var line = String(repeating: " ", count: depth) + "\(type(of: v)) [\(Int(f.minX)),\(Int(top - f.maxY)) \(Int(f.width))x\(Int(f.height))]"
+            if v.isHidden { line += " hidden" }
+            if v.alphaValue < 1 { line += " a\(v.alphaValue)" }
+            if let l = v.layer, l.backgroundColor != nil { line += " bg \(hex(l.backgroundColor))" }
+            if let e = v as? NSVisualEffectView { line += " material \(e.material.rawValue) blend \(e.blendingMode.rawValue) state \(e.state.rawValue)" }
+            out += line + "\n"
+            for s in v.subviews { walk(s, depth + 1, top) }
+        }
+        for w in NSApp.windows where w.isVisible || w === main {
+            out += "WINDOW \(type(of: w))\(w === main ? " (main)" : "") frame \(w.frame) level \(w.level.rawValue) opaque \(w.isOpaque) bg \(hex(w.backgroundColor?.cgColor)) mask \(w.styleMask.rawValue) transparentTitle \(w.titlebarAppearsTransparent) sep \(w.titlebarSeparatorStyle.rawValue) layout \(w.contentLayoutRect) parent \(w.parent.map { "\(type(of: $0))" } ?? "-") children \(w.childWindows?.count ?? 0)\n"
+            if let root = w.contentView?.superview ?? w.contentView { walk(root, 1, root.bounds.height) }
+        }
+        return out
     }
 
-    /// A new account: no notes, nothing open, the Get set up card in the list; windowed and in
-    /// full screen (Emil's 2610071519 screenshots: a grey band over the empty detail pane, and a
-    /// lighter strip over the sidebar in full screen).
+    /// Experiment: v0 as is, v1 the bar's background hidden (SwiftUI), v2 a see-through title bar
+    /// with no separator (AppKit), v3 both.
     @Test(arguments: [false, true])
-    func empty(dark: Bool) async throws {
+    func variants(dark: Bool) async throws {
         guard let dir = WarmGreySnapshots.dir else { return }
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let mode = dark ? "dark" : "light"
-        let c = try AppSnapshotTests.container()
-        for n in (try? c.mainContext.fetch(FetchDescriptor<Note>())) ?? [] { c.mainContext.purge(n) }
-        try? c.mainContext.save()
-        try await AppSnapshotTests.withLastNote(c, "") {
-            let root = RootView().modelContainer(c).environment(SetupStore(progress: SetupProgress())).tint(Color(PColor.paneAccent))
-            let w = Self.frontWindow(root, dark: dark)
-            defer { w.orderOut(nil); w.close() }
-            try? await Task.sleep(for: .seconds(1.6))
-            try await WarmGreySnapshots.shoot(w, "mac-chrome-empty-\(mode)", in: dir)
-            w.toggleFullScreen(nil)
-            for _ in 0..<40 where !w.styleMask.contains(.fullScreen) { try? await Task.sleep(for: .milliseconds(100)) }
-            try? await Task.sleep(for: .seconds(1.5))
-            try await WarmGreySnapshots.shoot(w, "mac-chrome-empty-fullscreen-\(w.styleMask.contains(.fullScreen) ? "" : "FAILED-")\(mode)", in: dir)
-            w.toggleFullScreen(nil)
-            for _ in 0..<40 where w.styleMask.contains(.fullScreen) { try? await Task.sleep(for: .milliseconds(100)) }
-            try? await Task.sleep(for: .seconds(1))
+        defer { ChromeExperiment.hideBar = false }
+        for v in 0..<4 {
+            ChromeExperiment.hideBar = v == 1 || v == 3
+            let c = try AppSnapshotTests.container()
+            for n in (try? c.mainContext.fetch(FetchDescriptor<Note>())) ?? [] { c.mainContext.purge(n) }
+            try? c.mainContext.save()
+            try await AppSnapshotTests.withLastNote(c, "") {
+                let root = RootView().modelContainer(c).environment(SetupStore(progress: SetupProgress())).tint(Color(PColor.paneAccent))
+                let w = Self.frontWindow(root, dark: dark)
+                defer { w.orderOut(nil); w.close() }
+                try? await Task.sleep(for: .seconds(1.2))
+                if v >= 2 {
+                    w.titlebarAppearsTransparent = true
+                    w.titlebarSeparatorStyle = .none
+                }
+                try? await Task.sleep(for: .seconds(0.6))
+                try await WarmGreySnapshots.shoot(w, "x-v\(v)-window-\(mode)", in: dir)
+                if dark { try? Self.tree(w).write(to: dir.appending(path: "x-v\(v)-window-tree.txt"), atomically: true, encoding: .utf8) }
+                w.toggleFullScreen(nil)
+                for _ in 0..<40 where !w.styleMask.contains(.fullScreen) { try? await Task.sleep(for: .milliseconds(100)) }
+                try? await Task.sleep(for: .seconds(2))
+                try await WarmGreySnapshots.shoot(w, "x-v\(v)-full-\(w.styleMask.contains(.fullScreen) ? "" : "FAILED-")\(mode)", in: dir)
+                if dark { try? Self.tree(w).write(to: dir.appending(path: "x-v\(v)-full-tree.txt"), atomically: true, encoding: .utf8) }
+                w.toggleFullScreen(nil)
+                for _ in 0..<40 where w.styleMask.contains(.fullScreen) { try? await Task.sleep(for: .milliseconds(100)) }
+                try? await Task.sleep(for: .seconds(1))
+            }
         }
     }
 }

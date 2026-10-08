@@ -92,6 +92,7 @@ struct RootView: View {
         #if os(macOS)
         // The list column shows its own title; no window title in the bar.
         .toolbar(removing: .title)
+        .toolbarBackgroundVisibility(ChromeExperiment.hideBar ? .hidden : .automatic, for: .windowToolbar)
         #endif
     }
 
@@ -555,5 +556,12 @@ enum Presentation {
             .flatMap(\.windows)
             .contains { $0.rootViewController?.presentedViewController != nil }
     }
+}
+#endif
+
+#if os(macOS)
+/// Experiment only (snapshots branch).
+enum ChromeExperiment {
+    nonisolated(unsafe) static var hideBar = false
 }
 #endif
