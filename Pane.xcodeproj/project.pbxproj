@@ -77,6 +77,7 @@
 		197DDF6AAC9C2FE91649E1C1 /* stack.json in Resources */ = {isa = PBXBuildFile; fileRef = 1936CFFEE4A4126D37AE43CB /* stack.json */; };
 		1B775534C534B91815A40306 /* StorageViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 587AD0188BB0C85D166B7656 /* StorageViews.swift */; };
 		1BB0A248D658A1C8DADC7424 /* SyncFaultTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DE5145EFFCEE51D61F16FCD /* SyncFaultTests.swift */; };
+		1BCF71078355965AC9313B22 /* BundleRename.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00C914D1C89C1A28F957DF97 /* BundleRename.swift */; };
 		1CB56AA727694AFCF834FB2E /* AddDeviceSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 672F945AC1C85249447146D1 /* AddDeviceSync.swift */; };
 		1CDE672D3CF4CC64C0D79511 /* ConnectAITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87987EC62A5DA06AB545080F /* ConnectAITests.swift */; };
 		1CE6B672D7A30D70F5913750 /* FolderFilesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C55C10553460868D451E9230 /* FolderFilesTests.swift */; };
@@ -417,6 +418,7 @@
 		C18DC6574D1F988EE78B00AE /* ShareAsk.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DCC46BAF9DF564799127E10 /* ShareAsk.swift */; };
 		C23E87D238AFF3935F64E24B /* Files.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3E39767B1556B484757CE36 /* Files.swift */; };
 		C2A23F349B49F07B95A1E81C /* NoteListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AFF5865DFB1F37542A9EF3A /* NoteListView.swift */; };
+		C2BE09056520338EBE726005 /* BundleRename.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00C914D1C89C1A28F957DF97 /* BundleRename.swift */; };
 		C31386DEDF93E0340E99476A /* WikiLinkEditorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EE3FF188D09E62B4A68D47F /* WikiLinkEditorTests.swift */; };
 		C3FDDB755E2DAB9909A8ED0F /* TypedTable.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7D3C041048DAAB22B2FC870 /* TypedTable.swift */; };
 		C460E86BE2C39E1C8EBF62AC /* Inbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99F11FB36958597987AD023E /* Inbox.swift */; };
@@ -497,6 +499,7 @@
 		E919027807E1DEA72B51E0FC /* NotePageLibraries.swift in Sources */ = {isa = PBXBuildFile; fileRef = 999D65FF932EF270CB1D17B4 /* NotePageLibraries.swift */; };
 		E92AC6AF1FE507EBE1778496 /* NotePageData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74B99DE5320A61F5F5F0A9B8 /* NotePageData.swift */; };
 		EA0DED6244B39111FEEBC2AC /* CollabText.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DC69D91E636A7BD81BB0164 /* CollabText.swift */; };
+		EA70BEDD2F3F4EC520FF466C /* BundleRenameTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B2965B65AD833118261881C /* BundleRenameTests.swift */; };
 		EAB87CE00ACD15BD840A9B73 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3891EC4D2DC7BF10221F3CBC /* SettingsView.swift */; };
 		EB72815EF0591089238CFB26 /* e2ee-vectors.json in Resources */ = {isa = PBXBuildFile; fileRef = D5DFD991B7F6D9071008215D /* e2ee-vectors.json */; };
 		EBA52C007B952E15C5C98BED /* AppPlace.swift in Sources */ = {isa = PBXBuildFile; fileRef = D66F73D19D6FC8E877D5EDCA /* AppPlace.swift */; };
@@ -584,6 +587,7 @@
 
 /* Begin PBXFileReference section */
 		005D993BB051DBCB7CB4CED0 /* LiveViewerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveViewerTests.swift; sourceTree = "<group>"; };
+		00C914D1C89C1A28F957DF97 /* BundleRename.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BundleRename.swift; sourceTree = "<group>"; };
 		00DCB857B69E6D8507AAD6E4 /* Backend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Backend.swift; sourceTree = "<group>"; };
 		01C445BFD3C61467F8EF1FCB /* Keep */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Keep; path = PaneTests/Fixtures/Keep; sourceTree = SOURCE_ROOT; };
 		020E4F46F8521511BB37EAAA /* MarkdownEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownEditor.swift; sourceTree = "<group>"; };
@@ -594,6 +598,7 @@
 		08062ADED61309CC7CE5FA8F /* LifecycleUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LifecycleUITests.swift; sourceTree = "<group>"; };
 		0968B22016B98500451306BA /* Capture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Capture.swift; sourceTree = "<group>"; };
 		0A3E8C508286ED65BD00189A /* SearchBarUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchBarUITests.swift; sourceTree = "<group>"; };
+		0B2965B65AD833118261881C /* BundleRenameTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BundleRenameTests.swift; sourceTree = "<group>"; };
 		0BC98D85A82BA1ECBFDE6ABB /* WelcomeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeTests.swift; sourceTree = "<group>"; };
 		0BD099569894B6BB98E56F2A /* BackendSessionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackendSessionTests.swift; sourceTree = "<group>"; };
 		0C246BB0AA36AD5C69E3BB96 /* ListEditingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListEditingTests.swift; sourceTree = "<group>"; };
@@ -1290,6 +1295,7 @@
 				C561D2BC7327C8F950CD3504 /* AppleSignInTests.swift */,
 				AD85277F3CDC38C49076FC74 /* AppPlaceTests.swift */,
 				0BD099569894B6BB98E56F2A /* BackendSessionTests.swift */,
+				0B2965B65AD833118261881C /* BundleRenameTests.swift */,
 				DFCA13DCB9435718E4F5BF8C /* ChecklistSortTests.swift */,
 				06388D3FCFEAEAE87C8C2620 /* CollabCryptoTests.swift */,
 				87987EC62A5DA06AB545080F /* ConnectAITests.swift */,
@@ -1485,6 +1491,7 @@
 		DF3F463580953ACA707A086F /* App */ = {
 			isa = PBXGroup;
 			children = (
+				00C914D1C89C1A28F957DF97 /* BundleRename.swift */,
 				0968B22016B98500451306BA /* Capture.swift */,
 				D790820F09B164806F11F8B4 /* CaptureBestApps.swift */,
 				D058AF887BE21AC49E51A5C7 /* DemoData.swift */,
@@ -1902,6 +1909,7 @@
 				57A24F50398460ECCDD303A5 /* BigLibraryTests.swift in Sources */,
 				8A04A2FEC23E05427C180EE1 /* BlogSnapshots.swift in Sources */,
 				F3D8103CA4E31AB9BF87ECBD /* BulletLookTests.swift in Sources */,
+				EA70BEDD2F3F4EC520FF466C /* BundleRenameTests.swift in Sources */,
 				6933608C9BB3131FFAE85300 /* CaretFixTests.swift in Sources */,
 				253C140607541209FC05DCDD /* ChecklistInteractionTests.swift in Sources */,
 				B568FC006AB97255DF994967 /* ChecklistLookTests.swift in Sources */,
@@ -2027,6 +2035,7 @@
 				E4F9E318E888DD290EB5E583 /* ApplePins.swift in Sources */,
 				AC4C7D23E59DCA6BD306217A /* AppleSignIn.swift in Sources */,
 				088BB78B4A790B24F552FB83 /* Backend.swift in Sources */,
+				C2BE09056520338EBE726005 /* BundleRename.swift in Sources */,
 				05B78ACCABC34029545D70D7 /* Capture.swift in Sources */,
 				CAB01CDDDC766A30F3AC9024 /* CaptureBestApps.swift in Sources */,
 				ED60264B582697DA27C9AFC3 /* CardView.swift in Sources */,
@@ -2227,6 +2236,7 @@
 				21B3A13060F5A1F99F01DAEF /* ApplePins.swift in Sources */,
 				6F0A081CD5824B2A571CBAA7 /* AppleSignIn.swift in Sources */,
 				92FA4CCEEC2C4F3AF343889E /* Backend.swift in Sources */,
+				1BCF71078355965AC9313B22 /* BundleRename.swift in Sources */,
 				85CE6CEEC52E3B261A4B199E /* Capture.swift in Sources */,
 				7FBD5A13A103939FE62E07D7 /* CaptureBestApps.swift in Sources */,
 				AE5B0A5685E22D5E03FBA755 /* CardView.swift in Sources */,
@@ -2443,7 +2453,7 @@
 					"@executable_path/../Frameworks",
 				);
 				PANE_MAC_ENTITLEMENTS = "Pane-mac-direct.entitlements";
-				PANE_PRODUCT_NAME = "Amber Notes";
+				PANE_PRODUCT_NAME = "Pinto Notes";
 				PRODUCT_BUNDLE_IDENTIFIER = "$(PANE_BUNDLE_ID)";
 				PRODUCT_MODULE_NAME = Pane;
 				PRODUCT_NAME = "$(PANE_PRODUCT_NAME)";
@@ -2659,7 +2669,7 @@
 					"@executable_path/../Frameworks",
 				);
 				PANE_MAC_ENTITLEMENTS = "Pane-mac-direct.entitlements";
-				PANE_PRODUCT_NAME = "Amber Notes";
+				PANE_PRODUCT_NAME = "Pinto Notes";
 				PRODUCT_BUNDLE_IDENTIFIER = "$(PANE_BUNDLE_ID)";
 				PRODUCT_MODULE_NAME = Pane;
 				PRODUCT_NAME = "$(PANE_PRODUCT_NAME)";

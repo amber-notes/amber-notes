@@ -1,6 +1,6 @@
-# dmgbuild settings for the Amber Notes installer window. Use scripts/dmg/build-dmg.sh, which runs:
-#   dmgbuild -s scripts/dmg/settings.py -D repo=<repo> -D app=<Amber Notes.app> [-D background=warm] \
-#     "Amber Notes" <out.dmg>
+# dmgbuild settings for the Pinto Notes installer window. Use scripts/dmg/build-dmg.sh, which runs:
+#   dmgbuild -s scripts/dmg/settings.py -D repo=<repo> -D app=<Pinto Notes.app> [-D background=warm] \
+#     "Pinto Notes" <out.dmg>
 # The positions come from brand/dmg/layout.json, the same file the background is drawn to.
 import json
 import os

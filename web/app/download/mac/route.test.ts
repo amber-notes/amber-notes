@@ -27,7 +27,7 @@ describe("/download/mac", () => {
     expect(init.method).toBe("POST");
     expect(JSON.parse(String(init.body))).toEqual({ p_product: "mac" });
     expect(res.status).toBe(302);
-    expect(res.headers.get("location")).toBe("/downloads/Amber-Notes.dmg");
+    expect(res.headers.get("location")).toBe("/downloads/Pinto-Notes.dmg");
     expect(res.headers.get("cache-control")).toBe("no-store");
   });
 
@@ -49,7 +49,7 @@ describe("/download/mac", () => {
       stubFetch(failing);
       const res = await GET();
       expect(res.status).toBe(302);
-      expect(res.headers.get("location")).toBe("/downloads/Amber-Notes.dmg");
+      expect(res.headers.get("location")).toBe("/downloads/Pinto-Notes.dmg");
     }
   });
 
@@ -59,7 +59,7 @@ describe("/download/mac", () => {
     const started = Date.now();
     const res = await GET();
     expect(Date.now() - started).toBeLessThan(3000);
-    expect(res.headers.get("location")).toBe("/downloads/Amber-Notes.dmg");
+    expect(res.headers.get("location")).toBe("/downloads/Pinto-Notes.dmg");
   });
 
   it("redirects without counting when Supabase isn't configured", async () => {
@@ -70,7 +70,7 @@ describe("/download/mac", () => {
     const fetch = stubFetch(async () => new Response(null, { status: 204 }));
     const res = await GET();
     expect(fetch).not.toHaveBeenCalled();
-    expect(res.headers.get("location")).toBe("/downloads/Amber-Notes.dmg");
+    expect(res.headers.get("location")).toBe("/downloads/Pinto-Notes.dmg");
   });
 
   it("doesn't count a HEAD request", async () => {

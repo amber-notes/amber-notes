@@ -4,7 +4,18 @@
 // anything else about who downloaded. Sparkle's appcast points at the versioned DMG directly, so
 // updates are never counted.
 export const MAC_DOWNLOAD_PATH = "/download/mac";
-export const MAC_DMG = "/downloads/Amber-Notes.dmg";
+/// The DMG's stable name since 1.2, when the Mac app became Pinto Notes.app. The names from before
+/// (Amber-Notes.dmg, Amber-Notes-<version>.dmg) are still answered: see OLD_DMG_NAMES.
+export const MAC_DMG_NAME = "Pinto-Notes.dmg";
+export const MAC_DMG = `/downloads/${MAC_DMG_NAME}`;
+
+/// Links and appcasts from before the rename ask for the old file names. Once a release has
+/// replaced those files, the site answers them with the new ones (fallback rewrites in
+/// next.config.ts: they apply only when no file has the old name).
+export const OLD_DMG_NAMES = [
+  { source: "/downloads/Amber-Notes.dmg", destination: MAC_DMG },
+  { source: "/downloads/Amber-Notes-:version(\\d[\\d.]*).dmg", destination: "/downloads/Pinto-Notes-:version.dmg" },
+];
 
 export type Product = "mac";
 

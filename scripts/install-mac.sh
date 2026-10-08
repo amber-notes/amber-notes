@@ -28,9 +28,12 @@ xcodebuild -project "$CLEAN/Pane.xcodeproj" -scheme Pane -configuration Release 
 [[ -d $app ]] || { echo "Build failed." >&2; exit 1; }
 
 # Quit the running copy (exact PID), swap it, relaunch.
-pid=$(pgrep -f "/Applications/Amber Notes.app/Contents/MacOS/" | head -1 || true)
-[[ -n $pid ]] && kill "$pid" && sleep 1.5
-rm -rf "/Applications/Amber Notes.app"
-cp -R "$app" "/Applications/Amber Notes.app"
-open "/Applications/Amber Notes.app"
-echo "Installed /Applications/Amber Notes.app ($(codesign -dv "/Applications/Amber Notes.app" 2>&1 | grep TeamIdentifier))"
+# The copy from before the rename (Amber Notes.app) goes too, so there is one app, not two.
+for old in "/Applications/Pinto Notes.app" "/Applications/Amber Notes.app"; do
+  pid=$(pgrep -f "$old/Contents/MacOS/" | head -1 || true)
+  [[ -n $pid ]] && kill "$pid" && sleep 1.5
+  rm -rf "$old"
+done
+cp -R "$app" "/Applications/Pinto Notes.app"
+open "/Applications/Pinto Notes.app"
+echo "Installed /Applications/Pinto Notes.app ($(codesign -dv "/Applications/Pinto Notes.app" 2>&1 | grep TeamIdentifier))"

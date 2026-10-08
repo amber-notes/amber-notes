@@ -22,7 +22,7 @@ OUT="$MAIN/build/testflight"
 IN_PLACE=${IN_PLACE:-0}
 CHANNEL=${CHANNEL:-release}
 beta=()
-NAME="Amber Notes"
+NAME="Pinto Notes"
 if [[ $CHANNEL == beta ]]; then
   IN_PLACE=1; OUT="$MAIN/build/testflight-beta"; NAME="Amber Notes Beta"
   [[ -f $MAIN/Config/Backend.staging.local.xcconfig ]] || { echo "No Config/Backend.staging.local.xcconfig: run scripts/staging.sh app-config first." >&2; exit 1; }
@@ -85,7 +85,7 @@ ship() {
   echo "✓ $platform build $BUILD $([[ $UPLOAD == 1 ]] && echo "uploaded" || echo "exported to $OUT/$platform-$BUILD-export")"
 }
 
-# The Mac app installs as "Amber Notes.app" (dev builds keep the Pane product name), sandboxed.
+# The Mac app installs as "Pinto Notes.app" (dev builds keep the Pane product name), sandboxed.
 macArgs=(PANE_MAC_ENTITLEMENTS=Pane-mac-appstore.entitlements "PANE_PRODUCT_NAME=$NAME")
 
 case $WHICH in
