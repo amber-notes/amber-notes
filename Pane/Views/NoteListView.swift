@@ -934,14 +934,19 @@ final class LibraryNotes {
             if e.note.modelContext != nil { moved.append(watched(e.note)) }
             return true
         }
-        for e in moved.sorted(by: { $0.date > $1.date }) {
-            // Before the first entry that isn't newer: where a stable sort would put it.
-            var low = 0, high = sorted.count
-            while low < high {
-                let mid = (low + high) / 2
-                if sorted[mid].date > e.date { low = mid + 1 } else { high = mid }
+        if moved.count > 64 {
+            // A sync or an import changed many at once: one sort beats that many insertions.
+            sorted = (sorted + moved).sorted { $0.date > $1.date }
+        } else {
+            for e in moved.sorted(by: { $0.date > $1.date }) {
+                // Before the first entry that isn't newer.
+                var low = 0, high = sorted.count
+                while low < high {
+                    let mid = (low + high) / 2
+                    if sorted[mid].date > e.date { low = mid + 1 } else { high = mid }
+                }
+                sorted.insert(e, at: low)
             }
-            sorted.insert(e, at: low)
         }
         generation += 1
     }
