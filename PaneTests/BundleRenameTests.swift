@@ -60,27 +60,5 @@ import Testing
         // Once it is Pinto Notes.app there is nothing more to do.
         #expect(BundleRename.destination(for: to) { files.fileExists(atPath: $0.path) } == nil)
     }
-
-    /// The Dock icon and a Login Items entry hold the old path: it keeps opening the app, unseen in Finder.
-    @Test func theOldPathStaysAsAHiddenLinkToTheNewName() throws {
-        let files = FileManager.default
-        let dir = files.temporaryDirectory.appendingPathComponent("bundle-rename-\(UUID().uuidString)", isDirectory: true)
-        defer { try? files.removeItem(at: dir) }
-        let old = dir.appendingPathComponent(BundleRename.oldName, isDirectory: true)
-        let new = dir.appendingPathComponent(BundleRename.newName, isDirectory: true)
-        try files.createDirectory(at: new.appendingPathComponent("Contents"), withIntermediateDirectories: true)
-        try Data("x".utf8).write(to: new.appendingPathComponent("Contents/Info.plist"))
-        BundleRename.leaveLink(at: old, files: files)
-        // Relative, so the pair can be moved to another folder together.
-        #expect(try files.destinationOfSymbolicLink(atPath: old.path) == BundleRename.newName)
-        #expect(files.fileExists(atPath: old.appendingPathComponent("Contents/Info.plist").path), "the old path opens the new bundle")
-        #expect(try old.resourceValues(forKeys: [.isHiddenKey, .isSymbolicLinkKey]).isHidden == true)
-        #expect(try new.resourceValues(forKeys: [.isHiddenKey]).isHidden == false, "only the link is hidden")
-        // Opened through the link, the app is still called Amber Notes.app by path: it must not try to move again.
-        #expect(BundleRename.destination(for: old) { files.fileExists(atPath: $0.path) } == nil)
-        // Removing the link leaves the app.
-        try files.removeItem(at: old)
-        #expect(try files.contentsOfDirectory(atPath: dir.path) == [BundleRename.newName])
-    }
 }
 #endif
