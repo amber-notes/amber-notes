@@ -253,6 +253,7 @@ if (only.has("perf")) {
     add("perf", `perf.${size}.launchToWindowMs`, `${size} notes: cold launch to first usable window`, m((r) => num(r.launchToWindowMs)), "ms");
     if (rs.some((r) => r.keyAskedAgainAtLaunch)) add("perf", `perf.${size}.keyAskedAgain`, `${size} notes: key asked for again at launch`, "yes", "",
       "This build can't keep the account's key between launches, so every launch needs the recovery key; the probe types it, and the launch times include that. Seen on the sandboxed Developer ID beta (no data protection keychain); the App Store and the unsandboxed download builds keep it.");
+    add("perf", `perf.${size}.launchToListMs`, `${size} notes: cold launch to the note list's first rows`, m((r) => num(r.launchToListMs)), "ms");
     add("perf", `perf.${size}.launchToSyncedMs`, `${size} notes: launch to synced`, m((r) => num(r.launchToSyncedMs)), "ms");
     add("perf", `perf.${size}.idle.cpuPercent`, `${size} notes: idle CPU`, m((r) => num((r.idle as Record<string, number>)?.cpuPercent)), "%");
     add("perf", `perf.${size}.idle.layouts`, `${size} notes: views laid out while idle (20 s)`, m((r) => num((r.idle as Record<string, number>)?.layouts)), "",

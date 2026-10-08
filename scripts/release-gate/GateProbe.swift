@@ -176,6 +176,10 @@ final class GateProbe: NSObject {
         results["launchToWindowMs"] = (windowAt - launch) * 1000
         emit("window \(Int(results["launchToWindowMs"] as! Double)) ms")
         startLink()
+        // The note list shows its first rows (the middle column's table).
+        if (try? await until("list", seconds: 120) { (self.noteListTable?.numberOfRows ?? 0) > 0 }) != nil {
+            results["launchToListMs"] = (CACurrentMediaTime() - launch) * 1000
+        }
         try await until("synced", seconds: 300) { self.synced }
         let syncedAt = CACurrentMediaTime()
         results["launchToSyncedMs"] = (syncedAt - launch) * 1000
@@ -479,6 +483,11 @@ final class GateProbe: NSObject {
     private var sidebarTable: NSTableView? {
         guard let split = window?.contentView.flatMap({ Self.find(NSSplitView.self, in: $0) }), let first = split.arrangedSubviews.first else { return nil }
         return Self.find(NSTableView.self, in: first)
+    }
+
+    private var noteListTable: NSTableView? {
+        guard let split = window?.contentView.flatMap({ Self.find(NSSplitView.self, in: $0) }), split.arrangedSubviews.count > 1 else { return nil }
+        return Self.find(NSTableView.self, in: split.arrangedSubviews[1])
     }
 
     private static func find<T: NSView>(_ type: T.Type, in view: NSView) -> T? {
