@@ -37,15 +37,15 @@ struct CodeFileView: View {
         VStack(spacing: 0) {
             bar
             Divider()
-            if preview {
+            if !loaded {
+                Color.notePage
+            } else if preview {
                 LockedHTMLView(html: text)
                     .accessibilityIdentifier("file.htmlPreview")
-            } else if loaded {
+            } else {
                 CodeTextView(text: $text, language: language, editable: file.trashedAt == nil)
                     .accessibilityIdentifier("file.code")
                     .onChange(of: text) { _, _ in scheduleSave() }
-            } else {
-                Color.notePage
             }
         }
         .background(Color.notePage)
