@@ -273,6 +273,7 @@ json.dump({"query": q}, open(out, "w"))' "$f" "$email" "$days"
 # profile. Every rebuild has the same bundle id, team and keychain group, so it keeps its container,
 # its keychain items (the session and the account's key) and its device: nothing to sign in or link
 # again. Built in its own clean worktree (../AmberNotes-devapp), so no work in progress goes in.
+# Only for this Mac's chip (ONLY_ACTIVE_ARCH): half the compile of a universal build.
 cmd_dev_app() {
   need_ref
   local wait=${1:-}
@@ -296,7 +297,7 @@ cmd_dev_app() {
     -derivedDataPath "$dd" -xcconfig "$tree/Config/Beta.xcconfig" \
     -allowProvisioningUpdates -allowProvisioningDeviceRegistration \
     DEVELOPMENT_TEAM=4UM3XVUN9Y CODE_SIGN_STYLE=Automatic CODE_SIGN_IDENTITY="Apple Development" \
-    PROVISIONING_PROFILE_SPECIFIER= CURRENT_PROJECT_VERSION="$build" build > "$tree/build/dev-app.log" 2>&1 \
+    PROVISIONING_PROFILE_SPECIFIER= CURRENT_PROJECT_VERSION="$build" ONLY_ACTIVE_ARCH=YES build > "$tree/build/dev-app.log" 2>&1 \
     || { grep -E ' error: ' "$tree/build/dev-app.log" | head; echo "Build failed: $tree/build/dev-app.log" >&2; exit 1; }
   # Every piece of code in the app signed by the same team, or the app won't start.
   codesign --verify --deep --strict "$app"
