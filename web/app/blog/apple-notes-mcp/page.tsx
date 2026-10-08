@@ -1,6 +1,9 @@
 import { Figure } from "@/lib/blog";
 import { MCP_URL } from "@/lib/facts";
+import { McpChooser } from "@/lib/McpChooser";
+import { PostCta } from "@/lib/PostCta";
 import { PostPage, postMetadata } from "@/lib/PostPage";
+import { Answer, Capture, Keep, Steps } from "@/lib/PostParts";
 import { SHOTS } from "@/lib/posts";
 import { APP_STORE_LIVE } from "@/lib/site";
 
@@ -9,48 +12,62 @@ export const metadata = postMetadata("apple-notes-mcp");
 
 type Row = { name: string; href: string; how: string; can: string; setup: string; clients: string; status: string };
 
-// Checked against each project's README and GitHub page on 30 September 2026.
+// Checked against each project's README, GitHub page and npm on 8 October 2026.
 const ROWS: Row[] = [
   {
     name: "sweetrb/apple-notes-mcp", href: "https://github.com/sweetrb/apple-notes-mcp",
     how: "AppleScript, plus Apple Shortcuts and read-only reads of the Notes database",
     can: "Search, read, create, update, move and delete notes; folders, tags, tables, pins, attachments; export to Markdown, HTML or JSON",
-    setup: "One command with npx; a plugin for Claude Code and Codex",
-    clients: "Claude Code, Claude Desktop, Codex and other MCP apps on the same Mac",
-    status: "Maintained; version 2.9.32 on 29 September 2026; MIT",
+    setup: "One command in Claude Code; a plugin for Claude Code and Codex",
+    clients: "Claude Code, Codex, the Claude desktop app and other MCP apps on the same Mac",
+    status: "Maintained; version 2.14.2 on 7 October 2026; MIT",
   },
   {
     name: "RafalWilinski/mcp-apple-notes", href: "https://github.com/RafalWilinski/mcp-apple-notes",
     how: "JavaScript for Automation, plus a search index it builds on your Mac",
     can: "Search by meaning and by text, read, list and create notes",
-    setup: "Clone it, install Bun, edit the Claude Desktop config, then ask Claude to index your notes",
-    clients: "Claude Desktop",
+    setup: "Clone it, install Bun, edit the Claude desktop config, then ask Claude to index your notes",
+    clients: "The Claude desktop app",
     status: "Last changed December 2024; no license listed",
   },
   {
     name: "sirmews/apple-notes-mcp", href: "https://github.com/sirmews/apple-notes-mcp",
     how: "Reads the Notes database",
     can: "List, read and search notes; can't create or edit",
-    setup: "Install with uvx, edit the Claude Desktop config, grant Full Disk Access",
-    clients: "Claude Desktop",
+    setup: "Install with uvx, edit the Claude desktop config, grant Full Disk Access",
+    clients: "The Claude desktop app",
     status: "Archived; last changed December 2024; MIT",
   },
   {
     name: "supermemoryai/apple-mcp", href: "https://github.com/supermemoryai/apple-mcp",
     how: "AppleScript; also covers Messages, Mail, Contacts, Reminders, Calendar and Maps",
     can: "Search, list and create notes",
-    setup: "A one-click desktop extension for Claude Desktop, or an install command",
-    clients: "Claude Desktop, Cursor",
+    setup: "A one-click extension for the Claude desktop app, or an install command",
+    clients: "The Claude desktop app, Cursor",
     status: "Archived; last changed August 2025; MIT",
   },
 ];
+
+const CLAUDE_CODE = "claude mcp add apple-notes -s user -- npx -y apple-notes-mcp";
+const CODEX = "codex plugin marketplace add sweetrb/apple-notes-mcp\ncodex plugin add apple-notes@apple-notes-mcp";
+const DESKTOP = `{
+  "mcpServers": {
+    "apple-notes": {
+      "command": "npx",
+      "args": ["-y", "apple-notes-mcp"]
+    }
+  }
+}`;
 
 const FAQ = [
   { q: "Is there an official Apple Notes MCP server?", a: [
     "No. Apple doesn't make one, and Apple Notes has no public API. Every Apple Notes MCP server is a community project that runs on your Mac and reaches your notes through the Notes app or its database.",
   ] },
   { q: "Which Apple Notes MCP server is the best?", a: [
-    "In September 2026, sweetrb/apple-notes-mcp. Of the four compared here it's the only one still maintained, and the only one that can edit, move, organize and export notes.",
+    "In October 2026, sweetrb/apple-notes-mcp. Of the four compared here it's the only one still maintained, and the only one that can edit, move, organize and export notes.",
+  ] },
+  { q: "Is there an MCP server for iCloud notes or for Notes on iPhone?", a: [
+    "No. Apple offers no way for another service to reach your notes in iCloud, and nothing can run an MCP server inside Notes on iPhone. A server on your Mac sees your iCloud notes only because they sync to the Notes app there.",
   ] },
   { q: "Can ChatGPT use an Apple Notes MCP server?", a: [
     "No. ChatGPT connects to MCP servers on the internet, and an Apple Notes MCP server is a program on your Mac. The same goes for claude.ai and the Claude and ChatGPT apps on iPhone.",
@@ -64,29 +81,43 @@ export default function Page() {
   return (
     <PostPage
       slug="apple-notes-mcp"
-      intro={<>Search for an Apple Notes MCP server and you get a list of GitHub repositories. I went through the main ones in September 2026 and checked each against its own README. Here&apos;s what each can do, how to set up the best one in Claude, and the limits they all share. I make Amber Notes, which is a different answer to the same question, so weigh that part with that in mind.</>}
+      intro={<>You want Claude or another AI to read and write your Apple Notes. Here&apos;s which MCP server to use, the commands to set it up, and where none of them can reach.</>}
+      answer={
+        <Answer jump={[
+          { href: "#which-works", label: "Which works for you" },
+          { href: "#compared", label: "The servers" },
+          { href: "#set-it-up", label: "Set it up" },
+          { href: "#iphone-and-icloud", label: "iPhone and iCloud" },
+        ]}>
+          <p>
+            Apple doesn&apos;t make an MCP server for Notes, so every one is a community project on your Mac. Use
+            sweetrb/apple-notes-mcp: it&apos;s maintained, it can edit, and in Claude Code it&apos;s one command. It works with Claude
+            Code, Codex and the Claude desktop app on that Mac, never with ChatGPT, claude.ai or anything on your iPhone.
+          </p>
+        </Answer>
+      }
+      hero={<Capture priority src="/blog/macos27/notes-automation-prompt-window" width={1538} height={984} maxWidth={760}
+        phone={{ src: "/blog/macos27/notes-automation-prompt", width: 520, height: 507 }}
+        alt="Apple Notes on macOS 27 with the macOS prompt in front of it: “Terminal” wants access to control “Notes”. Allowing control will provide access to documents and data in “Notes”, and to perform actions within that app. Buttons: Don’t Allow and Allow."
+        caption="macOS 27, the first time a program on the Mac asks to control Notes. Here it's Terminal, where Claude Code runs; in the Claude app it names Claude." />}
       faq={FAQ}
     >
-      <h2>What an Apple Notes MCP server is</h2>
+      <h2 id="which-works">Which one works where you use AI</h2>
+      <p>One question, and it tells you what to set up.</p>
+      <McpChooser />
+
+      <h2 id="what-it-is">What an Apple Notes MCP server is</h2>
       <p>
-        MCP (Model Context Protocol) is an open standard for connecting AI apps to other apps. An MCP server gives an AI app tools such
-        as &ldquo;search notes&rdquo; or &ldquo;create a note&rdquo;, and the AI calls them when you ask.
-      </p>
-      <p>
-        Apple doesn&apos;t make an MCP server for Notes, and Apple Notes has no public API (<a href="/blog/apple-notes-api">what exists
-        instead</a>). So every Apple Notes MCP server is a community project that runs on your Mac and gets to your notes in one of two
-        ways:
+        MCP (Model Context Protocol) is an open standard for connecting AI apps to other apps. An MCP server gives an AI tools such as
+        &ldquo;search notes&rdquo; or &ldquo;create a note&rdquo;, and the AI calls them when you ask. Apple Notes has no public API
+        (<a href="/blog/apple-notes-api">what exists instead</a>), so each server gets to your notes on your Mac in one of two ways:
       </p>
       <ul>
-        <li><strong>Through the Notes app</strong>, with AppleScript or JavaScript for Automation. This can read and write, and macOS asks you to allow it.</li>
-        <li><strong>By reading the Notes database</strong> on your Mac. This is read only, and needs Full Disk Access.</li>
+        <li><strong>Through the Notes app</strong>, with AppleScript or JavaScript for Automation. This can read and write, and macOS asks you to allow it, as in the picture above.</li>
+        <li><strong>By reading the Notes database.</strong> This is read only, and needs Full Disk Access.</li>
       </ul>
-      <p>
-        The Claude desktop app also has an Apple Notes extension of its own, which <a href="/blog/claude-and-apple-notes">the Claude
-        and Apple Notes guide</a> covers.
-      </p>
 
-      <h2>The servers compared</h2>
+      <h2 id="compared">The servers compared</h2>
       <div className="tableWrap">
         <table>
           <thead>
@@ -102,105 +133,94 @@ export default function Page() {
           </tbody>
         </table>
       </div>
-
-      <p className="label"><strong>sweetrb/apple-notes-mcp</strong></p>
-      <p>
-        The one to use today. It has the most tools by far, is updated every few days, and is careful with your notes: an update is checked
-        against the version the AI read, so it won&apos;t overwrite a change made since, and deleted notes go to Recently Deleted.
-        It works without Full Disk Access; with it, you also get queries across your library, checklist state and tables. Real
-        checklists, tags and pins go through Apple Shortcuts it asks you to add once, because AppleScript can&apos;t do those.
-      </p>
-      <p className="label"><strong>RafalWilinski/mcp-apple-notes</strong></p>
-      <p>
-        The interesting idea here is search by meaning: it builds a local index of your notes with a small on-device model, so you can
-        ask for notes about a topic without the exact words. It hasn&apos;t changed since December 2024, and it can&apos;t edit or
-        organize notes.
-      </p>
-      <p className="label"><strong>sirmews/apple-notes-mcp</strong></p>
-      <p>
-        A read-only server that reads the Notes database. It&apos;s archived, so it gets no fixes. One thing to watch: it&apos;s
-        published as <code>apple-notes-mcp</code> for Python, while sweetrb&apos;s server has the same name for Node.js, so{" "}
-        <code>uvx apple-notes-mcp</code> and <code>npx apple-notes-mcp</code> install two different projects.
-      </p>
-      <p className="label"><strong>supermemoryai/apple-mcp</strong></p>
-      <p>
-        A popular all-in-one server for Apple&apos;s apps, where Notes is one tool among many. It can search, list and create notes,
-        but not edit them. It&apos;s archived.
-      </p>
-
-      <h2>Set it up in Claude Code</h2>
-      <p>You need macOS, Node.js 20 or later, and at least one account in the Notes app. Then run:</p>
-      <pre><code>claude mcp add apple-notes -s user -- npx -y apple-notes-mcp</code></pre>
-      <ol>
-        <li>Start Claude Code and ask it to find a note.</li>
-        <li>The first time, macOS asks for permission to control Notes. Choose OK.</li>
-        <li>For checklists, tags, tables and pins, run <code>npx -y apple-notes-mcp setup</code> and add the Shortcuts it opens. Then run each one once in the Shortcuts app and choose Always Allow, as its README explains.</li>
-      </ol>
-      <p>
-        You can also install it as a Claude Code plugin, which adds a skill that tells Claude when to use it: run{" "}
-        <code>/plugin marketplace add sweetrb/apple-notes-mcp</code>, then <code>/plugin install apple-notes</code>.
-      </p>
-
-      <h2>Set it up in Claude Desktop</h2>
-      <ol>
-        <li>Install Node.js 20 or later.</li>
-        <li>Open <code>claude_desktop_config.json</code> in <code>~/Library/Application Support/Claude/</code>. In Claude Desktop, Settings, then Developer, then Edit Config takes you there.</li>
-        <li>Add the server and save:</li>
-      </ol>
-      <pre><code>{`{
-  "mcpServers": {
-    "apple-notes": {
-      "command": "npx",
-      "args": ["-y", "apple-notes-mcp"]
-    }
-  }
-}`}</code></pre>
-      <ol start={4}>
-        <li>Quit Claude Desktop completely and open it again.</li>
-        <li>Ask Claude about a note. When macOS asks for permission to control Notes, choose OK.</li>
-      </ol>
-      <p>
-        If you want the tools that need Full Disk Access, the README says to grant it to the Node.js program that runs the server, not
-        to Claude itself.
-      </p>
-
-      <h2>The limits they all share</h2>
       <ul>
-        <li><strong>Mac only, and the Mac must be on.</strong> The server runs on your Mac, and the AI app has to run on the same Mac. If it&apos;s asleep or closed, nothing can reach your notes.</li>
-        <li><strong>Not from ChatGPT, the web or your phone.</strong> ChatGPT, claude.ai and the Claude and ChatGPT apps on iPhone connect only to servers on the internet, so none of them can use a server on your Mac.</li>
-        <li><strong>Permissions.</strong> macOS asks you to allow Automation for Notes. Servers that read the database also need Full Disk Access, which lets that program read far more than your notes.</li>
+        <li>
+          <strong>sweetrb/apple-notes-mcp</strong> is the one to use. It has the most tools by far, ships updates every few days, and
+          is careful with your notes: an edit is checked against the version the AI read, so it won&apos;t overwrite a change made since,
+          and deleted notes go to Recently Deleted.
+        </li>
+        <li>
+          <strong>RafalWilinski/mcp-apple-notes</strong> has one interesting idea, search by meaning, from an index it builds on your Mac.
+          It can&apos;t edit or organize notes, and hasn&apos;t changed since December 2024.
+        </li>
+        <li>
+          <strong>sirmews/apple-notes-mcp</strong> is read only and archived. Its Python package has the same name as sweetrb&apos;s Node.js
+          one, so <code>uvx apple-notes-mcp</code> and <code>npx apple-notes-mcp</code> install two different projects.
+        </li>
+        <li>
+          <strong>supermemoryai/apple-mcp</strong> covers many of Apple&apos;s apps, with Notes as one tool among them. It can create notes but
+          not edit them, and it&apos;s archived.
+        </li>
+      </ul>
+
+      <h2 id="set-it-up">Set it up</h2>
+      <p>
+        You need a Mac with Node.js 20 or later and at least one account in the Notes app. The commands are from sweetrb&apos;s{" "}
+        <a href="https://github.com/sweetrb/apple-notes-mcp#quick-start" rel="noopener">README</a>.
+      </p>
+      <Keep title="Claude Code" text={CLAUDE_CODE} code
+        note={<>Or install it as a Claude Code plugin, which adds a skill telling Claude when to use it: <code>/plugin marketplace add sweetrb/apple-notes-mcp</code>, then <code>/plugin install apple-notes</code>.</>} />
+      <Keep title="Codex" text={CODEX} code note="Installs the same server as a Codex plugin, with the same skill." />
+      <Keep title="The Claude desktop app" text={DESKTOP} code
+        note={<>Paste it into <code>claude_desktop_config.json</code>. In the Claude app, Settings, Developer, Edit Config opens the folder. Quit Claude completely and open it again.</>} />
+      <p>Then:</p>
+      <Steps>
+        <li>Ask for a note. The first time, macOS asks whether the app may control Notes. Choose Allow.</li>
+        <li>
+          For checklists, tags, tables and pins, run <code>npx -y apple-notes-mcp setup</code> and add the Shortcuts it opens. Open each
+          one once in the Shortcuts app and choose Always Allow; the server can&apos;t ask for that in the background.
+        </li>
+        <li>Optional: give Full Disk Access to the app the server runs in (your terminal, or Node.js for the Claude app) for queries across your library and checklist state.</li>
+      </Steps>
+      <p>
+        In the Claude desktop app there&apos;s a simpler option with fewer tools: Anthropic&apos;s own Read and Write Apple Notes
+        extension, from Claude&apos;s connectors directory. <a href="/blog/claude-and-apple-notes">Can Claude read your Apple Notes?</a>{" "}
+        compares the two.
+      </p>
+
+      <h2 id="iphone-and-icloud">iPhone, iCloud and ChatGPT</h2>
+      <p>
+        People search for an &ldquo;iCloud notes MCP&rdquo; or an &ldquo;iOS notes MCP&rdquo;. There isn&apos;t one, and there can&apos;t
+        be one yet: Apple offers no way for another service to reach your notes in iCloud, and nothing can add tools to Notes on iPhone.
+        The servers above see your iCloud notes only because they sync to the Notes app on your Mac.
+      </p>
+      <p>
+        ChatGPT, claude.ai and the Claude and ChatGPT apps on iPhone run in the cloud and connect only to servers on the internet. A
+        server on your Mac is out of their reach unless you open it to the internet through a tunnel, which also exposes your notes.
+      </p>
+
+      <h2 id="limits">The limits they all share</h2>
+      <ul>
+        <li><strong>The Mac has to be on.</strong> If it&apos;s asleep or closed, nothing can reach your notes.</li>
+        <li><strong>Permissions.</strong> macOS asks you to allow control of Notes. Servers that read the database also need Full Disk Access, which lets that program read far more than your notes.</li>
         <li><strong>Locked notes are out of reach.</strong> None of them can read or change a note locked with a password.</li>
-        <li><strong>Attachments and checklists are partial.</strong> Only sweetrb&apos;s server handles attachments; the others work with note text. AppleScript can&apos;t make real checklists or tick an item, so even the best server can add checklist items through Shortcuts but can&apos;t check one off.</li>
+        <li><strong>Checklists are partial.</strong> AppleScript can&apos;t make a real checklist or tick an item. sweetrb&apos;s server adds checklist items through Shortcuts, but no server can check one off.</li>
         <li><strong>No undo for edits.</strong> Apple Notes keeps no version history, so if an AI rewrites a note badly, there&apos;s no earlier version to go back to.</li>
       </ul>
 
-      <h2>If you want your notes from anywhere</h2>
+      <h2 id="amber-notes">If you want your notes from anywhere</h2>
       <p>
-        If those limits are fine for you, use sweetrb&apos;s server. If you want to use your notes from ChatGPT, or from Claude on your
-        phone, the notes have to live somewhere with a server on the internet. That&apos;s why I built Amber Notes: a free, open-source
-        notes app for iPhone and Mac that works like Apple Notes and has an MCP server built in, at <code>{MCP_URL}</code>.
+        If those limits are fine for you, use sweetrb&apos;s server. If you want your notes in ChatGPT, or in Claude on your phone, they
+        have to live somewhere with a server on the internet. That&apos;s why I built Amber Notes: a free, open-source notes app for iPhone
+        and Mac that works like Apple Notes, with an MCP server built in at <code>{MCP_URL}</code>.
       </p>
       <ul>
         <li>It works from ChatGPT, Claude on the web, desktop and iPhone, Claude Code, Codex and Incredible, and your Mac doesn&apos;t need to be on.</li>
         <li>You approve each AI app in Amber Notes and choose Read Only, or Read and Edit.</li>
-        <li>An AI can search, read, create and edit notes, tick checklist items, move and pin notes, and manage folders.</li>
-        <li>When an AI changes a note, you see what changed, with Undo, and the previous version stays in the note&apos;s history.</li>
+        <li>An AI can tick checklist items. When it changes a note, you see what changed, with Undo, and the earlier version stays in the note&apos;s history.</li>
       </ul>
       <Figure shot={SHOTS.connectList} caption="Connect an AI in Amber Notes on a Mac: ChatGPT, Claude, Claude Code and Codex." />
       <p>
-        You bring your Apple Notes over once, on your Mac, with their folders, checklists and tables. Locked notes and attachments stay
-        in Apple Notes, and Apple Notes itself isn&apos;t changed. The catch is that you then write in Amber Notes instead of Apple
-        Notes.{" "}
+        You bring your Apple Notes over once, on your Mac, with their folders, checklists and tables; <a href="/blog/move-from-apple-notes">how
+        to move from Apple Notes</a> walks through it. Locked notes and attachments stay in Apple Notes, and Apple Notes isn&apos;t changed.
+        The catch is that you then write in Amber Notes instead.{" "}
         {APP_STORE_LIVE
           ? "The Mac app is a free download and the iPhone app is on the App Store."
           : "The Mac app is out now; the iPhone app is coming soon to the App Store."}
       </p>
-      <p>
-        <a href="/blog/move-from-apple-notes">How to move from Apple Notes</a> walks through the import. The{" "}
-        <a href="/blog/mcp-server">MCP server page</a> lists every tool. For the
-        other notes apps with a server of their own, see <a href="/blog/notes-apps-with-mcp">notes apps with an MCP server, compared</a>,
-        and if your notes are in Obsidian, <a href="/blog/obsidian-mcp">Obsidian MCP servers compared</a>.
-      </p>
+      <PostCta slug="apple-notes-mcp" position="how-amber-helps" title="Try Amber Notes on your Mac">
+        <p>Your notes in ChatGPT and Claude, on any device, with every change marked and undoable.</p>
+      </PostCta>
     </PostPage>
   );
 }
