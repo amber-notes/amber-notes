@@ -5,6 +5,63 @@ assistants. Newest first. Research behind it: [seo-aeo-research-2026-09-30.md](s
 
 `docs/` had no README naming a folder for evidence, so this and the research live in `docs/Evidence/`.
 
+## 8 October 2026: a quiet day after launch, "Apple Notes MCP" answer first, "Apple Notes templates"
+
+### Measured
+
+- **PostHog (EU project 291184), 2 October to 8 October 10:00 UTC, bots and other hosts left out.** Page
+  views: 143, 37, 53, 89, 137 (Product Hunt day), 32 on 7 October and 9 so far on 8 October.
+  `download_mac_clicked`: 1, 1, 0, 3, 4, 0, 1. Since yesterday's reading one download, from github.com to
+  /download, by a visitor who accepted cookies first.
+- **Per post:** [blog-roi.md](blog-roi.md). Google landings are still on the same four Apple Notes
+  posts. New: the first real `blog_helper_used`, from a Google visitor on forgot-apple-notes-password
+  who answered the chooser four times and left after 37 seconds. `blog_cta_clicked` and
+  `blog_copy_clicked` still haven't fired.
+- **Google Search Console: not reached.** The Chrome extension is disconnected, Composio has no Search
+  Console connection, and there's no gcloud credential with Search Console access on this Mac. One
+  OAuth sign-in by Emil to Composio's Google Search Console toolkit would let this loop read it without
+  a browser.
+- **Site health:** all 69 sitemap addresses answer 200. No 404s in the last day.
+
+Reading: traffic fell back to its pre-launch level. The posts people find from Google get read; the
+next step is getting a reader from a post to the download, which hasn't happened yet.
+
+### Picked
+
+- **Upgrade: `/blog/apple-notes-mcp`.** Search Console showed "apple notes mcp" at position 52, and the
+  post was a long comparison with no short answer. It's also a converting topic: everyone who searches
+  it wants an AI to use their notes.
+- **New: `/blog/apple-notes-templates`,** a helpful Apple Notes post. Autocomplete on 8 October:
+  "apple notes templates" suggests *free download*, *free download pdf*, *free*, *reddit*, *travel*,
+  *download* and *etsy*; "apple notes meeting notes" suggests *template*. Nothing on the site covered it,
+  and it links naturally to the template library.
+
+### Changed
+
+- **`/blog/apple-notes-mcp`** (branch `site/apple-notes-mcp-answer-first`): the short answer first; a
+  one-question chooser (where do you use AI) that ends in the setup that works there, or says plainly
+  that none does; the commands as copyable blocks for Claude Code, Codex (new: sweetrb's Codex plugin)
+  and the Claude app; a section answering "iCloud notes MCP" and "iOS notes MCP"; the call to action at
+  the end. Facts rechecked on 8 October: sweetrb/apple-notes-mcp is at 2.14.2 (7 October, 152 versions
+  on npm), the other three unchanged. The hero is a new capture of the real macOS 27 prompt
+  ("Terminal" wants access to control "Notes"), taken by running osascript in Terminal in the VM.
+- **New post `/blog/apple-notes-templates`** (branch `site/apple-notes-templates`), in Apple Notes:
+  a Templates folder, File, Duplicate Note on a Mac, copy and paste on iPhone, and five templates in a
+  picker that shows each the way Notes draws it and copies it as Markdown. Checked in Notes on macOS 27:
+  there's no template feature (no such string in the app); File, Duplicate Note (Command-D) copies a
+  note into the same folder with its checklists; Edit, Paste as Markdown turns #, ## and - [ ] into a
+  title, headings and a checklist in an On My Mac account; an empty "- [ ]" pastes as the text [ ] and
+  an empty "- " disappears, so every template item has words in it (a test keeps it that way). New
+  olive ground for the card.
+- **Captures:** a throwaway macOS 27 VM on the fleet Air (cirruslabs' vanilla golden-gate image, no
+  Apple Account, On My Mac, demo templates only). VM and image deleted afterwards.
+
+### To measure next
+
+- PostHog: `blog_helper_used` and `blog_copy_clicked` on both posts, and the first post visit followed
+  by `download_mac_clicked`.
+- Search Console, once reachable: position for "apple notes mcp" and "apple notes templates".
+
 ## 7 October 2026: measured per post, "Recover deleted Apple Notes" upgraded, "Claude memory vs notes"
 
 ### Measured

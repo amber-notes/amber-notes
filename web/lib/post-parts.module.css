@@ -124,6 +124,17 @@
 .ticks > li::marker { content: none; }
 .ticks > li::before { content: ""; position: absolute; left: 0; top: 1px; width: 20px; height: 20px; box-sizing: border-box; border-radius: 50%; border: 1.5px solid color-mix(in srgb, var(--muted) 60%, transparent); }
 
+/* A template drawn the way Notes shows it once pasted: a title, headings, checklists and dashes. */
+.tpl { padding: 2px 2px 4px; }
+.tpl > * { margin: 0; }
+.tplTitle.tplTitle { margin: 0; font-size: 22px; font-weight: 750; line-height: 1.25; }
+.tplHeading.tplHeading { font-size: 17px; font-weight: 700; margin: 14px 0 8px; }
+.tplLine.tplLine { margin: 0; color: var(--muted); line-height: 1.5; }
+.tpl .ticks { padding-top: 0; }
+.dashes.dashes { list-style: none; margin: 0; padding: 0 2px; display: grid; gap: 6px; }
+.dashes > li { position: relative; padding-left: 32px; line-height: 1.45; }
+.dashes > li::before { content: "–"; position: absolute; left: 6px; color: var(--muted); }
+
 /* ── A real capture of Apple's apps: the window or dialog itself on the page, with a soft shadow ── */
 .capture { margin: 12px 0 30px; }
 .capture picture { display: block; width: min(100%, var(--w)); margin: 0 auto; }
