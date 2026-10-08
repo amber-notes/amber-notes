@@ -213,7 +213,7 @@ import Testing
         #expect(refused?.unsupported == ["song.mp3", "book.epub"])
         #expect(refused?.tooBig == ["Huge.pdf"])
         #expect(refused?.title == "Can't add these files")
-        #expect(refused?.message.contains("Amber Notes takes PDFs, pictures, text, CSV, HTML and code, and Office and iWork files.") == true)
+        #expect(refused?.message.contains("Pinto Notes takes PDFs, pictures, text, CSV, HTML and code, and Office and iWork files.") == true)
         #expect(refused?.message.contains("up to 100 MB") == true)
         for kind in ["pdf", "jpg", "png", "heic", "gif", "webp", "txt", "csv", "json", "py", "swift", "docx", "xlsx", "pptx", "pages", "numbers", "key"] {
             #expect(FileKinds.isSupported(URL(fileURLWithPath: "/x/a.\(kind)")), "\(kind) is added")
@@ -274,7 +274,7 @@ import Testing
         #expect(u.summary == "1 GB of 2 GB used")
         u.used = Int64(Double(2 * gb) * 0.92)
         #expect(u.level == .nearlyFull)
-        #expect(u.warning?.title == "Amber Notes is almost full")
+        #expect(u.warning?.title == "Pinto Notes is almost full")
         u.used = 2 * gb
         u.deleted = 300 * 1_048_576
         #expect(u.level == .full)

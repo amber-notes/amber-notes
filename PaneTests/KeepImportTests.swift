@@ -61,7 +61,7 @@ import ZIPFoundation
         let s = r.summary
         #expect(s.notes == 5 && s.archived == 1 && s.trashed == 1 && s.skipped == 2)
         #expect(s.attachments == 2 && s.filesMissing == 1 && s.notNotes == 0)
-        #expect(s.dropped == ["1 note had a color, which Amber Notes doesn't have.",
+        #expect(s.dropped == ["1 note had a color, which Pinto Notes doesn't have.",
                               "1 note had a drawing, which couldn't come over.",
                               "1 note had a reminder, which Pinto Notes doesn't keep."])
 
