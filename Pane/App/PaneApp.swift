@@ -37,6 +37,14 @@ struct PaneApp: App {
         let config = perfStore.map { ModelConfiguration(url: URL(fileURLWithPath: $0)) } ?? ModelConfiguration("Pane", isStoredInMemoryOnly: inMemory)
         container = try! ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: config)
         Self.sharedContainer = container
+        if !inMemory {
+            LocalUpkeep.keepServerAnswersOffDisk()
+            // After launch has settled: it can be a few hundred thousand rows the first time.
+            Task.detached(priority: .utility) { [container] in
+                try? await Task.sleep(for: .seconds(30))
+                LocalUpkeep.forgetOldHistory(in: container)
+            }
+        }
         let backend = Backend()
         let context = container.mainContext
         backend.willSignIn = { user in AccountLibrary.adopt(user, context: context) }
