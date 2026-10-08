@@ -250,7 +250,7 @@ function b64Chunked(u: Uint8Array) {
 Deno.test("Office files and PDFs read as their text; what can't be read says so", async () => {
   const { objects, unstub } = storageStub();
   try {
-    const { zipSync, strToU8 } = await import("npm:fflate@0.8.2");
+    const { zipSync, strToU8 } = await import("npm:fflate@0.8.3");
     const pg = await schemaDB();
     const a = await account(pg);
     const docs = await folder(pg, a, "Docs");
