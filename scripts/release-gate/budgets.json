@@ -1,0 +1,703 @@
+{
+ "_about": "Budgets for scripts/release-gate.sh, set 2026-10-07 from dev eb57bb1dc9 on fleet-air; how they were set and how to change them: docs/Technical/release-gate.md. max: the budget. floor: a change smaller than this is never a regression. regression: false turns the 15% rule off.",
+ "perf.1.launchToWindowMs": {
+  "max": 1300,
+  "floor": 150
+ },
+ "perf.1.launchToSyncedMs": {
+  "max": 128800,
+  "floor": 500
+ },
+ "perf.1.idle.cpuPercent": {
+  "max": 2,
+  "floor": 1
+ },
+ "perf.1.idle.layouts": {
+  "max": 0,
+  "regression": false
+ },
+ "perf.1.idle.wakeupsPerSecond": {
+  "max": 10,
+  "floor": 5
+ },
+ "perf.1.memoryEndMB": {
+  "max": 190,
+  "floor": 20
+ },
+ "perf.1.sidebar hide.longestFrameMs": {
+  "max": 80,
+  "floor": 34
+ },
+ "perf.1.sidebar hide.layouts": {
+  "max": 5450,
+  "regression": false
+ },
+ "perf.1.sidebar hide.hitches": {
+  "max": 5,
+  "regression": false
+ },
+ "perf.1.sidebar show.longestFrameMs": {
+  "max": 70,
+  "floor": 34
+ },
+ "perf.1.sidebar show.layouts": {
+  "max": 5850,
+  "regression": false
+ },
+ "perf.1.sidebar show.hitches": {
+  "max": 4,
+  "regression": false
+ },
+ "perf.1.open a short note.longestFrameMs": {
+  "max": 1210,
+  "floor": 34
+ },
+ "perf.1.open a short note.layouts": {
+  "max": 750,
+  "regression": false
+ },
+ "perf.1.open a short note.hitches": {
+  "max": 4,
+  "regression": false
+ },
+ "perf.1.open the 5,000-line note.longestFrameMs": {
+  "max": 690,
+  "floor": 34
+ },
+ "perf.1.open the 5,000-line note.layouts": {
+  "max": 1900,
+  "regression": false
+ },
+ "perf.1.open the 5,000-line note.hitches": {
+  "max": 8,
+  "regression": false
+ },
+ "perf.1.typing and saving.longestFrameMs": {
+  "max": 250,
+  "floor": 34
+ },
+ "perf.1.typing and saving.layouts": {
+  "max": 7200,
+  "regression": false
+ },
+ "perf.1.typing and saving.hitches": {
+  "max": 40,
+  "regression": false
+ },
+ "perf.1.typing and saving.keyMaxMs": {
+  "max": 16,
+  "regression": false
+ },
+ "perf.1.folder switch.longestFrameMs": {
+  "max": 180,
+  "floor": 34
+ },
+ "perf.1.folder switch.layouts": {
+  "max": 350,
+  "regression": false
+ },
+ "perf.1.folder switch.hitches": {
+  "max": 4,
+  "regression": false
+ },
+ "perf.1.a note arrives by sync.longestFrameMs": {
+  "max": 160,
+  "floor": 34
+ },
+ "perf.1.a note arrives by sync.layouts": {
+  "max": 1150,
+  "regression": false
+ },
+ "perf.1.a note arrives by sync.hitches": {
+  "max": 5,
+  "regression": false
+ },
+ "perf.1.hangs.launch.count": {
+  "max": 3,
+  "floor": 1
+ },
+ "perf.1.hangs.launch.longestMs": {
+  "max": 550,
+  "floor": 150
+ },
+ "perf.1.hangs.flows.count": {
+  "max": 10,
+  "floor": 1
+ },
+ "perf.1.hangs.flows.longestMs": {
+  "max": 1100,
+  "floor": 150
+ },
+ "perf.1.firstSyncMs": {
+  "max": 125000,
+  "floor": 2000
+ },
+ "perf.2000.launchToWindowMs": {
+  "max": 1700,
+  "floor": 150
+ },
+ "perf.2000.launchToSyncedMs": {
+  "max": 126700,
+  "floor": 500
+ },
+ "perf.2000.idle.cpuPercent": {
+  "max": 2,
+  "floor": 1
+ },
+ "perf.2000.idle.layouts": {
+  "max": 0,
+  "regression": false
+ },
+ "perf.2000.idle.wakeupsPerSecond": {
+  "max": 10,
+  "floor": 5
+ },
+ "perf.2000.memoryEndMB": {
+  "max": 210,
+  "floor": 20
+ },
+ "perf.2000.sidebar hide.longestFrameMs": {
+  "max": 110,
+  "floor": 34
+ },
+ "perf.2000.sidebar hide.layouts": {
+  "max": 5450,
+  "regression": false
+ },
+ "perf.2000.sidebar hide.hitches": {
+  "max": 5,
+  "regression": false
+ },
+ "perf.2000.sidebar show.longestFrameMs": {
+  "max": 100,
+  "floor": 34
+ },
+ "perf.2000.sidebar show.layouts": {
+  "max": 5850,
+  "regression": false
+ },
+ "perf.2000.sidebar show.hitches": {
+  "max": 4,
+  "regression": false
+ },
+ "perf.2000.open a short note.longestFrameMs": {
+  "max": 1350,
+  "floor": 34
+ },
+ "perf.2000.open a short note.layouts": {
+  "max": 750,
+  "regression": false
+ },
+ "perf.2000.open a short note.hitches": {
+  "max": 4,
+  "regression": false
+ },
+ "perf.2000.open the 5,000-line note.longestFrameMs": {
+  "max": 740,
+  "floor": 34
+ },
+ "perf.2000.open the 5,000-line note.layouts": {
+  "max": 1900,
+  "regression": false
+ },
+ "perf.2000.open the 5,000-line note.hitches": {
+  "max": 9,
+  "regression": false
+ },
+ "perf.2000.typing and saving.longestFrameMs": {
+  "max": 290,
+  "floor": 34
+ },
+ "perf.2000.typing and saving.layouts": {
+  "max": 8000,
+  "regression": false
+ },
+ "perf.2000.typing and saving.hitches": {
+  "max": 37,
+  "regression": false
+ },
+ "perf.2000.typing and saving.keyMaxMs": {
+  "max": 16,
+  "regression": false
+ },
+ "perf.2000.folder switch.longestFrameMs": {
+  "max": 190,
+  "floor": 34
+ },
+ "perf.2000.folder switch.layouts": {
+  "max": 350,
+  "regression": false
+ },
+ "perf.2000.folder switch.hitches": {
+  "max": 4,
+  "regression": false
+ },
+ "perf.2000.a note arrives by sync.longestFrameMs": {
+  "max": 240,
+  "floor": 34
+ },
+ "perf.2000.a note arrives by sync.layouts": {
+  "max": 1050,
+  "regression": false
+ },
+ "perf.2000.a note arrives by sync.hitches": {
+  "max": 4,
+  "regression": false
+ },
+ "perf.2000.hangs.launch.count": {
+  "max": 3,
+  "floor": 1
+ },
+ "perf.2000.hangs.launch.longestMs": {
+  "max": 900,
+  "floor": 150
+ },
+ "perf.2000.hangs.flows.count": {
+  "max": 11,
+  "floor": 1
+ },
+ "perf.2000.hangs.flows.longestMs": {
+  "max": 1200,
+  "floor": 150
+ },
+ "perf.2000.firstSyncMs": {
+  "max": 135000,
+  "floor": 2000
+ },
+ "perf.20000.launchToWindowMs": {
+  "max": 6100,
+  "floor": 150
+ },
+ "perf.20000.launchToSyncedMs": {
+  "max": 21000,
+  "floor": 500
+ },
+ "perf.20000.idle.cpuPercent": {
+  "max": 2,
+  "floor": 1
+ },
+ "perf.20000.idle.layouts": {
+  "max": 0,
+  "regression": false
+ },
+ "perf.20000.idle.wakeupsPerSecond": {
+  "max": 10,
+  "floor": 5
+ },
+ "perf.20000.memoryEndMB": {
+  "max": 230,
+  "floor": 20
+ },
+ "perf.20000.sidebar hide.longestFrameMs": {
+  "max": 360,
+  "floor": 34
+ },
+ "perf.20000.sidebar hide.layouts": {
+  "max": 5150,
+  "regression": false
+ },
+ "perf.20000.sidebar hide.hitches": {
+  "max": 5,
+  "regression": false
+ },
+ "perf.20000.sidebar show.longestFrameMs": {
+  "max": 360,
+  "floor": 34
+ },
+ "perf.20000.sidebar show.layouts": {
+  "max": 5550,
+  "regression": false
+ },
+ "perf.20000.sidebar show.hitches": {
+  "max": 4,
+  "regression": false
+ },
+ "perf.20000.open a short note.longestFrameMs": {
+  "max": 1550,
+  "floor": 34
+ },
+ "perf.20000.open a short note.layouts": {
+  "max": 750,
+  "regression": false
+ },
+ "perf.20000.open a short note.hitches": {
+  "max": 4,
+  "regression": false
+ },
+ "perf.20000.open the 5,000-line note.longestFrameMs": {
+  "max": 1650,
+  "floor": 34
+ },
+ "perf.20000.open the 5,000-line note.layouts": {
+  "max": 1250,
+  "regression": false
+ },
+ "perf.20000.open the 5,000-line note.hitches": {
+  "max": 8,
+  "regression": false
+ },
+ "perf.20000.typing and saving.longestFrameMs": {
+  "max": 1620,
+  "floor": 34
+ },
+ "perf.20000.typing and saving.layouts": {
+  "max": 7350,
+  "regression": false
+ },
+ "perf.20000.typing and saving.hitches": {
+  "max": 26,
+  "regression": false
+ },
+ "perf.20000.typing and saving.keyMaxMs": {
+  "max": 16,
+  "regression": false
+ },
+ "perf.20000.folder switch.longestFrameMs": {
+  "max": 490,
+  "floor": 34
+ },
+ "perf.20000.folder switch.layouts": {
+  "max": 350,
+  "regression": false
+ },
+ "perf.20000.folder switch.hitches": {
+  "max": 5,
+  "regression": false
+ },
+ "perf.20000.a note arrives by sync.longestFrameMs": {
+  "max": 460,
+  "floor": 34
+ },
+ "perf.20000.a note arrives by sync.layouts": {
+  "max": 1150,
+  "regression": false
+ },
+ "perf.20000.a note arrives by sync.hitches": {
+  "max": 5,
+  "regression": false
+ },
+ "perf.20000.hangs.launch.count": {
+  "max": 8,
+  "floor": 1
+ },
+ "perf.20000.hangs.launch.longestMs": {
+  "max": 3600,
+  "floor": 150
+ },
+ "perf.20000.hangs.flows.count": {
+  "max": 23,
+  "floor": 1
+ },
+ "perf.20000.hangs.flows.longestMs": {
+  "max": 1550,
+  "floor": 150
+ },
+ "perf.20000.firstSyncMs": {
+  "max": 206000,
+  "floor": 2000
+ },
+ "security.advisors.security.warnings": {
+  "max": 114,
+  "floor": 0
+ },
+ "security.advisors.performance.warnings": {
+  "max": 0,
+  "floor": 0
+ },
+ "storage.macDmgBytes": {
+  "max": 26000000,
+  "floor": 1000000
+ },
+ "storage.macAppBytes": {
+  "max": 56000000,
+  "floor": 1000000
+ },
+ "storage.iosCompressedBytes": {
+  "max": 21000000,
+  "floor": 1000000
+ },
+ "storage.iosAppBytes": {
+  "max": 54000000,
+  "floor": 1000000
+ },
+ "storage.1.storeBytes": {
+  "max": 14500000,
+  "floor": 100000
+ },
+ "storage.1.libraryBytes": {
+  "max": 31900000,
+  "floor": 100000
+ },
+ "storage.2000.storeBytes": {
+  "max": 16200000,
+  "floor": 100000
+ },
+ "storage.2000.libraryBytes": {
+  "max": 36200000,
+  "floor": 100000
+ },
+ "storage.20000.storeBytes": {
+  "max": 67100000,
+  "floor": 100000
+ },
+ "storage.20000.libraryBytes": {
+  "max": 92700000,
+  "floor": 100000
+ },
+ "storage.1.serverBytes": {
+  "max": 300000,
+  "floor": 100000
+ },
+ "storage.2000.serverBytes": {
+  "max": 8500000,
+  "floor": 100000
+ },
+ "storage.20000.serverBytes": {
+  "max": 71100000,
+  "floor": 100000
+ },
+ "network.1.launchNet.requests": {
+  "max": 1544,
+  "floor": 2
+ },
+ "network.1.launchNet.bytes": {
+  "max": 4560000,
+  "floor": 10000
+ },
+ "network.1.openNet.requests": {
+  "max": 4,
+  "floor": 2
+ },
+ "network.1.openNet.bytes": {
+  "max": 10000,
+  "floor": 10000
+ },
+ "network.1.saveNet.requests": {
+  "max": 5,
+  "floor": 2
+ },
+ "network.1.saveNet.bytes": {
+  "max": 10000,
+  "floor": 10000
+ },
+ "network.1.firstSync.bytes": {
+  "max": 4760000,
+  "floor": 10000
+ },
+ "network.2000.launchNet.requests": {
+  "max": 1466,
+  "floor": 2
+ },
+ "network.2000.launchNet.bytes": {
+  "max": 4340000,
+  "floor": 10000
+ },
+ "network.2000.openNet.requests": {
+  "max": 4,
+  "floor": 2
+ },
+ "network.2000.openNet.bytes": {
+  "max": 10000,
+  "floor": 10000
+ },
+ "network.2000.saveNet.requests": {
+  "max": 5,
+  "floor": 2
+ },
+ "network.2000.saveNet.bytes": {
+  "max": 10000,
+  "floor": 10000
+ },
+ "network.2000.firstSync.bytes": {
+  "max": 11260000,
+  "floor": 10000
+ },
+ "network.20000.launchNet.requests": {
+  "max": 120,
+  "floor": 2
+ },
+ "network.20000.launchNet.bytes": {
+  "max": 350000,
+  "floor": 10000
+ },
+ "network.20000.openNet.requests": {
+  "max": 4,
+  "floor": 2
+ },
+ "network.20000.openNet.bytes": {
+  "max": 10000,
+  "floor": 10000
+ },
+ "network.20000.saveNet.requests": {
+  "max": 4,
+  "floor": 2
+ },
+ "network.20000.saveNet.bytes": {
+  "max": 10000,
+  "floor": 10000
+ },
+ "network.20000.firstSync.bytes": {
+  "max": 60730000,
+  "floor": 10000
+ },
+ "network.2000.sync pull, nothing new.p50": {
+  "max": 250,
+  "floor": 100
+ },
+ "network.2000.sync pull, nothing new.p95": {
+  "max": 600,
+  "floor": 300
+ },
+ "network.2000.sync pull, 500 notes.p50": {
+  "max": 350,
+  "floor": 100
+ },
+ "network.2000.sync pull, 500 notes.p95": {
+  "max": 750,
+  "floor": 300
+ },
+ "network.2000.sync push, one note.p50": {
+  "max": 250,
+  "floor": 100
+ },
+ "network.2000.sync push, one note.p95": {
+  "max": 500,
+  "floor": 300
+ },
+ "network.2000.account-status.p50": {
+  "max": 850,
+  "floor": 100
+ },
+ "network.2000.account-status.p95": {
+  "max": 1350,
+  "floor": 300
+ },
+ "network.2000.account export.p50": {
+  "max": 1050,
+  "floor": 100
+ },
+ "network.2000.account export.p95": {
+  "max": 1550,
+  "floor": 300
+ },
+ "network.2000.mcp initialize.p50": {
+  "max": 700,
+  "floor": 100
+ },
+ "network.2000.mcp initialize.p95": {
+  "max": 1200,
+  "floor": 300
+ },
+ "network.2000.mcp list.p50": {
+  "max": 800,
+  "floor": 100
+ },
+ "network.2000.mcp list.p95": {
+  "max": 1300,
+  "floor": 300
+ },
+ "network.2000.mcp search.p50": {
+  "max": 1000,
+  "floor": 100
+ },
+ "network.2000.mcp search.p95": {
+  "max": 1700,
+  "floor": 300
+ },
+ "network.2000.mcp fetch.p50": {
+  "max": 850,
+  "floor": 100
+ },
+ "network.2000.mcp fetch.p95": {
+  "max": 1300,
+  "floor": 300
+ },
+ "network.2000.mcp edit.p50": {
+  "max": 850,
+  "floor": 100
+ },
+ "network.2000.mcp edit.p95": {
+  "max": 1300,
+  "floor": 300
+ },
+ "network.20000.sync pull, nothing new.p50": {
+  "max": 250,
+  "floor": 100
+ },
+ "network.20000.sync pull, nothing new.p95": {
+  "max": 550,
+  "floor": 300
+ },
+ "network.20000.sync pull, 500 notes.p50": {
+  "max": 400,
+  "floor": 100
+ },
+ "network.20000.sync pull, 500 notes.p95": {
+  "max": 1050,
+  "floor": 300
+ },
+ "network.20000.sync push, one note.p50": {
+  "max": 250,
+  "floor": 100
+ },
+ "network.20000.sync push, one note.p95": {
+  "max": 600,
+  "floor": 300
+ },
+ "network.20000.account-status.p50": {
+  "max": 900,
+  "floor": 100
+ },
+ "network.20000.account-status.p95": {
+  "max": 1550,
+  "floor": 300
+ },
+ "network.20000.account export.p50": {
+  "max": 1750,
+  "floor": 100
+ },
+ "network.20000.account export.p95": {
+  "max": 2600,
+  "floor": 300
+ },
+ "network.20000.mcp initialize.p50": {
+  "max": 700,
+  "floor": 100
+ },
+ "network.20000.mcp initialize.p95": {
+  "max": 2300,
+  "floor": 300
+ },
+ "network.20000.mcp list.p50": {
+  "max": 1450,
+  "floor": 100
+ },
+ "network.20000.mcp list.p95": {
+  "max": 2500,
+  "floor": 300
+ },
+ "network.20000.mcp search.p50": {
+  "max": 2100,
+  "floor": 100
+ },
+ "network.20000.mcp search.p95": {
+  "max": 3000,
+  "floor": 300
+ },
+ "network.20000.mcp fetch.p50": {
+  "max": 1250,
+  "floor": 100
+ },
+ "network.20000.mcp fetch.p95": {
+  "max": 2150,
+  "floor": 300
+ },
+ "network.20000.mcp edit.p50": {
+  "max": 1300,
+  "floor": 100
+ },
+ "network.20000.mcp edit.p95": {
+  "max": 2050,
+  "floor": 300
+ }
+}

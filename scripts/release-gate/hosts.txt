@@ -1,0 +1,56 @@
+# Hosts the app, the site and the functions name in their code, reviewed (scripts/release-gate.sh).
+# A host in the code that isn't here fails the gate's "no new third-party hosts" line. Add it once
+# you know what it is, under the right heading.
+
+# Called: the app, the site or a function sends requests here.
+ambernotes.app
+mcp.ambernotes.app
+api.push.apple.com            # APNs, from the functions
+api.sandbox.push.apple.com    # APNs for development builds
+api.resend.com                # email, from the functions
+api.github.com                # the site's star count (web/lib/github.ts)
+eu.i.posthog.com              # site analytics, after consent
+cdn.jsdelivr.net              # note pages: npm libraries the app downloads once, checked against their hash
+data.jsdelivr.com             # note pages: the MCP server resolves a library's version and files
+
+# Named only: links people can open, schema and namespace URLs, demo text.
+9to5mac.com
+apple.com
+www.apple.com
+apps.apple.com
+support.apple.com
+blog.bear.app
+bugs.chromium.org
+bugs.webkit.org
+bugzilla.mozilla.org
+chatgpt.com
+claude.ai
+claude.com
+www.claude.com
+support.claude.com
+community.openai.com
+developers.openai.com
+help.openai.com
+platform.openai.com
+developers.notion.com
+www.notion.com
+emilwagman.com
+evernote.com
+geminicli.com
+github.com
+help.obsidian.md
+obsidian.md
+hjarni.com
+incredible.one
+interfaces.dev
+resend.com
+schema.org
+standardnotes.com
+support.google.com
+techcrunch.com
+www.imy.se
+www.linkedin.com
+www.macrumors.com
+www.visitlisboa.com
+www.w3.org
+x.com
