@@ -277,6 +277,10 @@ struct FileDetailView: View {
                 CSVTableView(url: url, separator: CSVTable.separator(file.filename))
                     .id(url)
                     .accessibilityIdentifier("file.table")
+            } else if FileKinds.isText(file.filename) {
+                // Code and text files open as text: coloured, editable, and HTML can be previewed safely.
+                CodeFileView(file: file, url: url)
+                    .id(url)
             } else {
                 FilePreview(url: url)
                     .id(url)

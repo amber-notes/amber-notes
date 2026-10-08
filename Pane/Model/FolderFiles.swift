@@ -78,6 +78,19 @@ extension ModelContext {
         try? save()
     }
 
+    /// A text file edited here: the new text on this device now, and up to the server on the next
+    /// sync (a new content version, so other devices fetch it again).
+    func saveText(_ file: Attachment, _ text: String) throws {
+        let data = Data(text.utf8)
+        try data.write(to: FileStore.url(for: file.id, filename: file.filename), options: .atomic)
+        file.size = Int64(data.count)
+        file.contentVersion += 1
+        file.bytesEdited = true
+        file.uploaded = false
+        file.touch()
+        try? save()
+    }
+
     /// Gone for good: sync removes the stored copy and the bytes on every device.
     func purge(_ file: Attachment) {
         file.deletedAt = .now
@@ -137,11 +150,18 @@ enum FileKinds {
     /// Endings the app takes, the same list the AI's server has (folder_files.ts SUPPORTED).
     static let endings: Set<String> = [
         "pdf", "jpg", "jpeg", "png", "heic", "heif", "gif", "webp",
-        "txt", "md", "markdown", "csv", "tsv", "json", "xml", "yaml", "yml", "html", "css", "js", "ts", "tsx", "jsx", "py", "swift", "sh", "sql", "rb", "go", "rs", "java", "kt", "c", "h", "cpp", "m",
+        "txt", "md", "markdown", "csv", "tsv", "json", "xml", "yaml", "yml", "html", "htm", "css", "js", "ts", "tsx", "jsx", "py", "swift", "sh", "sql", "rb", "go", "rs", "java", "kt", "c", "h", "cpp", "m",
         "docx", "xlsx", "pptx", "pages", "numbers", "key",
     ]
     /// One file added in the app: 100 MB (pane_limit 'file_bytes').
     static let maxBytes: Int64 = 100 * 1024 * 1024
+
+    /// Text the app shows and edits as code (CSV and TSV show as a table).
+    static let textEndings: Set<String> = [
+        "txt", "md", "markdown", "json", "xml", "yaml", "yml", "html", "htm", "css", "js", "ts", "tsx", "jsx", "py", "swift", "sh", "sql", "rb", "go", "rs", "java", "kt", "c", "h", "cpp", "m",
+    ]
+    static func isText(_ name: String) -> Bool { textEndings.contains((name as NSString).pathExtension.lowercased()) }
+    static func isHTML(_ name: String) -> Bool { ["html", "htm"].contains((name as NSString).pathExtension.lowercased()) }
 
     /// The kinds Add File offers.
     static var contentTypes: [UTType] {
@@ -210,7 +230,7 @@ struct FileRefusal: Equatable, Identifiable {
     /// The files by name, one a line, then one line on what works.
     var message: String {
         var help: [String] = []
-        if !unsupported.isEmpty { help.append("Amber Notes takes PDFs, pictures, text, CSV and Office files.") }
+        if !unsupported.isEmpty { help.append("Amber Notes takes PDFs, pictures, text, CSV, HTML and code, and Office and iWork files.") }
         if !tooBig.isEmpty { help.append("Files can be up to 100 MB.") }
         // The names, a blank line, then what works: two blocks the eye can tell apart.
         return Self.names(unsupported + tooBig).joined(separator: "\n") + "\n\n" + help.joined(separator: " ")
