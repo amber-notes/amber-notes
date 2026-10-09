@@ -372,11 +372,10 @@ import Testing
         #expect(taken == rebuilt)
     }
 
-    /// Opening a note at launch in a library with 150 nested folders: before the window's first
-    /// frame no folder is listed for the toolbar's "Move to" (it was a button per folder, half of
-    /// a 1.5 s block at launch) and the wiki index isn't built (0.2 s with 2,000 notes). The
-    /// folders are listed once a menu opens; the index is there a moment later.
-    @Test(.timeLimit(.minutes(3))) func openingANoteAtLaunchListsNoFoldersAndReadsNoTitles() async throws {
+    /// Opening a note at launch in a library of 2,000 notes: the wiki index (the head of every
+    /// note's text) isn't built before the window's first frame (0.2 s of the launch), and is
+    /// there a moment later.
+    @Test(.timeLimit(.minutes(3))) func openingANoteAtLaunchReadsNoTitlesBeforeItsFirstFrame() async throws {
         let c = try ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
         let ctx = c.mainContext
         var folders = (0..<8).map { ctx.createFolder(named: "Folder \($0)") }
@@ -395,7 +394,6 @@ import Testing
         try ctx.save()
         let note = try #require(open)
         WikiDirectory.invalidate()
-        let listedBefore = MoveToMenu.listed
         let w = NSWindow(contentRect: CGRect(x: -20000, y: -20000, width: 1180, height: 760),
                          styleMask: [.borderless], backing: .buffered, defer: false)
         w.isReleasedWhenClosed = false
@@ -410,7 +408,6 @@ import Testing
         await Task.yield()
         w.contentView?.layoutSubtreeIfNeeded()
         w.displayIfNeeded()
-        #expect(MoveToMenu.listed == listedBefore, "no folder is listed for Move to before a menu opens")
         #expect(!WikiDirectory.isBuilt, "the library's titles aren't read before the note's first frame")
 
         for _ in 0..<100 where !WikiDirectory.isBuilt {
@@ -420,21 +417,6 @@ import Testing
         }
         #expect(WikiDirectory.isBuilt, "the index is built a moment after the note shows")
         #expect(WikiDirectory.index(ctx).resolve("Note 2") != nil)
-
-        // A menu opens: now the folders are listed, all of them.
-        var asked = 0
-        let host = NSHostingView(rootView: MoveToMenu(folders: { asked += 1; return ctx.allFolders() }, current: nil) { _ in })
-        host.frame = CGRect(x: 0, y: 0, width: 200, height: 40)
-        host.layoutSubtreeIfNeeded()
-        #expect(asked == 0)
-        NotificationCenter.default.post(name: NSMenu.didBeginTrackingNotification, object: NSMenu())
-        try? await Task.sleep(for: .milliseconds(100))
-        host.layoutSubtreeIfNeeded()
-        #expect(asked > 0, "the folders are listed once a menu opens")
-        #expect(MenuTracking.shared.open)
-        NotificationCenter.default.post(name: NSMenu.didEndTrackingNotification, object: NSMenu())
-        try? await Task.sleep(for: .milliseconds(1400))
-        #expect(!MenuTracking.shared.open, "and let go a moment after it closes")
     }
 
     /// The wiki index takes a save in note by note; what it ends up with is what building it again gives.

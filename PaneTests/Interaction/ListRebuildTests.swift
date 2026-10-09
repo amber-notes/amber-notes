@@ -153,8 +153,11 @@ import Testing
         await rig.settle(0.6)
         let home = try #require(rig.table)
         #expect(home !== all, "a folder is a new list")
-        try #require(rig.noteRows(home).count == 4, "Home's four notes (row heights: \(rig.heights(home)))")
-        rig.click(row: rig.noteRows(home)[1], in: home)
+        // Home's four notes are the last four rows, whatever sits above them.
+        let rows = Array(rig.noteRows(home).suffix(4))
+        try #require(rows.count == 4, "Home's four notes")
+        #expect(rig.heights(home) == rig.heights(home).split(separator: " ").suffix(5).joined(separator: " "), "a header and four notes, nothing else")
+        rig.click(row: rows[1], in: home)
         await rig.settle()
         #expect(rig.state.ids == [rig.notes[9].id], "a click in the new list selects")
         rig.key("\u{F701}", code: 125)

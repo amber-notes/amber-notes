@@ -20,12 +20,6 @@ final class PerfProbe: NSObject {
     /// Frame times since the current step began.
     private var frames: [CFTimeInterval] = []
     /// A new step: no frames yet, no views laid out yet.
-    private var menuProbe: (() -> Void)?
-    private var menuItemsWhileOpen = -2
-    private var menuTitles: [String] = []
-    private var trackedMenu: NSMenu?
-    @objc private func runMenuProbe() { menuProbe?(); menuProbe = nil }
-
     private func restart() {
         frames = []
         PerfLayout.install(in: NSApp.windows)
@@ -119,60 +113,6 @@ final class PerfProbe: NSObject {
                     try? await Task.sleep(for: .milliseconds(400))
                 }
             }
-        }
-
-        // The note toolbar's ••• menu, opened as a click opens it (`-perfOnly menu`): how many
-        // folders "Move to" lists before the menu opens (none) and while it is open (all).
-        if only == "menu", let w = window, let content = w.contentView {
-            self.open("Note 1")
-            try? await Task.sleep(for: .seconds(1.5))
-            // The ••• button, found by its label; pressed as accessibility presses it.
-            var controls: [NSObject] = []
-            var seen: [String] = []
-            var visited = 0
-            var labels: [String] = []
-            func ax(_ element: NSObject, _ key: String) -> Any? {
-                element.responds(to: Selector(key)) ? element.value(forKey: key) : nil
-            }
-            func collect(_ element: NSObject, _ depth: Int) {
-                guard depth < 60, visited < 6000 else { return }
-                visited += 1
-                let label = (ax(element, "accessibilityLabel") as? String) ?? ""
-                if !label.isEmpty, labels.count < 120, !label.hasPrefix("Note "), !label.hasPrefix("Folder ") { labels.append("\(type(of: element)):\(label)") }
-                if label.hasPrefix("More") {
-                    seen.append("\(type(of: element)):\(label)")
-                    controls.append(element)
-                }
-                for child in (ax(element, "accessibilityChildren") as? [Any]) ?? [] { if let c = child as? NSObject { collect(c, depth + 1) } }
-            }
-            collect(w, 0)
-            var fields: [String: Any] = ["controls": seen, "visited": visited, "labels": labels, "listedBefore": MoveToMenu.listed]
-            if let button = controls.first {
-                let opened = NotificationCenter.default.addObserver(forName: NSMenu.didBeginTrackingNotification, object: nil, queue: nil) { [weak self] n in
-                    nonisolated(unsafe) let menu = n.object as? NSMenu
-                    MainActor.assumeIsolated { if self?.trackedMenu == nil { self?.trackedMenu = menu } }
-                }
-                menuProbe = { [weak self] in
-                    guard let self else { return }
-                    let moveTo = self.trackedMenu?.items.first { $0.title == "Move to" }
-                    self.menuItemsWhileOpen = moveTo?.submenu?.items.count ?? -1
-                    self.menuTitles = self.trackedMenu?.items.map(\.title) ?? []
-                    self.trackedMenu?.cancelTracking()
-                }
-                perform(#selector(runMenuProbe), with: nil, afterDelay: 2, inModes: [.common])
-                let begin = CACurrentMediaTime()
-                let press = ["accessibilityPerformShowMenu", "accessibilityPerformPress"].first { button.responds(to: Selector($0)) }
-                fields["pressed"] = press ?? "nothing"
-                if let press { _ = button.perform(Selector(press)) }
-                fields["openMs"] = (CACurrentMediaTime() - begin) * 1000
-                NotificationCenter.default.removeObserver(opened)
-                fields["itemsWhileOpen"] = menuItemsWhileOpen
-                fields["menuTitles"] = menuTitles
-                fields["listedAfter"] = MoveToMenu.listed
-                try? await Task.sleep(for: .seconds(2.5))
-                fields["listedOpenAfterClose"] = MenuTracking.shared.open
-            }
-            record("move-to menu", fields)
         }
 
         if runs("open") {

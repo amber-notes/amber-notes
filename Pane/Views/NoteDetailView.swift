@@ -1055,7 +1055,11 @@ struct NoteDetailView: View {
             Button(note.isPinned ? "Unpin Note" : "Pin Note", systemImage: note.isPinned ? "pin.slash" : "pin") {
                 withAnimation(.snappy) { context.togglePin(note) }
             }
-            MoveToMenu(folders: { context.allFolders() }, current: note.folder?.id) { context.move(note, to: $0) }
+            Menu("Move to", systemImage: "folder") {
+                ForEach(context.allFolders()) { f in
+                    Button(f.name) { context.move(note, to: f) }.disabled(note.folder?.id == f.id)
+                }
+            }
             if !backlinks.isEmpty {
                 Menu("Linked from", systemImage: "link") {
                     ForEach(backlinks, id: \.id) { n in

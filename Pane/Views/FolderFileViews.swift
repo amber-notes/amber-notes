@@ -384,8 +384,12 @@ struct FileDetailView: View {
                         .accessibilityIdentifier("file.export")
                     Divider()
                     Button("Rename…", systemImage: "pencil") { nameDraft = FolderFileName.stem(file.filename); renaming = true }
-                    MoveToMenu(folders: { context.allFolders().sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending } },
-                               current: file.folderID) { f in withAnimation(.snappy) { context.move(file, to: f) } }
+                    Menu("Move to", systemImage: "folder") {
+                        ForEach(context.allFolders().sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }) { f in
+                            Button(f.name) { withAnimation(.snappy) { context.move(file, to: f) } }
+                                .disabled(file.folderID == f.id)
+                        }
+                    }
                     Divider()
                     Button("Delete", systemImage: "trash", role: .destructive) { withAnimation(.snappy) { context.trash(file) } }
                 } else {
