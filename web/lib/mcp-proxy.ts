@@ -19,6 +19,11 @@ const PATHS = /^\/(?:|register|authorize|token|revoke|connect\/(?:request|label|
 /// Claude shows next to the server, and OpenAI's domain challenge (app/.well-known/).
 const SITE_PATHS = ["/favicon.ico", "/.well-known/openai-apps-challenge"];
 
+/// robots.txt on the MCP hosts (both names): crawl nothing. The host is an API for AI apps, not pages; without
+/// this, Google crawled its root, got the 401 that asks an MCP client to sign in, and listed it in
+/// Search Console as "Blocked due to unauthorized request (401)". MCP clients don't read robots.txt.
+export const MCP_ROBOTS = "User-agent: *\nDisallow: /\n";
+
 export function sitePath(rawPath: string): boolean {
   return SITE_PATHS.includes(rawPath);
 }
