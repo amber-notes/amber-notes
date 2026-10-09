@@ -239,6 +239,8 @@ struct WebNoteSource: NoteSourceFetching {
     var anonKey: String? = BackendConfig.key
     var session: URLSession = .shared
     var timeout: TimeInterval = 15
+    /// Whether a template's app comes with it (NoteApps): without, the template is its note.
+    var apps = NoteApps.enabled
 
     func draft(for link: NoteSourceLink) async throws -> NoteDraft {
         guard link.isValid else { throw NoteSourceError.badLink(link.kind) }
@@ -262,7 +264,7 @@ struct WebNoteSource: NoteSourceFetching {
               !t.note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw NoteSourceError.unavailable }
         var draft = NoteDraft(template: t, link: link)
         // An app template brings the app (a project, checked like any other) and its picture.
-        if let path = t.app, path.hasPrefix("/"), let url = URL(string: path, relativeTo: site) {
+        if apps, let path = t.app, path.hasPrefix("/"), let url = URL(string: path, relativeTo: site) {
             let (project, r) = try await session.data(for: URLRequest(url: url, timeoutInterval: timeout))
             guard (r as? HTTPURLResponse)?.statusCode == 200, let text = String(data: project, encoding: .utf8),
                   NotePageProject.parse(text) != nil else { throw NoteSourceError.unavailable }

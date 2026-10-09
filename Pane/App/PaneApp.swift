@@ -108,7 +108,7 @@ struct PaneApp: App {
         FrameProbe.startFromArguments()
         #endif
         // Note pages: compile the sandbox's rules and start a web view now, not when a page opens.
-        if !PaneApp.isUnitTestHost, !ProcessInfo.processInfo.arguments.contains("-noPagePrewarm") { NotePageSandbox.prewarm() }
+        if NoteApps.enabled, !PaneApp.isUnitTestHost, !ProcessInfo.processInfo.arguments.contains("-noPagePrewarm") { NotePageSandbox.prewarm() }
         // Collaboration (prototype): `-collab <name>` against the local relay (scripts/collab-demo.sh).
         if let collab = CollabStore.fromArguments() {
             collab.context = container.mainContext
@@ -923,7 +923,7 @@ enum Seed {
         if demo { DemoData.load(into: context, main: notes) }
         // A note that is already an app, next to the welcome note, so the first day shows what
         // your AI can make of a note.
-        if welcome, !demo, !DemoData.importedLibrary, let url = Bundle.main.url(forResource: "sample-habit-tracker", withExtension: "html"),
+        if NoteApps.enabled, welcome, !demo, !DemoData.importedLibrary, let url = Bundle.main.url(forResource: "sample-habit-tracker", withExtension: "html"),
            let html = try? String(contentsOf: url, encoding: .utf8) {
             let habits = context.createNote(in: .folder(notes.id), body: Capture.habitNote().replacingOccurrences(
                 of: "Small things, most days. A ✓ means done.",
