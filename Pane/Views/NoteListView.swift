@@ -254,6 +254,12 @@ struct NoteListView: View {
         .contextMenu(forSelectionType: UUID.self) { ids in
             menu(for: ids, folders: folders)
         }
+        #if os(macOS)
+        // Another folder, another search or another library is another list, built new. Kept as
+        // one list, SwiftUI worked out the difference row by row and sized every row that came
+        // or went: 3 to 4 s on the main thread going from a folder back to All Notes with 2,000.
+        .id(ListIdentity(scope: scope, search: search.trimmingCharacters(in: .whitespaces), library: library.wholesale))
+        #endif
         #if os(iOS)
         .listStyle(.insetGrouped)
         .environment(\.editMode, $editMode)
@@ -852,6 +858,13 @@ enum ListEntry: Identifiable, DatedListItem {
     }
 }
 
+/// What makes the note list a different list (see where it's used).
+struct ListIdentity: Hashable {
+    let scope: Scope
+    let search: String
+    let library: Int
+}
+
 /// Every note in the library, for the list, newest first.
 ///
 /// The list used to read each note's date, folder, trash and parent from the store on every
@@ -899,9 +912,19 @@ final class LibraryNotes {
         guard let context else { return }
         epoch += 1
         changed = []
+        let before = Set(sorted.map(\.id))
         let notes = (try? context.fetch(FetchDescriptor<Note>())) ?? []
         sorted = notes.map { watched($0) }.sorted { $0.date > $1.date }
+        // An import, a first sync or another account: hundreds of notes came or went at once.
+        var differing = 0
+        for e in sorted where !before.contains(e.id) { differing += 1 }
+        differing += before.count - (sorted.count - differing)
+        if differing > Self.wholesaleChange { wholesale += 1 }
     }
+
+    /// Goes up when so many notes came or went in one save that the list is shown as a new list.
+    @ObservationIgnored private(set) var wholesale = 0
+    static let wholesaleChange = 200
 
     /// The note's entry as it is now; the next change to what it holds marks the note changed.
     private func watched(_ note: Note) -> NoteEntry {
