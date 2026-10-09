@@ -640,12 +640,13 @@ import AppKit
         // Release with Pinto Notes' own bundle id: off, whatever a launch argument or default says.
         #expect(!NoteApps.isEnabled(development: false, beta: false, setting: nil))
         #expect(!NoteApps.isEnabled(development: false, beta: false, setting: true))
-        // Pinto Notes Beta: off until `-noteApps YES`.
-        #expect(!NoteApps.isEnabled(development: false, beta: true, setting: nil))
-        #expect(NoteApps.isEnabled(development: false, beta: true, setting: true))
-        // Debug and QA builds: on; `-noteApps NO` shows them as released.
-        #expect(NoteApps.isEnabled(development: true, beta: false, setting: nil))
-        #expect(!NoteApps.isEnabled(development: true, beta: false, setting: false))
+        #expect(!NoteApps.isEnabled(development: false, beta: false, setting: false))
+        // Pinto Notes Beta, and Debug and QA builds: on; `-noteApps NO` shows them as released.
+        for (development, beta) in [(false, true), (true, false), (true, true)] {
+            #expect(NoteApps.isEnabled(development: development, beta: beta, setting: nil))
+            #expect(NoteApps.isEnabled(development: development, beta: beta, setting: true))
+            #expect(!NoteApps.isEnabled(development: development, beta: beta, setting: false))
+        }
     }
 
     @Test func withNoteAppsOffANoteWithAnAppIsJustANoteAndKeepsItsApp() {
@@ -665,6 +666,49 @@ import AppKit
         NoteWidgets.update(sub, html: page.html, enabled: true)
         #expect(NoteWidgets.isApp(sub))
         NoteWidgets.update(sub, html: nil)
+    }
+
+    /// Off, a note with an app is a normal note to read, edit and sync, and its app waits untouched:
+    /// the app, its earlier versions, what's still to push and the app's own data, in memory and on disk.
+    @Test func withNoteAppsOffTheAppAndItsDataSurviveUntouched() throws {
+        let dir = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let pagesFile = dir.appending(path: "note-pages.json"), dataFile = dir.appending(path: "note-page-data.json")
+        let note = Note(body: Capture.budgetNote)
+        let v1 = NotePageStore.Page(html: "<p>v1</p>", by: "Claude", at: Date(timeIntervalSince1970: 1_760_000_000))
+        let v2 = NotePageStore.Page(html: "<p>v2</p>", by: "ChatGPT", at: Date(timeIntervalSince1970: 1_760_000_100))
+        // Made while apps were on: two versions, the second changed here and not pushed yet, and data.
+        let store = NotePageStore(file: pagesFile), data = NotePageDataStore(file: dataFile)
+        store[note.id] = v1
+        store.setHere(note.id, v2)
+        data.set(note.id, ["values": ["streak": 4], "collections": [String: Any]()])
+        let kept = (page: store[note.id], history: store.history[note.id], unpushed: store.unpushed[note.id], doc: data.docs[note.id])
+        #expect(kept.page == v2 && kept.history == [v1] && kept.unpushed != nil && kept.doc != nil)
+
+        // Off: the note shows its text, with nothing of the app.
+        #expect(NoteApps.page(note.id, in: store, enabled: false) == nil && !NoteAppMark.has(note, in: store, enabled: false))
+        NoteWidgets.update(note.id, html: v2.html, enabled: false)
+        // Edited as a normal note.
+        note.body += "\n- [ ] Edited with apps off"
+        note.updatedAt = .now
+        // An app arriving by sync is still taken and kept (the store's own setter, as NotePageStore.take ends).
+        let other = UUID(), arrived = NotePageStore.Page(html: "<p>synced</p>", by: "Claude", at: .now)
+        store[other] = arrived
+        #expect(NoteApps.page(other, in: store, enabled: false) == nil && store[other] == arrived)
+
+        // Nothing of the first note's app changed, here or in what a relaunch reads.
+        for s in [store, NotePageStore(file: pagesFile)] {
+            #expect(s[note.id] == kept.page && s.history[note.id] == kept.history)
+            // Still to push (a time, written to disk as a number).
+            #expect(abs((s.unpushed[note.id] ?? .distantPast).timeIntervalSince(kept.unpushed ?? .now)) < 0.001)
+            #expect(s[other] == arrived)
+        }
+        for d in [data, NotePageDataStore(file: dataFile)] { #expect(d.docs[note.id] == kept.doc) }
+        // On again: the app is back as it was.
+        #expect(NoteApps.page(note.id, in: store, enabled: true) == v2 && NoteAppMark.has(note, in: store, enabled: true))
+        NoteWidgets.update(note.id, html: nil)
+        NoteWidgets.update(other, html: nil)
     }
 
     // MARK: Round five
