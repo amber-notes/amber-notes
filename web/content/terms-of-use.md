@@ -79,7 +79,7 @@ To the extent the law allows, we're not liable for indirect or consequential los
 
 ## Open source
 
-The Pinto Notes source code is open source under the MIT License, at [github.com/amber-notes/amber-notes](https://github.com/amber-notes/amber-notes). The license covers the code. These terms cover your use of the Pinto Notes service we run.
+The Pinto Notes source code is open source under the MIT License, at [github.com/pinto-notes/pinto-notes](https://github.com/pinto-notes/pinto-notes). The license covers the code. These terms cover your use of the Pinto Notes service we run.
 
 ## Changes to these terms
 

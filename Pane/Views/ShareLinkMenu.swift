@@ -639,6 +639,7 @@ private struct ShareLinkChrome: ViewModifier {
                             .foregroundStyle(.secondary)
                             .padding(.horizontal, 9)
                             .frame(minHeight: 24)
+                            .hoverHighlight(Capsule())
                             .background(.fill.tertiary, in: .capsule)
                             .contentShape(.capsule)
                     }

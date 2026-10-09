@@ -1,7 +1,7 @@
 // The proxy in front of the MCP server at mcp.ambernotes.app (see middleware.ts).
-import { MCP_URL } from "./facts";
+import { OLD_MCP_URL } from "./facts";
 
-export const MCP_HOST = new URL(MCP_URL).host;
+export const MCP_HOST = new URL(OLD_MCP_URL).host;
 /// The new name's address for the same server, served alongside MCP_HOST (never instead of it:
 /// connectors people already added call mcp.ambernotes.app).
 export const NEW_MCP_HOST = "mcp.pintonotes.com";
@@ -18,6 +18,11 @@ const PATHS = /^\/(?:|register|authorize|token|revoke|connect\/(?:request|label|
 /// What the site serves itself on the MCP host, the same file as on ambernotes.app: the favicon
 /// Claude shows next to the server, and OpenAI's domain challenge (app/.well-known/).
 const SITE_PATHS = ["/favicon.ico", "/.well-known/openai-apps-challenge"];
+
+/// robots.txt on the MCP hosts (both names): crawl nothing. The host is an API for AI apps, not pages; without
+/// this, Google crawled its root, got the 401 that asks an MCP client to sign in, and listed it in
+/// Search Console as "Blocked due to unauthorized request (401)". MCP clients don't read robots.txt.
+export const MCP_ROBOTS = "User-agent: *\nDisallow: /\n";
 
 export function sitePath(rawPath: string): boolean {
   return SITE_PATHS.includes(rawPath);
@@ -51,7 +56,7 @@ export function functionRegion(value: string | undefined): string | null {
   return /^[a-z]{2}-[a-z]+-\d$/.test(r) ? r : null;
 }
 
-export function upstreamHeaders(incoming: Headers, secret: string, region: string | null = null, publicURL: string = MCP_URL): Headers {
+export function upstreamHeaders(incoming: Headers, secret: string, region: string | null = null, publicURL: string = OLD_MCP_URL): Headers {
   const headers = new Headers();
   for (const h of PASS) {
     const v = incoming.get(h);

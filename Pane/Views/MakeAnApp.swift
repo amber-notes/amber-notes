@@ -60,7 +60,7 @@ struct MakeAppChip: View {
                     .font(.system(size: AIReceipt.text, weight: .semibold))
                     .foregroundStyle(Color.amberInk)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.hoverText)
             .accessibilityIdentifier("makeApp.chip")
             Divider().frame(height: 14)
             Button(action: dismiss) {
@@ -70,7 +70,7 @@ struct MakeAppChip: View {
                     .frame(width: 30, height: AIReceipt.height)
                     .contentShape(.rect)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.hoverIcon(cornerRadius: 9))
             .accessibilityLabel("Not now")
             .accessibilityIdentifier("makeApp.chip.dismiss")
         }

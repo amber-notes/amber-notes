@@ -1,6 +1,6 @@
 import type { PostHog } from "posthog-js";
 import { CONSENT_KEY, type ConsentChoice } from "@/lib/consent";
-import { posthogOptions, visitorOptedOut } from "@/lib/posthog";
+import { posthogOptions, REPLAY_REMOTE_CONFIG, replayAllowed, visitorOptedOut } from "@/lib/posthog";
 
 let loading: Promise<PostHog | null> | undefined;
 
@@ -18,8 +18,33 @@ export function startPostHog(key: string, host: string): Promise<PostHog | null>
     // with the site instead, so the page still talks to the capture endpoint only.
     : import("posthog-js/dist/dead-clicks-autocapture")
       .then(() => import("posthog-js"))
-      .then(({ default: posthog }) => posthog.init(key, posthogOptions(host)) ?? posthog).catch(() => null);
+      .then(({ default: posthog }) => posthog.init(key, posthogOptions(host)) ?? posthog)
+      .then((posthog) => {
+        // Replay failing to start never stops the rest.
+        syncReplay(posthog, window.location.pathname).catch(() => undefined);
+        return posthog;
+      })
+      .catch(() => null);
   return loading;
+}
+
+/// Records this page as a session replay when replayAllowed says so, and stops recording when it
+/// doesn't (a private page, or the visitor rejected). The recorder comes with the site, fetched
+/// only for a visitor who accepted, so the page still talks to the capture endpoint only.
+export async function syncReplay(posthog: PostHog, path: string): Promise<void> {
+  if (!replayAllowed(path, readConsent(), browserOptedOut())) {
+    if (posthog.sessionRecordingStarted()) posthog.stopSessionRecording();
+    return;
+  }
+  if (posthog.sessionRecordingStarted()) return;
+  await import("posthog-js/dist/posthog-recorder");
+  posthog.sessionRecording?.onRemoteConfig({ ok: true, config: REPLAY_REMOTE_CONFIG as never });
+  posthog.startSessionRecording();
+}
+
+/// The same for a page change, without loading PostHog on a page that never asked for it.
+export function replayOnPage(path: string): void {
+  void loading?.then((posthog) => posthog && syncReplay(posthog, path)).catch(() => undefined);
 }
 
 /// The visitor's answer from the banner. Accepting switches PostHog from cookieless to its cookie;
@@ -29,7 +54,9 @@ export async function recordChoice(key: string, host: string, choice: ConsentCho
   const posthog = await startPostHog(key, host);
   if (posthog && choice === "accepted") {
     posthog.opt_in_capturing({ captureEventName: "cookies_accepted" });
+    await syncReplay(posthog, window.location.pathname).catch(() => undefined);
   } else if (posthog) {
+    posthog.stopSessionRecording();
     posthog.opt_out_capturing();
     posthog.capture("cookies_rejected");
     // PostHog removes its cookie, but leaves the tab's window marker in sessionStorage.

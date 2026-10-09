@@ -9,7 +9,6 @@ struct AccountButton: View {
     let email: String
     let backend: Backend
     @State private var profile = ProfileStore.shared
-    @State private var hovering = false
     @Environment(\.openSettings) private var openSettings
 
     private var name: String { profile.name ?? email }
@@ -30,12 +29,9 @@ struct AccountButton: View {
             }
             .padding(.horizontal, 8)
             .frame(height: 34)
-            .background(hovering ? AnyShapeStyle(.fill.tertiary) : AnyShapeStyle(.clear), in: .rect(cornerRadius: 8))
-            .contentShape(.rect(cornerRadius: 8))
+            .hoverHighlight(RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
         .buttonStyle(.plain)
-        .onHover { hovering = $0 }
-        .animation(.easeOut(duration: 0.12), value: hovering)
         .help("Account Settings")
         .accessibilityLabel("Account, \(name). Opens Settings")
         .accessibilityIdentifier("sidebar.account")
@@ -176,6 +172,9 @@ struct SidebarView: View {
     private var roots: [Folder] { folders.filter { $0.parent == nil || $0.parent?.deletedAt != nil } }
 
     var body: some View {
+        #if DEBUG
+        RenderProbe.count("SidebarView")
+        #endif
         let counts = self.counts
         let files = self.files
         return List(selection: $scope) {
@@ -331,6 +330,7 @@ struct SidebarView: View {
             SidebarIcon(name: icon)
         }
         .rowAccessibility(title, count: count, files: files)
+        .hoverRow(title, reach: Hover.sidebarReach())
     }
 
     /// Keeps the selection on something that exists (see `Scope.settled`).
@@ -386,6 +386,8 @@ private struct FolderTree: View {
     let rename: (Folder) -> Void
     let newSub: (Folder) -> Void
     let delete: (Folder) -> Void
+    /// How many folders up: the row's content sits that many levels to the right.
+    var depth = 0
     @State private var expanded = true
 
     var body: some View {
@@ -394,26 +396,34 @@ private struct FolderTree: View {
         } else {
             DisclosureGroup(isExpanded: $expanded) {
                 ForEach(folder.liveChildren) { child in
-                    FolderTree(folder: child, files: files, dropTarget: dropTarget, targeted: targeted, rename: rename, newSub: newSub, delete: delete)
+                    FolderTree(folder: child, files: files, dropTarget: dropTarget, targeted: targeted, rename: rename, newSub: newSub, delete: delete, depth: depth + 1)
                 }
             } label: { label }
         }
     }
 
     private var label: some View {
-        Label {
-            HStack {
-                Text(folder.name)
-                Spacer()
-                Text(folder.liveNotes.count + (files[folder.id] ?? 0), format: .number)
-                    .monospacedDigit()
-                    .foregroundStyle(.secondary)
+        // Under the pointer the count gives way to ••• with the folder's menu.
+        HoverRowReader(id: folder.name, reach: Hover.sidebarReach(depth: depth)) { hovering in
+            Label {
+                HStack {
+                    Text(folder.name)
+                    Spacer()
+                    if hovering {
+                        RowMenuButton(help: "Folder options") { menuItems }
+                            .accessibilityHidden(true)
+                    } else {
+                        Text(folder.liveNotes.count + (files[folder.id] ?? 0), format: .number)
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            } icon: {
+                SidebarIcon(name: dropTarget == folder.id ? "folder.fill" : "folder")
+                    .contentTransition(.symbolEffect(.replace))
             }
-        } icon: {
-            SidebarIcon(name: dropTarget == folder.id ? "folder.fill" : "folder")
-                .contentTransition(.symbolEffect(.replace))
+            .rowAccessibility(folder.name, count: folder.liveNotes.count, files: files[folder.id] ?? 0)
         }
-        .rowAccessibility(folder.name, count: folder.liveNotes.count, files: files[folder.id] ?? 0)
         .tag(Scope.folder(folder.id))
         .accessibilityIdentifier("folder.\(folder.name)")
         .draggable(PaneDragItem(kind: .folder, id: folder.id)) {
@@ -444,22 +454,25 @@ private struct FolderTree: View {
             }
             return true
         }
-        .contextMenu {
-            Button("New Folder Inside", systemImage: "folder.badge.plus") { newSub(folder) }
-            Button("Rename", systemImage: "pencil") { rename(folder) }
-            if let sync {
-                // Its files fetched to this device as they arrive, so they open offline.
-                let kept = sync.keptChanged >= 0 && sync.keepsDownloaded(folder.id)
-                Toggle(isOn: Binding(get: { kept }, set: { sync.setKeepsDownloaded(folder.id, $0) })) {
-                    Label("Keep Files Downloaded", systemImage: "arrow.down.circle")
-                }
-                .accessibilityIdentifier("folder.keepDownloaded")
+        .contextMenu { menuItems }
+    }
+
+    /// The folder's menu: a right-click, or its ••• under the pointer.
+    @ViewBuilder private var menuItems: some View {
+        Button("New Folder Inside", systemImage: "folder.badge.plus") { newSub(folder) }
+        Button("Rename", systemImage: "pencil") { rename(folder) }
+        if let sync {
+            // Its files fetched to this device as they arrive, so they open offline.
+            let kept = sync.keptChanged >= 0 && sync.keepsDownloaded(folder.id)
+            Toggle(isOn: Binding(get: { kept }, set: { sync.setKeepsDownloaded(folder.id, $0) })) {
+                Label("Keep Files Downloaded", systemImage: "arrow.down.circle")
             }
-            if folder.parent != nil {
-                Button("Move to Top Level", systemImage: "arrow.up.to.line") { context.move(folder, into: nil) }
-            }
-            Divider()
-            Button("Delete Folder…", systemImage: "trash", role: .destructive) { delete(folder) }
+            .accessibilityIdentifier("folder.keepDownloaded")
         }
+        if folder.parent != nil {
+            Button("Move to Top Level", systemImage: "arrow.up.to.line") { context.move(folder, into: nil) }
+        }
+        Divider()
+        Button("Delete Folder…", systemImage: "trash", role: .destructive) { delete(folder) }
     }
 }

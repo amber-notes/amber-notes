@@ -634,6 +634,39 @@ import AppKit
         #expect(MakeAnApp.prompt(title: "Packing", body: "Packing\n- [ ] a\n- [ ] b\n- [ ] c").contains("make my note \u{201C}Packing\u{201D} an app: a checklist app"))
     }
 
+    // MARK: Not released (NoteApps)
+
+    @Test func noteAppsAreOffInTheReleasedApp() {
+        // Release with Pinto Notes' own bundle id: off, whatever a launch argument or default says.
+        #expect(!NoteApps.isEnabled(development: false, beta: false, setting: nil))
+        #expect(!NoteApps.isEnabled(development: false, beta: false, setting: true))
+        // Pinto Notes Beta: off until `-noteApps YES`.
+        #expect(!NoteApps.isEnabled(development: false, beta: true, setting: nil))
+        #expect(NoteApps.isEnabled(development: false, beta: true, setting: true))
+        // Debug and QA builds: on; `-noteApps NO` shows them as released.
+        #expect(NoteApps.isEnabled(development: true, beta: false, setting: nil))
+        #expect(!NoteApps.isEnabled(development: true, beta: false, setting: false))
+    }
+
+    @Test func withNoteAppsOffANoteWithAnAppIsJustANoteAndKeepsItsApp() {
+        let store = NotePageStore(file: nil)
+        let note = Note(body: Capture.budgetNote)
+        let page = NotePageStore.Page(html: "<p>Budget</p>", by: "Claude", at: .now)
+        store[note.id] = page
+        #expect(NoteApps.page(note.id, in: store, enabled: true) == page && NoteAppMark.has(note, in: store, enabled: true))
+        // Off: no app to open, no App mark in the list. The app itself is still stored.
+        #expect(NoteApps.page(note.id, in: store, enabled: false) == nil)
+        #expect(!NoteAppMark.has(note, in: store, enabled: false))
+        #expect(store[note.id] == page && store.live(note.id) == page)
+        // Off: a sub-note with an app shows in its parent as a link, not a live widget.
+        let sub = UUID()
+        NoteWidgets.update(sub, html: page.html, enabled: false)
+        #expect(!NoteWidgets.isApp(sub) && NoteWidgets.height(sub) == nil)
+        NoteWidgets.update(sub, html: page.html, enabled: true)
+        #expect(NoteWidgets.isApp(sub))
+        NoteWidgets.update(sub, html: nil)
+    }
+
     // MARK: Round five
 
     func applyAny(_ message: Any, to body: String = habits) throws -> String {

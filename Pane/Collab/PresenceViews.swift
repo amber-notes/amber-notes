@@ -234,7 +234,7 @@ struct PresenceStack: View {
                 .padding(.horizontal, 2)
             }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.hoverIcon(cornerRadius: 12))
         .accessibilityLabel(accessibilityText)
         .accessibilityIdentifier("collab.people")
     }

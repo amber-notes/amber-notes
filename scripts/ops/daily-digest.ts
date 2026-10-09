@@ -54,6 +54,9 @@ export type Digest = {
   mcp: { posts: Row[]; refused_by: Row[]; grants_used: number; last_used: string | null; ai_edits: number };
   connect: Connect;
   app: { table: boolean; failures: Row[] };
+  /// Reports of shared pages nobody has dealt with (share_reports with status 'open'), whenever
+  /// they came, and how many came in this window. The report page promises a review in 24 hours.
+  reports: { open: number; pages: number; oldest: string | null; new: number };
   email: { sends: Row[]; resend: string };
   database: Row[];
   gaps: string[];
@@ -89,6 +92,11 @@ const QUIET_EVENTS = new Set(["db", "relay", "push", "push_off", "lifecycle_roun
 export function findings(d: Digest): string[] {
   const out: string[] = [];
   const c = d.connect;
+  if (d.reports.open > 0) {
+    const waited = d.reports.oldest ? Math.floor((d.end.getTime() - new Date(d.reports.oldest).getTime()) / 3600_000) : 0;
+    out.push(`Reports of shared pages waiting for a review: ${d.reports.open} on ${d.reports.pages} ${d.reports.pages === 1 ? "page" : "pages"}, the oldest for ${waited} hours` +
+      `${waited >= 24 ? ", past the 24 hours the report page promises" : ""}. They are in public.share_reports.`);
+  }
   if (c.started > 0 && c.finished === 0) {
     out.push(`Connecting an AI: ${c.started} tries, none finished (${c.signed_in} signed in, ${c.approved} approved).`);
   } else if (c.started > c.finished) {
@@ -171,6 +179,10 @@ export function render(d: Digest): string {
   lines.push(d.app.table
     ? table(["Device", "Message", "Count"], d.app.failures.map((r) => [r.device, r.message, r.n]))
     : "public.app_load_failures isn't in production yet.\n");
+
+  lines.push("## Reports of shared pages", "");
+  lines.push(`${d.reports.new} came in. ${d.reports.open} open in all, on ${d.reports.pages} ${d.reports.pages === 1 ? "page" : "pages"}` +
+    `${d.reports.oldest ? `, the oldest from ${when(new Date(d.reports.oldest))} UTC` : ""}.`, "");
 
   lines.push("## Email", "");
   lines.push(table(["Kind", "Status", "Count"], d.email.sends.map((r) => [r.kind, r.status, r.n])));
@@ -292,6 +304,11 @@ export async function collect(start: Date, end: Date): Promise<Digest> {
     from public.connect_asks where created_at >= ${from} and created_at < ${to} group by 1 order by 2 desc`), [] as Row[]);
   const sends = await attempt("email sends", () => read.sql<Row>(`
     select kind, status, count(*) as n from public.email_sends where created_at >= ${from} and created_at < ${to} group by 1, 2 order by 3 desc`), [] as Row[]);
+  const [reports] = await attempt("reports of shared pages", () => read.sql<Row>(`
+    select count(*) filter (where status = 'open') as open, count(distinct slug) filter (where status = 'open') as pages,
+      min(created_at) filter (where status = 'open') as oldest,
+      count(*) filter (where created_at >= ${from} and created_at < ${to}) as new
+    from public.share_reports`), [{}] as Row[]);
   const [{ present }] = await attempt("app table", () => read.sql<{ present: boolean }>(`select to_regclass('public.app_load_failures') is not null as present`), [{ present: false }]);
   const failures = present
     ? await attempt("app load failures", () => read.sql<Row>(`
@@ -323,6 +340,7 @@ export async function collect(start: Date, end: Date): Promise<Digest> {
       finished: sum(byClient, "finished"), stuck_without_device: sum(byClient, "stuck_without_device"),
       by_client: byClient, asks,
     },
+    reports: { open: n(reports?.open), pages: n(reports?.pages), oldest: reports?.oldest ? String(reports.oldest) : null, new: n(reports?.new) },
     app: { table: present, failures: failures.map((r) => ({ ...r, message: scrub(String(r.message)) })) },
     email: {
       sends,

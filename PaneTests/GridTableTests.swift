@@ -58,6 +58,108 @@ import Testing
     }
 }
 
+/// A table straight from the Table button, and the edits its handles make (1.1.2 showed a new
+/// table as one cell, and adding a column to it left markdown that was no longer a table).
+@MainActor @Suite struct GridEditTests {
+    /// A note with a table just inserted on its last, empty line.
+    static func noteWithNewTable() -> String {
+        let text = "Sunday paella\n\n"
+        let (edit, _) = EditorCore().newGridEdit(text: text, selection: NSRange(location: (text as NSString).length, length: 0))
+        return (text as NSString).replacingCharacters(in: edit.range, with: edit.replacement)
+    }
+
+    static func table(_ text: String) throws -> GridTable { try #require(GridTable.find(in: text).first) }
+
+    @Test func aNewTableIsTwoByTwo() throws {
+        let text = Self.noteWithNewTable()
+        #expect(try Self.table(text).rows == [["", ""], ["", ""]])
+        // The editor's one-pass scan reads it the same way.
+        #expect(NoteStructure(text).grids.map(\.rows) == [[["", ""], ["", ""]]])
+    }
+
+    @Test func addingAColumnToANewTableKeepsItATable() throws {
+        var t = try Self.table(Self.noteWithNewTable())
+        t.insertColumn(at: 1)
+        #expect(t.markdown == "|   |   |   |\n| --- | --- | --- |\n|   |   |   |")
+        #expect(try Self.table(t.markdown).rows == [["", "", ""], ["", "", ""]])
+    }
+
+    @Test func rowsAndColumnsComeAndGoOnAnEmptyTable() throws {
+        var t = try Self.table(Self.noteWithNewTable())
+        t.rows.insert(t.blankRow, at: 1)
+        t = try Self.table(t.markdown)
+        #expect(t.rows == [["", ""], ["", ""], ["", ""]])
+        t.insertColumn(at: 0)
+        t.insertColumn(at: 3)
+        t = try Self.table(t.markdown)
+        #expect(t.rows == Array(repeating: ["", "", "", ""], count: 3))
+        t.removeColumn(at: 0)
+        t.rows.remove(at: 2)
+        t = try Self.table(t.markdown)
+        #expect(t.rows == [["", "", ""], ["", "", ""]])
+        // The last column stays.
+        t.removeColumn(at: 0)
+        t.removeColumn(at: 0)
+        t.removeColumn(at: 0)
+        #expect(try Self.table(t.markdown).rows == [[""], [""]])
+    }
+
+    @Test func rowsAndColumnsComeAndGoOnAFilledTable() throws {
+        var t = try Self.table("| a | b |\n| --- | --- |\n| 1 | 2 |\n|  |  |\n| 3 | 4 |")
+        // An empty row between filled ones is still a row.
+        #expect(t.rows == [["a", "b"], ["1", "2"], ["", ""], ["3", "4"]])
+        t.insertColumn(at: 2)
+        t = try Self.table(t.markdown)
+        #expect(t.rows == [["a", "b", ""], ["1", "2", ""], ["", "", ""], ["3", "4", ""]])
+        t.removeColumn(at: 0)
+        t.rows.remove(at: 2)
+        #expect(try Self.table(t.markdown).rows == [["b", ""], ["2", ""], ["4", ""]])
+    }
+
+    @Test func aTypedTableKeepsItsTypesThroughColumnEdits() throws {
+        var t = try Self.table("<!-- pane-table: Date=date; Km=number -->\n| Date | Km |\n| --- | --- |\n| 2026-10-09 | 5 |")
+        t.insertColumn(at: 1)
+        #expect(try Self.table(t.markdown).types == [.date, .text, .number])
+        t.removeColumn(at: 0)
+        #expect(try Self.table(t.markdown).types == [.text, .number])
+    }
+
+    @Test func theDelimiterIsNeverMadeFromCellText() throws {
+        var t = try Self.table(Self.noteWithNewTable())
+        t.rows = [["—", "--"], ["-", "---"]]
+        let lines = t.markdown.components(separatedBy: "\n")
+        #expect(lines == ["| — | -- |", "| --- | --- |", "| - | --- |"])
+        // Cells that look like a delimiter come back as cells.
+        #expect(try Self.table(t.markdown).rows == t.rows)
+    }
+
+    /// What the bug saved: smart punctuation had turned the dashes under the header long.
+    @Test func aDelimiterWithLongDashesStillOpensAndIsWrittenBackPlain() throws {
+        let saved = "Sunday paella\n\n| Ingredient |   |\n| -— | — |\n\nAmount"
+        var t = try Self.table(saved)
+        #expect(t.rows == [["Ingredient", ""]])
+        #expect(NoteStructure(saved).grids.map(\.rows) == [[["Ingredient", ""]]])
+        #expect((saved as NSString).substring(with: t.range) == "| Ingredient |   |\n| -— | — |")
+        t.rows[0][1] = "Amount"
+        #expect(t.markdown == "| Ingredient | Amount |\n| --- | --- |")
+        // A line of long dashes alone is no table.
+        #expect(GridTable.find(in: "| a |\n| b — c |").isEmpty)
+        #expect(GridTable.find(in: "— a |\n— | —").isEmpty)
+    }
+
+    /// Markdown can't hold the space at the end of a cell; the grid keeps it while you type.
+    @Test func aSpaceTypedAtTheEndOfACellIsNotAChangeFromElsewhere() throws {
+        var typed = try Self.table("| Place | Order |\n| --- | --- |\n| Ramiro | Seafood |")
+        typed.rows[1][1] = "Seafood "
+        let back = try Self.table(typed.markdown)
+        #expect(back.rows[1][1] == "Seafood")
+        #expect(typed.reads(as: back))
+        var other = back
+        other.rows[1][0] = "Cervejaria Ramiro"
+        #expect(!typed.reads(as: other))
+    }
+}
+
 /// Column widths on a narrow screen (TestFlight 1.1.1 cut the Running log's fourth column on iPhone).
 @Suite struct GridColumnWidthTests {
     static let runningLog = GridTable(rows: [["Date", "Distance km", "Minutes", "Feel"], ["2026-09-22", "5", "27", "4"], ["2026-09-24", "7.5", "42", "3"]],

@@ -155,8 +155,8 @@ enum NoteWidgets {
 
     /// A page can ask for its widget height with <meta name="amber-widget-height" content="260">,
     /// from 160 to 600 points.
-    static func update(_ id: UUID, html: String?) {
-        guard let html else { apps[id] = nil; return }
+    static func update(_ id: UUID, html: String?, enabled: Bool = NoteApps.enabled) {
+        guard enabled, let html else { apps[id] = nil; return }
         var h = standard
         if let r = html.range(of: #"<meta[^>]*name=["']amber-widget-height["'][^>]*content=["']?(\d+)"#, options: .regularExpression),
            let n = html[r].split(whereSeparator: { !$0.isNumber }).last.flatMap({ Double($0) }) {

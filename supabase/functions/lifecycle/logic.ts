@@ -1,5 +1,6 @@
 // The lifecycle emails' decisions, without a database or a network: who gets which email and when,
 // the unsubscribe links, and the settings. docs/Technical/lifecycle-emails.md explains the whole.
+import { EMIL, SENDER_NAME } from "../_shared/sender.ts";
 
 export type Kind = "welcome" | "stuck" | "import" | "connect" | "try" | "undo" | "apps" | "templates" | "iphone" | "mac" | "share";
 
@@ -202,7 +203,8 @@ export function unsubscribeLinks(site: string, userId: string, token: string) {
 // ---- Click links ---------------------------------------------------------------------------------
 
 /// Where a tracked link may lead. Anything else isn't wrapped, and the redirect refuses it.
-export const CLICK_HOSTS = ["ambernotes.app", "chatgpt.com", "claude.ai", "apps.apple.com"];
+/// ambernotes.app is here for the links under /open/ (APP_LINKS below).
+export const CLICK_HOSTS = ["pintonotes.com", "ambernotes.app", "chatgpt.com", "claude.ai", "apps.apple.com"];
 
 export function clickable(url: string): boolean {
   try {
@@ -225,7 +227,7 @@ async function clickSig(secret: string, sendId: number, url: string): Promise<st
   return b64url(mac).slice(0, 22);
 }
 
-/// A link through ambernotes.app/go that counts the click (which email, which link) and goes on.
+/// A link through pintonotes.com/go that counts the click (which email, which link) and goes on.
 export async function trackedLink(site: string, secret: string, sendId: number, url: string): Promise<string> {
   const q = new URLSearchParams({ s: String(sendId), to: url, t: await clickSig(secret, sendId, url) });
   return `${site}/go?${q}`;
@@ -250,7 +252,7 @@ export type Config = {
   enabled: boolean;
   flags: Flags;
   /// Measurement, each off unless its variable is "true": compare two subject lines per email
-  /// (LIFECYCLE_SUBJECT_TEST), count link clicks through ambernotes.app/go (LIFECYCLE_TRACK_CLICKS).
+  /// (LIFECYCLE_SUBJECT_TEST), count link clicks through pintonotes.com/go (LIFECYCLE_TRACK_CLICKS).
   subjectTest: boolean;
   trackClicks: boolean;
   /// Accounts made before this never get these emails (LIFECYCLE_SINCE, an ISO date).
@@ -264,6 +266,8 @@ export type Config = {
   from: string;
   replyTo: string;
   site: string;
+  /// Where the links under /open/ live (APP_LINKS, or the staging site).
+  open: string;
   /// Staging (docs/Technical/staging.md): the site its links open (LIFECYCLE_SITE, https only), a
   /// prefix on every subject (LIFECYCLE_SUBJECT_PREFIX, "[Staging] "), and manual rounds that may send
   /// outside the 9 o'clock hour (LIFECYCLE_MANUAL_ROUNDS, for scripts/staging.sh lifecycle-next).
@@ -271,9 +275,13 @@ export type Config = {
   manualRounds: boolean;
 };
 
-export const FROM = "Emil at Pinto Notes <emil@ambernotes.app>";
-export const REPLY_TO = "emil@ambernotes.app";
-export const SITE = "https://ambernotes.app";
+export const FROM = `Emil at ${SENDER_NAME} <${EMIL}>`;
+export const REPLY_TO = EMIL;
+export const SITE = "https://pintonotes.com";
+/// The links that open the app (/open/…) stay on the old address: the apps people have installed
+/// claim universal links on ambernotes.app only, and that host keeps answering under /open/
+/// (web/lib/site-move.ts). On pintonotes.com the same link would open a web page first.
+export const APP_LINKS = "https://ambernotes.app";
 
 /// The settings, or why there are none. Missing secrets turn sending off rather than failing later.
 export function config(env: Env): { ok: true; config: Config } | { ok: false; reason: string } {
@@ -288,6 +296,7 @@ export function config(env: Env): { ok: true; config: Config } | { ok: false; re
   if (!resendKey) return { ok: false, reason: "key_missing" };
   if (unsubscribeSecret.length < 32) return { ok: false, reason: "unsubscribe_secret_missing" };
   if (cronSecret.length < 32) return { ok: false, reason: "cron_secret_missing" };
+  const staging = (env.get("LIFECYCLE_SITE") ?? "").trim().startsWith("https://") ? env.get("LIFECYCLE_SITE")!.trim().replace(/\/+$/, "") : null;
   const onlyRaw = (env.get("LIFECYCLE_ONLY") ?? "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
   return {
     ok: true,
@@ -299,7 +308,8 @@ export function config(env: Env): { ok: true; config: Config } | { ok: false; re
       only: onlyRaw.length ? new Set(onlyRaw) : null,
       from: env.get("LIFECYCLE_FROM")?.trim() || FROM,
       replyTo: REPLY_TO,
-      site: (env.get("LIFECYCLE_SITE") ?? "").trim().startsWith("https://") ? env.get("LIFECYCLE_SITE")!.trim().replace(/\/+$/, "") : SITE,
+      site: staging ?? SITE,
+      open: staging ?? APP_LINKS,
       subjectPrefix: env.get("LIFECYCLE_SUBJECT_PREFIX") ?? "",
       manualRounds: on("LIFECYCLE_MANUAL_ROUNDS"),
     },

@@ -120,7 +120,7 @@ struct SettingsView: View {
             SettingsPage {
                 if let client = backend.client {
                     ConnectAISection(client: client, preview: connections)
-                    AppPreviewSection(client: client)
+                    if NoteApps.enabled { AppPreviewSection(client: client) }
                 }
             }
             .connectGuides(client: backend.client)
@@ -303,7 +303,7 @@ private struct GeneralSettings: View {
             }
         }
         #endif
-        APIKeysSection()
+        if NoteApps.enabled { APIKeysSection() }
         AboutSection()
     }
 }

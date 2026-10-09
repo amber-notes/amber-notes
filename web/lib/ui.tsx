@@ -1,3 +1,4 @@
+import { PasswordInput } from "./PasswordInput";
 import s from "./ui.module.css";
 
 /// The functional pages' shared parts: the pages a link lands on, a shared note's chrome, the report
@@ -62,7 +63,12 @@ type Control = { id: string; name: string; label: string; optional?: string; hin
 type InputProps = Control & Omit<React.InputHTMLAttributes<HTMLInputElement>, "id" | "name"> & { multiline?: false };
 type AreaProps = Control & Omit<React.TextareaHTMLAttributes<HTMLTextAreaElement>, "id" | "name"> & { multiline: true };
 
-/// A labelled field. The label always shows; an error is said under the field it is about.
+function withoutType({ type: _, ...rest }: React.InputHTMLAttributes<HTMLInputElement>) {
+  return rest;
+}
+
+/// A labelled field. The label always shows; an error is said under the field it is about. A
+/// password field gets the eye button that shows what is typed.
 export function Field(props: InputProps | AreaProps) {
   const { id, name, label, optional, hint, error, multiline, ...rest } = props;
   const described = error ? { "aria-invalid": true, "aria-describedby": `${id}-error` } : hint ? { "aria-describedby": `${id}-hint` } : {};
@@ -71,7 +77,9 @@ export function Field(props: InputProps | AreaProps) {
       <label className={s.label} htmlFor={id}>{label}{optional && <span className={s.optional}> {optional}</span>}</label>
       {multiline
         ? <textarea className={s.input} id={id} name={name} {...described} {...(rest as React.TextareaHTMLAttributes<HTMLTextAreaElement>)} />
-        : <input className={s.input} id={id} name={name} {...described} {...(rest as React.InputHTMLAttributes<HTMLInputElement>)} />}
+        : (rest as React.InputHTMLAttributes<HTMLInputElement>).type === "password"
+          ? <PasswordInput className={s.input} id={id} name={name} {...described} {...withoutType(rest as React.InputHTMLAttributes<HTMLInputElement>)} />
+          : <input className={s.input} id={id} name={name} {...described} {...(rest as React.InputHTMLAttributes<HTMLInputElement>)} />}
       {error
         ? <p className={s.error} id={`${id}-error`} role="status">{error}</p>
         : hint && <p className={s.hint} id={`${id}-hint`}>{hint}</p>}

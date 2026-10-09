@@ -83,3 +83,36 @@ import Testing
         #expect(flow.showsApple, "an account without a password keeps both buttons in view")
     }
 }
+
+/// Closing Google's sheet without signing in: AuthenticationServices answers from a background
+/// XPC queue, and the app must not assume it's on the main thread (it quit with SIGTRAP).
+@Suite struct WebAuthSessionCompletionTests {
+    @Test func closingTheSheetOffTheMainThreadThrowsCanceled() async {
+        await #expect(throws: ASWebAuthenticationSessionError.self) {
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<URL, Error>) in
+                let finish = WebAuthSession.finish(continuation)
+                DispatchQueue.global().async { finish(nil, ASWebAuthenticationSessionError(.canceledLogin)) }
+            }
+        }
+    }
+
+    @Test func noURLAndNoErrorCountsAsCanceled() async {
+        do {
+            _ = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<URL, Error>) in
+                let finish = WebAuthSession.finish(continuation)
+                DispatchQueue.global().async { finish(nil, nil) }
+            }
+            Issue.record("expected the sign-in to be canceled")
+        } catch {
+            #expect(Backend.isCanceled(error))
+        }
+    }
+
+    @Test func theCallbackURLComesBackFromAnyQueue() async throws {
+        let url = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<URL, Error>) in
+            let finish = WebAuthSession.finish(continuation)
+            DispatchQueue.global().async { finish(Backend.webCallback, nil) }
+        }
+        #expect(url == Backend.webCallback)
+    }
+}

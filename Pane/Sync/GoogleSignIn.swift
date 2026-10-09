@@ -49,6 +49,7 @@ struct GoogleAuthButton: View {
             .frame(maxWidth: .infinity, minHeight: height, maxHeight: height)
             .background(Color(Palette.rgb(colors.fill)), in: shape)
             .overlay(shape.strokeBorder(Color(Palette.rgb(colors.stroke)), lineWidth: 1))
+            .hoverOverlay(shape, Color.primary.opacity(0.06))
             .contentShape(shape)
         }
         .buttonStyle(PressScale())

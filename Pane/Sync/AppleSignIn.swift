@@ -135,6 +135,7 @@ private struct MacAppleButton: View {
             .foregroundStyle(dark ? Color.black : Color.white)
             .frame(maxWidth: .infinity, minHeight: height, maxHeight: height)
             .background(dark ? Color.white : Color.black, in: .rect(cornerRadius: cornerRadius, style: .continuous))
+            .hoverOverlay(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous), dark ? .hoverDarken : .hoverLighten)
             .contentShape(.rect(cornerRadius: cornerRadius, style: .continuous))
         }
         .buttonStyle(PressScale())

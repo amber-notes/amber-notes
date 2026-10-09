@@ -174,6 +174,20 @@ private final class NoteSourceFixtureToken {}
         #expect(draft.body.hasPrefix("Habit tracker\n\n<!-- pane-table:"))
     }
 
+    /// Apps aren't released (NoteApps): off, an app template is its note, and its app is never fetched.
+    @Test func anAppTemplateIsItsNoteWhileNoteAppsAreOff() async throws {
+        let host = "t1b.stub.test"
+        var s = source(host) { req in
+            #expect(req.url?.path == "/templates/habit-tracker.json")
+            return (200, Data(habitJSON.replacingOccurrences(of: #""folder": "Habits","#, with: #""folder": "Habits", "app": "/templates/habit-tracker.app.json","#).utf8))
+        }
+        s.apps = false
+        let draft = try await s.draft(for: NoteSourceLink(kind: .template, slug: "habit-tracker"))
+        #expect(draft.appProject == nil && draft.preview == nil)
+        #expect(draft.body.hasPrefix("Habit tracker\n\n<!-- pane-table:"))
+        #expect(StubSite.requests(host).count == 1)
+    }
+
     @Test func unknownTemplateIsNotFound() async {
         let s = source("t2.stub.test") { _ in (404, Data("{}".utf8)) }
         await #expect(throws: NoteSourceError.notFound(.template)) { try await s.draft(for: NoteSourceLink(kind: .template, slug: "nope")) }

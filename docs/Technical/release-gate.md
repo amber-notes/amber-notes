@@ -147,6 +147,16 @@ dev eb57bb1dc9 (docs/Evidence/release-gate/2026-10-08-dev-eb57bb1dc9.md), with t
 | Server latency p50, p95 | 1.5 × dev + 100 ms, 2 × dev + 200 ms | 100 ms, 300 ms |
 | Supabase advisor warnings | dev's count | 0 |
 
+Changed since, each in its own commit:
+
+- 2026-10-09, views laid out at 2,000 notes: sidebar hide 5,450 -> 7,000, sidebar show 5,850 -> 7,000,
+  typing and saving 8,000 -> 9,950. Per-row hover tracking in the sidebar and lists (asked for by Emil
+  2026-10-07) adds layout passes on sidebar toggles and typed saves; frame times, hangs and memory
+  unchanged (release-gate quick look 3bacaed1, 2026-10-09: 6,082, 6,087 and 8,644 views laid out;
+  memory 134 MB against 128 to 132 without hover); reviewed by the lead. Set at measured + 15%,
+  tighter than the rule above on purpose: 1.5 × would hide a second change the size of hover. The 1 and 20,000-note lines were not measured with hover
+  and are unchanged. One pointer tracker per list instead of one per row would win these back.
+
 These are ceilings on today's dev, not targets: dev still has hangs of over a second, a first sync
 of minutes, and a folder push the server refuses about 1,500 times a launch (see the report). Tighten a budget in its own commit when the code
 behind it gets better; never loosen one to pass a run.
