@@ -958,6 +958,12 @@ final class LibraryNotes {
 
     private func flush() {
         flushScheduled = false
+        // The library is gone (its window closed, or a test let its container go) with changes
+        // still waiting: its notes can't be read any more.
+        guard context != nil else {
+            changed = []
+            return
+        }
         guard !changed.isEmpty else { return }
         let ids = changed
         changed = []
