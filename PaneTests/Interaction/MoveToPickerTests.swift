@@ -60,7 +60,8 @@ import Testing
     struct Host: View {
         let current: UUID?
         let moved: (Folder) -> Void
-        var body: some View { MoveToPicker(current: current, move: moved) }
+        // A popover gives the picker its ground; here the window's does.
+        var body: some View { MoveToPicker(current: current, move: moved).background(Color(nsColor: .windowBackgroundColor)) }
     }
 
     static func window(_ c: ModelContainer, current: UUID?, dark: Bool = false, moved: @escaping (Folder) -> Void) -> NSWindow {
