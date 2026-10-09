@@ -283,8 +283,13 @@ final class GateProbe: NSObject {
             }
         }
 
-        // Opening a note on its own, for its requests and bytes.
+        // Opening a note on its own, for its requests and bytes. Right after a pull has finished, so
+        // the regular pull (every 8 s or more) can't fall inside the two seconds and be counted as
+        // the note's: it did whenever the steps before happened to line up with it.
         try? await Task.sleep(for: .seconds(2))
+        let pulledAt = lastPull
+        try? await until("the next pull", seconds: 40) { self.lastPull != pulledAt && self.synced }
+        try? await Task.sleep(for: .milliseconds(300))
         let openStart = CACurrentMediaTime()
         NoteOpener.shared.request = other.id
         try? await Task.sleep(for: .seconds(2))
@@ -334,6 +339,8 @@ final class GateProbe: NSObject {
 
     private var isSignedIn: Bool { if case .signedIn = backend.state { true } else { false } }
     private var synced: Bool { if case .synced = sync.status, sync.hasSynced { true } else { false } }
+    /// When the last sync finished, as the engine says it.
+    private var lastPull: Date? { if case .synced(let at) = sync.status { at } else { nil } }
     private func dirty(_ n: Note) -> Bool { n.dirty }
 
     private func open(_ id: UUID) async {
