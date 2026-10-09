@@ -12,7 +12,7 @@ import {
   type AccountKey,
 } from "@/lib/connect-flow";
 import { newHandoffKeys, openHandoff, parseRecoveryKey, toBase64 } from "@/lib/e2ee";
-import { EmailFirst, EndedScreen, LeavingScreen, RecoverScreen, RequestLine, SignInButtons, Spinner } from "./ConnectScreens";
+import { EmailFirst, EndedScreen, LeavingScreen, RecoverScreen, RequestLine, SignIn, Spinner } from "./ConnectScreens";
 import { DeviceScreen } from "./DeviceLead";
 import styles from "./connect.module.css";
 
@@ -494,6 +494,10 @@ export default function ConnectFlowV1({ requestId, supabaseURL, anonKey, label, 
   const to = label?.redirect_host ? destination(label.redirect_host, label.loopback) : null;
   const recovering = mode === "recover" && (view.kind === "signIn" || view.kind === "recover");
   const canWrite = request ? request.wants_write : true;
+  const signInProps = {
+    email, password, onEmail: setEmail, onPassword: setPassword, onApple: signInWithApple, onGoogle: signInWithGoogle,
+    busy, ready, failure, onSubmit: submitSignIn,
+  };
 
   return (
     <>
@@ -501,11 +505,7 @@ export default function ConnectFlowV1({ requestId, supabaseURL, anonKey, label, 
         <>
           <h1 className={styles.title}>{heading}</h1>
           <RequestLine to={to} claimed={label?.claimed_name} />
-          {APPLE_ON_WEB && <SignInButtons onApple={signInWithApple} onGoogle={signInWithGoogle} busy={busy} />}
-          <EmailFirst
-            email={email} password={password} onEmail={setEmail} onPassword={setPassword} onApple={signInWithApple} onGoogle={signInWithGoogle}
-            busy={busy} ready={ready} failure={failure} onSubmit={submitSignIn}
-          />
+          {APPLE_ON_WEB ? <SignIn {...signInProps} /> : <EmailFirst {...signInProps} />}
           {(onMac || !APPLE_ON_WEB) && (
             <div className={styles.quiet}>
               {onMac && <p>Pinto Notes on this Mac? <a href={universalLink(requestId)}>Open it</a></p>}
