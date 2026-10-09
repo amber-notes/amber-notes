@@ -12,7 +12,7 @@ export function serverCard() {
   return {
     serverInfo: SERVER_INFO,
     description: "Search, read and edit your notes in Pinto Notes, the notes app for iPhone and Mac. You choose read only or read and edit when you connect, and every change keeps the previous version.",
-    homepage: "https://ambernotes.app/blog/mcp-server",
+    homepage: "https://pintonotes.com/blog/mcp-server",
     authentication: { required: true, schemes: ["oauth2"] },
     tools: servedTools().map(({ name, title, description, inputSchema, annotations }) => ({ name, title, description, inputSchema, annotations })),
     resources: [],
