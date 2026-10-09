@@ -91,17 +91,17 @@ export default function Page() {
         started with custom connectors</a>). Apple Notes has no API, so it can&apos;t be one. A notes app that runs its own MCP server can.
       </p>
       <p>
-        I make one, Amber Notes: a free notes app for iPhone and Mac that works like Apple Notes, with an MCP server built in. In Cowork it
+        I make one, Pinto Notes: a free notes app for iPhone and Mac that works like Apple Notes, with an MCP server built in. In Cowork it
         behaves like any other connector from Claude&apos;s directory:
       </p>
       <ol>
         <li>Open <a href={CLAUDE_DIRECTORY_URL} rel="noopener">Amber Notes in Claude&apos;s connector directory</a> and choose Connect to Claude. (No listing in your Claude? Go to Customize, Connectors, choose + and then Add custom connector, and paste <code>{MCP_URL}</code>.)</li>
-        <li>Sign in when asked, and approve Claude in Amber Notes on your iPhone or Mac by typing the number the page shows. Pick Read Only or Read and Edit.</li>
+        <li>Sign in when asked, and approve Claude in Pinto Notes on your iPhone or Mac by typing the number the page shows. Pick Read Only or Read and Edit.</li>
         <li>In Cowork, turn the connector on from the + menu and ask away, from any device.</li>
       </ol>
       <p>
         Every change Claude makes shows up tinted in the note, with an Undo, and the version before is kept, so a bad edit is one tap to put
-        back. Checklists stay checklists. The catch is that your notes have to move: Amber Notes imports them from Apple Notes on your Mac,
+        back. Checklists stay checklists. The catch is that your notes have to move: Pinto Notes imports them from Apple Notes on your Mac,
         with their folders, checklists and tables, but images, attachments and locked notes stay behind.{" "}
         <a href="/blog/move-from-apple-notes">How to move from Apple Notes</a> walks through it, and Apple Notes stays untouched, so you can
         try it and go back. To give Cowork something to fill in from day one, the <a href="/templates">note templates</a> have a prompt for

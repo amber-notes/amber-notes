@@ -7,8 +7,8 @@ const doc = readLegal("terms-of-use.md");
 
 export const dynamic = "force-static";
 export const metadata: Metadata = pageMetadata({
-  title: "Terms of Service · Amber Notes",
-  description: "The rules for using Amber Notes and sharing notes, in plain language.",
+  title: "Terms of Service · Pinto Notes",
+  description: "The rules for using Pinto Notes and sharing notes, in plain language.",
   path: "/terms",
 });
 

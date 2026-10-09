@@ -12,7 +12,7 @@ export const metadata = postMetadata("apple-notes-mcp");
 
 type Row = { name: string; href: string; how: string; can: string; setup: string; clients: string; status: string };
 
-// Checked against each project's README, GitHub page and npm on 8 October 2026.
+// Checked against each project's README, GitHub page and npm on 8 October 2026; versions and dates again on 9 October.
 const ROWS: Row[] = [
   {
     name: "sweetrb/apple-notes-mcp", href: "https://github.com/sweetrb/apple-notes-mcp",
@@ -20,7 +20,7 @@ const ROWS: Row[] = [
     can: "Search, read, create, update, move and delete notes; folders, tags, tables, pins, attachments; export to Markdown, HTML or JSON",
     setup: "One command in Claude Code; a plugin for Claude Code and Codex",
     clients: "Claude Code, Codex, the Claude desktop app and other MCP apps on the same Mac",
-    status: "Maintained; version 2.14.2 on 7 October 2026; MIT",
+    status: "Maintained; version 2.14.3 on 8 October 2026; MIT",
   },
   {
     name: "RafalWilinski/mcp-apple-notes", href: "https://github.com/RafalWilinski/mcp-apple-notes",
@@ -201,24 +201,24 @@ export default function Page() {
       <h2 id="amber-notes">If you want your notes from anywhere</h2>
       <p>
         If those limits are fine for you, use sweetrb&apos;s server. If you want your notes in ChatGPT, or in Claude on your phone, they
-        have to live somewhere with a server on the internet. That&apos;s why I built Amber Notes: a free, open-source notes app for iPhone
+        have to live somewhere with a server on the internet. That&apos;s why I built Pinto Notes: a free, open-source notes app for iPhone
         and Mac that works like Apple Notes, with an MCP server built in at <code>{MCP_URL}</code>.
       </p>
       <ul>
         <li>It works from ChatGPT, Claude on the web, desktop and iPhone, Claude Code, Codex and Incredible, and your Mac doesn&apos;t need to be on.</li>
-        <li>You approve each AI app in Amber Notes and choose Read Only, or Read and Edit.</li>
+        <li>You approve each AI app in Pinto Notes and choose Read Only, or Read and Edit.</li>
         <li>An AI can tick checklist items. When it changes a note, you see what changed, with Undo, and the earlier version stays in the note&apos;s history.</li>
       </ul>
-      <Figure shot={SHOTS.connectList} caption="Connect an AI in Amber Notes on a Mac: ChatGPT, Claude, Claude Code and Codex." />
+      <Figure shot={SHOTS.connectList} caption="Connect an AI in Pinto Notes on a Mac: ChatGPT, Claude, Claude Code and Codex." />
       <p>
         You bring your Apple Notes over once, on your Mac, with their folders, checklists and tables; <a href="/blog/move-from-apple-notes">how
         to move from Apple Notes</a> walks through it. Locked notes and attachments stay in Apple Notes, and Apple Notes isn&apos;t changed.
-        The catch is that you then write in Amber Notes instead.{" "}
+        The catch is that you then write in Pinto Notes instead.{" "}
         {APP_STORE_LIVE
           ? "The Mac app is a free download and the iPhone app is on the App Store."
           : "The Mac app is out now; the iPhone app is coming soon to the App Store."}
       </p>
-      <PostCta slug="apple-notes-mcp" position="how-amber-helps" title="Try Amber Notes on your Mac">
+      <PostCta slug="apple-notes-mcp" position="how-amber-helps" title="Try Pinto Notes on your Mac">
         <p>Your notes in ChatGPT and Claude, on any device, with every change marked and undoable.</p>
       </PostCta>
     </PostPage>
