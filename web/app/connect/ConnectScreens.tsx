@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { APPLE_ON_WEB, GOOGLE_ON_WEB } from "@/lib/connect";
 import { afterCheck, emailLooksValid, parseEmailStatus, type Devices, type EmailStatus, type EmailStep, type Lead } from "@/lib/connect-flow";
+import { PasswordInput } from "@/lib/PasswordInput";
 import { APP_STORE_LIVE, APP_STORE_URL } from "@/lib/site";
 import { DeviceScreen } from "./DeviceLead";
 import { QRCode } from "./QRCode";
@@ -342,13 +343,14 @@ export function EmailFirst({ email, password, onEmail, onPassword, busy, ready, 
         <span>Email</span>
         <input type="email" id="connect-email" autoComplete="username" required value={email} onChange={(e) => editEmail(e.target.value)} readOnly={checking} />
       </label>
-      <label className={open ? styles.field : `${styles.field} ${styles.waiting}`} aria-hidden={open ? undefined : true}>
-        <span>Password</span>
-        <input
-          ref={passwordRef} type="password" id="connect-password" autoComplete="current-password" required={open} tabIndex={open ? 0 : -1}
+      {/* Not a label around the input: the eye button's name would become part of the field's. */}
+      <div className={open ? styles.field : `${styles.field} ${styles.waiting}`} aria-hidden={open ? undefined : true}>
+        <label htmlFor="connect-password">Password</label>
+        <PasswordInput
+          ref={passwordRef} id="connect-password" autoComplete="current-password" required={open} tabIndex={open ? 0 : -1}
           value={password} onChange={(e) => onPassword(e.target.value)}
         />
-      </label>
+      </div>
       {step.kind === "apple" && <p className={styles.said} role="status">{NO_PASSWORD}</p>}
       {step.kind === "none" ? (
         <div className={styles.said} role="status">
@@ -389,10 +391,10 @@ export function EmailFields({ email, password, onEmail, onPassword }: Pick<SignI
         <span>Email</span>
         <input type="email" id="connect-email" autoComplete="username" required value={email} onChange={(e) => onEmail(e.target.value)} />
       </label>
-      <label className={styles.field}>
-        <span>Password</span>
-        <input type="password" id="connect-password" autoComplete="current-password" required value={password} onChange={(e) => onPassword(e.target.value)} />
-      </label>
+      <div className={styles.field}>
+        <label htmlFor="connect-password">Password</label>
+        <PasswordInput id="connect-password" autoComplete="current-password" required value={password} onChange={(e) => onPassword(e.target.value)} />
+      </div>
     </>
   );
 }

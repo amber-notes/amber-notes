@@ -47,7 +47,8 @@ const type = (id: string, value: string) => {
 };
 const submit = () => act(async () => container.querySelector("form")!.requestSubmit());
 const button = (text: string) => [...container.querySelectorAll("button")].find((b) => b.textContent?.trim() === text);
-const buttons = () => [...container.querySelectorAll("button")].map((b) => b.textContent?.trim());
+/// The buttons with words on them; the password field's eye is checked on its own.
+const buttons = () => [...container.querySelectorAll("button:not([aria-pressed])")].map((b) => b.textContent?.trim());
 const BACK = "Other ways to sign in";
 
 describe("the ways to sign in, at one height", () => {
