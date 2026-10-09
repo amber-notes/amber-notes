@@ -146,7 +146,9 @@ enum NoteAppMark {
     /// The symbol where a symbol is needed (Show App, menus): the capsule's needs one too.
     static var symbol: String { style == .sparkles ? "sparkles" : "app.fill" }
 
-    @MainActor static func has(_ note: Note) -> Bool { !note.isLocked && NotePageStore.shared[note.id] != nil }
+    @MainActor static func has(_ note: Note, in store: NotePageStore = .shared, enabled: Bool = NoteApps.enabled) -> Bool {
+        enabled && !note.isLocked && store[note.id] != nil
+    }
 }
 
 /// The mark itself, sized for the text it sits after.

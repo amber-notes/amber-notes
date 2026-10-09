@@ -225,7 +225,7 @@ struct NoteDetailView: View {
                 titleAtOpen = note.body.isEmpty || note.isLocked ? nil : note.title
                 refreshLinks()
                 receipt = nil
-                shownPage = NotePageStore.shared[note.id]
+                shownPage = NoteApps.enabled ? NotePageStore.shared[note.id] : nil
                 // A note with an app is the app: what its text held goes into the app's data once.
                 if shownPage != nil { NotePageActions.importIfNeeded(note) }
                 if shownPage != nil { NotePageTiming.open(note.id) }
@@ -239,7 +239,7 @@ struct NoteDetailView: View {
                 PaneTips.noteOpened(note.body)
                 ShareAsk.noteUsed()
                 // "Make this an app", once per note, a moment after it opens (last: it waits).
-                if shownPage == nil, !note.isLocked, !MakeAnApp.chipShown(note.id), MakeAnApp.looksLikeAnApp(note.body) {
+                if NoteApps.enabled, shownPage == nil, !note.isLocked, !MakeAnApp.chipShown(note.id), MakeAnApp.looksLikeAnApp(note.body) {
                     MakeAnApp.markChipShown(note.id)
                     try? await Task.sleep(for: .seconds(1.2))
                     if !Task.isCancelled { withAnimation(.spring(duration: 0.45, bounce: 0.25)) { showChip = true } }
@@ -442,7 +442,7 @@ struct NoteDetailView: View {
 
     /// The note's page, unless the note is locked (a locked note never shows one).
     /// The version that runs: the newest that passed its checks and opens here (NotePageStore.live).
-    private var notePage: NotePageStore.Page? { note.isLocked ? nil : NotePageStore.shared.live(note.id) }
+    private var notePage: NotePageStore.Page? { note.isLocked ? nil : NoteApps.page(note.id) }
     private var showingPage: Bool { notePage != nil && mode == .page }
 
     /// A template just added from the website, opening for the first time.
@@ -591,6 +591,7 @@ struct NoteDetailView: View {
 
     /// A page an AI made or changed while the note is open: show it, say who, offer Undo.
     private func pageArrived(_ now: NotePageStore.Page?) {
+        guard NoteApps.enabled else { return }
         let before = shownPage
         shownPage = now
         if now != nil { NotePageActions.importIfNeeded(note) }
@@ -610,7 +611,7 @@ struct NoteDetailView: View {
     /// The app's items in More: Make It an App, or App Info.
     @ViewBuilder
     private var pageMenuItems: some View {
-        if notePage == nil, !note.isLocked, note.trashedAt == nil {
+        if NoteApps.enabled, notePage == nil, !note.isLocked, note.trashedAt == nil {
             Button("Make It an App…", systemImage: NoteAppMark.symbol) { showMakeApp = true }
                 .accessibilityIdentifier("editor.makeApp")
         }
@@ -620,7 +621,7 @@ struct NoteDetailView: View {
                 .accessibilityIdentifier("editor.appInfo")
         }
         #if DEBUG || QA
-        if !note.isLocked, note.trashedAt == nil {
+        if NoteApps.enabled, !note.isLocked, note.trashedAt == nil {
             // An app built outside the AI tools (scripts/build-app.ts output, or one HTML file).
             Button("Dev: Import App File…", systemImage: "square.and.arrow.down") { importingApp = true }
                 .accessibilityIdentifier("editor.devImportApp")
