@@ -57,6 +57,31 @@ import Testing
         #expect(MoveToPicker.listed == before + 1)
     }
 
+    /// The notes window with a note open and 150 folders: the toolbar's ••• menu is there, and
+    /// no folder has been listed for Move to (it was a menu item per folder, built with the
+    /// toolbar before the window's first frame).
+    @Test func theToolbarListsNoFoldersUntilThePickerOpens() async throws {
+        let c = try ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        let ctx = c.mainContext
+        let folders = (0..<150).map { ctx.createFolder(named: "Folder \($0)") }
+        let note = ctx.createNote(in: .folder(folders[3].id), body: "A note\n\nSome text.")
+        try ctx.save()
+        let before = MoveToPicker.listed
+        let w = NSWindow(contentRect: CGRect(x: -20000, y: -20000, width: 1180, height: 760), styleMask: [.borderless], backing: .buffered, defer: false)
+        w.isReleasedWhenClosed = false
+        w.contentViewController = NSHostingController(rootView: RootView().modelContainer(c))
+        w.setContentSize(CGSize(width: 1180, height: 760))
+        w.setFrameOrigin(CGPoint(x: -20000, y: -20000))
+        defer { w.orderOut(nil); w.close() }
+        NoteOpener.shared.request = note.id
+        for _ in 0..<3 {
+            w.contentView?.layoutSubtreeIfNeeded()
+            w.displayIfNeeded()
+            try? await Task.sleep(for: .milliseconds(200))
+        }
+        #expect(MoveToPicker.listed == before, "no folder is listed for Move to before its picker opens")
+    }
+
     struct Host: View {
         let current: UUID?
         let moved: (Folder) -> Void

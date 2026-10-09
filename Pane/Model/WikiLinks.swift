@@ -259,94 +259,27 @@ enum WikiDirectory {
 
     static func index(_ context: ModelContext) -> WikiIndex {
         if let cached { return cached }
-        watch()
-        var paths = FolderPaths(context)
-        return finish(live(in: context).map { entry($0, &paths) }, context)
-    }
-
-    /// Whether the index is built, so reading it costs nothing.
-    static var isBuilt: Bool { cached != nil }
-
-    /// Builds the index without holding up the window: a few milliseconds of notes at a time,
-    /// with frames let through in between. Opening a note at launch used to read the head of
-    /// every note's text in one go, before the note's first frame (0.2 s with 2,000 notes).
-    /// Saves that land meanwhile are taken in once it is built. Whoever needs the index before
-    /// then (a link tapped, a rename) still gets it at once from `index`.
-    static func warm(_ context: ModelContext) async {
-        if cached != nil { return }
-        if let warming {
-            await warming.value
-            return
-        }
-        let task = Task { @MainActor in
-            watch()
-            // The note that asked is drawn first.
-            try? await Task.sleep(for: .milliseconds(1))
-            var paths = FolderPaths(context)
-            var entries: [WikiIndex.Entry] = []
-            let clock = ContinuousClock()
-            var sliceStart = clock.now
-            for note in live(in: context) {
-                // Deleted for good while this waited: its save says so, and builds the index again.
-                guard note.modelContext != nil else { continue }
-                entries.append(entry(note, &paths))
-                if clock.now - sliceStart > .milliseconds(4) {
-                    try? await Task.sleep(for: .milliseconds(1))
-                    // Asked for in the meantime and built in one go.
-                    if cached != nil { return }
-                    sliceStart = clock.now
-                }
+        if observer == nil {
+            // As the save posts, so whoever reads the index after a save sees it.
+            observer = NotificationCenter.default.addObserver(forName: ModelContext.didSave, object: nil, queue: nil) { n in
+                // The library's context saves on the main thread; others (TipKit keeps its own
+                // store) can save on any, and aren't the library.
+                guard Thread.isMainThread else { return }
+                nonisolated(unsafe) let saved = n
+                MainActor.assumeIsolated { WikiDirectory.take(saved) }
             }
-            if cached == nil { _ = finish(entries, context) }
         }
-        warming = task
-        await task.value
-        warming = nil
-        let waiting = savedWhileWarming
-        savedWhileWarming = []
-        for saved in waiting { take(saved) }
-    }
-
-    private static var warming: Task<Void, Never>?
-    private static var savedWhileWarming: [Notification] = []
-
-    private static func watch() {
-        guard observer == nil else { return }
-        // As the save posts, so whoever reads the index after a save sees it.
-        observer = NotificationCenter.default.addObserver(forName: ModelContext.didSave, object: nil, queue: nil) { n in
-            // The library's context saves on the main thread; others (TipKit keeps its own
-            // store) can save on any, and aren't the library.
-            guard Thread.isMainThread else { return }
-            nonisolated(unsafe) let saved = n
-            MainActor.assumeIsolated { WikiDirectory.take(saved) }
-        }
-    }
-
-    private static func live(in context: ModelContext) -> [Note] {
-        ((try? context.fetch(FetchDescriptor<Note>())) ?? []).filter { $0.deletedAt == nil && $0.trashedAt == nil }
-    }
-
-    /// Each folder's path worked out once, not once per note in it.
-    private struct FolderPaths {
-        let context: ModelContext
-        var known: [ObjectIdentifier: [String]] = [:]
-        init(_ context: ModelContext) { self.context = context }
-
-        @MainActor mutating func path(_ folder: Folder?) -> [String] {
+        let notes = ((try? context.fetch(FetchDescriptor<Note>())) ?? []).filter { $0.deletedAt == nil && $0.trashedAt == nil }
+        // Each folder's path worked out once, not once per note in it.
+        var paths: [ObjectIdentifier: [String]] = [:]
+        func path(_ folder: Folder?) -> [String] {
             guard let folder else { return [] }
-            if let p = known[ObjectIdentifier(folder)] { return p }
+            if let p = paths[ObjectIdentifier(folder)] { return p }
             let p: [String] = context.folderPath(folder)
-            known[ObjectIdentifier(folder)] = p
+            paths[ObjectIdentifier(folder)] = p
             return p
         }
-    }
-
-    private static func entry(_ note: Note, _ paths: inout FolderPaths) -> WikiIndex.Entry {
-        WikiIndex.Entry(id: note.id, title: note.title, folders: paths.path(note.folder), updated: note.updatedAt)
-    }
-
-    private static func finish(_ entries: [WikiIndex.Entry], _ context: ModelContext) -> WikiIndex {
-        let index = WikiIndex(entries)
+        let index = WikiIndex(notes.map { WikiIndex.Entry(id: $0.id, title: $0.title, folders: path($0.folder), updated: $0.updatedAt) })
         cached = index
         cachedContext = context
         // Most saves are typing: the editor recolours only when a title or folder changed.
@@ -364,10 +297,6 @@ enum WikiDirectory {
     /// thousands of notes building the index again after each of them took most of the save's time.
     /// Folders changing or notes deleted for good build it again. Taking the same save twice is harmless.
     static func take(_ saved: Notification) {
-        if cached == nil, warming != nil {
-            savedWhileWarming.append(saved)
-            return
-        }
         guard var index = cached, let context = saved.object as? ModelContext, context === cachedContext else { return }
         guard let changes = context.savedNotes(saved), !changes.folders else {
             cached = nil
