@@ -2,7 +2,7 @@
 
 Built on `feature/password-reset`. A person who forgot the password of an email account asks for a
 link in the app or on the site, opens it on any device, and chooses a new password on
-`ambernotes.app/reset-password`. The audit before it is `docs/Technical/account-emails.md`.
+`pintonotes.com/reset-password`. The audit before it is `docs/Technical/account-emails.md`.
 
 ## What a reset changes, and what it doesn't
 
@@ -136,7 +136,10 @@ stock recovery template.
 4. `scripts/auth-email-config.sh > /tmp/auth-email.json`, add the key as `smtp_pass`, and
    `PATCH https://api.supabase.com/v1/projects/rodegaeruhyybqilrnpn/config/auth` with it. That sets
    the site URL, the recovery subject and template, one hour validity, the per-address minute, and
-   SMTP from `hello@ambernotes.app` ("Amber Notes"). It also fixes `smtp_max_frequency` (1 s today,
+   SMTP from `hello@ambernotes.app` ("Amber Notes"). (Since the rename the script prints what the
+   emails say, for every template, with the site URL `https://pintonotes.com` and the sender name
+   "Pinto Notes"; `scripts/auth-email-config.sh --setup` adds these first-time SMTP settings and
+   limits. See `docs/Technical/auth-emails.md`.) It also fixes `smtp_max_frequency` (1 s today,
    so no per-address limit) to 60 s, and raises the hourly cap from 2 to 30, which only custom SMTP
    allows. The redirect list needs no change: the reset uses no redirect.
 
@@ -148,6 +151,14 @@ stock recovery template.
    email with a password, with no redirect at all. The site URL is only the fallback for a missing or
    refused `redirect_to`, which today lands on a dead `127.0.0.1` page, and what `{{ .SiteURL }}` is in
    templates.
+
+   The site moved to `https://pintonotes.com` on 8 October 2026, and `site_url` moves with it. The
+   reset page is the same page on the new address: it reads the token from the fragment in the
+   browser and calls the Supabase project directly, so nothing in it depends on the host. A link
+   in an email sent before the change still works: `ambernotes.app/reset-password` answers 308 to
+   the same path on pintonotes.com, and browsers carry the fragment across a redirect. The
+   redirect list must hold `https://pintonotes.com/connect**` (for `/connect`), and keeps
+   `https://ambernotes.app/connect**` and `ambernotes://auth-callback`.
 5. Ask for a reset for a test account on the live site and check it arrives, opens and saves.
 6. Ship the app build with Forgot password?.
 
