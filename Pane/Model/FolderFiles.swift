@@ -191,6 +191,9 @@ enum FileKinds {
 enum FileVersions {
     /// How many are kept for each file.
     static let kept = 10
+    /// Who a version the app keeps is from, as an AI reads it in a file's history (`made_by`).
+    /// Builds before the rename wrote "Amber Notes"; folder_files.ts reads those as this.
+    static let madeBy = "Pinto Notes"
 
     /// Where the next one goes: <path>.v<n>, one past the highest kept.
     static func nextPath(_ path: String, kept: [String]) -> String {

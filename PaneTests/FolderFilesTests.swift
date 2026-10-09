@@ -321,6 +321,7 @@ import Testing
         #expect(FileVersions.nextPath(path, kept: ["u/9f1c.v2", "u/9f1c.v10", "u/9f1c.v9"]) == "u/9f1c.v11")
         #expect(FileVersions.nextPath(path, kept: ["u/other.v40", "u/9f1c.vx"]) == "u/9f1c.v1", "only this file's numbered versions count")
         #expect(FileVersions.kept == 10, "the same as folder_files.ts writeFile")
+        #expect(FileVersions.madeBy == "Pinto Notes", "what an AI reads as made_by, and what folder_files.ts shows old rows as")
     }
 
     @Test func textKindsOpenAsCodeAndHTMLCanBePreviewed() {
