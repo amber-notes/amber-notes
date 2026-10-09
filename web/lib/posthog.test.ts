@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { CONSENT_KEY } from "./consent";
 import { clickEvent, clickEvents, ctaEvent, heatmapsAllowed, newScrollMarks, POSTHOG_DEFAULT_HOST, posthogAllowed, posthogOptions, posthogSettings, sanitizeEvent, scrolledPercent, visitorOptedOut } from "./posthog";
 
-const here = new URL("https://ambernotes.app/blog/claude-and-apple-notes");
+const here = new URL("https://pintonotes.com/blog/claude-and-apple-notes");
 const link = (href: string, attrs: Record<string, string> = {}) => ({ tagName: "A", getAttribute: (n: string) => (n === "href" ? href : attrs[n] ?? null) });
 const event = (properties: Record<string, unknown>, extra: Partial<CaptureResult> = {}): CaptureResult =>
   ({ uuid: "u", event: "$pageview", properties, ...extra }) as CaptureResult;
@@ -63,13 +63,13 @@ describe("website PostHog", () => {
   });
 
   it("drops events from private pages and strips queries and person properties", () => {
-    expect(sanitizeEvent(event({ $current_url: "https://ambernotes.app/n/abc", $pathname: "/n/abc" }))).toBeNull();
-    expect(sanitizeEvent(event({ $current_url: "https://ambernotes.app/connect?code=1" }))).toBeNull();
+    expect(sanitizeEvent(event({ $current_url: "https://pintonotes.com/n/abc", $pathname: "/n/abc" }))).toBeNull();
+    expect(sanitizeEvent(event({ $current_url: "https://pintonotes.com/connect?code=1" }))).toBeNull();
     const out = sanitizeEvent(event(
-      { $current_url: "https://ambernotes.app/blog/x?ref=a#top", $pathname: "/blog/x", $referrer: "https://news.ycombinator.com/item?id=1", $initial_referrer: "$direct", $session_entry_url: "https://ambernotes.app/?code=1#x", $session_entry_referrer: "$direct" },
+      { $current_url: "https://pintonotes.com/blog/x?ref=a#top", $pathname: "/blog/x", $referrer: "https://news.ycombinator.com/item?id=1", $initial_referrer: "$direct", $session_entry_url: "https://pintonotes.com/?code=1#x", $session_entry_referrer: "$direct" },
       { $set: { a: 1 }, $set_once: { b: 2 } },
     ));
-    expect(out?.properties).toMatchObject({ $current_url: "https://ambernotes.app/blog/x", $referrer: "https://news.ycombinator.com/item", $initial_referrer: "$direct", $session_entry_url: "https://ambernotes.app/", $session_entry_referrer: "$direct" });
+    expect(out?.properties).toMatchObject({ $current_url: "https://pintonotes.com/blog/x", $referrer: "https://news.ycombinator.com/item", $initial_referrer: "$direct", $session_entry_url: "https://pintonotes.com/", $session_entry_referrer: "$direct" });
     expect(out).not.toHaveProperty("$set");
     expect(out).not.toHaveProperty("$set_once");
     expect(sanitizeEvent(null)).toBeNull();
@@ -77,7 +77,7 @@ describe("website PostHog", () => {
 
   it("names the download click, with the page it came from", () => {
     expect(clickEvent(link("/download/mac"), here)).toEqual({ event: "download_mac_clicked", properties: { path: "/blog/claude-and-apple-notes" }, leaves: false });
-    expect(clickEvent(link("https://ambernotes.app/download/mac"), new URL("https://ambernotes.app/"))?.properties).toEqual({ path: "/" });
+    expect(clickEvent(link("https://pintonotes.com/download/mac"), new URL("https://pintonotes.com/"))?.properties).toEqual({ path: "/" });
   });
 
   it("names a click on a post's call to action, with the post, its place and the link", () => {
@@ -101,13 +101,13 @@ describe("website PostHog", () => {
   });
 
   it("has no event of its own for Send myself the link", () => {
-    const send = link("mailto:?subject=Amber%20Notes&body=https%3A%2F%2Fambernotes.app");
-    expect(clickEvent(send, new URL("https://ambernotes.app/"))).toBeNull();
+    const send = link("mailto:?subject=Pinto%20Notes&body=https%3A%2F%2Fpintonotes.com");
+    expect(clickEvent(send, new URL("https://pintonotes.com/"))).toBeNull();
   });
 
   it("keeps a preview's ?as= out of every address it sends", () => {
-    expect(clickEvent(link("/download/mac"), new URL("https://ambernotes.app/?as=windows"))).toEqual({ event: "download_mac_clicked", properties: { path: "/" }, leaves: false });
-    expect(sanitizeEvent(event({ $current_url: "https://ambernotes.app/download?as=windows" }))?.properties.$current_url).toBe("https://ambernotes.app/download");
+    expect(clickEvent(link("/download/mac"), new URL("https://pintonotes.com/?as=windows"))).toEqual({ event: "download_mac_clicked", properties: { path: "/" }, leaves: false });
+    expect(sanitizeEvent(event({ $current_url: "https://pintonotes.com/download?as=windows" }))?.properties.$current_url).toBe("https://pintonotes.com/download");
   });
 
   it("names outbound links to the App Store, GitHub, Claude and ChatGPT, without their query", () => {
@@ -161,36 +161,36 @@ describe("heatmaps, rage clicks and dead clicks", () => {
 
   it("send clicks from marketing pages only, without queries, and no pointer movement", () => {
     const out = sanitizeEvent(event({
-      $current_url: "https://ambernotes.app/templates?category=work",
+      $current_url: "https://pintonotes.com/templates?category=work",
       $heatmap_data: {
-        "https://ambernotes.app/templates?category=work#top": [point("click"), point("mousemove"), point("rageclick")],
-        "https://ambernotes.app/": [point("click")],
-        "https://ambernotes.app/n/abcdefghijklmnopqrstuvwx": [point("click")],
-        "https://ambernotes.app/terms": [point("click")],
-        "https://ambernotes.app/blog": [point("mousemove")],
+        "https://pintonotes.com/templates?category=work#top": [point("click"), point("mousemove"), point("rageclick")],
+        "https://pintonotes.com/": [point("click")],
+        "https://pintonotes.com/n/abcdefghijklmnopqrstuvwx": [point("click")],
+        "https://pintonotes.com/terms": [point("click")],
+        "https://pintonotes.com/blog": [point("mousemove")],
       },
     }, { event: "$$heatmap" }));
     expect(out?.properties.$heatmap_data).toEqual({
-      "https://ambernotes.app/templates": [point("click"), point("rageclick")],
-      "https://ambernotes.app/": [point("click")],
+      "https://pintonotes.com/templates": [point("click"), point("rageclick")],
+      "https://pintonotes.com/": [point("click")],
     });
   });
 
   it("drop a heatmap batch with nothing left", () => {
-    expect(sanitizeEvent(event({ $current_url: "https://ambernotes.app/", $heatmap_data: { "https://ambernotes.app/privacy": [point("click")] } }, { event: "$$heatmap" }))).toBeNull();
-    expect(sanitizeEvent(event({ $current_url: "https://ambernotes.app/" }, { event: "$$heatmap" }))).toBeNull();
+    expect(sanitizeEvent(event({ $current_url: "https://pintonotes.com/", $heatmap_data: { "https://pintonotes.com/privacy": [point("click")] } }, { event: "$$heatmap" }))).toBeNull();
+    expect(sanitizeEvent(event({ $current_url: "https://pintonotes.com/" }, { event: "$$heatmap" }))).toBeNull();
   });
 
   it("keep rage and dead clicks on marketing pages and drop them elsewhere", () => {
     for (const name of ["$rageclick", "$dead_click"]) {
-      expect(sanitizeEvent(event({ $current_url: "https://ambernotes.app/download", $pathname: "/download" }, { event: name })), name).not.toBeNull();
-      expect(sanitizeEvent(event({ $current_url: "https://ambernotes.app/terms", $pathname: "/terms" }, { event: name })), name).toBeNull();
-      expect(sanitizeEvent(event({ $current_url: "https://ambernotes.app/n/abc", $pathname: "/n/abc" }, { event: name })), name).toBeNull();
+      expect(sanitizeEvent(event({ $current_url: "https://pintonotes.com/download", $pathname: "/download" }, { event: name })), name).not.toBeNull();
+      expect(sanitizeEvent(event({ $current_url: "https://pintonotes.com/terms", $pathname: "/terms" }, { event: name })), name).toBeNull();
+      expect(sanitizeEvent(event({ $current_url: "https://pintonotes.com/n/abc", $pathname: "/n/abc" }, { event: name })), name).toBeNull();
     }
   });
 
   it("leave ordinary events on other public pages alone", () => {
-    expect(sanitizeEvent(event({ $current_url: "https://ambernotes.app/terms", $pathname: "/terms" }))).not.toBeNull();
-    expect(sanitizeEvent(event({ $current_url: "https://ambernotes.app/terms" }, { event: "$autocapture" }))).not.toBeNull();
+    expect(sanitizeEvent(event({ $current_url: "https://pintonotes.com/terms", $pathname: "/terms" }))).not.toBeNull();
+    expect(sanitizeEvent(event({ $current_url: "https://pintonotes.com/terms" }, { event: "$autocapture" }))).not.toBeNull();
   });
 });

@@ -1,7 +1,7 @@
 import { PostPage, postMetadata } from "@/lib/PostPage";
 
 export const dynamic = "force-static";
-export const metadata = postMetadata("recover-deleted-apple-notes", { title: "How to recover deleted Apple Notes · Amber Notes" });
+export const metadata = postMetadata("recover-deleted-apple-notes", { title: "How to recover deleted Apple Notes · Pinto Notes" });
 
 const FAQ = [
   { q: "How long does Apple Notes keep deleted notes?", a: [
@@ -93,9 +93,9 @@ export default function Page() {
       </ul>
       <p>
         The bigger gap is that Apple Notes has no version history. If you or an app changes a note and removes the part you needed, there&apos;s
-        nothing to go back to. That&apos;s one of the things I built into Amber Notes, the notes app for iPhone and Mac I make: deleted notes
+        nothing to go back to. That&apos;s one of the things I built into Pinto Notes, the notes app for iPhone and Mac I make: deleted notes
         stay in Recently Deleted for 30 days like in Apple Notes, and every note also keeps up to 100 earlier versions, so you can restore
-        one from File, Show Version History, including after ChatGPT or Claude edits it. <a href="/blog/amber-notes-vs-apple-notes">Amber Notes
+        one from File, Show Version History, including after ChatGPT or Claude edits it. <a href="/blog/pinto-notes-vs-apple-notes">Pinto Notes
         vs Apple Notes</a> covers the other differences, and <a href="/blog/move-from-apple-notes">moving from Apple Notes</a> takes one import on your Mac.
       </p>
     </PostPage>

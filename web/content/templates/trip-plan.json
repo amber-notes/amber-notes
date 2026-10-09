@@ -12,7 +12,7 @@
   "folder": "Travel",
   "note": "Trip plan\n\nEverything for one trip: the plan for each day, the bookings, and what to pack.\n\n## Bookings\n<!-- pane-table: What=text; When=text; Confirmation=text; Paid=choice Yes|No -->\n| What | When | Confirmation | Paid |\n| --- | --- | --- | --- |\n\n## Days\n\n## Packing\n- [ ] Passport\n- [ ] Chargers\n- [ ] Travel insurance details\n- [ ] Comfortable shoes\n\n## Ideas\n",
   "prompt": {
-    "default": "Use my Amber Notes note \"Trip plan\". I'll tell you where I'm going, when, and what I like. Write a day-by-day plan under \"Days\" with append_to_note: a \"###\" heading per day with three to five bullets, and keep it realistic, with travel time between places. When I paste a booking confirmation, add a row to the Bookings table with log_table_row (What, When, Confirmation, Paid). Add anything this trip needs to the \"Packing\" checklist, and save places I mention for later under \"Ideas\"."
+    "default": "Use my Pinto Notes note \"Trip plan\". I'll tell you where I'm going, when, and what I like. Write a day-by-day plan under \"Days\" with append_to_note: a \"###\" heading per day with three to five bullets, and keep it realistic, with travel time between places. When I paste a booking confirmation, add a row to the Bookings table with log_table_row (What, When, Confirmation, Paid). Add anything this trip needs to the \"Packing\" checklist, and save places I mention for later under \"Ideas\"."
   },
   "asks": [
     "Lisbon, 4 days in May. I like food, views and walking. Not museums.",

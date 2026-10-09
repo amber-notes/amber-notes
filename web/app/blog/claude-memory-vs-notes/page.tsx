@@ -15,9 +15,9 @@ const FAQ = [
   ] },
 ];
 
-const MEMORY_LINE = `Remember this: when I ask you to note, save or add something, put it in Amber Notes. Look for an existing note first and add to it, and only start a new note when nothing fits.`;
+const MEMORY_LINE = `Remember this: when I ask you to note, save or add something, put it in Pinto Notes. Look for an existing note first and add to it, and only start a new note when nothing fits.`;
 
-const MOVE_PROMPT = `Write out your memories of me verbatim, exactly as they appear in your memory. Then create a note in Amber Notes called "About me (for Claude)" with them, under the headings Work, Preferences and Projects. Don't add anything that isn't in your memory, and tell me what you left out.`;
+const MOVE_PROMPT = `Write out your memories of me verbatim, exactly as they appear in your memory. Then create a note in Pinto Notes called "About me (for Claude)" with them, under the headings Work, Preferences and Projects. Don't add anything that isn't in your memory, and tell me what you left out.`;
 
 export default function Page() {
   return (
@@ -39,8 +39,8 @@ export default function Page() {
       }
       hero={<Capture priority src="/blog/amber-notes-claude-edit-lisbon" width={1500} height={748} maxWidth={750}
         phone={{ src: "/blog/amber-notes-claude-edit-lisbon-note", width: 865, height: 555 }}
-        alt="A Lisbon trip note in Amber Notes on a Mac. In the Plan checklist, the line Claude just added, Late checkout requested, confirm by 10 May, is tinted, and a bar at the bottom says Claude changed 1 line, with Undo."
-        caption="Amber Notes on a Mac, just after Claude added a line to a trip plan. The new line is tinted, with Undo." />}
+        alt="A Lisbon trip note in Pinto Notes on a Mac. In the Plan checklist, the line Claude just added, Late checkout requested, confirm by 10 May, is tinted, and a bar at the bottom says Claude changed 1 line, with Undo."
+        caption="Pinto Notes on a Mac, just after Claude added a line to a trip plan. The new line is tinted, with Undo." />}
       faq={FAQ}
     >
       <h2 id="what-it-is">What Claude&apos;s memory is</h2>
@@ -68,7 +68,7 @@ export default function Page() {
             <tr><th scope="row">Where you read it</th><td>Claude&apos;s settings</td><td>Your notes app, on iPhone and Mac</td></tr>
             <tr><th scope="row">Lists you tick off</th><td>No</td><td>Yes, as checklists</td></tr>
             <tr><th scope="row">Other AI apps</th><td>Claude only</td><td>Any app that connects to the notes app, such as ChatGPT or Claude Code</td></tr>
-            <tr><th scope="row">A change you didn&apos;t want</th><td>Edit or delete the topic</td><td>In Amber Notes: Undo, and earlier versions kept</td></tr>
+            <tr><th scope="row">A change you didn&apos;t want</th><td>Edit or delete the topic</td><td>In Pinto Notes: Undo, and earlier versions kept</td></tr>
           </tbody>
         </table>
       </div>
@@ -98,8 +98,8 @@ export default function Page() {
       </p>
       <Steps>
         <li>Open <a href={CLAUDE_DIRECTORY_URL} rel="noopener">the Amber Notes listing</a> on claude.ai or in the Claude desktop app, and choose Connect to Claude.</li>
-        <li>Sign in to Amber Notes on the page that opens.</li>
-        <li>Amber Notes on your iPhone or Mac asks whether to allow Claude. Pick Read and Edit or Read Only, and choose Allow.</li>
+        <li>Sign in to Pinto Notes on the page that opens.</li>
+        <li>Pinto Notes on your iPhone or Mac asks whether to allow Claude. Pick Read and Edit or Read Only, and choose Allow.</li>
       </Steps>
       <p>
         Once it&apos;s added, the Claude iPhone app can use it too. On Team and Enterprise an owner may need to allow it first. If your Claude
@@ -108,9 +108,9 @@ export default function Page() {
         <a href="/blog/claude-and-apple-notes">Claude and Apple Notes</a> covers your options if your notes are still in Apple Notes.
       </p>
 
-      <h2 id="amber-notes">Why I built Amber Notes this way</h2>
+      <h2 id="amber-notes">Why I built Pinto Notes this way</h2>
       <p>
-        I make Amber Notes, a notes app for iPhone and Mac that Claude, ChatGPT, Claude Code and Codex can use. When Claude adds to a note
+        I make Pinto Notes, a notes app for iPhone and Mac that Claude, ChatGPT, Claude Code and Codex can use. When Claude adds to a note
         it changes only those lines, the change shows up tinted with Undo, and the version before is kept in the note&apos;s history, with
         Claude named as the one who made it. Your notes are end-to-end encrypted, and only the AI connections you approve can read them;
         locked notes stay out of reach even then.
@@ -119,7 +119,7 @@ export default function Page() {
         It isn&apos;t a replacement for Claude&apos;s memory, and it doesn&apos;t read it. It&apos;s the place for the things you want to keep in
         your own words. <a href="/blog/move-from-apple-notes">Moving from Apple Notes</a> is one import on your Mac.
       </p>
-      <PostCta slug="claude-memory-vs-notes" position="how-amber-helps" title="Try Amber Notes on your Mac">
+      <PostCta slug="claude-memory-vs-notes" position="how-amber-helps" title="Try Pinto Notes on your Mac">
         <p>Notes Claude can read and add to when you allow it, with every change marked and undoable.</p>
       </PostCta>
     </PostPage>

@@ -13,7 +13,7 @@
   "folder": "Reading",
   "note": "Reading list\n\nEvery book you want to read, are reading or have finished, with a line on why it's here.\n\n<!-- pane-table: Title=text; Author=text; Status=choice To read|Reading|Finished|Dropped; Rating=scale 1-5; Why=text -->\n| Title | Author | Status | Rating | Why |\n| --- | --- | --- | --- | --- |\n\n## Notes\n",
   "prompt": {
-    "default": "Use my Amber Notes note \"Reading list\". When I mention a book, add a row with log_table_row: Title, Author, Status To read, and in Why, who recommended it or why I want it. When I start or finish a book, update its Status (and Rating from 1 to 5 when I finish) with edit_note, after reading the note with read_note. Put my thoughts on a book under \"Notes\" with append_to_note, under a \"###\" heading with the title. When I ask what to read next, read the table with read_table and suggest from what's marked To read, based on what I rated highly."
+    "default": "Use my Pinto Notes note \"Reading list\". When I mention a book, add a row with log_table_row: Title, Author, Status To read, and in Why, who recommended it or why I want it. When I start or finish a book, update its Status (and Rating from 1 to 5 when I finish) with edit_note, after reading the note with read_note. Put my thoughts on a book under \"Notes\" with append_to_note, under a \"###\" heading with the title. When I ask what to read next, read the table with read_table and suggest from what's marked To read, based on what I rated highly."
   },
   "asks": [
     "Add Piranesi, Maja says it's the best thing she read this year.",

@@ -63,7 +63,7 @@ export const AI_ACCESS: Item[] = [
 /// "Limits" on the Privacy & Security page: what end to end doesn't protect against, today.
 export const LIMITS: Item[] = [
   { label: "AI requests.", text: "While an AI you connected works, our server handles the text it asks for. A changed server could copy it. Disconnecting ends this at once." },
-  { label: "The recovery key in the browser.", text: "Approving on ambernotes.app with your recovery key runs our code in your browser. It never stores or sends the key, but a changed page could read it. When you can, approve from your iPhone or Mac instead." },
+  { label: "The recovery key in the browser.", text: "Approving on pintonotes.com with your recovery key runs our code in your browser. It never stores or sends the key, but a changed page could read it. When you can, approve from your iPhone or Mac instead." },
   { label: "No key rotation yet.", text: "Your notes' key stays the same for the life of your account. Disconnecting an AI deletes its copy of the key, but you can't change the key itself yet." },
   { label: "The database.", text: "Someone running the database can't read your notes, but could roll a note back to an earlier encrypted version, or hide notes from your devices." },
 ];
@@ -71,7 +71,7 @@ export const LIMITS: Item[] = [
 /// "Who can see what" on the Privacy & Security page.
 export const WHO_CAN_SEE: Item[] = [
   { label: "You,", text: "on every iPhone and Mac you sign in on, once it has your key." },
-  { label: "Us.", text: "As the people running the database (that's Emil, who makes Amber Notes), we see the encrypted copies and the details listed under what stays readable. We can't read your notes." },
+  { label: "Us.", text: "As the people running the database (that's Emil, who makes Pinto Notes), we see the encrypted copies and the details listed under what stays readable. We can't read your notes." },
   { label: "AI apps you approve,", text: "for the notes they ask for, until you disconnect them. They never see the text of locked notes." },
   { label: "Anyone with the link to a note you share,", text: "until you stop sharing it. Your device publishes a readable copy for the link, and it's deleted when you stop. Shared pages are hidden from search engines." },
 ];
@@ -94,7 +94,7 @@ export const COUNTS: string[] = [
   "which days you used the app, to ask once, after a week, whether you'd like to share it",
   "which tips were shown and whether the feature was then used",
   "which first-run setup steps you've done",
-  "how you heard about Amber Notes, if you answer that one question after sign-up",
+  "how you heard about Pinto Notes, if you answer that one question after sign-up",
   "a random id for each installation and whether it's an iPhone or a Mac, to count devices",
 ];
 

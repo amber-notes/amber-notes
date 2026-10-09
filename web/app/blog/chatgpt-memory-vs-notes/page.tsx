@@ -11,7 +11,7 @@ const FAQ = [
     "You can see and delete your saved memories in Settings, Personalization. What ChatGPT draws from your past chats isn't a list you can read in the same way; you can turn it off, and OpenAI says what it learned is then deleted within 30 days.",
   ] },
   { q: "Can Claude or other AI apps use my ChatGPT memory?", a: [
-    "Not directly. ChatGPT's memory lives in your ChatGPT account, and other AI apps can't read it. Notes in an app with an MCP server, like Amber Notes, can be read by ChatGPT, Claude, Claude Code and Codex alike.",
+    "Not directly. ChatGPT's memory lives in your ChatGPT account, and other AI apps can't read it. Notes in an app with an MCP server, like Pinto Notes, can be read by ChatGPT, Claude, Claude Code and Codex alike.",
   ] },
   { q: "Should I turn ChatGPT memory off if I use notes?", a: [
     "Not necessarily. They do different jobs. Memory is good for how you like answers; notes are good for anything you want to keep, check or share. Many people keep both.",
@@ -58,7 +58,7 @@ export default function Page() {
             <tr><th scope="row">Lists you tick off</th><td>No</td><td>Yes, as checklists</td></tr>
             <tr><th scope="row">Other AI apps</th><td>ChatGPT; other apps can&apos;t read it</td><td>Any app that can use the notes app&apos;s MCP server, such as Claude and Claude Code</td></tr>
             <tr><th scope="row">Sharing with people</th><td>No</td><td>Depends on the notes app</td></tr>
-            <tr><th scope="row">Undo a bad change</th><td>Delete the memory</td><td>In Amber Notes: Undo, and every earlier version kept</td></tr>
+            <tr><th scope="row">Undo a bad change</th><td>Delete the memory</td><td>In Pinto Notes: Undo, and every earlier version kept</td></tr>
           </tbody>
         </table>
       </div>
@@ -84,11 +84,11 @@ export default function Page() {
         ChatGPT to remember something like:
       </p>
       <ul>
-        <li>&ldquo;When I say add it to my list, put it in the Groceries note in Amber Notes.&rdquo;</li>
-        <li>&ldquo;Save trip plans to my Amber Notes, in the Travel folder.&rdquo;</li>
+        <li>&ldquo;When I say add it to my list, put it in the Groceries note in Pinto Notes.&rdquo;</li>
+        <li>&ldquo;Save trip plans to my Pinto Notes, in the Travel folder.&rdquo;</li>
       </ul>
       <p>
-        Memory then keeps the habit, and the notes keep the text. In Amber Notes, when ChatGPT adds to a note or ticks an item, it changes
+        Memory then keeps the habit, and the notes keep the text. In Pinto Notes, when ChatGPT adds to a note or ticks an item, it changes
         only those lines, the change shows up tinted with an Undo, and the version before is kept in the note&apos;s history.
       </p>
       <p>
