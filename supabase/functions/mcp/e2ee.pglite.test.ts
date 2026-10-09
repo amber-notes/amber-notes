@@ -174,6 +174,9 @@ for (const [what, happen] of [
   Deno.test(`${what} pauses Start fresh for 72 hours: refused at 71.9 h, allowed at 72.1 h`, async () => {
     const pg = await schemaDB();
     const me = await newUser(pg);
+    // An account that exists: its address was confirmed long ago. (A sign-up's own confirmation
+    // doesn't pause: supabase/functions/account/sign_up_pause.pglite.test.ts.)
+    await pg.query(`update auth.users set email_confirmed_at = now() - interval '30 days' where id = $1`, [me]);
     const { key } = await withKey(pg, me);
     await note(pg, me, key);
     await happen(pg, me);
