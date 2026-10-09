@@ -390,7 +390,7 @@ struct APIKeyForm: View {
                         #endif
                 } footer: { Text("{key} is replaced with the key.") }
                 Section {
-                    SecureField("Key", text: $value).accessibilityIdentifier("apikey.value")
+                    PasswordField("Key", text: $value, kind: .key, id: "apikey.value")
                 } footer: {
                     if let help = draft.help { Text(help) } else { Text("Kept in your Keychain, and in iCloud Keychain on your other devices.") }
                 }

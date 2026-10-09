@@ -3,6 +3,7 @@
 # them as an artifact.
 PaneTests/ChromeSnapshots
 PaneTests/HeardFromSnapshots
+PaneTests/PasswordFieldSnapshots
 # Window-server captures gated on AMBER_DEMO_FRAMES (#257): never run on a developer's Mac.
 PaneTests/TipSnapshots
 PaneTests/AIEditSnapshots
