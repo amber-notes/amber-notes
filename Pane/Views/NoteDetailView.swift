@@ -14,6 +14,7 @@ struct NoteDetailView: View {
     @State private var saver = DebouncedSave()
     @State private var shareLinks = ShareLinkStore()
     @State private var showHistory = HistoryLaunch.open
+    @State private var movingNote = false
     /// "ChatGPT changed 5 lines · Undo", while an AI's edit that just landed is on show.
     @State private var receipt: AIEdit.Receipt?
     /// The version that didn't open, for Undo on "Reverted to the last working version".
@@ -1035,11 +1036,17 @@ struct NoteDetailView: View {
             Button(note.isPinned ? "Unpin Note" : "Pin Note", systemImage: note.isPinned ? "pin.slash" : "pin") {
                 withAnimation(.snappy) { context.togglePin(note) }
             }
+            #if os(macOS)
+            // One item, whatever the number of folders: the folders are in the picker it opens.
+            Button("Move to…", systemImage: "folder") { movingNote = true }
+                .accessibilityIdentifier("editor.moveTo")
+            #else
             Menu("Move to", systemImage: "folder") {
                 ForEach(context.allFolders()) { f in
                     Button(f.name) { context.move(note, to: f) }.disabled(note.folder?.id == f.id)
                 }
             }
+            #endif
             if !backlinks.isEmpty {
                 Menu("Linked from", systemImage: "link") {
                     ForEach(backlinks, id: \.id) { n in
@@ -1078,6 +1085,11 @@ struct NoteDetailView: View {
         }
         #if os(macOS)
         .tint(.primary)
+        #endif
+        #if os(macOS)
+        .popover(isPresented: $movingNote, arrowEdge: .bottom) {
+            MoveToPicker(current: note.folder?.id) { context.move(note, to: $0) }
+        }
         #endif
         #if os(macOS)
         .paneTip(VersionHistoryTip(), arrowEdge: .top) { action in
