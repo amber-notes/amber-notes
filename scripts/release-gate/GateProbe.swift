@@ -130,6 +130,11 @@ final class GateProbe: NSObject {
         for n in (try? context.fetch(FetchDescriptor<Note>())) ?? [] { remove(n) }
         for f in (try? context.fetch(FetchDescriptor<Folder>())) ?? [] { remove(f) }
         try? context.save()
+        // With the notes go the memory of where sync was (or signing the same account in twice in a
+        // row pulls only what changed since: 3 notes of 20,000) and the store's record of every
+        // change so far (or each account's database carries the runs before it).
+        for key in UserDefaults.standard.dictionaryRepresentation().keys where key.hasPrefix("syncCursor.") { UserDefaults.standard.removeObject(forKey: key) }
+        try? ModelContext(context.container).deleteHistory(HistoryDescriptor<DefaultHistoryTransaction>())
         if !isSignedIn { try await backend.signIn(email: email, password: password) }
         try await until("signed in", seconds: 30) { self.isSignedIn }
         let crypto = AccountCrypto.shared
@@ -188,11 +193,26 @@ final class GateProbe: NSObject {
         results["notes"] = (try? context.fetchCount(FetchDescriptor<Note>())) ?? -1
         results["memoryAfterLaunchMB"] = Self.footprintMB()
 
+        // Nothing may sit on top of the window while it's measured: a sheet or an alert (a notice
+        // left on the bench account, a prompt a build added) changes every number after it.
+        let covering = NSApp.windows.filter { $0.isVisible && ($0.isSheet || $0 is NSPanel && $0.level == .modalPanel || NSApp.modalWindow === $0) }
+        let sheets = NSApp.windows.compactMap { $0.attachedSheet }
+        if !covering.isEmpty || !sheets.isEmpty {
+            let what = (covering + sheets).map { "\(type(of: $0)) \"\($0.title)\"" }.joined(separator: ", ")
+            throw GateError("a sheet or alert is over the window, so nothing was measured: \(what). Settle the bench account (scripts/release-gate/staging.ts ensure) or find what this build shows at launch.")
+        }
+
         // Idle: nothing should be laid out again, and the main thread should sleep.
         GateLayout.install(in: NSApp.windows)
         try? await Task.sleep(for: .seconds(3))
+        // Idle begins once launch is over, the same for every account: a small account is synced
+        // two seconds in, and the window's last settling pass (six layouts, once) then fell inside
+        // its idle window while a large account's had long passed.
+        let settle = 15 - (CACurrentMediaTime() - launch)
+        if settle > 0 { try? await Task.sleep(for: .seconds(settle)) }
         currentStep = "idle"
         results["idle"] = await idle(seconds: 20)
+        if ProcessInfo.processInfo.arguments.contains("-gateIdleTwice") { results["idleAgain"] = await idle(seconds: 20) }
 
         let notes = (try? context.fetch(FetchDescriptor<Note>(predicate: #Predicate { $0.deletedAt == nil && $0.trashedAt == nil }))) ?? []
         func find(_ title: String) -> Note? { notes.first { $0.title == title } }
@@ -352,6 +372,7 @@ final class GateProbe: NSObject {
             "wakeupsPerSecond": Double(max(0, GateWatch.wakeups - GateWatch.pongs)) / elapsed,
             "layouts": layouts.values.reduce(0, +),
             "layoutsByView": layouts.filter { $0.value > 0 }.sorted { $0.value > $1.value }.prefix(10).map { "\($0.key) \($0.value)" },
+            "hostedViews": GateLayout.hosted,
             "requests": GateNet.shared.between(net0, CACurrentMediaTime()).count,
         ]
     }
@@ -606,7 +627,11 @@ enum GateLayout {
     nonisolated(unsafe) static var counts: [String: Int] = [:]
     private static var swizzled = Set<ObjectIdentifier>()
 
-    static func reset() { counts = [:] }
+    /// AppKit views inside SwiftUI hosts that were laid out since the last reset: seconds since the probe attached, and their classes.
+    nonisolated(unsafe) static var hosted: [String] = []
+    nonisolated(unsafe) static var started = ProcessInfo.processInfo.systemUptime
+
+    static func reset() { counts = [:]; hosted = [] }
 
     /// Class names, worked out once per class: thousands of layouts can run in one frame.
     nonisolated(unsafe) private static var names: [ObjectIdentifier: String] = [:]
@@ -649,7 +674,13 @@ enum GateLayout {
         typealias Layout = @convention(c) (AnyObject, Selector) -> Void
         let call = unsafeBitCast(method_getImplementation(method), to: Layout.self)
         let block: @convention(block) (AnyObject) -> Void = { obj in
-            counts[name(of: type(of: obj)), default: 0] += 1
+            let n = name(of: type(of: obj))
+            counts[n, default: 0] += 1
+            // Which AppKit view a SwiftUI host holds, and when: "AppKitPlatformViewHost" alone doesn't say.
+            if n == "AppKitPlatformViewHost", hosted.count < 40, let v = obj as? NSView {
+                let inside = v.subviews.map { name(of: type(of: $0)) }.joined(separator: "+")
+                hosted.append(String(format: "%.1f s %@", ProcessInfo.processInfo.systemUptime - started, inside.isEmpty ? "(empty)" : inside))
+            }
             call(obj, selector)
         }
         method_setImplementation(method, imp_implementationWithBlock(block))

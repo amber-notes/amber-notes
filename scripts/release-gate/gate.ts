@@ -124,7 +124,7 @@ async function probe(mode: "setup" | "measure", size: number): Promise<ProbeResu
     await ssh(`umask 077; cat > ${stdin}`, { stdin: JSON.stringify(c) });
   }
   const app = `${remote}/Amber Notes Beta.app`;
-  const launchArgs = mode === "setup" ? ["-gateProbe", "setup", "-signout"] : ["-gateProbe", "measure"];
+  const launchArgs = mode === "setup" ? ["-gateProbe", "setup", "-signout"] : ["-gateProbe", "measure", ...(Deno.env.get("AMBER_GATE_IDLE_TWICE") ? ["-gateIdleTwice"] : [])];
   const script = await Deno.readTextFile(`${ROOT}/scripts/release-gate/launch.zsh`);
   const home = (await ssh("echo $HOME")).stdout.trim();
   // One ssh session for the whole run, so nothing polls the Mac while it's measured: the launcher
@@ -153,7 +153,13 @@ async function probe(mode: "setup" | "measure", size: number): Promise<ProbeResu
   // The samples taken during hangs, with the app's frames named from the archive's dSYM.
   const samples: string[] = [];
   for (const f of (await ssh(`ls ${out}.hang* 2>/dev/null`, { allowFail: true })).stdout.split("\n").filter(Boolean)) {
-    const t = await symbolicate((await ssh(`cat ${q(f)}`, { allowFail: true })).stdout);
+    const raw = (await ssh(`cat ${q(f)}`, { allowFail: true })).stdout;
+    // AMBER_GATE_KEEP_SAMPLES=1 keeps each whole `sample` report beside the build, for reading a hang in full.
+    if (Deno.env.get("AMBER_GATE_KEEP_SAMPLES") && raw.trim()) {
+      await Deno.mkdir(`${OUT}/samples`, { recursive: true });
+      await Deno.writeTextFile(`${OUT}/samples/${f.split("/").pop()}.txt`, raw);
+    }
+    const t = await symbolicate(raw);
     if (t.trim()) samples.push(t);
   }
   await ssh(`rm -f ${out} ${out}.err ${out}.hang*`, { allowFail: true });

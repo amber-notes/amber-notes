@@ -146,7 +146,20 @@ async function ensure(n: number) {
     const r = have?.length ? await rest(s, "PATCH", `notes?id=eq.${id}`, { ...row, deleted_at: null, trashed_at: null }) : await rest(s, "POST", "notes", { ...row, folder_id: null, parent_id: null, is_pinned: false });
     if (r.status >= 300) throw new Error(`gate note ${label}: ${r.status} ${JSON.stringify(r.body).slice(0, 200)}`);
   }
-  return { file: file(n), user: s.user, notes: await count() };
+  // A settled account, the same on every run: the first-run card answered, and nothing waiting to
+  // be said. A notice (an AI connected by some check on this account) opens an alert over the
+  // window at every launch, and the gate then measures a window with a sheet on it.
+  const settled = await rest(s, "POST", "rpc/pane_setup_mark", { step: "dismissed" }, "return=minimal");
+  if (settled.status >= 300) throw new Error(`dismissing the setup card: ${settled.status}`);
+  // "How did you hear about us?" comes up once the card is gone: skipped, as most people do.
+  const heard = await rest(s, "POST", "rpc/pane_heard_from_answer", { source: "skipped" }, "return=minimal");
+  if (heard.status >= 300) throw new Error(`answering heard-from: ${heard.status}`);
+  // And the "share Pinto Notes?" ask, which comes after a few days of use: the gate's runs are those days.
+  const ask = await rest(s, "POST", "rpc/pane_share_ask_decide", { choice: "dismissed" }, "return=minimal");
+  if (ask.status >= 300) throw new Error(`answering the share ask: ${ask.status}`);
+  const said = await fetch(`${URL_}/rest/v1/account_notices?user_id=eq.${s.user}`, { method: "DELETE", headers: { apikey: service, authorization: `Bearer ${service}`, prefer: "return=representation" } });
+  if (!said.ok) throw new Error(`clearing notices: ${said.status}`);
+  return { file: file(n), user: s.user, notes: await count(), noticesCleared: (await said.json()).length };
 }
 
 /** Another device changes a note: the "Gate arriving note", made the first time. */
