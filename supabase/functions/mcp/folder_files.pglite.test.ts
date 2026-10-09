@@ -203,7 +203,10 @@ Deno.test("an edit made in the app keeps the version it replaces, as the AI's do
       [f.id, old.meta_ct, old.size, `${f.path}.v2`]));
     const h = await tool(pg, a, "history", { path: "Site/index.html" });
     assertEquals(h.versions.length, 1);
-    assertEquals([h.versions[0].made_by, h.versions[0].name], ["Amber Notes", "index.html"]);
+    // The row above is from a build before the rename ('Amber Notes'); an AI reads the app's name as it is now.
+    assertEquals([h.versions[0].made_by, h.versions[0].name], ["Pinto Notes", "index.html"]);
+    await pg.query(`update public.attachment_versions set client = 'Pinto Notes' where attachment_id = $1`, [f.id]);
+    assertEquals((await tool(pg, a, "history", { path: "Site/index.html" })).versions[0].made_by, "Pinto Notes", "and what the app writes now");
     await tool(pg, a, "restore", { path: "Site/index.html", version: h.versions[0].version });
     assertEquals((await tool(pg, a, "fetch", { id: "Site/index.html" })).text.includes("<h1>Hi</h1>"), true, "the edit is undone from history");
   } finally { unstub(); }
