@@ -278,7 +278,11 @@ enum WikiDirectory {
             await warming.value
             return
         }
+        // The library stays alive until this is done: the notes are read over several turns of
+        // the main queue, and a window (or a test) may let go of its container in between.
+        let container = context.container
         let task = Task { @MainActor in
+            defer { withExtendedLifetime(container) {} }
             watch()
             // The note that asked is drawn first.
             try? await Task.sleep(for: .milliseconds(1))
