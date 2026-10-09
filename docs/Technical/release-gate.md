@@ -161,6 +161,15 @@ These are ceilings on today's dev, not targets: dev still has hangs of over a se
 of minutes, and a folder push the server refuses about 1,500 times a launch (see the report). Tighten a budget in its own commit when the code
 behind it gets better; never loosen one to pass a run.
 
+The same rule holds from 2026-10-09 for the timing constants in the app's tests
+(`AppPerfTests.listBudgets`, `WindowUpdateTests.typingBudgets`). #338 changed them once, a few hours
+after they were first written as guesses: at 20,000 notes a save shown went from 400 to 600 ms and a
+save while typing from 240 to 300 ms, and the first display was tightened (400 to 250 ms at 2,000
+notes, 2,000 to 1,000 ms at 20,000). The new values come from two CI Debug runs (a save shown 608 to
+773 ms, a typing save 297 to 371 ms at 20,000 notes) and leave about three times that at CI's limit,
+which is the constant times 4. The old values passed on CI too, so no run needed the change. Nobody
+has measured these on a developer's Mac yet, where the limit is the constant itself.
+
 ## Limits
 
 - The beta build can't keep the account's key between launches (sandboxed Developer ID, no data
