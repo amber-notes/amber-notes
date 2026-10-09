@@ -71,3 +71,7 @@ export function pageMetadata({ title, description, path, shareTitle, index = tru
     twitter: { card: "summary_large_image", title: shareTitle ?? title, description, creator: X_HANDLE, images },
   };
 }
+
+/// Where people write for help, and to report a shared page. Shown on /support, which is the
+/// App Store's support link, so it has to be there as text a person can read and copy.
+export const SUPPORT_EMAIL = "hello@pintonotes.com";

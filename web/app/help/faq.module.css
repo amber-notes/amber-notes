@@ -33,3 +33,16 @@
 /* The blog post that covers a question in full. */
 .a p.more a { color: var(--ink); font-weight: 600; text-decoration: underline; text-decoration-color: var(--amber); text-decoration-thickness: 2px; text-underline-offset: 3px; border-radius: 3px; }
 .a p.more a:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+
+/* How to reach support, said once under the heading and in full further down. /support is the App
+   Store's support link, so the address is text that can be read and copied, not only a button. */
+.reach { margin: 0; font-size: 17px; line-height: 1.5; color: var(--muted); }
+.reach a, .facts a { color: var(--ink); font-weight: 600; text-decoration: underline; text-decoration-color: var(--amber); text-decoration-thickness: 2px; text-underline-offset: 3px; border-radius: 3px; overflow-wrap: anywhere; }
+.reach a:focus-visible, .facts a:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.anchor { scroll-margin-top: 24px; }
+.facts { display: grid; margin: 0; box-shadow: inset 0 1px 0 var(--line); }
+.facts > div { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 4px 24px; padding: 18px 4px; box-shadow: inset 0 -1px 0 var(--line); }
+@media (max-width: 600px) { .facts > div { grid-template-columns: 1fr; } }
+.facts dt { font-size: 17px; font-weight: 700; letter-spacing: -0.01em; color: var(--ink); }
+.facts dd { margin: 0; font-size: 17px; line-height: 1.55; color: var(--muted); }
+.address { color: var(--ink); font-weight: 600; user-select: all; -webkit-user-select: all; overflow-wrap: anywhere; }

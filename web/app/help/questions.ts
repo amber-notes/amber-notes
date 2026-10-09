@@ -1,5 +1,5 @@
 import { MCP_URL, OLD_MCP_URL_STAYS } from "@/lib/facts";
-import { APP_STORE_LIVE } from "@/lib/site";
+import { APP_STORE_LIVE, SUPPORT_EMAIL } from "@/lib/site";
 /// The Help page's questions. Short answers, accurate to the app as it ships. `more` links the
 /// blog post that covers the question in full.
 export type QA = { id: string; q: string; a: string[]; more?: { href: string; text: string } };
@@ -48,7 +48,12 @@ export const FAQ: QA[] = [
   ] },
   { id: "delete", q: "How do I delete my account?", a: [
     "Open Settings → Account and choose Delete Account…. Your account and all your notes are deleted, and this can't be undone.",
+    `Can't get into the app? Write to ${SUPPORT_EMAIL} from the account's email address and I'll delete it for you.`,
   ] },
+  { id: "report-page", q: "How do I report a shared page?", a: [
+    `Every shared page ends with a "Report this page" link. Choose it and say what's wrong. Or write to ${SUPPORT_EMAIL} with the page's address.`,
+    "Reports are reviewed within 24 hours, and pages that break the terms of use are taken down.",
+  ], more: { href: "/terms", text: "Terms of use" } },
   { id: "feedback", q: "How do I report a bug or suggest a feature?", a: [
     "Open an issue on GitHub. Say what happened and what you expected, and a screenshot helps. Ideas are welcome there too.",
   ] },
