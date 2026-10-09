@@ -42,10 +42,19 @@ final class PerfProbe: NSObject {
     private func seed() {
         let context = self.context
         let count = Capture.argument("-perfNotes").flatMap(Int.init) ?? 2000
-        let folders = (0..<6).map { context.createFolder(named: "Folder \($0)") }
+        // `-perfFolders 150`: many folders, nested three deep (8 at the top, 9 inside each, the
+        // rest one inside each of those), as a long-used library has. Default: 6 at the top.
+        let folderCount = Capture.argument("-perfFolders").flatMap(Int.init) ?? 6
+        let folders = (0..<folderCount).map { context.createFolder(named: "Folder \($0)") }
+        if folderCount > 8 {
+            for (i, f) in folders.enumerated() where i >= 8 {
+                context.move(f, into: i < 80 ? folders[(i - 8) / 9 % 8] : folders[8 + (i - 80) % min(72, folderCount - 8)])
+            }
+        }
         for i in 0..<count {
             let n = Note(body: "Note \(i)\n\nSome text for note \(i), with **bold** and a list:\n- one\n- two\n", folder: folders[i % folders.count])
             n.updatedAt = .now.addingTimeInterval(-Double(i) * 3600)
+            if folderCount > 8, i % 97 == 5 { n.isPinned = true }
             context.insert(n)
         }
         let long = context.createNote(in: .folder(folders[0].id), body: Self.longNote())

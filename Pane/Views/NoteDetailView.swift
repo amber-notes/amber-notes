@@ -223,7 +223,7 @@ struct NoteDetailView: View {
             }
             .task(id: note.id) {
                 titleAtOpen = note.body.isEmpty || note.isLocked ? nil : note.title
-                refreshLinks()
+                let linksReady = linksAtOpen()
                 receipt = nil
                 shownPage = NotePageStore.shared[note.id]
                 // A note with an app is the app: what its text held goes into the app's data once.
@@ -238,6 +238,7 @@ struct NoteDetailView: View {
                 #endif
                 PaneTips.noteOpened(note.body)
                 ShareAsk.noteUsed()
+                if !linksReady, await !linksOnceRead() { return }
                 // "Make this an app", once per note, a moment after it opens (last: it waits).
                 if shownPage == nil, !note.isLocked, !MakeAnApp.chipShown(note.id), MakeAnApp.looksLikeAnApp(note.body) {
                     MakeAnApp.markChipShown(note.id)
@@ -794,6 +795,26 @@ struct NoteDetailView: View {
     }
 
     // MARK: Wiki links
+
+    /// The first note after launch doesn't wait for the library's titles to be read: its links
+    /// are plain until they are (`linksOnceRead`), then coloured as usual. False when it waits.
+    private func linksAtOpen() -> Bool {
+        if WikiDirectory.isBuilt {
+            refreshLinks()
+            return true
+        }
+        controller.wiki = nil
+        backlinks = []
+        return false
+    }
+
+    /// False if another note was opened meanwhile.
+    private func linksOnceRead() async -> Bool {
+        await WikiDirectory.warm(context)
+        if Task.isCancelled { return false }
+        refreshLinks()
+        return true
+    }
 
     /// Colours for the editor's wiki links and the "Linked from" list, from the library as it is now.
     private func refreshLinks() {
