@@ -655,7 +655,11 @@ private struct ShareLinkChrome: ViewModifier {
                 switch step {
                 case .createLink:
                     Button("Create Public Link") { Task { await store.confirmedShare() } }
+                        // Not the default button on iPhone: iOS fills it system blue under the
+                        // app's amber label, which can't be read.
+                        #if os(macOS)
                         .keyboardShortcut(.defaultAction)
+                        #endif
                         .accessibilityIdentifier("share.confirm")
                     if profileIncomplete {
                         Button("Add Name and Photo First", action: editProfile)

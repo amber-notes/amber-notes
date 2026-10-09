@@ -64,12 +64,18 @@ struct MakeAppChip: View {
             .accessibilityIdentifier("makeApp.chip")
             Divider().frame(height: 14)
             Button(action: dismiss) {
+                // The glyph alone took no taps on iPhone (they went through to the note): the
+                // target is the chip's whole end, as tall as the chip.
                 Image(systemName: "xmark").font(.system(size: AIReceipt.text - 2, weight: .semibold)).foregroundStyle(Color.amberInk.opacity(0.7))
+                    .frame(width: 30, height: AIReceipt.height)
+                    .contentShape(.rect)
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Not now")
+            .accessibilityIdentifier("makeApp.chip.dismiss")
         }
-        .padding(.horizontal, 14)
+        .padding(.leading, 14)
+        .padding(.trailing, 4)
         .frame(height: AIReceipt.height)
         .background(Color.amberSoft, in: .capsule)
         .overlay(Capsule().strokeBorder(Color.amberInk.opacity(0.22), lineWidth: 0.5))

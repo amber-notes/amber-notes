@@ -263,10 +263,20 @@ struct SetupCard: View {
             choosingSource = false
             action()
         } label: {
+            #if os(iOS)
+            // The card's button font is semibold and small: the choices read as a menu, in the
+            // body font, with rows a finger can hit and the icons in one column.
+            Label { Text(title) } icon: { Image(systemName: symbol).frame(width: 24) }
+                .font(.body)
+                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                .padding(.horizontal, 12)
+                .contentShape(.rect)
+            #else
             Label(title, systemImage: symbol)
                 .frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
                 .padding(.horizontal, 8)
                 .contentShape(.rect)
+            #endif
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("setup.import.\(symbol)")
