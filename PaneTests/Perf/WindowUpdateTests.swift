@@ -159,6 +159,43 @@ import Testing
         #expect(NoteListView.nested(in: all.filter { $0.parentID == nil }, context: ctx).isEmpty)
     }
 
+    /// Opening notes doesn't fetch and sort the folders: only the list's "Move to" menus need them,
+    /// and they ask when a menu is asked for. The list did it every time it was worked out.
+    @Test(.timeLimit(.minutes(2))) func openingNotesDoesNotFetchTheFoldersForMenus() async throws {
+        let c = try ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        let ctx = c.mainContext
+        let folders = (0..<12).map { ctx.createFolder(named: "Folder \($0)") }
+        let notes = (0..<40).map { ctx.createNote(in: .folder(folders[$0 % 12].id), body: "Note \($0)\n\ntext") }
+        try ctx.save()
+        UserDefaults.standard.removeObject(forKey: "lastScope")
+        // The views count their bodies while the hover probe is on (RenderProbe, in Hover.swift).
+        RenderProbe.counts = [:]
+        HoverProbe.enabled = true
+        defer { HoverProbe.enabled = false; HoverProbe.reset(); RenderProbe.counts = [:] }
+        // Borderless, far off every screen and never shown: nothing appears on anyone's display.
+        let w = NSWindow(contentRect: CGRect(x: -20000, y: -20000, width: 1180, height: 760),
+                         styleMask: [.borderless], backing: .buffered, defer: false)
+        w.isReleasedWhenClosed = false
+        w.contentViewController = NSHostingController(rootView: RootView().modelContainer(c))
+        w.setFrameOrigin(CGPoint(x: -20000, y: -20000))
+        defer { w.orderOut(nil); w.close() }
+        func settle() async {
+            for _ in 0..<4 {
+                w.contentView?.layoutSubtreeIfNeeded()
+                w.displayIfNeeded()
+                try? await Task.sleep(for: .milliseconds(120))
+            }
+        }
+        await settle()
+        for n in notes.prefix(3) {
+            NoteOpener.shared.request = n.id
+            await settle()
+        }
+        print("PERF 3 notes opened: bodies worked out \(RenderProbe.counts.sorted { $0.key < $1.key }.map { "\($0.key) \($0.value)" }.joined(separator: ", "))")
+        #expect((RenderProbe.counts["NoteListView"] ?? 0) > 0, "the probe counts the list")
+        #expect(RenderProbe.counts["NoteListView.foldersByName"] == nil, "no menu was asked for, so no folders were fetched")
+    }
+
     /// The sidebar counts in the store. Notes made, deleted or recovered count straight away,
     /// before the library is saved.
     @Test func sidebarCountsIncludeUnsavedChanges() throws {

@@ -162,14 +162,23 @@ struct NoteListView: View {
         let visible = filtered(from: scopedNotes, all: all)
         let files = scopedFiles
         let visibleFiles = filteredFiles(from: files)
-        let folders = context.allFolders().sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
-        return list(scopedNotes, visible, files, visibleFiles, folders)
+        return list(scopedNotes, visible, files, visibleFiles)
             #if os(iOS)
             .task { await watchListTip() }
             #endif
     }
 
-    private func list(_ scopedNotes: [NoteEntry], _ visible: [NoteEntry], _ scopedFiles: [Attachment], _ visibleFiles: [Attachment], _ folders: [Folder]) -> some View {
+    /// The folders by name, for the menus that move things. Asked for when a menu is, not
+    /// each time the list is worked out: fetching and sorting every folder was part of every
+    /// update of the list (every note opened), for menus nobody had asked for.
+    private var foldersByName: [Folder] {
+        #if DEBUG
+        RenderProbe.count("NoteListView.foldersByName")
+        #endif
+        return context.allFolders().sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+    }
+
+    private func list(_ scopedNotes: [NoteEntry], _ visible: [NoteEntry], _ scopedFiles: [Attachment], _ visibleFiles: [Attachment]) -> some View {
         List(selection: $selection) {
             // An ask to connect an AI whose sheet was closed without an answer: always a way back.
             if scope != .trash, search.isEmpty, let ask = connectCenter.waiting().first {
@@ -278,7 +287,7 @@ struct NoteListView: View {
         }
         // Right-click acts on the whole selection when the row is part of it, like Notes.
         .contextMenu(forSelectionType: UUID.self) { ids in
-            menu(for: ids, folders: folders)
+            menu(for: ids, folders: foldersByName)
         }
         #if os(macOS)
         // Another folder or another library is another list, built new. Kept as one list,
@@ -417,7 +426,7 @@ struct NoteListView: View {
             if editMode.isEditing {
                 ToolbarItem(placement: .bottomBar) {
                     Menu("Move") {
-                        ForEach(folders) { f in
+                        ForEach(foldersByName) { f in
                             Button(f.name) { moveSelection(to: f) }
                         }
                     }
