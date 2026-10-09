@@ -391,6 +391,9 @@ private struct FolderTree: View {
     @State private var expanded = true
 
     var body: some View {
+        #if DEBUG
+        let _ = RenderProbe.count("FolderTree")
+        #endif
         if folder.liveChildren.isEmpty {
             label
         } else {
