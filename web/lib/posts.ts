@@ -29,7 +29,7 @@ export type Post = {
 
 /// The ground a cover (and the post's first picture) sits on: the site's palette, the help page's
 /// leaf brown, the app's dark look, or the home page's dunes.
-export type Ground = "paper" | "soft" | "tint" | "amber" | "leaf" | "dark" | "dunes" | "ink" | "peach" | "cream" | "sand" | "clay" | "mist" | "honey" | "sage" | "heather" | "blush" | "wheat" | "fog" | "dusk" | "pearl" | "linen" | "night" | "rose" | "mint" | "sky" | "lemon" | "coral" | "lagoon" | "denim" | "slate" | "olive";
+export type Ground = "paper" | "soft" | "tint" | "amber" | "leaf" | "dark" | "dunes" | "ink" | "peach" | "cream" | "sand" | "clay" | "mist" | "honey" | "sage" | "heather" | "blush" | "wheat" | "fog" | "dusk" | "pearl" | "linen" | "night" | "rose" | "mint" | "sky" | "lemon" | "coral" | "lagoon" | "denim" | "slate" | "olive" | "plum";
 
 /// A card's picture: one real capture of the element the post is about, on the post's ground. The
 /// capture is cropped at 2x (3x from iPhone) to about the card's width, so it shows at full size.
@@ -65,6 +65,18 @@ export const SHOTS = {
 } satisfies Record<string, Shot>;
 
 export const posts: Post[] = [
+  {
+    slug: "meeting-notes-to-action-items",
+    title: "Turn meeting notes into action items with ChatGPT or Claude",
+    description: "A prompt that turns rough meeting notes or a transcript into decisions and action items with owners and dates, and how to keep the list ticked off.",
+    excerpt: "Paste rough notes, get decisions and a checklist with an owner and a date on every line. One prompt for any AI, and a way to keep the list alive after the chat.",
+    category: "Guides",
+    date: "2026-10-09",
+    updated: "2026-10-09",
+    image: SHOTS.aiEdit,
+    thumb: thumb("plum", "thumb-checklist-ticked", 700, 462, "A checklist in Pinto Notes with three of its items ticked"),
+    draft: false,
+  },
   {
     slug: "apple-notes-templates",
     title: "Apple Notes templates: make your own, plus five to copy",
