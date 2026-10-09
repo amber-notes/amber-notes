@@ -98,15 +98,19 @@ describe("the reset page", () => {
     expect(auth.verify).not.toHaveBeenCalled();
   });
 
-  it("shows and hides both passwords together", async () => {
+  it("each password field has its own eye, which shows and hides what is typed in it", async () => {
     await open("/reset-password#token_hash=abc123def456&type=recovery", "opening");
-    const toggle = document.querySelector('button[aria-controls="password confirm"]') as HTMLButtonElement;
+    const eye = (id: string) => document.querySelector(`button[aria-controls="${id}"]`) as HTMLButtonElement;
     expect([input("password").type, input("confirm").type]).toEqual(["password", "password"]);
-    await act(async () => toggle.click());
+    expect([...document.querySelectorAll("form button")].map((b) => b.textContent), "the Show link is gone").toEqual(["", "", "Save password"]);
+    await act(async () => eye("password").click());
+    expect([input("password").type, input("confirm").type]).toEqual(["text", "password"]);
+    expect(eye("password").getAttribute("aria-label")).toBe("Hide password");
+    await act(async () => eye("confirm").click());
     expect([input("password").type, input("confirm").type]).toEqual(["text", "text"]);
-    expect(toggle.textContent).toBe("Hide");
-    await act(async () => toggle.click());
+    await act(async () => { eye("password").click(); eye("confirm").click(); });
     expect([input("password").type, input("confirm").type]).toEqual(["password", "password"]);
+    expect([input("password"), input("confirm")].map((el) => el.getAttribute("autocomplete"))).toEqual(["new-password", "new-password"]);
   });
 
   it("asks for the password twice: both fields are labelled and filled as a new password", async () => {

@@ -27,7 +27,6 @@ export default function ResetPassword({ initial, supabaseURL, anonKey, auth, sen
   const [confirm, setConfirm] = useState("");
   const [confirmLeft, setConfirmLeft] = useState(false);
   const [confirmAsked, setConfirmAsked] = useState(false);
-  const [shown, setShown] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const pending = useRef<Pending | null>(null);
@@ -141,29 +140,19 @@ export default function ResetPassword({ initial, supabaseURL, anonKey, auth, sen
           <p className={ui.lede}>Your notes stay as they are. They&apos;re locked with your key, not with your password.</p>
         </div>
         <form className={ui.form} method="post" onSubmit={save} noValidate>
-          <div className={s.reveal}>
-            <Field
-              id="password" name="password" label="New password" type={shown ? "text" : "password"} autoComplete="new-password"
-              autoFocus minLength={MIN_PASSWORD} maxLength={72} required value={password}
-              onChange={(e) => { setPassword(e.target.value); if (error) setError(null); }} onKeyDown={onReturn}
-              hint={`At least ${MIN_PASSWORD} characters.`} error={error ?? undefined}
-              autoCapitalize="none" autoCorrect="off" spellCheck={false}
-            />
-            <button
-              type="button" className={s.toggle} onClick={() => setShown((v) => !v)}
-              aria-controls="password confirm" aria-label={shown ? "Hide passwords" : "Show passwords"}
-            >
-              {shown ? "Hide" : "Show"}
-            </button>
-          </div>
+          <Field
+            id="password" name="password" label="New password" type="password" autoComplete="new-password"
+            autoFocus minLength={MIN_PASSWORD} maxLength={72} required value={password}
+            onChange={(e) => { setPassword(e.target.value); if (error) setError(null); }} onKeyDown={onReturn}
+            hint={`At least ${MIN_PASSWORD} characters.`} error={error ?? undefined}
+          />
           <div className={s.confirm}>
             <Field
-              id="confirm" name="confirm" label="Confirm new password" type={shown ? "text" : "password"} autoComplete="new-password"
+              id="confirm" name="confirm" label="Confirm new password" type="password" autoComplete="new-password"
               maxLength={72} required value={confirm}
               onChange={(e) => { setConfirm(e.target.value); setConfirmAsked(false); }} onKeyDown={onReturn}
               onFocus={() => setConfirmLeft(false)} onBlur={() => setConfirmLeft(true)}
               aria-invalid={mismatch || undefined} aria-describedby={mismatch ? "confirm-error" : undefined}
-              autoCapitalize="none" autoCorrect="off" spellCheck={false}
             />
             <div className={s.said}>
               <p className={s.room} aria-hidden="true">{MISMATCH}</p>

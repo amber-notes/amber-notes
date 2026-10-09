@@ -1,18 +1,5 @@
 /* The reset page (app/reset-password). Everything else comes from lib/ui.module.css. */
 
-/* Show or hide the new password: a quiet button at the end of the field's label line. */
-.reveal { position: relative; }
-.toggle {
-  position: absolute; top: -12px; right: -8px; min-width: 44px; min-height: 44px; padding: 0 8px; border: 0; border-radius: 10px;
-  background: none; color: var(--link); font: inherit; font-size: 14px; font-weight: 650; cursor: pointer; -webkit-tap-highlight-color: transparent;
-}
-.toggle:focus-visible { outline: 2px solid var(--amber); outline-offset: -2px; }
-@media (hover: hover) { .toggle:hover { color: var(--ink); } }
-@media (prefers-reduced-motion: no-preference) {
-  .toggle { transition: color 0.15s ease-out, transform 0.12s ease-out; }
-  .toggle:active { transform: scale(0.96); }
-}
-
 /* The second field and what is said under it. The words' line is always there (an unseen copy holds
    its room at every width), so the card is the same height with and without them. */
 .confirm { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; min-width: 0; }
