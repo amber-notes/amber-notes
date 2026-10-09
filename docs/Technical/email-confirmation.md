@@ -100,7 +100,7 @@ Nothing below has been done. Each step needs Emil's go.
        deno run -A scripts/auth-emails.ts confirm > /tmp/confirm.json
 
    That is `mailer_autoconfirm: false`, `mailer_otp_length: 6`, `mailer_otp_exp: 3600`,
-   `mailer_subjects_confirmation: "Confirm your email for Amber Notes"` and
+   `mailer_subjects_confirmation: "Confirm your email for Pinto Notes"` and
    `mailer_templates_confirmation_content` (the code template). Nothing else changes. Production
    already sends through Resend SMTP, so no SMTP change.
 5. **Smoke test.** Sign up in the released app with a new `+alias` address, get the code, confirm,

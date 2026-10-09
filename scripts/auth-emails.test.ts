@@ -1,5 +1,5 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
-import { confirmPatch, EMAILS, html, patch } from "./auth-emails.ts";
+import { config, confirmPatch, EMAILS, html, patch } from "./auth-emails.ts";
 
 const dir = new URL("../supabase/templates/", import.meta.url);
 
@@ -15,7 +15,7 @@ Deno.test("each email keeps its Go variables and link", () => {
     "email_change.html": ["{{ .Email }}", "{{ .NewEmail }}", "{{ .SiteURL }}/account/confirm?token_hash={{ .TokenHash }}&type=email_change"],
     "invite.html": ["{{ .Email }}", "{{ .ConfirmationURL }}"],
     "reauthentication.html": ["{{ .Email }}", "{{ .Token }}"],
-    "password_changed.html": ["{{ .Email }}", "https://ambernotes.app/reset-password"],
+    "password_changed.html": ["{{ .Email }}", "https://pintonotes.com/reset-password"],
   };
   for (const e of EMAILS) for (const v of needs[e.file]) assert(html(e).includes(v), `${e.file} lacks ${v}`);
 });
@@ -34,6 +34,29 @@ Deno.test("the reset email's links all go to the same reset page (scripts/passwo
   const recovery = html(EMAILS.find((e) => e.file === "recovery.html")!);
   const hrefs = [...recovery.matchAll(/href="([^"]+reset-password[^"]+)"/g)].map((m) => m[1]);
   assert(hrefs.length >= 2 && hrefs.every((h) => h === hrefs[0]));
+});
+
+Deno.test("the name is Pinto Notes, the old one is said once in the footer and never in a subject, and every link and picture is on pintonotes.com", () => {
+  for (const e of EMAILS) {
+    const page = html(e);
+    assert(e.subject.includes("Pinto Notes") && !/amber/i.test(e.subject), e.subject);
+    assertEquals(page.match(/Amber Notes/g), ["Amber Notes"], e.file);
+    assert(page.includes("Pinto Notes was called Amber Notes until October 2026."), e.file);
+    assertEquals(/ambernotes/i.test(page), false, `${e.file}: the old address`);
+    for (const m of page.matchAll(/(?:href|src)="(https?:[^"]+)"/g)) assert(m[1].startsWith("https://pintonotes.com/"), `${e.file}: ${m[1]}`);
+  }
+});
+
+Deno.test("what the emails say, as the body for the project: the site, the sender name, every subject and template; the SMTP settings only for a first setup", () => {
+  const body = config();
+  assertEquals([body.site_url, body.smtp_sender_name], ["https://pintonotes.com", "Pinto Notes"]);
+  assertEquals(Object.keys(body).sort(), ["site_url", "smtp_sender_name", ...Object.keys(patch())].sort());
+  const setup = config(true);
+  assertEquals(Object.keys(setup).filter((k) => !(k in body)).sort(),
+    ["mailer_notifications_password_changed_enabled", "mailer_otp_exp", "rate_limit_email_sent", "smtp_admin_email", "smtp_host", "smtp_max_frequency", "smtp_port", "smtp_user"]);
+  // The address moves to @pintonotes.com only once that domain can send (supabase/functions/_shared/sender.ts).
+  assertEquals(setup.smtp_admin_email, "hello@ambernotes.app");
+  assert(!("smtp_pass" in setup));
 });
 
 Deno.test("supabase/config.toml has the same subjects", () => {

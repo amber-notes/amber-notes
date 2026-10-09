@@ -15,15 +15,18 @@
 // The copy follows the house rules: Emil's voice, short, no em dashes, no invented features, and never
 // a person's own data quoted back (no note counts). Nothing here knows what a person's notes say.
 
+import { EMIL } from "../_shared/sender.ts";
 import type { Kind, WelcomeStep } from "./logic.ts";
 import PROMPTS from "./prompts.json" with { type: "json" };
 
 export const APP_STORE_URL = "https://apps.apple.com/app/id6817253103";
 
 export type Context = {
-  /// The site, for links (https://ambernotes.app).
+  /// The site, for links (https://pintonotes.com).
   site: string;
-  /// Where the pictures are: https://ambernotes.app/email in mail, a local folder for previews.
+  /// Where the links under /open/ live when that isn't the site (logic.ts APP_LINKS).
+  open?: string;
+  /// Where the pictures are: https://pintonotes.com/email in mail, a local folder for previews.
   assets: string;
   /// The page the "Stop these emails" link opens.
   unsubscribe: string;
@@ -78,10 +81,11 @@ const TEMPLATES: Template[] = [
 /// Every button goes somewhere specific: into the app through a universal link under /open/
 /// (Pane/Model/AppPlace.swift), with a page at the same address that says how by hand when the app
 /// isn't on this device (web/app/open/).
-const connectAI = (c: Context) => `${c.site}/open/connect-ai`;
+const open = (c: Pick<Context, "site" | "open">, place: string) => `${c.open ?? c.site}/open/${place}`;
+const connectAI = (c: Context) => open(c, "connect-ai");
 
 /// Opens ChatGPT with the prompt in its composer. Claude's web app no longer takes a prompt in its
-/// address (October 2025), so Claude goes through ambernotes.app/copy, which copies it on a tap.
+/// address (October 2025), so Claude goes through pintonotes.com/copy, which copies it on a tap.
 export const askChatGPT = (text: string) => `https://chatgpt.com/?q=${encodeURIComponent(text)}`;
 export const askClaude = (c: Pick<Context, "site">, id: string) => `${c.site}/copy/${id}`;
 
@@ -138,7 +142,7 @@ function draft(kind: Kind, c: Context): Draft {
         art: { file: "hero-stuck.jpg", ground: "#e9a82a", alt: "A paper-cut ladybird on a leaf, next to a magnifying glass and a toolbox" },
         blocks: [
           { p: "Hi, I'm Emil, and I make Pinto Notes. You made an account, but no notes have arrived yet. If something after signing in was confusing or got stuck, tell me and I'll help you get going." },
-          { button: { label: "Reply to Emil", href: "mailto:emil@ambernotes.app?subject=Stuck%20after%20signing%20in" } },
+          { button: { label: "Reply to Emil", href: `mailto:${EMIL}?subject=Stuck%20after%20signing%20in` } },
           { p: "Notes in Apple Notes? On the Mac, choose File, then Import from Apple Notes.", small: true },
         ],
       };
@@ -151,7 +155,7 @@ function draft(kind: Kind, c: Context): Draft {
         art: { file: "hero-import.jpg", ground: "#e4ba8b", alt: "A paper-cut house with a ladder, a toolbox and a paint roller, ready to move in" },
         blocks: [
           { p: "Hi, Emil here. On your Mac, choose File, then Import from Apple Notes. Your notes come over with their folders, and Apple Notes stays exactly as it is." },
-          { button: { label: "Import my Apple Notes", href: `${c.site}/open/import` } },
+          { button: { label: "Import my Apple Notes", href: open(c, "import") } },
           { p: "You can bring all of them, or pick some.", small: true },
         ],
       };
@@ -212,7 +216,7 @@ function draft(kind: Kind, c: Context): Draft {
           { p: "Your AI made its first change. When it edits a note you have open, this bar appears, and Undo puts the note back." },
           { shot: { file: "undo.jpg", w: 395, h: 330, alt: "A Groceries note on a Mac with five lines ChatGPT added marked in amber, and the bar ChatGPT changed 5 lines, Undo" } },
           { p: "Older changes are in each note's version history: on a note, choose More (•••), then Show Version History." },
-          { button: { label: "See your note's history", href: `${c.site}/open/history` } },
+          { button: { label: "See your note's history", href: open(c, "history") } },
           { p: "Versions an AI made are kept for 90 days.", small: true },
         ],
       };
@@ -302,7 +306,7 @@ function textOf(d: Draft, c: Context): string {
     else if ("checks" in b) out.push(...b.checks.map((x) => `${x.done ? "[x]" : "[ ]"} ${x.text}`), "");
     else if ("button" in b) out.push(`${b.button.label}: ${b.button.href.replace(/^mailto:([^?]+).*/, "$1")}`, "");
     else if ("prompts" in b) for (const x of b.prompts) out.push(`"${x.text}"`, `Ask ChatGPT: ${askChatGPT(x.text)}`, `Ask Claude: ${askClaude(c, x.id)}`, "");
-    else if ("templates" in b) for (const t of b.templates) out.push(`${t.title}: ${t.tagline}`, `Use template: ${c.site}/open/template/${t.slug}`, "");
+    else if ("templates" in b) for (const t of b.templates) out.push(`${t.title}: ${t.tagline}`, `Use template: ${open(c, `template/${t.slug}`)}`, "");
   }
   out.push("Emil", "I make Pinto Notes. Just reply to reach me.", "", "--",
     "You're getting this because you made a Pinto Notes account. Each of these emails stops once you've done what it's about.",
@@ -400,7 +404,7 @@ function blockHTML(b: Block, c: Context): string {
   // paper-cut cover big on top, its title, one line and Use template. Three across on a desktop;
   // stacked on a phone. Every part of a card links to the template, so the whole card is a link.
   const cells = b.templates.map((t) => {
-    const use = esc(`${c.site}/open/template/${t.slug}`);
+    const use = esc(open(c, `template/${t.slug}`));
     return `<td class="tcol" width="33%" valign="top" style="width:33%;padding:0 5px;">
 ${table(` width="100%" class="tcard" bgcolor="${L.paper}" style="background:${L.paper};border:1px solid ${L.paperEdge};border-radius:${CARD_R}px;"`)}
 <tr><td style="line-height:0;font-size:0;"><a href="${use}"><img src="${c.assets}/tc-${t.slug}.jpg" width="142" height="99" alt="${esc(t.title)} template cover" style="display:block;width:100%;height:auto;border:0;border-top-left-radius:${CARD_R}px;border-top-right-radius:${CARD_R}px;border-bottom-left-radius:0;border-bottom-right-radius:0;color:${L.secondary};font-family:${SANS};font-size:12px;"></a></td></tr>
@@ -499,7 +503,7 @@ ${table(` class="ground" width="100%" bgcolor="${L.ground}" style="width:100%;mi
 ${table(' width="100%" style="width:100%;max-width:520px;"')}
   <tr><td style="padding:0 4px 18px;">
     ${table()}<tr>
-      <td style="padding-right:10px;">${table()}<tr><td width="28" height="28" align="center" valign="middle" bgcolor="#f0901a" style="width:28px;height:28px;background:#f0901a;border-radius:7px;text-align:center;"><img src="${a}/mark.png" width="28" height="28" alt="A" style="display:block;width:28px;height:28px;border:0;border-radius:7px;color:#fff4e6;font-family:${DISPLAY};font-size:16px;font-weight:800;line-height:28px;text-align:center;"></td></tr></table></td>
+      <td style="padding-right:10px;">${table()}<tr><td width="28" height="28" align="center" valign="middle" bgcolor="#f0901a" style="width:28px;height:28px;background:#f0901a;border-radius:7px;text-align:center;"><img src="${a}/mark.png" width="28" height="28" alt="P" style="display:block;width:28px;height:28px;border:0;border-radius:7px;color:#fff4e6;font-family:${DISPLAY};font-size:16px;font-weight:800;line-height:28px;text-align:center;"></td></tr></table></td>
       <td class="ink" style="font-family:${DISPLAY};font-size:18px;font-weight:700;color:#2a1d10;">Pinto Notes</td>
     </tr></table>
   </td></tr>

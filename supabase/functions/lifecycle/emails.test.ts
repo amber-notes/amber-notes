@@ -3,8 +3,8 @@ import { assert, assertEquals, assertStringIncludes } from "jsr:@std/assert@1";
 import { askChatGPT, KINDS, render } from "./emails.ts";
 import PROMPTS from "./prompts.json" with { type: "json" };
 
-const UNSUB = "https://ambernotes.app/unsubscribe?u=0b6f6a5e-1d2c-4a8e-9f3b-2c1d0e9f8a7b&t=abc";
-const ctx = { site: "https://ambernotes.app", assets: "https://ambernotes.app/email", unsubscribe: UNSUB, sortable: false, connectTried: false };
+const UNSUB = "https://pintonotes.com/unsubscribe?u=0b6f6a5e-1d2c-4a8e-9f3b-2c1d0e9f8a7b&t=abc";
+const ctx = { site: "https://pintonotes.com", open: "https://ambernotes.app", assets: "https://pintonotes.com/email", unsubscribe: UNSUB, sortable: false, connectTried: false };
 const all = KINDS.flatMap((kind) => [ctx, { ...ctx, sortable: true, connectTried: true, variant: 1 as const }].map((c) => render(kind, c)));
 
 Deno.test("every email stays far under Gmail's 102 KB clipping limit", () => {
@@ -28,6 +28,15 @@ Deno.test("every email has a plain-text twin with the same links and a way to st
   }
 });
 
+Deno.test("the name is Pinto Notes, and only the links that open the app and Emil's address stay on ambernotes.app", () => {
+  for (const e of all) {
+    assertEquals(/Amber Notes/i.test(e.subject + e.preview + e.html + e.text), false, e.kind);
+    for (const m of (e.html + e.text).matchAll(/[^\s"<>()]*ambernotes\.app[^\s"<>()]*/g)) {
+      assert(m[0].startsWith("https://ambernotes.app/open/") || m[0].startsWith("mailto:emil@ambernotes.app") || m[0] === "emil@ambernotes.app", `${e.kind}: ${m[0]}`);
+    }
+  }
+});
+
 Deno.test("one short paragraph before the first picture or button", () => {
   for (const e of all) {
     const head = e.html.split(/<!--\[if mso\]><v:roundrect|class="shot"|class="bubble"/)[0];
@@ -41,7 +50,7 @@ Deno.test("one short paragraph before the first picture or button", () => {
 Deno.test("pictures: absolute addresses, sizes set, alt text on every one", () => {
   for (const e of all) {
     for (const img of e.html.matchAll(/<img [^>]*>/g)) {
-      assert(/src="https:\/\/ambernotes\.app\/email\/[a-z0-9-]+\.(jpg|png)"/.test(img[0]), img[0]);
+      assert(/src="https:\/\/pintonotes\.com\/email\/[a-z0-9-]+\.(jpg|png)"/.test(img[0]), img[0]);
       assert(/ alt="[^"]*"/.test(img[0]) && / width="\d+"/.test(img[0]) && / height="\d+"/.test(img[0]), img[0]);
     }
   }
@@ -70,7 +79,7 @@ Deno.test("a paper-cut picture on top of every email, and real captures only ins
   const captures = ["connect.jpg", "undo.jpg", "app-habits.jpg", "app-budget.jpg", "share.jpg",
     "tc-meal-plan.jpg", "tc-trip-plan.jpg", "tc-weekly-review.jpg", "mark.png", "emil.jpg"];
   for (const e of all) {
-    const pics = [...e.html.matchAll(/src="https:\/\/ambernotes\.app\/email\/([^"]+)"/g)].map((m) => m[1]);
+    const pics = [...e.html.matchAll(/src="https:\/\/pintonotes\.com\/email\/([^"]+)"/g)].map((m) => m[1]);
     assertEquals(pics.filter((p) => p.startsWith("hero-")).length, 1, `${e.kind}: one hero`);
     assert(pics[1].startsWith("hero-"), `${e.kind}: the hero comes first, after the mark`);
     for (const p of pics.filter((p) => !p.startsWith("hero-"))) assert(captures.includes(p), `${e.kind}: ${p}`);
@@ -99,7 +108,7 @@ Deno.test("Try this first: each prompt opens ChatGPT filled in, and Claude throu
   const e = render("try", ctx);
   for (const p of PROMPTS) {
     assertStringIncludes(e.html, `href="${askChatGPT(p.text).replace(/&/g, "&amp;").replace(/'/g, "&#39;")}"`);
-    assertStringIncludes(e.html, `href="https://ambernotes.app/copy/${p.id}"`);
+    assertStringIncludes(e.html, `href="https://pintonotes.com/copy/${p.id}"`);
   }
   assert(!/border-left/.test(e.html), "no accent bar");
 });
@@ -129,14 +138,14 @@ Deno.test("Try this first: each prompt as a chat bubble, with Ask ChatGPT and As
 });
 
 Deno.test("the apps email leads to the templates gallery's Apps filter", () => {
-  assertStringIncludes(render("apps", ctx).html, 'href="https://ambernotes.app/templates?category=apps"');
+  assertStringIncludes(render("apps", ctx).html, 'href="https://pintonotes.com/templates?category=apps"');
 });
 
 Deno.test("every button goes somewhere specific: into the app, a page section, or a store", () => {
   const want: Record<string, string> = {
     stuck: "mailto:emil@ambernotes.app", import: "https://ambernotes.app/open/import", connect: "https://ambernotes.app/open/connect-ai",
-    undo: "https://ambernotes.app/open/history", apps: "https://ambernotes.app/templates?category=apps", templates: "https://ambernotes.app/templates",
-    iphone: "https://apps.apple.com/", mac: "https://ambernotes.app/download", share: "https://ambernotes.app/help#share",
+    undo: "https://ambernotes.app/open/history", apps: "https://pintonotes.com/templates?category=apps", templates: "https://pintonotes.com/templates",
+    iphone: "https://apps.apple.com/", mac: "https://pintonotes.com/download", share: "https://pintonotes.com/help#share",
   };
   for (const [kind, href] of Object.entries(want)) {
     const e = render(kind as never, ctx);
@@ -161,8 +170,8 @@ Deno.test("replies go to Emil", () => {
   assertStringIncludes(render("stuck", ctx).html, "mailto:emil@ambernotes.app");
 });
 
-Deno.test("the welcome: what Amber is, one step for where the person is, and a reply line", () => {
-  const steps = { connect: "https://ambernotes.app/open/connect-ai", app: "https://ambernotes.app/download", try: "https://chatgpt.com/?q=" } as const;
+Deno.test("the welcome: what Pinto Notes is, one step for where the person is, and a reply line", () => {
+  const steps = { connect: "https://ambernotes.app/open/connect-ai", app: "https://pintonotes.com/download", try: "https://chatgpt.com/?q=" } as const;
   for (const [step, href] of Object.entries(steps)) {
     const e = render("welcome", { ...ctx, step: step as keyof typeof steps });
     assertStringIncludes(e.html, href);
