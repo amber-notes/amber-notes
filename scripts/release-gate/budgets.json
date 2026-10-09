@@ -161,9 +161,9 @@
   "floor": 34
  },
  "perf.2000.sidebar hide.layouts": {
-  "max": 9200,
+  "max": 7000,
   "regression": false,
-  "why": "per-row hover tracking in the sidebar and lists (asked for by Emil 2026-10-07) adds layout passes on sidebar toggles and typed saves; frame times, hangs and memory unchanged (release-gate quick look 3bacaed1, 2026-10-09); reviewed by the lead. Measured 6,082; 1.5 x that + 50, as the first budgets were set."
+  "why": "per-row hover tracking in the sidebar and lists (asked for by Emil 2026-10-07) adds layout passes on sidebar toggles and typed saves; frame times, hangs and memory unchanged (release-gate quick look 3bacaed1, 2026-10-09); reviewed by the lead. Measured 6,082; that + 15%, tighter than the default 1.5 x + 50 on purpose: the default would hide a second change the size of hover."
  },
  "perf.2000.sidebar hide.hitches": {
   "max": 5,
@@ -174,9 +174,9 @@
   "floor": 34
  },
  "perf.2000.sidebar show.layouts": {
-  "max": 9200,
+  "max": 7000,
   "regression": false,
-  "why": "per-row hover tracking in the sidebar and lists (asked for by Emil 2026-10-07) adds layout passes on sidebar toggles and typed saves; frame times, hangs and memory unchanged (release-gate quick look 3bacaed1, 2026-10-09); reviewed by the lead. Measured 6,087; 1.5 x that + 50, as the first budgets were set."
+  "why": "per-row hover tracking in the sidebar and lists (asked for by Emil 2026-10-07) adds layout passes on sidebar toggles and typed saves; frame times, hangs and memory unchanged (release-gate quick look 3bacaed1, 2026-10-09); reviewed by the lead. Measured 6,087; that + 15%, tighter than the default 1.5 x + 50 on purpose: the default would hide a second change the size of hover."
  },
  "perf.2000.sidebar show.hitches": {
   "max": 4,
@@ -211,9 +211,9 @@
   "floor": 34
  },
  "perf.2000.typing and saving.layouts": {
-  "max": 13050,
+  "max": 9950,
   "regression": false,
-  "why": "per-row hover tracking in the sidebar and lists (asked for by Emil 2026-10-07) adds layout passes on sidebar toggles and typed saves; frame times, hangs and memory unchanged (release-gate quick look 3bacaed1, 2026-10-09); reviewed by the lead. Measured 8,644 (9,050 and 8,237); 1.5 x that + 50, as the first budgets were set."
+  "why": "per-row hover tracking in the sidebar and lists (asked for by Emil 2026-10-07) adds layout passes on sidebar toggles and typed saves; frame times, hangs and memory unchanged (release-gate quick look 3bacaed1, 2026-10-09); reviewed by the lead. Measured 8,644 (9,050 and 8,237); that + 15%, tighter than the default 1.5 x + 50 on purpose: the default would hide a second change the size of hover."
  },
  "perf.2000.typing and saving.hitches": {
   "max": 37,

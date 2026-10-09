@@ -149,12 +149,12 @@ dev eb57bb1dc9 (docs/Evidence/release-gate/2026-10-08-dev-eb57bb1dc9.md), with t
 
 Changed since, each in its own commit:
 
-- 2026-10-09, views laid out at 2,000 notes: sidebar hide 5,450 -> 9,200, sidebar show 5,850 -> 9,200,
-  typing and saving 8,000 -> 13,050. Per-row hover tracking in the sidebar and lists (asked for by Emil
+- 2026-10-09, views laid out at 2,000 notes: sidebar hide 5,450 -> 7,000, sidebar show 5,850 -> 7,000,
+  typing and saving 8,000 -> 9,950. Per-row hover tracking in the sidebar and lists (asked for by Emil
   2026-10-07) adds layout passes on sidebar toggles and typed saves; frame times, hangs and memory
   unchanged (release-gate quick look 3bacaed1, 2026-10-09: 6,082, 6,087 and 8,644 views laid out;
-  memory 134 MB against 128 to 132 without hover); reviewed by the lead. Set by the rule above
-  (1.5 × measured + 50, rounded up to 50). The 1 and 20,000-note lines were not measured with hover
+  memory 134 MB against 128 to 132 without hover); reviewed by the lead. Set at measured + 15%,
+  tighter than the rule above on purpose: 1.5 × would hide a second change the size of hover. The 1 and 20,000-note lines were not measured with hover
   and are unchanged. One pointer tracker per list instead of one per row would win these back.
 
 These are ceilings on today's dev, not targets: dev still has hangs of over a second, a first sync
