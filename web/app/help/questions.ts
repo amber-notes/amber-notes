@@ -1,3 +1,4 @@
+import { MCP_URL, OLD_MCP_URL_STAYS } from "@/lib/facts";
 import { APP_STORE_LIVE } from "@/lib/site";
 /// The Help page's questions. Short answers, accurate to the app as it ships. `more` links the
 /// blog post that covers the question in full.
@@ -14,11 +15,12 @@ export const FAQ: QA[] = [
   { id: "connect", q: "How do I connect ChatGPT, Claude, Claude Code, Codex or Incredible?", a: [
     "Claude: Amber Notes is in Claude's connector directory. Open https://claude.ai/directory/amber-notes, choose Connect to Claude, then Allow in Pinto Notes. Do it once, on claude.ai or in the Claude desktop app, and Claude's phone apps can use it too.",
     "ChatGPT: in Pinto Notes, open Settings → Connect an AI, pick ChatGPT and follow the steps, on chatgpt.com, which is where OpenAI documents custom apps.",
-    "Adding it yourself, or Claude doesn't show the listing? The address is https://mcp.ambernotes.app; in Claude, add it as a custom connector. When ChatGPT or Claude asks for permission, sign in on the page that opens, then approve on your iPhone or Mac: type the number the page shows and choose Allow. No device nearby? Use your recovery key on that page.",
+    `Adding it yourself, or Claude doesn't show the listing? The address is ${MCP_URL}; in Claude, add it as a custom connector. ${OLD_MCP_URL_STAYS}`,
+    "When ChatGPT or Claude asks for permission, sign in on the page that opens, then approve on your iPhone or Mac: type the number the page shows and choose Allow. No device nearby? Use your recovery key on that page.",
     "Claude Code gets a one-line command with a token of its own, and Codex a few lines for its config file. In Incredible, open Apps, search for Amber Notes, choose Connect, then approve it on your iPhone or Mac. On an older version of Incredible, add the address as an MCP server instead. Settings → Connect an AI → Incredible has the steps. Any other app that supports MCP connects with the address and a sign-in too.",
   ], more: { href: "/blog/connect-chatgpt-to-your-notes", text: "How to connect ChatGPT to your notes" } },
   { id: "ai-tools", q: "Can I use Pinto Notes in Gemini CLI or VS Code?", a: [
-    "Yes. One command adds the address https://mcp.ambernotes.app, then you sign in to Pinto Notes in your browser the first time. Claude Code also has a plugin, and Codex takes one command too.",
+    `Yes. One command adds the address ${MCP_URL}, then you sign in to Pinto Notes in your browser the first time. Claude Code also has a plugin, and Codex takes one command too.`,
   ], more: { href: "/blog/mcp-server#install", text: "Install Pinto Notes in your AI tool" } },
   { id: "apple-notes-ai", q: "Can ChatGPT or Claude use my notes in Apple Notes?", a: [
     "Only in a limited way, and only on a Mac: Apple Notes has no public API, so AI apps can't reach your notes in iCloud. Pinto Notes has an MCP server built in, so once you import your notes, ChatGPT and Claude can use them from any device.",

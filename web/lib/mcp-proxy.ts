@@ -1,7 +1,7 @@
 // The proxy in front of the MCP server at mcp.ambernotes.app (see middleware.ts).
-import { MCP_URL } from "./facts";
+import { OLD_MCP_URL } from "./facts";
 
-export const MCP_HOST = new URL(MCP_URL).host;
+export const MCP_HOST = new URL(OLD_MCP_URL).host;
 /// The new name's address for the same server, served alongside MCP_HOST (never instead of it:
 /// connectors people already added call mcp.ambernotes.app).
 export const NEW_MCP_HOST = "mcp.pintonotes.com";
@@ -56,7 +56,7 @@ export function functionRegion(value: string | undefined): string | null {
   return /^[a-z]{2}-[a-z]+-\d$/.test(r) ? r : null;
 }
 
-export function upstreamHeaders(incoming: Headers, secret: string, region: string | null = null, publicURL: string = MCP_URL): Headers {
+export function upstreamHeaders(incoming: Headers, secret: string, region: string | null = null, publicURL: string = OLD_MCP_URL): Headers {
   const headers = new Headers();
   for (const h of PASS) {
     const v = incoming.get(h);

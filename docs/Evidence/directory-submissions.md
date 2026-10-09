@@ -448,7 +448,7 @@ The free listing is reviewed. The $39 option skips review and adds a verified ba
 
 What stays, so nothing installed breaks:
 
-- **The server address**, `https://mcp.ambernotes.app`. Connectors people already added call it. `mcp.pintonotes.com` will be a second name for the same server once it has DNS.
+- **The server address**, `https://mcp.ambernotes.app`. Connectors people already added call it. `mcp.pintonotes.com` is a second name for the same server. Since 9 October 2026 it signs in at its own address, and the website gives it for new connections. The app, the Claude Code plugin, the Gemini CLI extension and the listings below still carry the old address.
 - **The ids**: the Claude Code marketplace and plugin `amber-notes` (the install command is `claude plugin install amber-notes@amber-notes`), the Gemini CLI extension `amber-notes`, and the MCP server key `amber-notes` in every config.
 - **The GitHub repo** moved from `amber-notes/amber-notes` to `pinto-notes/pinto-notes` on 9 October 2026. GitHub redirects old links, clones and API calls. The install commands now name the new path: `claude plugin marketplace add pinto-notes/pinto-notes` and `gemini extensions install https://github.com/pinto-notes/pinto-notes`. The marketplace and plugin are still called `amber-notes`.
 - **The MCP Registry entry** `app.ambernotes/amber-notes`. A registry name is tied to its domain and can't be renamed.
