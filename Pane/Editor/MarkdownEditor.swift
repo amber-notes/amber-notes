@@ -711,8 +711,19 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
               let end = position(from: start, offset: edit.range.length),
               let range = textRange(from: start, to: end) else { return }
         core.applyingEdit = true
+        let before = (text as NSString).length
         replace(range, withText: edit.replacement)
         core.applyingEdit = false
+        // The text system can pass what it's given through smart punctuation even with it
+        // turned off here (a table's `---` came out as `—`, and the table was a table no
+        // more). What was asked for is what goes in.
+        let landed = NSRange(location: edit.range.location, length: (text as NSString).length - (before - edit.range.length))
+        if landed.length >= 0, NSMaxRange(landed) <= (text as NSString).length, (text as NSString).substring(with: landed) != edit.replacement {
+            qaTrace("apply: text changed on the way in, put back")
+            textStorage.replaceCharacters(in: landed, with: edit.replacement)
+            // Undo steps recorded against the changed text would land in the wrong place now.
+            undoManager?.removeAllActions()
+        }
         if edit.caret >= 0 { selectedRange = NSRange(location: min(edit.caret, (text as NSString).length), length: 0) }
         textDidChange()
     }
