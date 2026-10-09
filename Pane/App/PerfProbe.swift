@@ -20,6 +20,10 @@ final class PerfProbe: NSObject {
     /// Frame times since the current step began.
     private var frames: [CFTimeInterval] = []
     /// A new step: no frames yet, no views laid out yet.
+    private var menuProbe: (() -> Void)?
+    private var menuItemsWhileOpen = -2
+    @objc private func runMenuProbe() { menuProbe?(); menuProbe = nil }
+
     private func restart() {
         frames = []
         PerfLayout.install(in: NSApp.windows)
@@ -42,10 +46,19 @@ final class PerfProbe: NSObject {
     private func seed() {
         let context = self.context
         let count = Capture.argument("-perfNotes").flatMap(Int.init) ?? 2000
-        let folders = (0..<6).map { context.createFolder(named: "Folder \($0)") }
+        // `-perfFolders 150`: many folders, nested three deep (8 at the top, 9 inside each, the
+        // rest one inside each of those), as a long-used library has. Default: 6 at the top.
+        let folderCount = Capture.argument("-perfFolders").flatMap(Int.init) ?? 6
+        let folders = (0..<folderCount).map { context.createFolder(named: "Folder \($0)") }
+        if folderCount > 8 {
+            for (i, f) in folders.enumerated() where i >= 8 {
+                context.move(f, into: i < 80 ? folders[(i - 8) / 9 % 8] : folders[8 + (i - 80) % min(72, folderCount - 8)])
+            }
+        }
         for i in 0..<count {
             let n = Note(body: "Note \(i)\n\nSome text for note \(i), with **bold** and a list:\n- one\n- two\n", folder: folders[i % folders.count])
             n.updatedAt = .now.addingTimeInterval(-Double(i) * 3600)
+            if folderCount > 8, i % 97 == 5 { n.isPinned = true }
             context.insert(n)
         }
         let long = context.createNote(in: .folder(folders[0].id), body: Self.longNote())
@@ -104,6 +117,40 @@ final class PerfProbe: NSObject {
                     try? await Task.sleep(for: .milliseconds(400))
                 }
             }
+        }
+
+        // The note toolbar's ••• menu, opened as a click opens it (`-perfOnly menu`): how many
+        // folders "Move to" lists before the menu opens (none) and while it is open (all).
+        if only == "menu", let w = window, let content = w.contentView {
+            self.open("Note 1")
+            try? await Task.sleep(for: .seconds(1.5))
+            var menus: [NSMenu] = []
+            func collect(_ view: NSView) {
+                if let m = (view as? NSPopUpButton)?.menu { menus.append(m) }
+                for s in view.subviews { collect(s) }
+            }
+            for item in w.toolbar?.items ?? [] {
+                if let m = (item as? NSMenuToolbarItem)?.menu { menus.append(m) }
+                if let v = item.view { collect(v) }
+            }
+            if let frame = content.superview { collect(frame) }
+            func moveTo(_ m: NSMenu) -> NSMenuItem? { m.items.first { $0.title == "Move to" } }
+            var fields: [String: Any] = ["menus": menus.map { $0.items.map(\.title).joined(separator: "|") }, "listedBefore": MoveToMenu.listed]
+            if let menu = menus.first(where: { moveTo($0) != nil }) {
+                fields["itemsBefore"] = moveTo(menu)?.submenu?.items.count ?? -1
+                // While the menu is open the run loop only runs its tracking mode.
+                menuProbe = { [weak self] in
+                    self?.menuItemsWhileOpen = menu.items.first { $0.title == "Move to" }?.submenu?.items.count ?? -1
+                    menu.cancelTracking()
+                }
+                perform(#selector(runMenuProbe), with: nil, afterDelay: 1.5, inModes: [.common])
+                menu.popUp(positioning: nil, at: NSPoint(x: content.bounds.midX, y: content.bounds.midY), in: content)
+                fields["itemsWhileOpen"] = menuItemsWhileOpen
+                fields["listedAfter"] = MoveToMenu.listed
+                try? await Task.sleep(for: .seconds(2.5))
+                fields["itemsAfterClose"] = moveTo(menu)?.submenu?.items.count ?? -1
+            }
+            record("move-to menu", fields)
         }
 
         if runs("open") {

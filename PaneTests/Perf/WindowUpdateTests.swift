@@ -282,6 +282,107 @@ import Testing
         #expect(old.isDisjoint(with: library.entries(in: ctx).map(\.id)), "nothing of the old account is left")
     }
 
+    /// The wiki index built a slice at a time (as when a note opens at launch): it isn't there
+    /// at once, a save that lands while it is built is in it at the end, and it equals an index
+    /// built in one go.
+    @Test func wikiIndexWarmsInSlicesAndKeepsSavesMadeMeanwhile() async throws {
+        let c = try ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        let ctx = c.mainContext
+        let work = ctx.createFolder(named: "Work")
+        var notes: [Note] = []
+        for i in 0..<3000 {
+            let n = Note(body: "Title \(i)\n\nSome **text** for note \(i).", folder: work)
+            ctx.insert(n)
+            notes.append(n)
+        }
+        try ctx.save()
+        WikiDirectory.invalidate()
+        let warming = Task { @MainActor in await WikiDirectory.warm(ctx) }
+        try await Task.sleep(for: .milliseconds(3))
+        #expect(!WikiDirectory.isBuilt, "3,000 titles aren't read in the first few milliseconds")
+        // A rename and a new note, saved while the index is being built.
+        notes[10].body = "Renamed meanwhile\n\ntext"
+        notes[10].touch()
+        let added = ctx.createNote(in: .folder(work.id), body: "Arrived meanwhile\n\ntext")
+        try ctx.save()
+        await warming.value
+        #expect(WikiDirectory.isBuilt)
+        let warmed = WikiDirectory.index(ctx)
+        #expect(warmed.resolve("Renamed meanwhile") == notes[10].id)
+        #expect(warmed.resolve("Title 10") == nil)
+        #expect(warmed.resolve("Arrived meanwhile") == added.id)
+        #expect(warmed.resolve("Title 2999") == notes[2999].id)
+        let taken = warmed.entries.sorted { $0.id.uuidString < $1.id.uuidString }
+        WikiDirectory.invalidate()
+        let rebuilt = WikiDirectory.index(ctx).entries.sorted { $0.id.uuidString < $1.id.uuidString }
+        #expect(taken == rebuilt)
+    }
+
+    /// Opening a note at launch in a library with 150 nested folders: before the window's first
+    /// frame no folder is listed for the toolbar's "Move to" (it was a button per folder, half of
+    /// a 1.5 s block at launch) and the wiki index isn't built (0.2 s with 2,000 notes). The
+    /// folders are listed once a menu opens; the index is there a moment later.
+    @Test(.timeLimit(.minutes(3))) func openingANoteAtLaunchListsNoFoldersAndReadsNoTitles() async throws {
+        let c = try ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        let ctx = c.mainContext
+        var folders = (0..<8).map { ctx.createFolder(named: "Folder \($0)") }
+        for i in 8..<150 {
+            let f = ctx.createFolder(named: "Folder \(i)")
+            ctx.move(f, into: i < 80 ? folders[(i - 8) / 9] : folders[8 + (i - 80) % 72])
+            folders.append(f)
+        }
+        var open: Note?
+        for i in 0..<2000 {
+            let n = Note(body: "Note \(i)\n\nSome text for note \(i), see [[Note \(i + 1)]] and [[Nowhere]].\n", folder: folders[i % folders.count])
+            n.updatedAt = Date(timeIntervalSinceNow: -Double(i) * 3600)
+            ctx.insert(n)
+            if i == 1 { open = n }
+        }
+        try ctx.save()
+        let note = try #require(open)
+        WikiDirectory.invalidate()
+        let listedBefore = MoveToMenu.listed
+        let w = NSWindow(contentRect: CGRect(x: -20000, y: -20000, width: 1180, height: 760),
+                         styleMask: [.borderless], backing: .buffered, defer: false)
+        w.isReleasedWhenClosed = false
+        w.contentViewController = NSHostingController(rootView: RootView().modelContainer(c))
+        w.setContentSize(CGSize(width: 1180, height: 760))
+        w.setFrameOrigin(CGPoint(x: -20000, y: -20000))
+        defer { w.orderOut(nil); w.close() }
+        NoteOpener.shared.request = note.id
+        // The first frames, with no turn of the main queue in between that isn't the window's own.
+        w.contentView?.layoutSubtreeIfNeeded()
+        w.displayIfNeeded()
+        await Task.yield()
+        w.contentView?.layoutSubtreeIfNeeded()
+        w.displayIfNeeded()
+        #expect(MoveToMenu.listed == listedBefore, "no folder is listed for Move to before a menu opens")
+        #expect(!WikiDirectory.isBuilt, "the library's titles aren't read before the note's first frame")
+
+        for _ in 0..<100 where !WikiDirectory.isBuilt {
+            w.contentView?.layoutSubtreeIfNeeded()
+            w.displayIfNeeded()
+            try? await Task.sleep(for: .milliseconds(50))
+        }
+        #expect(WikiDirectory.isBuilt, "the index is built a moment after the note shows")
+        #expect(WikiDirectory.index(ctx).resolve("Note 2") != nil)
+
+        // A menu opens: now the folders are listed, all of them.
+        var asked = 0
+        let host = NSHostingView(rootView: MoveToMenu(folders: { asked += 1; return ctx.allFolders() }, current: nil) { _ in })
+        host.frame = CGRect(x: 0, y: 0, width: 200, height: 40)
+        host.layoutSubtreeIfNeeded()
+        #expect(asked == 0)
+        NotificationCenter.default.post(name: NSMenu.didBeginTrackingNotification, object: NSMenu())
+        try? await Task.sleep(for: .milliseconds(100))
+        host.layoutSubtreeIfNeeded()
+        #expect(asked > 0, "the folders are listed once a menu opens")
+        #expect(MenuTracking.shared.open)
+        NotificationCenter.default.post(name: NSMenu.didEndTrackingNotification, object: NSMenu())
+        try? await Task.sleep(for: .milliseconds(1400))
+        #expect(!MenuTracking.shared.open, "and let go a moment after it closes")
+    }
+
     /// The wiki index takes a save in note by note; what it ends up with is what building it again gives.
     @Test func wikiIndexTakesSavesNoteByNote() throws {
         let c = try ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
