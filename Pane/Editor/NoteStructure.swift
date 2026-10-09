@@ -41,8 +41,7 @@ struct NoteStructure {
         }
 
         func isDelimiter(_ r: NSRange) -> Bool {
-            let t = ns.substring(with: r).trimmingCharacters(in: .whitespaces)
-            return t.contains("-") && t.allSatisfy { "|-: \t".contains($0) }
+            GridTable.isDelimiter(ns.substring(with: r).trimmingCharacters(in: .whitespaces))
         }
 
         func flushTable() {
