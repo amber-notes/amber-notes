@@ -226,13 +226,13 @@ describe("session replay", () => {
   });
 
   it("drops a replay batch unless the stored answer is Accept", () => {
-    const snapshot = () => event({ $current_url: "https://ambernotes.app/", $pathname: "/" }, { event: "$snapshot" });
+    const snapshot = () => event({ $current_url: "https://pintonotes.com/", $pathname: "/" }, { event: "$snapshot" });
     storage(null);
     expect(sanitizeEvent(snapshot())).toBeNull();
     storage("0");
     expect(sanitizeEvent(snapshot())).toBeNull();
     storage("1");
     expect(sanitizeEvent(snapshot())?.event).toBe("$snapshot");
-    expect(sanitizeEvent(event({ $current_url: "https://ambernotes.app/connect", $pathname: "/connect" }, { event: "$snapshot" }))).toBeNull();
+    expect(sanitizeEvent(event({ $current_url: "https://pintonotes.com/connect", $pathname: "/connect" }, { event: "$snapshot" }))).toBeNull();
   });
 });
