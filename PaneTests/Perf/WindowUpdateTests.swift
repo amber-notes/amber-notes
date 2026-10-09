@@ -109,6 +109,56 @@ import Testing
         }
     }
 
+    /// The list leaves out the sub-notes still linked from their parent. It finds each parent
+    /// among the notes it already holds, where it used to ask the store once per sub-note every
+    /// time the list was worked out (every time a note is opened). The answer is the store's own
+    /// (`isNested`) in every case: linked, no longer linked, parent deleted, parent not saved yet.
+    @Test func theListFindsSubNotesWithoutAskingTheStoreForEach() throws {
+        let c = try ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        let ctx = c.mainContext
+        let folder = ctx.createFolder(named: "Folder")
+        var linked: [Note] = [], loose: [Note] = [], orphaned: [Note] = []
+        for i in 0..<40 {
+            let parent = ctx.createNote(in: .folder(folder.id), body: "Parent \(i)\n")
+            for j in 0..<10 {
+                let child = ctx.createSubNote(of: parent, body: "Child \(i).\(j)\n")
+                if j < 7 {
+                    parent.body += "[Child](pane-note:\(child.id.uuidString.lowercased()))\n"
+                    if i % 10 == 9 { orphaned.append(child) } else { linked.append(child) }
+                } else {
+                    loose.append(child)
+                }
+            }
+            // Every tenth parent is gone for good: its sub-notes are notes of their own again.
+            if i % 10 == 9 { parent.deletedAt = .now }
+        }
+        for i in 0..<200 { _ = ctx.createNote(in: .folder(folder.id), body: "Note \(i)\n") }
+        try ctx.save()
+        let library = LibraryNotes()
+        let entries = library.entries(in: ctx)
+        // One more sub-note whose parent the list doesn't hold yet.
+        let late = Note(body: "Late parent\n", folder: folder)
+        ctx.insert(late)
+        let lateChild = Note(body: "Late child\n", folder: folder)
+        lateChild.parentID = late.id
+        late.body += "[Late](pane-note:\(lateChild.id.uuidString.lowercased()))\n"
+        ctx.insert(lateChild)
+        let all = entries + [NoteEntry(lateChild)]
+
+        let clock = ContinuousClock()
+        var found: Set<UUID> = []
+        let together = clock.measure { found = NoteListView.nested(in: all, context: ctx) }
+        var asked: Set<UUID> = []
+        let oneByOne = clock.measure { asked = Set(all.filter { $0.parentID != nil && ctx.isNested($0.note) }.map(\.id)) }
+        print("PERF 401 sub-notes among 641 notes: found together in \(together), asked one by one in \(oneByOne)")
+        #expect(found == asked, "the same sub-notes as the store names")
+        #expect(found == Set(linked.map(\.id)).union([lateChild.id]))
+        #expect(found.isDisjoint(with: loose.map(\.id)) && found.isDisjoint(with: orphaned.map(\.id)))
+        #expect(together < oneByOne, "and without a fetch for each")
+        // A library without sub-notes looks nothing up.
+        #expect(NoteListView.nested(in: all.filter { $0.parentID == nil }, context: ctx).isEmpty)
+    }
+
     /// The sidebar counts in the store. Notes made, deleted or recovered count straight away,
     /// before the library is saved.
     @Test func sidebarCountsIncludeUnsavedChanges() throws {

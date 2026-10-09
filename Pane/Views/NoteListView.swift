@@ -65,17 +65,38 @@ struct NoteListView: View {
     }
 
     private func scoped(from all: [NoteEntry]) -> [NoteEntry] {
-        all.filter { e in
+        let nested = Self.nested(in: all, context: context)
+        return all.filter { e in
             guard !e.deleted else { return false }
-            // Sub-notes live inside their parent, not in the list. (Few notes have a
-            // parent, so looking each one up is cheaper than indexing every note.)
-            if e.parentID != nil, context.isNested(e.note) { return false }
+            // Sub-notes live inside their parent, not in the list.
+            if nested.contains(e.id) { return false }
             switch scope {
             case .all: return !e.trashed
             case .trash: return e.trashed
             case .folder(let id): return !e.trashed && e.folderID == id
             }
         }
+    }
+
+    /// The sub-notes still linked from their parent (`ModelContext.isNested`), for the whole
+    /// list at once. Each parent is found among the entries the list already holds: asked of
+    /// the store one sub-note at a time, a library with a few hundred sub-notes spent a fetch
+    /// on each of them whenever the list was worked out, which is every time a note is opened.
+    /// Without sub-notes nothing is looked up at all.
+    static func nested(in all: [NoteEntry], context: ModelContext) -> Set<UUID> {
+        var parents: [UUID: Note]?
+        var out: Set<UUID> = []
+        for e in all {
+            guard let pid = e.parentID else { continue }
+            if parents == nil { parents = Dictionary(all.map { ($0.id, $0.note) }, uniquingKeysWith: { first, _ in first }) }
+            // A parent the list doesn't hold yet (made a moment ago, not saved) is asked of the store.
+            guard let parent = parents?[pid] else {
+                if context.isNested(e.note) { out.insert(e.id) }
+                continue
+            }
+            if parent.deletedAt == nil, parent.body.contains("pane-note:\(e.id.uuidString.lowercased())") { out.insert(e.id) }
+        }
+        return out
     }
 
     private var filtered: [NoteEntry] {
