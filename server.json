@@ -6,7 +6,7 @@
   "version": "1.0.1",
   "websiteUrl": "https://pintonotes.com/blog/mcp-server",
   "repository": {
-    "url": "https://github.com/amber-notes/amber-notes",
+    "url": "https://github.com/pinto-notes/pinto-notes",
     "source": "github",
     "id": "1394754812",
     "subfolder": "supabase/functions/mcp"

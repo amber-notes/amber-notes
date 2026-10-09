@@ -5,7 +5,7 @@ Adds the [Pinto Notes](https://pintonotes.com) MCP server (`https://mcp.ambernot
 Pinto Notes was called Amber Notes until October 2026. The plugin, the marketplace and the server keep the name `amber-notes`, and the server keeps its address, so nothing you installed stops working.
 
 ```sh
-claude plugin marketplace add amber-notes/amber-notes
+claude plugin marketplace add pinto-notes/pinto-notes
 claude plugin install amber-notes@amber-notes
 ```
 
