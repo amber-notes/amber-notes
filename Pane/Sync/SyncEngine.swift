@@ -901,7 +901,7 @@ final class SyncEngine {
         _ = try await client.storage.from("files").copy(from: path, to: versionPath)
         struct Version: Encodable { var attachment_id: UUID; var meta_ct: String; var size: Int64; var storage_path: String; var client: String; var made_at: Date }
         try await client.from("attachment_versions").insert(Version(attachment_id: a.id, meta_ct: row.meta_ct, size: row.size, storage_path: versionPath,
-                                                                    client: "Amber Notes", made_at: row.updated_at)).execute()
+                                                                    client: FileVersions.madeBy, made_at: row.updated_at)).execute()
         let gone = kept.dropFirst(FileVersions.kept - 1)
         if !gone.isEmpty {
             try await client.from("attachment_versions").delete().in("id", values: gone.map { String($0.id) }).execute()

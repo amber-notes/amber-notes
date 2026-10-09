@@ -189,13 +189,16 @@ async function removeObjects(paths: string[]) {
   await res.body?.cancel();
 }
 
+/** Who kept a version. The app wrote its old name before it became Pinto Notes; those rows read as the new one. */
+export const madeBy = (client: string | null) => client === "Amber Notes" ? "Pinto Notes" : client;
+
 /** Earlier versions of a file, newest first. */
 export async function fileVersions(tx: Tx, c: Call, id: string, limit: number) {
   const rows = await tx<{ id: string; meta_ct: string; size: string; client: string | null; made_at: Date; replaced_at: Date }[]>`
     select id, meta_ct, size, client, made_at, replaced_at from public.attachment_versions where attachment_id = ${id} order by id desc limit ${limit}`;
   return await Promise.all(rows.map(async (v) => {
     const meta = await c.v.openFileMeta(id, v.meta_ct).catch(() => null);
-    return { version: Number(v.id), ...(meta ? { name: meta.name } : {}), bytes: Math.max(Number(v.size) - SEALED_OVERHEAD, 0), made_by: v.client, made: iso(v.made_at), replaced: iso(v.replaced_at) };
+    return { version: Number(v.id), ...(meta ? { name: meta.name } : {}), bytes: Math.max(Number(v.size) - SEALED_OVERHEAD, 0), made_by: madeBy(v.client), made: iso(v.made_at), replaced: iso(v.replaced_at) };
   }));
 }
 
