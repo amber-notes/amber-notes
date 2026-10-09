@@ -53,6 +53,14 @@ describe("the MCP proxy", () => {
     expect(await proxied("/token?redirect_uri=http%3A%2F%2F127.0.0.1%3A1%2F")).toBe(`${FN}/token?redirect_uri=http%3A%2F%2F127.0.0.1%3A1%2F`);
   });
 
+  it("serves the same server on mcp.pintonotes.com, naming that address to the function", async () => {
+    for (const host of ["mcp.pintonotes.com", "mcp.ambernotes.app"]) {
+      const res = await middleware(new NextRequest(`https://${host}/token`, { headers: { host } }));
+      expect(res.headers.get("x-middleware-rewrite")).toBe(`${FN}/token`);
+      expect(res.headers.get("x-middleware-request-x-mcp-public-url")).toBe(`https://${host}`);
+    }
+  });
+
   it("maps the root to the function itself", async () => {
     expect(await proxied("/")).toBe(FN);
   });
@@ -80,7 +88,7 @@ describe("the MCP proxy", () => {
 
 describe("the connect pages' CSP", () => {
   const csp = async (path: string) =>
-    (await middleware(new NextRequest(`https://ambernotes.app${path}`, { headers: { host: "ambernotes.app" } }))).headers.get("content-security-policy") ?? "";
+    (await middleware(new NextRequest(`https://pintonotes.com${path}`, { headers: { host: "pintonotes.com" } }))).headers.get("content-security-policy") ?? "";
 
   it("lets /connect call the Supabase project", async () => {
     expect(await csp(`/connect?request=5a0f6c1e-2b1d-4c36-9e0a-6b6f0c1a2b3c`)).toContain(`connect-src 'self' ${SUPABASE};`);
@@ -107,7 +115,7 @@ describe("the connect pages' CSP", () => {
 });
 
 describe("the connect pages' referrer", () => {
-  const page = (path: string) => middleware(new NextRequest(`https://ambernotes.app${path}`, { headers: { host: "ambernotes.app" } }));
+  const page = (path: string) => middleware(new NextRequest(`https://pintonotes.com${path}`, { headers: { host: "pintonotes.com" } }));
 
   it("sends no referrer from /connect, /open/connect or /reset-password", async () => {
     for (const path of ["/connect?request=5a0f6c1e-2b1d-4c36-9e0a-6b6f0c1a2b3c", "/open/connect?request=5a0f6c1e-2b1d-4c36-9e0a-6b6f0c1a2b3c", "/reset-password?token_hash=abc&type=recovery"]) {

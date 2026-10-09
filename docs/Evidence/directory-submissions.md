@@ -1,5 +1,7 @@
 # Directory submissions: Claude and ChatGPT
 
+> **8 October 2026: renamed to Pinto Notes.** The app is Pinto Notes and the site is https://pintonotes.com. The MCP server keeps its address, `https://mcp.ambernotes.app`, for good. Read "Amber Notes" and "ambernotes.app" below as the names at the time of each submission. What changes in each listing is in [section 11](#11-the-rename-to-pinto-notes-8-october-2026).
+
 Everything needed to list Amber Notes in Claude's connector directory and ChatGPT's plugin directory (OpenAI's name for what used to be the app directory). Requirements were checked against Anthropic's and OpenAI's own docs on 2026-09-30. Each one has a source link.
 
 Nothing here has been submitted.
@@ -442,3 +444,38 @@ Fields to enter:
 
 The free listing is reviewed. The $39 option skips review and adds a verified badge. It isn't needed.
 
+## 11. The rename to Pinto Notes (8 October 2026)
+
+What stays, so nothing installed breaks:
+
+- **The server address**, `https://mcp.ambernotes.app`. Connectors people already added call it. `mcp.pintonotes.com` will be a second name for the same server once it has DNS.
+- **The ids**: the Claude Code marketplace and plugin `amber-notes` (the install command is `claude plugin install amber-notes@amber-notes`), the Gemini CLI extension `amber-notes`, the MCP server key `amber-notes` in every config, and the repo `amber-notes/amber-notes`. They change, if ever, together with a rename of the GitHub repo.
+- **The MCP Registry entry** `app.ambernotes/amber-notes`. A registry name is tied to its domain and can't be renamed.
+
+What changed in the repo on 8 October:
+
+- `server.json` (the live entry): title "Pinto Notes", the description says "formerly Amber Notes", website and icon on pintonotes.com, version 1.0.1. Publishing it renames the listing in the registry and in the directories that import from it. Publish with the commands in section 10.1; nothing new is needed for that.
+- `server.pintonotes.json`: the entry for the new name, `com.pintonotes/pinto-notes`, at `https://mcp.pintonotes.com`. The registry allows one name per remote address ("Each remote URL can be used by only one server name", [remote servers](https://github.com/modelcontextprotocol/registry/blob/main/docs/modelcontextprotocol-io/remote-servers.mdx)), so the new entry can't list mcp.ambernotes.app, and it can't be published before mcp.pintonotes.com serves.
+- `web/public/.well-known/mcp-registry-auth`: the proof for the `com.pintonotes/*` namespace by HTTP ([authentication](https://github.com/modelcontextprotocol/registry/blob/main/docs/modelcontextprotocol-io/authentication.mdx)), with the same public key as ambernotes.app's DNS record. No DNS change is needed for the new namespace.
+- The plugin, marketplace and Gemini extension manifests, the plugin's README and skill, and `brand/directory/chatgpt-plugin/plugin.json` say Pinto Notes and link pintonotes.com.
+
+To publish the entry for the new name, once `curl -s -o /dev/null -w '%{http_code}' https://mcp.pintonotes.com/` prints 401 and https://pintonotes.com/.well-known/mcp-registry-auth shows the key:
+
+```sh
+cd <checkout with server.pintonotes.json>
+mcp-publisher login http --domain pintonotes.com \
+  --private-key "$(openssl pkey -in ~/Documents/Development/AmberNotes/.secrets/mcp-registry-key.pem -noout -text | grep -A3 'priv:' | tail -n +2 | tr -d ' :\n')"
+mcp-publisher publish ./server.pintonotes.json
+```
+
+Then mark the old entry deprecated. It stays listed, with the message; it is never deleted:
+
+```sh
+mcp-publisher login dns --domain ambernotes.app \
+  --private-key "$(openssl pkey -in ~/Documents/Development/AmberNotes/.secrets/mcp-registry-key.pem -noout -text | grep -A3 'priv:' | tail -n +2 | tr -d ' :\n')"
+mcp-publisher status --status deprecated --all-versions \
+  --message "Renamed to Pinto Notes. Use com.pintonotes/pinto-notes. https://mcp.ambernotes.app keeps working." \
+  app.ambernotes/amber-notes
+```
+
+Deprecate only after the directories that import from the registry (Glama, PulseMCP, mcp.directory) show the new entry, and after the awesome-remote-mcp-servers pull request points its Glama badge at the new connector.

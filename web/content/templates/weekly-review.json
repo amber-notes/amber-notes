@@ -7,12 +7,12 @@
     "Work"
   ],
   "audience": "For anyone who wants twenty calm minutes on Sunday instead of a vague Monday.",
-  "description": "A weekly review your AI runs with you. It asks five questions, then writes the week up in Amber Notes, newest first.",
+  "description": "A weekly review your AI runs with you. It asks five questions, then writes the week up in Pinto Notes, newest first.",
   "tagline": "Five questions every Sunday, written up for you.",
   "folder": "Notes",
   "note": "Weekly review\n\nTwenty minutes on Sunday. Your AI asks the questions, and the answers land here, newest week first.\n\n## Questions\n1. What went well this week?\n2. What didn't, and why?\n3. What did I learn?\n4. What am I grateful for?\n5. What are my top three for next week?\n\n## Reviews\n",
   "prompt": {
-    "default": "Use my Amber Notes note \"Weekly review\". When I say it's time for my weekly review, ask me the questions under \"Questions\" one at a time. Then add the week at the start of \"Reviews\" with append_to_note (at_start): a \"### Week of\" heading with Monday's date, my answers as short bullets in my own words, and my top three as a checklist. When I tell you one is done, tick it with set_checklist_item."
+    "default": "Use my Pinto Notes note \"Weekly review\". When I say it's time for my weekly review, ask me the questions under \"Questions\" one at a time. Then add the week at the start of \"Reviews\" with append_to_note (at_start): a \"### Week of\" heading with Monday's date, my answers as short bullets in my own words, and my top three as a checklist. When I tell you one is done, tick it with set_checklist_item."
   },
   "asks": [
     "It's time for my weekly review.",

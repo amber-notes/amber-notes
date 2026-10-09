@@ -23,13 +23,13 @@ function edited(iso: string): string {
 /// The one mention of the app on someone's shared note: after the note, never over it.
 function GetAmberNotes() {
   return (
-    <aside className={s.get} aria-label="About Amber Notes">
+    <aside className={s.get} aria-label="About Pinto Notes">
       <img src="/mark-256.png" alt="" width={44} height={44} />
       <p>
-        <strong>Shared from Amber Notes</strong>
+        <strong>Shared from Pinto Notes</strong>
         <span>A notes app for iPhone and Mac that ChatGPT and Claude can read and edit.</span>
       </p>
-      <a className={ui.secondary} href="/">Get Amber Notes</a>
+      <a className={ui.secondary} href="/">Get Pinto Notes</a>
     </aside>
   );
 }

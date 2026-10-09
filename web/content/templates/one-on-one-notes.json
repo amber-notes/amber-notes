@@ -6,13 +6,13 @@
     "Work"
   ],
   "audience": "For managers and the people they meet with every week or two.",
-  "description": "A running 1:1 note. Topics go in during the week, your AI writes up the meeting and keeps the follow-ups in Amber Notes.",
+  "description": "A running 1:1 note. Topics go in during the week, your AI writes up the meeting and keeps the follow-ups in Pinto Notes.",
   "tagline": "Topics, follow-ups and a record of every 1:1.",
   "seoTitle": "1:1 meeting notes template for ChatGPT and Claude",
   "folder": "Work",
   "note": "1:1 notes\n\nOne running note for your 1:1s with one person. Add topics during the week so nothing waits until you've forgotten it.\n\n## Next time\n\n## Follow-ups\n\n## Past 1:1s\n",
   "prompt": {
-    "default": "Use my Amber Notes note \"1:1 notes\". During the week, when I mention something to bring up, add it under \"Next time\" as a bullet with append_to_note. After the 1:1, I'll tell you how it went. Add a section at the start of \"Past 1:1s\" with append_to_note (at_start): a \"###\" heading with the date, what we talked about, and how they seemed. Add anything either of us promised under \"Follow-ups\" as a checklist line, then remove the topics we covered from \"Next time\" with edit_note."
+    "default": "Use my Pinto Notes note \"1:1 notes\". During the week, when I mention something to bring up, add it under \"Next time\" as a bullet with append_to_note. After the 1:1, I'll tell you how it went. Add a section at the start of \"Past 1:1s\" with append_to_note (at_start): a \"###\" heading with the date, what we talked about, and how they seemed. Add anything either of us promised under \"Follow-ups\" as a checklist line, then remove the topics we covered from \"Next time\" with edit_note."
   },
   "asks": [
     "For my next 1:1: ask how the on-call week went.",

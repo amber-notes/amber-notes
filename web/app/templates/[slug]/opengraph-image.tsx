@@ -3,7 +3,7 @@ import { COVERS, inkOn } from "@/lib/template-covers";
 import { template, templates } from "@/lib/templates";
 
 export { size, contentType } from "@/lib/og/render";
-export const alt = "An Amber Notes template that ChatGPT, Claude and Claude Code fill in.";
+export const alt = "A Pinto Notes template that ChatGPT, Claude and Claude Code fill in.";
 
 export function generateStaticParams() {
   return templates().map((t) => ({ slug: t.slug }));

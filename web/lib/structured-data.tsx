@@ -1,5 +1,5 @@
 import { GITHUB_URL } from "./github";
-import { APP_STORE_LIVE, APP_STORE_URL, INCREDIBLE_URL, MAKER_GITHUB, MAKER_URL, LINKEDIN_URL, SITE_NAME, SITE_URL, X_URL } from "./site";
+import { APP_STORE_LIVE, APP_STORE_URL, INCREDIBLE_URL, MAKER_GITHUB, MAKER_URL, LINKEDIN_URL, OLD_NAME, SITE_NAME, SITE_URL, X_URL } from "./site";
 import { MAC_DMG } from "./downloads";
 
 /// schema.org JSON-LD for search engines. Only facts the site states elsewhere: the app is free,
@@ -39,7 +39,7 @@ export const organization: Thing = {
   name: SITE_NAME,
   url: SITE_URL,
   logo: `${SITE_URL}/mark.png`,
-  description: "Makers of Amber Notes, the free, open-source notes app for iPhone and Mac that ChatGPT and Claude can use.",
+  description: "Makers of Pinto Notes, the free, open-source notes app for iPhone and Mac that ChatGPT and Claude can use.",
   founder: { "@id": PERSON_ID },
   sameAs: SAME_AS,
 };
@@ -48,8 +48,9 @@ export const website: Thing = {
   "@type": "WebSite",
   "@id": `${SITE_URL}/#website`,
   name: SITE_NAME,
-  // Google's site-name fallbacks, so results say "Amber Notes" rather than the domain.
-  alternateName: ["Amber Notes app", "ambernotes.app"],
+  // Google's site-name fallbacks, so results say "Pinto Notes" rather than the domain. Amber Notes
+  // and pintonotes.com are the old name and address, kept so searches for them still find the app.
+  alternateName: ["Pinto Notes app", "Amber Notes", "ambernotes.app"],
   url: SITE_URL,
   inLanguage: "en",
   publisher: { "@id": ORG_ID },
@@ -60,6 +61,7 @@ export function app(version: string | null): Thing {
     "@type": "SoftwareApplication",
     "@id": APP_ID,
     name: SITE_NAME,
+    alternateName: OLD_NAME,
     url: SITE_URL,
     description:
       "A simple notes app for iPhone and Mac that ChatGPT, Claude, Claude Code, Codex and Incredible can read and edit, with your approval. Imports your Apple Notes, syncs in about a second, keeps every version an AI changes, and stores notes as markdown.",
@@ -123,6 +125,21 @@ export function article({ title, description, path, date, updated, image }: { ti
   };
 }
 
+/// The page that says the app's old name is this app (/amber-notes), for searches of that name.
+export function renamed({ title, description, path }: { title: string; description: string; path: string }): Thing {
+  return {
+    "@type": "WebPage",
+    "@id": `${SITE_URL}${path}#page`,
+    name: title,
+    description,
+    url: `${SITE_URL}${path}`,
+    inLanguage: "en",
+    isPartOf: { "@id": `${SITE_URL}/#website` },
+    about: { "@id": APP_ID },
+    mainEntity: { "@type": "SoftwareApplication", "@id": APP_ID, name: SITE_NAME, alternateName: OLD_NAME, url: SITE_URL },
+  };
+}
+
 /// Where a page sits: each step a name and a path, the last one the page itself.
 export function breadcrumbs(steps: { name: string; path: string }[]): Thing {
   return {
@@ -164,7 +181,7 @@ export function templateHowTo(t: { slug: string; title: string }, steps: { name:
     "@id": `${url}#howto`,
     name: `How to use the ${t.title.toLowerCase()} template with ChatGPT or Claude`,
     url,
-    tool: [{ "@type": "HowToTool", name: "Amber Notes" }, { "@type": "HowToTool", name: "ChatGPT, Claude or Claude Code" }],
+    tool: [{ "@type": "HowToTool", name: "Pinto Notes" }, { "@type": "HowToTool", name: "ChatGPT, Claude or Claude Code" }],
     step: steps.map((st, i) => ({ "@type": "HowToStep", position: i + 1, name: st.name, text: st.text, url: `${url}#step-${i + 1}` })),
   };
 }
@@ -174,7 +191,7 @@ export function templateLibrary(items: { slug: string; title: string }[]): Thing
   return {
     "@type": "CollectionPage",
     "@id": `${SITE_URL}/templates#library`,
-    name: "Amber Notes templates",
+    name: "Pinto Notes templates",
     url: `${SITE_URL}/templates`,
     inLanguage: "en",
     publisher: { "@id": ORG_ID },
