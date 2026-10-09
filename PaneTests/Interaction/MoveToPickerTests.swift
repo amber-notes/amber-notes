@@ -131,6 +131,75 @@ import Testing
         #expect(moved == ["Acme"], "a click on a folder moves there")
     }
 
+    /// A key press as the keyboard makes it: down then up, to the app when the window is key (so
+    /// key equivalents get their turn first, as they do from a real keyboard).
+    static func press(_ characters: String, code: UInt16, flags: NSEvent.ModifierFlags = [], in w: NSWindow) {
+        for type in [NSEvent.EventType.keyDown, .keyUp] {
+            let e = NSEvent.keyEvent(with: type, location: .zero, modifierFlags: flags, timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: w.windowNumber,
+                                     context: nil, characters: characters, charactersIgnoringModifiers: characters, isARepeat: false, keyCode: code)!
+            if w.isKeyWindow { NSApp.sendEvent(e) } else { w.sendEvent(e) }
+        }
+    }
+
+    enum Key: Equatable {
+        case down, up, enter
+        case text(String)
+    }
+
+    /// The picker in a key window with the note in Plans; the keys go in one at a time, as typed.
+    /// What comes back is where the note went.
+    static func typing(_ keys: [Key]) async throws -> [String] {
+        let (c, by) = try Self.library()
+        var moved: [String] = []
+        let w = Self.window(c, current: by["Plans"]!.id) { moved.append($0.name) }
+        defer { w.orderOut(nil); w.close() }
+        NSApp.activate(ignoringOtherApps: true)
+        w.makeKeyAndOrderFront(nil)
+        w.contentView?.layoutSubtreeIfNeeded()
+        w.displayIfNeeded()
+        try? await Task.sleep(for: .milliseconds(600))
+        // The control: the search field has the keyboard, as it does when the popover opens.
+        try #require(w.firstResponder is NSText, "the search field isn't focused (first responder: \(String(describing: w.firstResponder)), key window: \(w.isKeyWindow)), so keys can't reach the picker")
+        for key in keys {
+            switch key {
+            case .down: press("\u{F701}", code: 125, flags: [.numericPad, .function], in: w)
+            case .up: press("\u{F700}", code: 126, flags: [.numericPad, .function], in: w)
+            case .enter: press("\r", code: 36, in: w)
+            case .text(let text): for ch in text { press(String(ch), code: 0, in: w) }
+            }
+            try? await Task.sleep(for: .milliseconds(200))
+        }
+        return moved
+    }
+
+    /// Return moves to the row that is highlighted, wherever the arrows left it. It used to move
+    /// to the row that was highlighted when the picker opened (or the search's first result):
+    /// the note went to a folder nobody chose.
+    @Test func returnMovesToTheRowTheArrowsHighlighted() async throws {
+        guard FileRowClickTests.onCI else { return }
+        let (c, by) = try Self.library()
+        // Work, Clients, Acme, Home, Travel: Plans, where the note is, is not a choice.
+        let choices = MoveToPicker.rows(c.mainContext.allFolders()).filter { $0.id != by["Plans"]!.id }.map(\.name)
+        try #require(choices.count == 5)
+        #expect(try await Self.typing([.enter]) == [choices[0]], "Return with no arrows moves to the first folder")
+        #expect(try await Self.typing([.down, .down, .up, .enter]) == [choices[1]], "down, down, up, Return")
+        #expect(try await Self.typing([.down, .down, .down, .enter]) == [choices[3]], "three down goes past the folder the note is in")
+        #expect(try await Self.typing([.down, .down, .down, .down, .down, .down, .enter]) == [choices[4]], "down stops at the last folder")
+        #expect(try await Self.typing([.down, .up, .up, .up, .enter]) == [choices[0]], "up stops at the first folder")
+    }
+
+    @Test func returnAfterASearchMovesToTheRowTheArrowsHighlighted() async throws {
+        guard FileRowClickTests.onCI else { return }
+        let (c, by) = try Self.library()
+        // "a" finds Acme, Plans and Travel; Plans, where the note is, is not a choice.
+        let found = MoveToPicker.rows(c.mainContext.allFolders(), matching: "a").filter { $0.id != by["Plans"]!.id }.map(\.name)
+        try #require(found.count == 2)
+        #expect(try await Self.typing([.text("a"), .enter]) == [found[0]], "Return after a search moves to its first result")
+        #expect(try await Self.typing([.text("a"), .down, .enter]) == [found[1]], "a search, down, Return: past the folder the note is in")
+        #expect(try await Self.typing([.down, .down, .down, .text("a"), .enter]) == [found[0]], "the highlighted folder left the list: the first result")
+        #expect(try await Self.typing([.text("zzz"), .down, .enter]) == [], "no result, nothing moves")
+    }
+
     @Test(arguments: [false, true]) func thePickerLightAndDark(dark: Bool) async throws {
         guard FileRowClickTests.onCI else { return }
         let (c, by) = try Self.library()
