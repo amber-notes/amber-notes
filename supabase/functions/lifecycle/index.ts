@@ -4,10 +4,10 @@
 //        x-lifecycle-secret: <LIFECYCLE_CRON_SECRET>   20261006090000_lifecycle_emails.sql).
 //        → 200 { enabled, accounts, due, sent, failed, deferred }   (counts only, never who)
 //   POST /functions/v1/lifecycle/unsubscribe?u=<account id>&t=<token>
-//        → 200 { ok: true } · 400 a link that isn't one. Called by ambernotes.app/unsubscribe/confirm,
+//        → 200 { ok: true } · 400 a link that isn't one. Called by pintonotes.com/unsubscribe/confirm,
 //        which is where the email's link and its List-Unsubscribe header point.
 //   POST /functions/v1/lifecycle/click?s=<send id>&to=<link>&t=<token>
-//        → 200 { ok: true } · 400 a link that isn't one. Called by ambernotes.app/go, which then
+//        → 200 { ok: true } · 400 a link that isn't one. Called by pintonotes.com/go, which then
 //        sends the reader on. Records which email and the link's host and path; nothing else.
 //   POST /functions/v1/lifecycle/welcome   (x-lifecycle-secret)
 //        → 200 { enabled, accounts, due, sent, failed, deferred }: the welcome to accounts made 2 to 60

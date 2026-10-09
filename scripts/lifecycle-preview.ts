@@ -13,7 +13,7 @@ const art = new URL("../web/public/email/", import.meta.url);
 for (const f of Deno.readDirSync(art)) await Deno.copyFile(new URL(f.name, art), `${out}/email/${f.name}`);
 if (Deno.args[1]) for (const f of Deno.readDirSync(Deno.args[1])) await Deno.copyFile(`${Deno.args[1]}/${f.name}`, `${out}/email/${f.name}`);
 
-const base = { site: "https://ambernotes.app", assets: "email", unsubscribe: "https://ambernotes.app/unsubscribe?u=preview&t=preview", sortable: false, connectTried: false };
+const base = { site: "https://pintonotes.com", open: "https://ambernotes.app", assets: "email", unsubscribe: "https://pintonotes.com/unsubscribe?u=preview&t=preview", sortable: false, connectTried: false };
 const variants = [
   ...KINDS.map((kind) => ({ kind, name: kind, ctx: base })),
   // A big library mostly in one folder: the connect email shows sorting instead.
