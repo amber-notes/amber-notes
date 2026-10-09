@@ -228,7 +228,19 @@ import Testing
         w.contentView?.layoutSubtreeIfNeeded()
         w.displayIfNeeded()
         try? await Task.sleep(for: .milliseconds(600))
-        // The control: the search field has the keyboard, as it does when the popover opens.
+        // The search field has the keyboard when the popover opens. A window that isn't the
+        // active app's doesn't get that focus by itself, so the field is handed it here.
+        func field(in view: NSView?) -> NSTextField? {
+            guard let view else { return nil }
+            if let f = view as? NSTextField, f.isEditable { return f }
+            for v in view.subviews { if let f = field(in: v) { return f } }
+            return nil
+        }
+        if !(w.firstResponder is NSText) {
+            w.makeFirstResponder(try #require(field(in: w.contentView), "the picker has no search field"))
+            try? await Task.sleep(for: .milliseconds(200))
+        }
+        // The control: without it the keys can't reach the picker, and the test says so.
         try #require(w.firstResponder is NSText, "the search field isn't focused (first responder: \(String(describing: w.firstResponder)), key window: \(w.isKeyWindow)), so keys can't reach the picker")
         for key in keys {
             switch key {
