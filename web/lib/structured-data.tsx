@@ -1,5 +1,5 @@
 import { GITHUB_URL } from "./github";
-import { APP_STORE_LIVE, APP_STORE_URL, INCREDIBLE_URL, MAKER_GITHUB, MAKER_URL, LINKEDIN_URL, SITE_NAME, SITE_URL, X_URL } from "./site";
+import { APP_STORE_LIVE, APP_STORE_URL, INCREDIBLE_URL, MAKER_GITHUB, MAKER_URL, LINKEDIN_URL, OLD_NAME, SITE_NAME, SITE_URL, X_URL } from "./site";
 import { MAC_DMG } from "./downloads";
 
 /// schema.org JSON-LD for search engines. Only facts the site states elsewhere: the app is free,
@@ -61,7 +61,7 @@ export function app(version: string | null): Thing {
     "@type": "SoftwareApplication",
     "@id": APP_ID,
     name: SITE_NAME,
-    alternateName: "Amber Notes",
+    alternateName: OLD_NAME,
     url: SITE_URL,
     description:
       "A simple notes app for iPhone and Mac that ChatGPT, Claude, Claude Code, Codex and Incredible can read and edit, with your approval. Imports your Apple Notes, syncs in about a second, keeps every version an AI changes, and stores notes as markdown.",
@@ -122,6 +122,21 @@ export function article({ title, description, path, date, updated, image }: { ti
     author: { "@id": PERSON_ID },
     publisher: { "@id": ORG_ID },
     about: { "@id": APP_ID },
+  };
+}
+
+/// The page that says the app's old name is this app (/amber-notes), for searches of that name.
+export function renamed({ title, description, path }: { title: string; description: string; path: string }): Thing {
+  return {
+    "@type": "WebPage",
+    "@id": `${SITE_URL}${path}#page`,
+    name: title,
+    description,
+    url: `${SITE_URL}${path}`,
+    inLanguage: "en",
+    isPartOf: { "@id": `${SITE_URL}/#website` },
+    about: { "@id": APP_ID },
+    mainEntity: { "@type": "SoftwareApplication", "@id": APP_ID, name: SITE_NAME, alternateName: OLD_NAME, url: SITE_URL },
   };
 }
 

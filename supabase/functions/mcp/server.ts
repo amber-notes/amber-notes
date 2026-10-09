@@ -26,7 +26,18 @@ import { BASE_CSS_URI, GUIDE_URI, PAGE_INSTRUCTIONS, PAGE_PROMPTS, pageGuide } f
 import { AMBER_BASE_CSS } from "./amber-base.ts";
 
 const PROTOCOL_VERSIONS = ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"];
-export const INSTRUCTIONS = `Pinto Notes is the user's personal notes app. Notes are markdown; the first line is the title.
+/** Whether this server serves the app tools (servedTools). Everything else it says about apps
+ *  follows from this: the instructions' app lines, the prompts and the resources. (The server card
+ *  lists servedTools() itself.) */
+export function appsServed(set: string | undefined = Deno.env.get("AMBER_MCP_TOOLS")): boolean {
+  return servedTools(set).some((t) => t.name === "get_page_guide");
+}
+
+/** The server's instructions. They name a tool only where this server serves it: the lines about
+ *  apps are there with the app tools, and left out without them. */
+export function instructions(set: string | undefined = Deno.env.get("AMBER_MCP_TOOLS")): string {
+  const apps = appsServed(set);
+  return `Pinto Notes is the user's personal notes app. Notes are markdown; the first line is the title.
 Start with get_overview or search_notes to find things. Read a note before editing it.
 Prefer edit_note (exact find/replace) and append_to_note over replace_note_body, so nothing else changes.
 Tables are markdown tables; trackers are tables with typed columns. Use read_table, then log_table_row (it validates values and, in trackers, upserts by date).
@@ -34,9 +45,9 @@ Checklists are "- [ ] item" lines; use set_checklist_item to tick them. Link to 
 [[Title]], [[Title|shown text]] or [[Title#Heading]]; the app shows it as a link and follows it by title. A line like [Title](pane-note:<id>) links a sub-note: a whole note that lives inside
 its parent. Use create_sub_note to make one; read it with read_note(id). Deleted notes go to Recently Deleted
 and can be restored; every edit keeps the previous version (note_history / restore_revision).
-${PAGE_INSTRUCTIONS}
-A note marked locked: true is locked by the user with a separate password: its title is visible here, and nothing else.
+${apps ? `${PAGE_INSTRUCTIONS}\n` : ""}A note marked locked: true is locked by the user with a separate password: its title is visible here, and nothing else.
 It can't be read, searched or changed here; only the user can open it, in Pinto Notes.`;
+}
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -217,7 +228,7 @@ async function respond(msg: Rpc, id: string | number | null, ctx: ToolContext): 
           capabilities: { tools: { listChanged: false }, resources: { listChanged: false }, prompts: { listChanged: false } },
           serverInfo: SERVER_INFO,
           // AMBER_MCP_INSTRUCTIONS=none: none at all, as clients that drop them see it (an eval arm).
-          ...(Deno.env.get("AMBER_MCP_INSTRUCTIONS") === "none" ? {} : { instructions: fileSet() ? FILE_INSTRUCTIONS : INSTRUCTIONS }),
+          ...(Deno.env.get("AMBER_MCP_INSTRUCTIONS") === "none" ? {} : { instructions: fileSet() ? FILE_INSTRUCTIONS : instructions() }),
         });
       }
       case "ping":
@@ -256,19 +267,19 @@ async function respond(msg: Rpc, id: string | number | null, ctx: ToolContext): 
         }
       }
       case "resources/list":
-        return ok(id, { resources: fileSet() ? [] : (await RESOURCES()).map(({ text: _, ...r }) => r) });
+        return ok(id, { resources: fileSet() ? [] : (await servedResources()).map(({ text: _, ...r }) => r) });
       case "resources/templates/list":
         return ok(id, { resourceTemplates: [] });
       case "resources/read": {
         const uri = String(msg.params?.uri ?? "");
-        const r = (await RESOURCES()).find((x) => x.uri === uri);
+        const r = (await servedResources()).find((x) => x.uri === uri);
         if (!r) return { jsonrpc: "2.0", id, error: { code: -32002, message: `Resource not found: ${uri}` } };
         return ok(id, { contents: [{ uri: r.uri, mimeType: r.mimeType, text: r.text }] });
       }
       case "prompts/list":
-        return ok(id, { prompts: fileSet() ? [] : PAGE_PROMPTS.map(({ text: _, ...p }) => p) });
+        return ok(id, { prompts: fileSet() ? [] : servedPrompts().map(({ text: _, ...p }) => p) });
       case "prompts/get": {
-        const p = PAGE_PROMPTS.find((x) => x.name === msg.params?.name);
+        const p = servedPrompts().find((x) => x.name === msg.params?.name);
         if (!p) return { jsonrpc: "2.0", id, error: { code: -32602, message: `Unknown prompt: ${String(msg.params?.name ?? "")}` } };
         const args = (msg.params?.arguments ?? {}) as Record<string, string>;
         const missing = p.arguments.filter((x) => x.required && !String(args[x.name] ?? "").trim()).map((x) => x.name);
@@ -295,6 +306,14 @@ const RESOURCES = () => resources ??= (async () => {
     ...Object.entries(APP_EXAMPLES).flatMap(([name, ex]) => Object.entries(ex.files).map(([path, text]) => ({ uri: `amber://examples/${name}${path}`, name: `example-${name}${path.replace(/[/.]/g, "-")}`, title: `Example app ${name}: ${path}`, description: `A file of the ${name} example project.`, mimeType: path.endsWith(".md") ? "text/markdown" : path.endsWith(".css") ? "text/css" : path.endsWith(".html") ? "text/html" : "text/javascript", text: text as string }))),
   ];
 })();
+
+/** The prompts and resources are all about apps: offered only where the app tools are served. */
+export function servedPrompts(set: string | undefined = Deno.env.get("AMBER_MCP_TOOLS")): readonly (typeof PAGE_PROMPTS)[number][] {
+  return appsServed(set) ? PAGE_PROMPTS : [];
+}
+export async function servedResources(set: string | undefined = Deno.env.get("AMBER_MCP_TOOLS")): ReturnType<typeof RESOURCES> {
+  return appsServed(set) ? await RESOURCES() : [];
+}
 
 function ok(id: unknown, result: unknown) {
   return { jsonrpc: "2.0", id, result };

@@ -41,6 +41,14 @@ struct PaneApp: App {
         let config = perfStore.map { ModelConfiguration(url: URL(fileURLWithPath: $0)) } ?? ModelConfiguration("Pane", isStoredInMemoryOnly: inMemory)
         container = try! ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: config)
         Self.sharedContainer = container
+        if !inMemory {
+            LocalUpkeep.keepServerAnswersOffDisk()
+            // After launch has settled: it can be a few hundred thousand rows the first time.
+            Task.detached(priority: .utility) { [container] in
+                try? await Task.sleep(for: .seconds(30))
+                LocalUpkeep.forgetOldHistory(in: container)
+            }
+        }
         let backend = Backend()
         let context = container.mainContext
         backend.willSignIn = { user in AccountLibrary.adopt(user, context: context) }
@@ -104,7 +112,7 @@ struct PaneApp: App {
         FrameProbe.startFromArguments()
         #endif
         // Note pages: compile the sandbox's rules and start a web view now, not when a page opens.
-        if !PaneApp.isUnitTestHost, !ProcessInfo.processInfo.arguments.contains("-noPagePrewarm") { NotePageSandbox.prewarm() }
+        if NoteApps.enabled, !PaneApp.isUnitTestHost, !ProcessInfo.processInfo.arguments.contains("-noPagePrewarm") { NotePageSandbox.prewarm() }
         // Collaboration (prototype): `-collab <name>` against the local relay (scripts/collab-demo.sh).
         if let collab = CollabStore.fromArguments() {
             collab.context = container.mainContext
@@ -381,6 +389,51 @@ final class ShaperView: NSView {
     }
 }
 
+/// The top of the notes window is each column's own warm ground, never the system's grey band.
+/// In a window a see-through title bar does it: AppKit then draws no background behind the
+/// toolbar. In full screen the toolbar lives in a window of its own, where AppKit keeps one
+/// opaque background per column whatever the title bar says; those are hidden, so the columns
+/// (which reach the top of the screen) show through there as well.
+@MainActor
+enum NotesChrome {
+    private static var watching: [ObjectIdentifier: [NSObjectProtocol]] = [:]
+
+    static func apply(to window: NSWindow) {
+        window.titlebarAppearsTransparent = true
+        window.titlebarSeparatorStyle = .none
+        let key = ObjectIdentifier(window)
+        guard watching[key] == nil else { return }
+        let center = NotificationCenter.default
+        watching[key] = [
+            // AppKit puts the backgrounds back when the full-screen toolbar is laid out again.
+            center.addObserver(forName: NSWindow.didUpdateNotification, object: window, queue: nil) { [weak window] _ in
+                MainActor.assumeIsolated {
+                    guard let window, window.styleMask.contains(.fullScreen) else { return }
+                    clearFullScreenBar(of: window)
+                }
+            },
+            center.addObserver(forName: NSWindow.willCloseNotification, object: window, queue: nil) { _ in
+                MainActor.assumeIsolated { watching.removeValue(forKey: key)?.forEach(center.removeObserver) }
+            },
+        ]
+    }
+
+    private static func clearFullScreenBar(of window: NSWindow) {
+        for child in window.childWindows ?? [] where String(describing: type(of: child)) == "NSToolbarFullScreenWindow" {
+            if let content = child.contentView { hideBackgrounds(in: content, depth: 0) }
+        }
+    }
+
+    private static func hideBackgrounds(in view: NSView, depth: Int) {
+        if String(describing: type(of: view)) == "NSTitlebarBackgroundView" {
+            if !view.isHidden { view.isHidden = true }
+            return
+        }
+        guard depth < 4 else { return }
+        for sub in view.subviews { hideBackgrounds(in: sub, depth: depth + 1) }
+    }
+}
+
 /// Signed out, the window is just the sign-in card: small, no title bar.
 /// Signed in, it becomes the normal three-column window, back where you left it.
 private struct WindowShaper: NSViewRepresentable {
@@ -438,9 +491,9 @@ private struct WindowShaper: NSViewRepresentable {
         window.toolbar?.isVisible = !compact
         // Notes' full-height toolbar with large buttons; compact only for the sign-in card.
         window.toolbarStyle = compact ? .unifiedCompact : .unified
-        window.titlebarSeparatorStyle = compact ? .none : .automatic
         // The card runs under a see-through title bar: one surface, just the window buttons on it.
-        window.titlebarAppearsTransparent = compact
+        // The notes window too: each column's own ground runs up under the toolbar.
+        NotesChrome.apply(to: window)
         if compact { window.styleMask.insert(.fullSizeContentView) }
         // Card mode keeps close and minimise; zoom makes no sense for a fixed-size card.
         window.standardWindowButton(.zoomButton)?.isEnabled = !compact
@@ -874,7 +927,7 @@ enum Seed {
         if demo { DemoData.load(into: context, main: notes) }
         // A note that is already an app, next to the welcome note, so the first day shows what
         // your AI can make of a note.
-        if welcome, !demo, !DemoData.importedLibrary, let url = Bundle.main.url(forResource: "sample-habit-tracker", withExtension: "html"),
+        if NoteApps.enabled, welcome, !demo, !DemoData.importedLibrary, let url = Bundle.main.url(forResource: "sample-habit-tracker", withExtension: "html"),
            let html = try? String(contentsOf: url, encoding: .utf8) {
             let habits = context.createNote(in: .folder(notes.id), body: Capture.habitNote().replacingOccurrences(
                 of: "Small things, most days. A ✓ means done.",

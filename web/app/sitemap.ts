@@ -33,6 +33,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     ...templates().map((t) => page(`/templates/${t.slug}`, 0.7, t.updated)),
     page("/changelog", 0.5, released),
     page("/privacy-security", 0.5),
+    // What the app used to be called, for searches of the old name.
+    page("/amber-notes", 0.3, "2026-10-08"),
     page("/privacy", 0.2),
     page("/terms", 0.2),
   ];

@@ -387,7 +387,7 @@ struct CompactTip<T: Tip>: View {
                 ForEach(tip.actions, id: \.id) { a in
                     Button { action(a) } label: { a.label() }
                         .font(.subheadline.weight(.semibold))
-                        .buttonStyle(.plain)
+                        .buttonStyle(.hoverLink)
                         .foregroundStyle(Color(PColor.paneAccent))
                         .padding(.top, 2)
                 }
@@ -402,7 +402,7 @@ struct CompactTip<T: Tip>: View {
                     .frame(width: 28, height: 28)
                     .contentShape(.rect)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.hoverIcon(cornerRadius: 14))
             .accessibilityLabel("Close tip")
         }
         .padding(.leading, card ? 14 : 0)

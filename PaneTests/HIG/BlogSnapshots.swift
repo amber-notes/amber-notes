@@ -123,5 +123,20 @@ import Testing
             try AIEditSnapshots.snap(w, to: dir.appending(path: "mac-standup-claude-code.png"))
         }
     }
+
+    /// The Lisbon plan just after Claude added to it, in a short window so the tinted line and
+    /// "Claude changed 1 line · Undo" at the bottom fit one picture. For the post on Claude memory and notes.
+    @Test func claudeEditForMemoryPost() async throws {
+        guard let dir = AppSnapshotTests.dir else { return }
+        let c = try AppSnapshotTests.container()
+        try await AppSnapshotTests.withLastNote(c, "Lisbon") {
+            let w = AIEditSnapshots.window(AIEditSnapshots.root(c), size: CGSize(width: 1180, height: 470))
+            defer { w.orderOut(nil); w.close() }
+            try? await Task.sleep(for: .seconds(1.2))
+            Capture.aiEdit(c.mainContext, title: "Lisbon", scene: "lisbon", by: "Claude")
+            try? await Task.sleep(for: .seconds(1.6))
+            try AIEditSnapshots.snap(w, to: dir.appending(path: "mac-lisbon-claude.png"))
+        }
+    }
 }
 #endif

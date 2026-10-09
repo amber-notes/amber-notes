@@ -407,7 +407,7 @@ struct ImportSheet: View {
                         .frame(width: 28, height: 28)
                         .contentShape(.rect)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.hoverIcon(cornerRadius: 14))
                 .accessibilityLabel("Remove \(s.name)")
             }
         }

@@ -1,14 +1,14 @@
 {
   "name": "amber-notes",
-  "displayName": "Amber Notes",
+  "displayName": "Pinto Notes",
   "version": "1.1.0",
-  "description": "Search, read and edit your Amber Notes (ambernotes.app) from Claude Code: folders, checklists, tables and trackers, and note pages (small apps over a note's data). Every change shows in the app with Undo.",
+  "description": "Search, read and edit your notes in Pinto Notes (pintonotes.com, formerly Amber Notes) from Claude Code: folders, checklists, tables and trackers, and note pages (small apps over a note's data). Every change shows in the app with Undo.",
   "author": {
     "name": "Emil Wagman",
-    "url": "https://ambernotes.app"
+    "url": "https://pintonotes.com"
   },
-  "homepage": "https://ambernotes.app/blog/mcp-server",
-  "repository": "https://github.com/amber-notes/amber-notes",
+  "homepage": "https://pintonotes.com/blog/mcp-server",
+  "repository": "https://github.com/pinto-notes/pinto-notes",
   "license": "MIT",
   "keywords": [
     "notes",

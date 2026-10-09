@@ -1,9 +1,9 @@
-import { CLAUDE_DIRECTORY_URL, FACTS, MCP_URL, WHAT_IT_IS } from "./facts";
+import { CLAUDE_DIRECTORY_URL, FACTS, MCP_URL, OLD_MCP_URL_STAYS, WHAT_IT_IS } from "./facts";
 import { GITHUB_URL } from "./github";
 import { published } from "./posts";
 import { searchTitle, templates } from "./templates";
 import { MCP_TOOLS } from "./mcp-tools";
-import { INCREDIBLE_URL, MAKER_URL, SITE_URL } from "./site";
+import { FEED_PATH, INCREDIBLE_URL, MAKER_URL, SITE_URL } from "./site";
 import { FAQ } from "../app/help/questions";
 
 /// /llms.txt (llmstxt.org): a plain summary for AI assistants and agents, with links to the pages
@@ -24,10 +24,11 @@ function summary(): string[] {
     "## Connect an AI (MCP)",
     "",
     `- MCP server (Streamable HTTP, OAuth 2.1 sign-in or a bearer access token): ${MCP_URL}`,
+    `- ${OLD_MCP_URL_STAYS}`,
     "- ChatGPT: add it as your own app in Developer mode (Plus, Pro, Business, Enterprise or Edu, on the web), choose OAuth, then Allow in Pinto Notes.",
     `- Claude: open ${CLAUDE_DIRECTORY_URL} (Amber Notes in Claude's connector directory), choose Connect to Claude, then Allow in Pinto Notes. Fallback: add ${MCP_URL} as a custom connector (every plan; the free plan includes one).`,
     "- Claude Code and Codex: an access token from Pinto Notes, Settings, Connect an AI, sent as an Authorization header.",
-    "- Claude Code plugin: `claude plugin marketplace add amber-notes/amber-notes`, then `claude plugin install amber-notes`, then sign in from /mcp.",
+    "- Claude Code plugin: `claude plugin marketplace add pinto-notes/pinto-notes`, then `claude plugin install amber-notes`, then sign in from /mcp.",
     `- Codex, Gemini CLI and VS Code: one command each at ${SITE_URL}/blog/mcp-server#install; each signs in with OAuth in the browser.`,
     `- Incredible (${INCREDIBLE_URL}), a desktop app for Mac and Windows: in Apps, search for Amber Notes and choose Connect, then Allow in Pinto Notes (it shows as an app on this computer). On an older Incredible, add ${MCP_URL} as an MCP server instead.`,
     "- Any other app that supports MCP: add the server address and sign in, then Allow in Pinto Notes.",
@@ -51,6 +52,8 @@ function summary(): string[] {
     `- [Changelog](${SITE_URL}/changelog)`,
     `- [Privacy & Security](${SITE_URL}/privacy-security): what's stored, what's encrypted, every log and how long it's kept.`,
     `- [Privacy policy](${SITE_URL}/privacy)`,
+    `- [Amber Notes is now Pinto Notes](${SITE_URL}/amber-notes): the old name, and what stayed the same.`,
+    `- [Blog feed (RSS)](${SITE_URL}${FEED_PATH})`,
     `- [Source code on GitHub](${GITHUB_URL}) (MIT license)`,
   ];
 }

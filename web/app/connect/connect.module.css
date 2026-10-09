@@ -376,3 +376,20 @@
 .check { display: flex; align-items: center; gap: 10px; min-height: 24px; color: var(--muted); font-size: 14px; font-weight: 500; text-align: left; cursor: pointer; }
 .check input { width: 18px; height: 18px; margin: 0; accent-color: var(--amber); cursor: pointer; }
 .check input:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+
+/* The ways to sign in (SignIn), at one height: the first layout's boxes, unseen, hold the room, and
+   what shows sits over them. When the email form stands alone it has the room the Apple and Google
+   buttons had, so the password field, the error and the links come without the card growing. */
+.signIn { display: grid; grid-template-columns: minmax(0, 1fr); width: 100%; gap: inherit; }
+.signInSizer, .signInLive { grid-area: 1 / 1; display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; gap: inherit; }
+.signInSizer { visibility: hidden; pointer-events: none; }
+/* Under the form: Forgot password? or Use a different email, and the way back to the buttons. */
+.formLinks { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 0 16px; }
+.formLinks .link { display: inline-flex; align-items: flex-start; min-height: 36px; }
+/* A narrow phone: both links still on one line. */
+@media (max-width: 380px) { .formLinks { gap: 0 12px; } .formLinks .link { font-size: 14px; } }
+@media (prefers-reduced-motion: no-preference) {
+  .signInLive[data-ways="email"] .form { animation: settle 0.22s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
+  .signInLive[data-ways="all"] > * { animation: reveal 0.22s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
+  @keyframes settle { from { opacity: 0; transform: translateY(8px); } }
+}

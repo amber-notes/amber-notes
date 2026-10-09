@@ -2,7 +2,8 @@
 
 Short emails from Emil to new accounts, as a next-step ladder. Built on `feat/lifecycle-emails`;
 nothing is sent until the function is deployed, its secrets are set and `LIFECYCLE_ENABLED` is
-`true`. They come from `Emil at Amber Notes <emil@ambernotes.app>`, and replies go to emil@.
+`true`. They come from `Emil at Pinto Notes <emil@ambernotes.app>`, and replies go to emil@. The address
+stays on ambernotes.app until pintonotes.com can send (`supabase/functions/_shared/sender.ts`).
 
 Each round, an account gets the first rung it hasn't done and hasn't been sent. Every email goes
 once at most, and is never sent once its step is done. A rung that applies but isn't ready yet (too
@@ -46,7 +47,7 @@ The `connect` email's examples use only what the MCP tools do today (`append_to_
 ## The welcome
 
 One email a couple of minutes after an account is made, whichever way it was made (email, Apple,
-Google): from Emil, what Amber Notes is (notes on iPhone and Mac that ChatGPT and Claude can read and
+Google): from Emil, what Pinto Notes is (notes on iPhone and Mac that ChatGPT and Claude can read and
 edit, end-to-end encrypted, free), one next step, and "Just reply, I read every email."
 
 - **The step fits where the person is** (`welcomeStep` in `logic.ts`): no AI yet, Connect ChatGPT or
@@ -69,7 +70,13 @@ edit, end-to-end encrypted, free), one next step, and "Just reply, I read every 
 Every button leads somewhere specific: into the app through a universal link under `/open/` (the
 site's apple-app-site-association claims `/open/*`), a section of the site, or a store. Each
 `/open/` place has a page at the same address (`web/app/open/`) that tries the app and otherwise
-says how to do it by hand, with Open in Amber Notes and the download.
+says how to do it by hand, with Open in Pinto Notes and the download.
+
+The site's links are on `pintonotes.com`. The `/open/` links stay on `ambernotes.app`
+(`APP_LINKS` in `logic.ts`): the apps people have installed claim universal links on that host
+only, and it keeps answering under `/open/` (`web/lib/site-move.ts`). On pintonotes.com the same
+link would open a web page first. Move them once nearly everyone has an app that claims
+`applinks:pintonotes.com`.
 
 | Email | Button | Goes to | In the app (`Pane/Model/AppPlace.swift`) |
 | --- | --- | --- | --- |
@@ -118,11 +125,11 @@ for a first try on a test account.
 ## Unsubscribing
 
 Every email has "Stop these emails" in its footer and the headers
-`List-Unsubscribe: <https://ambernotes.app/unsubscribe/confirm?u=…&t=…>, <mailto:emil@ambernotes.app?subject=Unsubscribe>`
+`List-Unsubscribe: <https://pintonotes.com/unsubscribe/confirm?u=…&t=…>, <mailto:emil@ambernotes.app?subject=Unsubscribe>`
 and `List-Unsubscribe-Post: List-Unsubscribe=One-Click` (RFC 8058), which Gmail and Yahoo ask of
 bulk senders. `t` is an HMAC of the account id under `LIFECYCLE_UNSUBSCRIBE_SECRET`.
 
-- The footer link opens `ambernotes.app/unsubscribe`, which changes nothing until its one button is
+- The footer link opens `pintonotes.com/unsubscribe`, which changes nothing until its one button is
   pressed (mail scanners open links). The button posts to `/unsubscribe/confirm`.
 - A mail app's own unsubscribe button posts `List-Unsubscribe=One-Click` to the same address.
 - `/unsubscribe/confirm` (`web/app/unsubscribe/confirm/route.ts`) passes it to the function, which
@@ -134,7 +141,7 @@ A reply saying "stop" is handled by hand: add the account to `email_unsubscribes
 ## The emails, and real mail apps
 
 Each email is a note from Emil, drawn the way the site draws notes (the 404 and template pages): a
-paper-cut picture on top, then an Amber Notes window with "From Emil", the title, one paragraph, a
+paper-cut picture on top, then a Pinto Notes window with "From Emil", the title, one paragraph, a
 button, a line and the sign-off. The pictures are for warmth; where a real capture of the app
 explains something, it goes inside the note as proof. On a phone the "From Emil" line is hidden.
 
@@ -165,11 +172,11 @@ was opened):
 
 - `https://chatgpt.com/?q=<prompt>` fills ChatGPT's composer. Since OpenAI's fix of April 2025
   (Tenable TRA-2025-22) a link from another site no longer sends it by itself. The person still has
-  to add Amber Notes from the tools menu, which the email says.
+  to add Pinto Notes from the tools menu, which the email says.
 - `https://claude.ai/new?q=<prompt>` stopped filling the composer on claude.ai around 3 October 2025
   (anthropics/claude-code#8827, closed as not planned) and isn't documented. Claude documents
   `claude://claude.ai/new?q=` for the desktop app and `claude.ai/code/new?q=` for Claude Code only.
-  So "Ask Claude" goes to `ambernotes.app/copy/<id>`: one button copies the prompt, says so, and
+  So "Ask Claude" goes to `pintonotes.com/copy/<id>`: one button copies the prompt, says so, and
   opens claude.ai/new to paste it. The page only knows the emails' own prompts
   (`supabase/functions/lifecycle/prompts.json`, the same list as `web/lib/try-prompts.json`).
 
@@ -207,8 +214,8 @@ What to count, from most to least useful:
    how many went out and how many of those accounts have done the step since.
 2. **Replies.** Every email is from Emil and asks for a reply. Count them by hand in Gmail (a label
    per email) until there are enough to matter.
-3. **Clicks.** With `LIFECYCLE_TRACK_CLICKS=true`, links to ambernotes.app, ChatGPT, Claude and the
-   App Store go through `ambernotes.app/go`, which tells the function which email and which link
+3. **Clicks.** With `LIFECYCLE_TRACK_CLICKS=true`, links to pintonotes.com, the `/open/` links on ambernotes.app, ChatGPT, Claude and the
+   App Store go through `pintonotes.com/go`, which tells the function which email and which link
    (host and path, never the query) and sends the reader on within a moment. No third party, no
    cookie, no address. The unsubscribe and privacy links are never wrapped. Microsoft's Safe Links
    and similar scanners open links, so clicks run a little high, and more so for work addresses.
@@ -221,7 +228,7 @@ each account gets one of the two, fixed by its id, and the row keeps which (`ema
 Compare by "step done" first and clicks second, per email, once each side has about 50 sends; below
 that, differences are noise. Keep the winner as the first line, write a new challenger, repeat.
 
-**Sender name.** Today `Emil at Amber Notes`. Next test: `Emil from Amber Notes`, the same way,
+**Sender name.** Today `Emil at Pinto Notes`. Next test: `Emil from Pinto Notes`, the same way,
 through `LIFECYCLE_FROM`, one month each, compared on replies and steps done.
 
 **Send time.** The round runs every hour, and each account gets its email in the round where it's
@@ -235,10 +242,10 @@ every account is treated as Central European time: 08:00 UTC.
 | --- | --- |
 | `LIFECYCLE_ENABLED` | `true` to send. Anything else, or unset, sends nothing. |
 | `LIFECYCLE_SINCE` | ISO date. Accounts made before it get nothing. |
-| `RESEND_LIFECYCLE_KEY` | A Resend API key, sending access, ambernotes.app only, from the Amber Notes Resend account. |
+| `RESEND_LIFECYCLE_KEY` | A Resend API key, sending access, ambernotes.app only (the sending domain for now), from the notes app's Resend account. |
 | `LIFECYCLE_UNSUBSCRIBE_SECRET` | 32+ random characters. Changing it breaks the links in emails already sent. |
 | `LIFECYCLE_CRON_SECRET` | 32+ random characters, the same value as the vault's `lifecycle_cron_secret`. |
-| `LIFECYCLE_FROM` | Optional. Default `Emil at Amber Notes <emil@ambernotes.app>` (replies go to emil@ too). |
+| `LIFECYCLE_FROM` | Optional. Default `Emil at Pinto Notes <emil@ambernotes.app>` (replies go to emil@ too). If it is set on the project, it wins over the default: check that it doesn't still say the old name. |
 | `LIFECYCLE_ONLY` | Optional. Comma-separated account ids that may get email; everyone else gets none. |
 | `APPS_LIVE`, `APP_STORE_LIVE`, `SHARING_LIVE` | `true` turns on the apps, iPhone and sharing rungs, once those features ship. |
 | `LIFECYCLE_SUBJECT_TEST`, `LIFECYCLE_TRACK_CLICKS` | `true` turns on the subject-line comparison and click counting. |

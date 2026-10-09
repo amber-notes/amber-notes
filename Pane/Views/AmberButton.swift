@@ -65,6 +65,8 @@ private struct AmberProminentButton: View {
     @Environment(\.isFocused) private var isFocused
     @Environment(\.controlSize) private var controlSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.hoverPreview) private var preview
+    @State private var hovering = false
 
     var body: some View {
         let shape: AnyShape = row.map { AnyShape(RoundedRectangle(cornerRadius: $0.cornerRadius, style: .continuous)) } ?? AnyShape(Capsule())
@@ -85,7 +87,11 @@ private struct AmberProminentButton: View {
             .background {
                 shape
                     .fill(Color(fill))
-                    .overlay { if configuration.isPressed { shape.fill(.black.opacity(0.14)) } }
+                    // Under the pointer a touch lighter; pressed, darker.
+                    .overlay {
+                        if configuration.isPressed { shape.fill(.black.opacity(0.14)) }
+                        else if !off && (hovering || preview.contains("*")) { shape.fill(.white.opacity(0.12)) }
+                    }
             }
             .overlay {
                 if isFocused {
@@ -93,6 +99,7 @@ private struct AmberProminentButton: View {
                 }
             }
             .contentShape(shape)
+            .modifier(HoverTracking(hovering: $hovering))
             .scaleEffect(configuration.isPressed && !reduceMotion ? 0.97 : 1)
             .animation(.snappy(duration: 0.15), value: configuration.isPressed)
             .accessibilityValue(busy ? Text("Working") : Text(""))

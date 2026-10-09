@@ -97,7 +97,7 @@ struct AIReceipt: View {
             if receipt.kind != .heldBack {
             Divider().frame(height: 14)
             Button("Undo", action: undo)
-                .buttonStyle(.plain)
+                .buttonStyle(.hoverLink)
                 .font(.system(size: compact ? 13 : Self.text, weight: .semibold))
                 .foregroundStyle(Color.amberInk)
                 .contentShape(.rect)
@@ -146,7 +146,9 @@ enum NoteAppMark {
     /// The symbol where a symbol is needed (Show App, menus): the capsule's needs one too.
     static var symbol: String { style == .sparkles ? "sparkles" : "app.fill" }
 
-    @MainActor static func has(_ note: Note) -> Bool { !note.isLocked && NotePageStore.shared[note.id] != nil }
+    @MainActor static func has(_ note: Note, in store: NotePageStore = .shared, enabled: Bool = NoteApps.enabled) -> Bool {
+        enabled && !note.isLocked && store[note.id] != nil
+    }
 }
 
 /// The mark itself, sized for the text it sits after.

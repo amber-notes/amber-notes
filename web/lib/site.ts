@@ -9,6 +9,10 @@ export const SITE_URL = "https://pintonotes.com";
 export const OLD_SITE_URL = "https://ambernotes.app";
 export const APP_LINK_URL = OLD_SITE_URL;
 export const SITE_NAME = "Pinto Notes";
+/// What the app was called until October 2026. /amber-notes says so to people who search for it.
+export const OLD_NAME = "Amber Notes";
+/// The blog's feed (app/blog/feed.xml), which every page names for feed readers.
+export const FEED_PATH = "/blog/feed.xml";
 export const X_URL = "https://x.com/EmilWagman";
 export const X_HANDLE = "@EmilWagman";
 export const LINKEDIN_URL = "https://www.linkedin.com/in/emil-wagman-52a907287/";
@@ -59,7 +63,7 @@ export function pageMetadata({ title, description, path, shareTitle, index = tru
   return {
     title,
     description,
-    alternates: { canonical: path },
+    alternates: { canonical: path, types: { "application/rss+xml": [{ url: FEED_PATH, title: `${SITE_NAME} blog` }] } },
     robots: index ? { index: true, follow: true } : { index: false, follow: true },
     openGraph: article
       ? { ...og, type: "article", publishedTime: article.published, modifiedTime: article.modified, authors: [article.author] }
@@ -67,3 +71,7 @@ export function pageMetadata({ title, description, path, shareTitle, index = tru
     twitter: { card: "summary_large_image", title: shareTitle ?? title, description, creator: X_HANDLE, images },
   };
 }
+
+/// Where people write for help, and to report a shared page. Shown on /support, which is the
+/// App Store's support link, so it has to be there as text a person can read and copy.
+export const SUPPORT_EMAIL = "hello@pintonotes.com";

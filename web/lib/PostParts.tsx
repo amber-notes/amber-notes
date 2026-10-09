@@ -13,7 +13,7 @@ export function Answer({ children, jump = [] }: { children: React.ReactNode; jum
       {jump.length ? (
         <p className={s.jump}>
           Jump to{" "}
-          {jump.map((j, i) => <span key={j.href} className={s.jumpItem}>{i ? <span className={s.jumpDot} aria-hidden="true">·</span> : null}<a href={j.href}>{j.label}</a></span>)}
+          {jump.map((j, i) => <span key={j.href} className={s.jumpItem}><a href={j.href}>{j.label}</a>{i < jump.length - 1 ? <span className={s.jumpDot} aria-hidden="true">·</span> : null}</span>)}
         </p>
       ) : null}
     </aside>

@@ -19,6 +19,12 @@ final class PerfProbe: NSObject {
     private var link: CADisplayLink?
     /// Frame times since the current step began.
     private var frames: [CFTimeInterval] = []
+    /// A new step: no frames yet, no views laid out yet.
+    private func restart() {
+        frames = []
+        PerfLayout.install(in: NSApp.windows)
+        PerfLayout.reset()
+    }
     private var refresh: CFTimeInterval = 1.0 / 60
     private var results: [[String: Any]] = []
     /// Each step as an interval, for Instruments (Points of Interest).
@@ -36,10 +42,19 @@ final class PerfProbe: NSObject {
     private func seed() {
         let context = self.context
         let count = Capture.argument("-perfNotes").flatMap(Int.init) ?? 2000
-        let folders = (0..<6).map { context.createFolder(named: "Folder \($0)") }
+        // `-perfFolders 150`: many folders, nested three deep (8 at the top, 9 inside each, the
+        // rest one inside each of those), as a long-used library has. Default: 6 at the top.
+        let folderCount = Capture.argument("-perfFolders").flatMap(Int.init) ?? 6
+        let folders = (0..<folderCount).map { context.createFolder(named: "Folder \($0)") }
+        if folderCount > 8 {
+            for (i, f) in folders.enumerated() where i >= 8 {
+                context.move(f, into: i < 80 ? folders[(i - 8) / 9 % 8] : folders[8 + (i - 80) % min(72, folderCount - 8)])
+            }
+        }
         for i in 0..<count {
             let n = Note(body: "Note \(i)\n\nSome text for note \(i), with **bold** and a list:\n- one\n- two\n", folder: folders[i % folders.count])
             n.updatedAt = .now.addingTimeInterval(-Double(i) * 3600)
+            if folderCount > 8, i % 97 == 5 { n.isPinned = true }
             context.insert(n)
         }
         let long = context.createNote(in: .folder(folders[0].id), body: Self.longNote())
@@ -63,7 +78,7 @@ final class PerfProbe: NSObject {
             try? await Task.sleep(for: .milliseconds(5))
             waited += 1
             // Launched over ssh the app can start inactive, with its window not yet shown.
-            if waited == 400 { NSApp.activate() }
+            if waited == 400 || (waited == 1 && ProcessInfo.processInfo.arguments.contains("-perfKeep")) { NSApp.activate() }
             if waited % 400 == 0 { note(NSApp.windows.map { "\(type(of: $0)) \($0.frame) visible \($0.isVisible) \(type(of: $0.contentView as Any))" }.joined(separator: "; ")) }
         }
         startLink()
@@ -71,8 +86,11 @@ final class PerfProbe: NSObject {
         record("launch to first frame", ["ms": (frames[0] - Self.processStart) * 1000])
         try? await Task.sleep(for: .seconds(1))
         let seedStart = CACurrentMediaTime()
-        frames = []
-        seed()
+        restart()
+        // `-perfKeep`: a store that already holds a library is used as it is, so the launch
+        // before this line was a launch with that library (run once to fill it, again to measure).
+        let kept = ProcessInfo.processInfo.arguments.contains("-perfKeep") && ((try? context.fetchCount(FetchDescriptor<Note>())) ?? 0) > 0
+        if !kept { seed() }
         try? await Task.sleep(for: .seconds(2))
         summarize("library arrives", since: seedStart)
         try? await Task.sleep(for: .seconds(2))
@@ -189,7 +207,7 @@ final class PerfProbe: NSObject {
                 text.setSelectedRange(NSRange(location: (text.string as NSString).length / 2, length: 0))
                 var keys: [Double] = []
                 try? await Task.sleep(for: .milliseconds(500))
-                frames = []
+                restart()
                 let begin = CACurrentMediaTime()
                 for _ in 0..<(25 * times) {
                     let t = CACurrentMediaTime()
@@ -207,7 +225,7 @@ final class PerfProbe: NSObject {
             for _ in 0..<times {
                 w.makeFirstResponder(field)
                 try? await Task.sleep(for: .milliseconds(300))
-                frames = []
+                restart()
                 let begin = CACurrentMediaTime()
                 for ch in "note 12" {
                     (field.currentEditor() as? NSTextView)?.insertText(String(ch), replacementRange: NSRange(location: NSNotFound, length: 0))
@@ -238,7 +256,7 @@ final class PerfProbe: NSObject {
     /// Runs an action and times the frames until things settle: the sidebar has stopped
     /// moving, or `settle` seconds have passed.
     private func step(_ name: String, settle: Double, sidebar: Bool = false, _ action: () -> Void) async {
-        frames = []
+        restart()
         let interval = signposter.beginInterval("probe step", "\(name, privacy: .public)")
         defer { signposter.endInterval("probe step", interval) }
         let begin = CACurrentMediaTime()
@@ -268,6 +286,8 @@ final class PerfProbe: NSObject {
         var fields: [String: Any] = ["frames": frames.count, "longestFrameMs": longest,
                                      "hitches": hitches.count, "hitchMs": hitches.reduce(0) { $0 + $1 - refresh * 1000 },
                                      "firstFrameMs": gaps.first ?? 0]
+        fields["layouts"] = PerfLayout.total
+        fields["layoutsByView"] = PerfLayout.top
         fields.merge(extra) { $1 }
         record(name, fields)
     }
@@ -402,6 +422,56 @@ final class PerfProbe: NSObject {
             }
         }
         return out.joined(separator: "\n")
+    }
+}
+/// How many times views were laid out, by class (as the release gate counts them): a view class
+/// in the thousands for one sidebar toggle or one save is an update that reaches too far.
+enum PerfLayout {
+    nonisolated(unsafe) static var counts: [String: Int] = [:]
+    nonisolated(unsafe) private static var swizzled = Set<ObjectIdentifier>()
+    nonisolated(unsafe) private static var names: [ObjectIdentifier: String] = [:]
+
+    static func reset() { counts = [:] }
+    static var total: Int { counts.values.reduce(0, +) }
+    static var top: [String] { counts.sorted { $0.value > $1.value }.prefix(6).map { "\($0.key) \($0.value)" } }
+
+    private static func name(of cls: AnyClass) -> String {
+        if let n = names[ObjectIdentifier(cls)] { return n }
+        let n = String(describing: cls).components(separatedBy: "<").first ?? "?"
+        names[ObjectIdentifier(cls)] = n
+        return n
+    }
+
+    /// Counts `layout` on every class in these windows' view trees that has its own.
+    static func install(in windows: [NSWindow]) {
+        func walk(_ view: NSView) {
+            hook(type(of: view))
+            for s in view.subviews { walk(s) }
+        }
+        for w in windows {
+            if let v = w.contentView { walk(v) }
+            if let frame = w.contentView?.superview { walk(frame) }
+        }
+    }
+
+    private static func hook(_ cls: AnyClass) {
+        let selector = #selector(NSView.layout)
+        var owner: AnyClass? = cls
+        while let c = owner, let sup = class_getSuperclass(c),
+              let m = class_getInstanceMethod(c, selector), let sm = class_getInstanceMethod(sup, selector),
+              method_getImplementation(m) == method_getImplementation(sm) {
+            owner = sup
+        }
+        guard let target = owner, target != NSView.self, !swizzled.contains(ObjectIdentifier(target)),
+              let method = class_getInstanceMethod(target, selector) else { return }
+        swizzled.insert(ObjectIdentifier(target))
+        typealias Layout = @convention(c) (AnyObject, Selector) -> Void
+        let call = unsafeBitCast(method_getImplementation(method), to: Layout.self)
+        let block: @convention(block) (AnyObject) -> Void = { obj in
+            counts[name(of: type(of: obj)), default: 0] += 1
+            call(obj, selector)
+        }
+        method_setImplementation(method, imp_implementationWithBlock(block))
     }
 }
 #endif

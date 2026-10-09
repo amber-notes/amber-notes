@@ -8,6 +8,8 @@ import {
 import { ButtonRow, Card, EmptyState, Field, Sign, ui } from "@/lib/ui";
 import s from "./reset.module.css";
 
+const MISMATCH = "The two passwords don't match.";
+
 /// "opening": before the page has read its address (the token is in the fragment, which only the
 /// browser sees), nothing is drawn.
 export type Screen = "opening" | "request" | "sent" | "form" | "done" | "expired";
@@ -21,7 +23,10 @@ export default function ResetPassword({ initial, supabaseURL, anonKey, auth, sen
   const [screen, setScreen] = useState<Screen>(initial);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [shown, setShown] = useState(false);
+  // The password typed a second time. It is only compared here; it is never sent.
+  const [confirm, setConfirm] = useState("");
+  const [confirmLeft, setConfirmLeft] = useState(false);
+  const [confirmAsked, setConfirmAsked] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const pending = useRef<Pending | null>(null);
@@ -51,11 +56,31 @@ export default function ResetPassword({ initial, supabaseURL, anonKey, auth, sen
     if (window.location.search || window.location.hash) window.history.replaceState(window.history.state, "", window.location.pathname);
   }
 
+  // The second field differs. Said once it is as long as the first, or left, or Save was tried:
+  // never while it is still being typed.
+  const differs = confirm !== "" && confirm !== password;
+  const mismatch = differs && ((password !== "" && confirm.length >= password.length) || confirmLeft || confirmAsked);
+  const ready = !passwordProblem(password) && confirm === password;
+
+  /// Save or Return with something still wrong: says what, and goes to the first field it is about.
+  function refuse() {
+    const problem = passwordProblem(password);
+    if (problem) setError(problem);
+    else setConfirmAsked(true);
+    document.getElementById(problem ? "password" : "confirm")?.focus();
+  }
+
+  // A disabled Save takes Return with it, so Return is answered here until the form can be sent.
+  function onReturn(e: React.KeyboardEvent) {
+    if (e.key !== "Enter" || ready || busy) return;
+    e.preventDefault();
+    refuse();
+  }
+
   async function save(e: React.FormEvent) {
     e.preventDefault();
     if (busy) return;
-    const problem = passwordProblem(password);
-    if (problem) return setError(problem);
+    if (!ready) return refuse();
     if (!pending.current) return setScreen("expired");
     setBusy(true);
     setError(null);
@@ -63,6 +88,7 @@ export default function ResetPassword({ initial, supabaseURL, anonKey, auth, sen
     setBusy(false);
     if (outcome.kind === "error") return setError(outcome.message);
     setPassword("");
+    setConfirm("");
     pending.current = null;
     forgetLink();
     setScreen(outcome.kind);
@@ -114,23 +140,27 @@ export default function ResetPassword({ initial, supabaseURL, anonKey, auth, sen
           <p className={ui.lede}>Your notes stay as they are. They&apos;re locked with your key, not with your password.</p>
         </div>
         <form className={ui.form} method="post" onSubmit={save} noValidate>
-          <div className={s.reveal}>
+          <Field
+            id="password" name="password" label="New password" type="password" autoComplete="new-password"
+            autoFocus minLength={MIN_PASSWORD} maxLength={72} required value={password}
+            onChange={(e) => { setPassword(e.target.value); if (error) setError(null); }} onKeyDown={onReturn}
+            hint={`At least ${MIN_PASSWORD} characters.`} error={error ?? undefined}
+          />
+          <div className={s.confirm}>
             <Field
-              id="password" name="password" label="New password" type={shown ? "text" : "password"} autoComplete="new-password"
-              autoFocus minLength={MIN_PASSWORD} maxLength={72} required value={password}
-              onChange={(e) => { setPassword(e.target.value); if (error) setError(null); }}
-              hint={`At least ${MIN_PASSWORD} characters.`} error={error ?? undefined}
-              autoCapitalize="none" autoCorrect="off" spellCheck={false}
+              id="confirm" name="confirm" label="Confirm new password" type="password" autoComplete="new-password"
+              maxLength={72} required value={confirm}
+              onChange={(e) => { setConfirm(e.target.value); setConfirmAsked(false); }} onKeyDown={onReturn}
+              onFocus={() => setConfirmLeft(false)} onBlur={() => setConfirmLeft(true)}
+              aria-invalid={mismatch || undefined} aria-describedby={mismatch ? "confirm-error" : undefined}
             />
-            <button
-              type="button" className={s.toggle} onClick={() => setShown((v) => !v)}
-              aria-controls="password" aria-label={shown ? "Hide password" : "Show password"}
-            >
-              {shown ? "Hide" : "Show"}
-            </button>
+            <div className={s.said}>
+              <p className={s.room} aria-hidden="true">{MISMATCH}</p>
+              <p className={s.mismatch} id="confirm-error" role="status">{mismatch && MISMATCH}</p>
+            </div>
           </div>
           <ButtonRow>
-            <button type="submit" className={ui.primary} disabled={busy} aria-busy={busy}>
+            <button type="submit" className={`${ui.primary} ${s.save}`} disabled={busy || !ready} aria-busy={busy}>
               {busy ? <><span className={s.spinner} aria-hidden="true" /> Saving…</> : "Save password"}
             </button>
           </ButtonRow>

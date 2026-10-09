@@ -147,7 +147,7 @@ max_indexes = 5
 enabled = true
 # The base URL of your website. Used as an allow-list for redirects and for constructing URLs used
 # in emails. Local: the website's dev server (web/, pnpm dev), where the reset email's link lands.
-# Production is https://ambernotes.app, set through the Management API (docs/Technical/password-reset.md).
+# Production is https://pintonotes.com, set through the Management API (docs/Technical/password-reset.md).
 site_url = "http://127.0.0.1:5210"
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
 additional_redirect_urls = ["https://127.0.0.1:3000", "ambernotes://auth-callback"]

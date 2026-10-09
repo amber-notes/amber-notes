@@ -1,7 +1,7 @@
 import { Figure } from "@/lib/blog";
 import { PostPage, postMetadata } from "@/lib/PostPage";
 import { SHOTS } from "@/lib/posts";
-import { CLAUDE_DIRECTORY_URL } from "@/lib/facts";
+import { CLAUDE_DIRECTORY_URL, MCP_URL } from "@/lib/facts";
 
 export const dynamic = "force-static";
 export const metadata = postMetadata("claude-and-apple-notes", {
@@ -123,7 +123,7 @@ export default function Page() {
         <li>You approve Claude in Pinto Notes on your iPhone or Mac, typing the number your browser shows, and choose Read Only, or Read and Edit.</li>
         <li>Checklists stay checklists: Pinto Notes stores notes as Markdown, and Claude ticks an item without rewriting the note.</li>
         <li>When Claude changes a note, Pinto Notes shows what changed, with Undo, and keeps the previous version.</li>
-        <li>Amber Notes is listed in Claude&apos;s connector directory, so there&apos;s no address to paste. If your Claude app doesn&apos;t show the listing, add <code>https://mcp.ambernotes.app</code> as a custom connector instead; that works on every plan, and the free plan includes one.</li>
+        <li>Amber Notes is listed in Claude&apos;s connector directory, so there&apos;s no address to paste. If your Claude app doesn&apos;t show the listing, add <code>{MCP_URL}</code> as a custom connector instead; that works on every plan, and the free plan includes one.</li>
       </ul>
       <p>
         The catch: your notes move to Pinto Notes, so you&apos;d write there instead of in Apple Notes. The import leaves Apple Notes

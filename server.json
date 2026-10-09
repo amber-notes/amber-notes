@@ -1,18 +1,18 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "app.ambernotes/amber-notes",
-  "title": "Amber Notes",
-  "description": "Search, read and edit your Amber Notes: folders, checklists, tables and trackers.",
-  "version": "1.0.0",
-  "websiteUrl": "https://ambernotes.app/blog/mcp-server",
+  "title": "Pinto Notes",
+  "description": "Search, read and edit your notes in Pinto Notes (formerly Amber Notes): checklists and tables.",
+  "version": "1.0.1",
+  "websiteUrl": "https://pintonotes.com/blog/mcp-server",
   "repository": {
-    "url": "https://github.com/amber-notes/amber-notes",
+    "url": "https://github.com/pinto-notes/pinto-notes",
     "source": "github",
     "id": "1394754812",
     "subfolder": "supabase/functions/mcp"
   },
   "icons": [
-    { "src": "https://ambernotes.app/mark-256.png", "mimeType": "image/png", "sizes": ["256x256"] }
+    { "src": "https://pintonotes.com/mark-256.png", "mimeType": "image/png", "sizes": ["256x256"] }
   ],
   "remotes": [
     { "type": "streamable-http", "url": "https://mcp.ambernotes.app" }

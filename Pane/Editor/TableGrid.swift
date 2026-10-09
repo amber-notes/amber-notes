@@ -28,7 +28,7 @@ struct GridTable: Equatable {
         func isRow(_ k: Int) -> Bool { k < lines.count && ns.substring(with: lines[k]).trimmingCharacters(in: .whitespaces).hasPrefix("|") }
         func isDelimiter(_ k: Int) -> Bool {
             let t = ns.substring(with: lines[k]).trimmingCharacters(in: .whitespaces)
-            return t.hasPrefix("|") && t.contains("-") && t.allSatisfy { "|-: \t".contains($0) }
+            return t.hasPrefix("|") && Self.isDelimiter(t)
         }
         while i < lines.count {
             let t = ns.substring(with: lines[i]).trimmingCharacters(in: .whitespaces)
@@ -56,8 +56,18 @@ struct GridTable: Equatable {
     static let maxLiveCells = 5000
     var isLive: Bool { rows.count * max(columns, 1) <= Self.maxLiveCells }
 
+    /// The line under the header: only pipes, dashes, colons and spaces, with a dash.
+    /// Long dashes count too: the keyboard's smart punctuation has turned a `---` into
+    /// `—` in saved notes, and such a table must still open as a grid. It's written
+    /// back as `---` (see `markdown`) the next time the table is edited.
+    static func isDelimiter(_ line: String) -> Bool {
+        line.contains { "-–—".contains($0) } && line.allSatisfy { "|-–—: \t".contains($0) }
+    }
+
+    /// `lines` are a table's own: the header, the delimiter, then the rows. Only the
+    /// delimiter is left out, so a row of empty cells is still a row.
     static func from(lines: [String], range: NSRange, index: Int) -> GridTable {
-        let body = lines.filter { !$0.allSatisfy { "|-: \t".contains($0) } }
+        let body = lines.enumerated().filter { $0.offset != 1 || !isDelimiter($0.element) }.map(\.element)
         var rows = body.map { TypedTable.cells($0) }
         let width = max(rows.map(\.count).max() ?? 1, 1)
         rows = rows.map { $0 + Array(repeating: "", count: width - $0.count) }
@@ -81,6 +91,27 @@ struct GridTable: Equatable {
         out += [line(rows.first ?? []), "|" + Array(repeating: " --- ", count: width).joined(separator: "|") + "|"]
         out += rows.dropFirst().map(line)
         return out.joined(separator: "\n")
+    }
+
+    /// True when `other` is what this table reads back as from its own markdown.
+    /// Markdown can't hold the space at the end of a cell, so the table that comes back
+    /// from the note mid-typing can differ from the one on screen only by that.
+    func reads(as other: GridTable) -> Bool {
+        guard let back = GridTable.find(in: markdown).first else { return false }
+        return back.rows == other.rows && back.types == other.types
+    }
+
+    /// A column of empty cells at `c`.
+    mutating func insertColumn(at c: Int) {
+        rows = rows.map { var r = $0; r.insert("", at: min(c, r.count)); return r }
+        if var types { types.insert(.text, at: min(c, types.count)); self.types = types }
+    }
+
+    /// Removes column `c`; the last column stays.
+    mutating func removeColumn(at c: Int) {
+        guard columns > 1 else { return }
+        rows = rows.map { var r = $0; if c < r.count { r.remove(at: c) }; return r }
+        if var types, c < types.count { types.remove(at: c); self.types = types }
     }
 
     /// A new row, with today's date in the first date column.
@@ -275,7 +306,15 @@ struct TableGridView: View {
             .onScrollGeometryChange(for: GridOverflow.self) { GridOverflow($0) } action: { _, new in overflow = new }
             .mask { GridOverflow.Fade(overflow: overflow) }
         }
-        .onChange(of: table) { _, new in if new != draft { draft = new } }
+        .onChange(of: table) { _, new in
+            guard new != draft else { return }
+            // Our own edit coming back from the note keeps what's on screen: the note's
+            // copy has lost the space just typed at the end of a cell, and taking it
+            // would join the next word onto the last.
+            let rows = draft.reads(as: new) ? draft.rows : new.rows
+            draft = new
+            draft.rows = rows
+        }
         .onAppear {
             if let cell = initialFocus ?? focusRequest?.cell { DispatchQueue.main.async { go(cell) } }
         }
@@ -622,6 +661,7 @@ struct TableGridView: View {
                 .font(.system(size: 10, weight: .bold))
                 .foregroundStyle(.secondary)
                 .frame(width: horizontal ? 28 : 14, height: horizontal ? 14 : 24)
+                .hoverHighlight(Capsule())
                 .background(.fill.secondary, in: .capsule)
         }
         .menuStyle(.button)
@@ -652,21 +692,10 @@ struct TableGridView: View {
             Button("Show Trend") { trend = TrendColumn(id: c) }
         }
         Divider()
-        Button("Add Column Before") { edit { t in insertColumn(&t, at: c) } }
-        Button("Add Column After") { edit { t in insertColumn(&t, at: c + 1) } }
+        Button("Add Column Before") { edit { $0.insertColumn(at: c) } }
+        Button("Add Column After") { edit { $0.insertColumn(at: c + 1) } }
         Divider()
-        Button("Delete Column", role: .destructive) {
-            edit { t in
-                guard t.columns > 1 else { return }
-                t.rows = t.rows.map { var r = $0; if c < r.count { r.remove(at: c) }; return r }
-                if var types = t.types, c < types.count { types.remove(at: c); t.types = types }
-            }
-        }
-    }
-
-    private func insertColumn(_ t: inout GridTable, at c: Int) {
-        t.rows = t.rows.map { var r = $0; r.insert("", at: min(c, r.count)); return r }
-        if var types = t.types { types.insert(.text, at: min(c, types.count)); t.types = types }
+        Button("Delete Column", role: .destructive) { edit { $0.removeColumn(at: c) } }
     }
 
     /// Changing the kind keeps a more specific type (a 1–10 scale stays a scale).

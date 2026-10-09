@@ -40,6 +40,12 @@ describe("GET /go", () => {
     expect([res.status, res.headers.get("location")]).toEqual([302, "https://pintonotes.com/templates"]);
   });
 
+  it("sends on to the links that open the app, which stay on ambernotes.app", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("{}")));
+    const res = await go(new URLSearchParams({ s: "1", to: "https://ambernotes.app/open/import", t: "x" }).toString());
+    expect(res.headers.get("location")).toBe("https://ambernotes.app/open/import");
+  });
+
   it("still sends the reader on when the count fails", async () => {
     vi.stubEnv("SUPABASE_URL", "https://example.supabase.co");
     vi.stubGlobal("fetch", vi.fn(async () => { throw new Error("down"); }));

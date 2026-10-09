@@ -634,6 +634,83 @@ import AppKit
         #expect(MakeAnApp.prompt(title: "Packing", body: "Packing\n- [ ] a\n- [ ] b\n- [ ] c").contains("make my note \u{201C}Packing\u{201D} an app: a checklist app"))
     }
 
+    // MARK: Not released (NoteApps)
+
+    @Test func noteAppsAreOffInTheReleasedApp() {
+        // Release with Pinto Notes' own bundle id: off, whatever a launch argument or default says.
+        #expect(!NoteApps.isEnabled(development: false, beta: false, setting: nil))
+        #expect(!NoteApps.isEnabled(development: false, beta: false, setting: true))
+        #expect(!NoteApps.isEnabled(development: false, beta: false, setting: false))
+        // Pinto Notes Beta, and Debug and QA builds: on; `-noteApps NO` shows them as released.
+        for (development, beta) in [(false, true), (true, false), (true, true)] {
+            #expect(NoteApps.isEnabled(development: development, beta: beta, setting: nil))
+            #expect(NoteApps.isEnabled(development: development, beta: beta, setting: true))
+            #expect(!NoteApps.isEnabled(development: development, beta: beta, setting: false))
+        }
+    }
+
+    @Test func withNoteAppsOffANoteWithAnAppIsJustANoteAndKeepsItsApp() {
+        let store = NotePageStore(file: nil)
+        let note = Note(body: Capture.budgetNote)
+        let page = NotePageStore.Page(html: "<p>Budget</p>", by: "Claude", at: .now)
+        store[note.id] = page
+        #expect(NoteApps.page(note.id, in: store, enabled: true) == page && NoteAppMark.has(note, in: store, enabled: true))
+        // Off: no app to open, no App mark in the list. The app itself is still stored.
+        #expect(NoteApps.page(note.id, in: store, enabled: false) == nil)
+        #expect(!NoteAppMark.has(note, in: store, enabled: false))
+        #expect(store[note.id] == page && store.live(note.id) == page)
+        // Off: a sub-note with an app shows in its parent as a link, not a live widget.
+        let sub = UUID()
+        NoteWidgets.update(sub, html: page.html, enabled: false)
+        #expect(!NoteWidgets.isApp(sub) && NoteWidgets.height(sub) == nil)
+        NoteWidgets.update(sub, html: page.html, enabled: true)
+        #expect(NoteWidgets.isApp(sub))
+        NoteWidgets.update(sub, html: nil)
+    }
+
+    /// Off, a note with an app is a normal note to read, edit and sync, and its app waits untouched:
+    /// the app, its earlier versions, what's still to push and the app's own data, in memory and on disk.
+    @Test func withNoteAppsOffTheAppAndItsDataSurviveUntouched() throws {
+        let dir = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let pagesFile = dir.appending(path: "note-pages.json"), dataFile = dir.appending(path: "note-page-data.json")
+        let note = Note(body: Capture.budgetNote)
+        let v1 = NotePageStore.Page(html: "<p>v1</p>", by: "Claude", at: Date(timeIntervalSince1970: 1_760_000_000))
+        let v2 = NotePageStore.Page(html: "<p>v2</p>", by: "ChatGPT", at: Date(timeIntervalSince1970: 1_760_000_100))
+        // Made while apps were on: two versions, the second changed here and not pushed yet, and data.
+        let store = NotePageStore(file: pagesFile), data = NotePageDataStore(file: dataFile)
+        store[note.id] = v1
+        store.setHere(note.id, v2)
+        data.set(note.id, ["values": ["streak": 4], "collections": [String: Any]()])
+        let kept = (page: store[note.id], history: store.history[note.id], unpushed: store.unpushed[note.id], doc: data.docs[note.id])
+        #expect(kept.page == v2 && kept.history == [v1] && kept.unpushed != nil && kept.doc != nil)
+
+        // Off: the note shows its text, with nothing of the app.
+        #expect(NoteApps.page(note.id, in: store, enabled: false) == nil && !NoteAppMark.has(note, in: store, enabled: false))
+        NoteWidgets.update(note.id, html: v2.html, enabled: false)
+        // Edited as a normal note.
+        note.body += "\n- [ ] Edited with apps off"
+        note.updatedAt = .now
+        // An app arriving by sync is still taken and kept (the store's own setter, as NotePageStore.take ends).
+        let other = UUID(), arrived = NotePageStore.Page(html: "<p>synced</p>", by: "Claude", at: .now)
+        store[other] = arrived
+        #expect(NoteApps.page(other, in: store, enabled: false) == nil && store[other] == arrived)
+
+        // Nothing of the first note's app changed, here or in what a relaunch reads.
+        for s in [store, NotePageStore(file: pagesFile)] {
+            #expect(s[note.id] == kept.page && s.history[note.id] == kept.history)
+            // Still to push (a time, written to disk as a number).
+            #expect(abs((s.unpushed[note.id] ?? .distantPast).timeIntervalSince(kept.unpushed ?? .now)) < 0.001)
+            #expect(s[other] == arrived)
+        }
+        for d in [data, NotePageDataStore(file: dataFile)] { #expect(d.docs[note.id] == kept.doc) }
+        // On again: the app is back as it was.
+        #expect(NoteApps.page(note.id, in: store, enabled: true) == v2 && NoteAppMark.has(note, in: store, enabled: true))
+        NoteWidgets.update(note.id, html: nil)
+        NoteWidgets.update(other, html: nil)
+    }
+
     // MARK: Round five
 
     func applyAny(_ message: Any, to body: String = habits) throws -> String {

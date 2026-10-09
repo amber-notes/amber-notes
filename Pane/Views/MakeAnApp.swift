@@ -60,13 +60,14 @@ struct MakeAppChip: View {
                     .font(.system(size: AIReceipt.text, weight: .semibold))
                     .foregroundStyle(Color.amberInk)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.hoverText)
             .accessibilityIdentifier("makeApp.chip")
             Divider().frame(height: 14)
             Button(action: dismiss) {
                 Image(systemName: "xmark").font(.system(size: AIReceipt.text - 2, weight: .semibold)).foregroundStyle(Color.amberInk.opacity(0.7))
+                    .frame(width: 18, height: 18)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.hoverIcon(cornerRadius: 9))
             .accessibilityLabel("Not now")
         }
         .padding(.horizontal, 14)

@@ -2,22 +2,22 @@
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "amber-notes",
   "version": "1.0.0",
-  "description": "Search, read and edit your Amber Notes: folders, checklists, tables and trackers, with every change kept in the note's history.",
+  "description": "Search, read and edit your notes in Pinto Notes: folders, checklists, tables and trackers, with every change kept in the note's history.",
   "author": {
     "name": "Emil Wagman",
     "email": "hello@ambernotes.app",
-    "url": "https://ambernotes.app"
+    "url": "https://pintonotes.com"
   },
-  "homepage": "https://ambernotes.app",
-  "repository": "https://github.com/amber-notes/amber-notes",
+  "homepage": "https://pintonotes.com",
+  "repository": "https://github.com/pinto-notes/pinto-notes",
   "license": "MIT",
   "keywords": ["notes", "checklists", "productivity"],
   "extensions": {
     "com.openai": {
       "interface": {
-        "displayName": "Amber Notes",
+        "displayName": "Pinto Notes",
         "shortDescription": "Read and edit your notes",
-        "longDescription": "Amber Notes is a notes app for iPhone and Mac. Connect it to ChatGPT and ask about your notes in plain language, or have ChatGPT write things down for you.\n\nChatGPT can search your notes, read them, create new ones, add to a list or a journal, tick checklist items, log rows in a table or tracker, and move, pin or delete notes. You choose Read only or Read and edit when you connect, and you can disconnect at any time from Settings in Amber Notes.\n\nEvery change ChatGPT makes keeps the previous version in the note's history, so it can be undone. Deleted notes go to Recently Deleted for 30 days.",
+        "longDescription": "Pinto Notes is a notes app for iPhone and Mac. Connect it to ChatGPT and ask about your notes in plain language, or have ChatGPT write things down for you.\n\nChatGPT can search your notes, read them, create new ones, add to a list or a journal, tick checklist items, log rows in a table or tracker, and move, pin or delete notes. You choose Read only or Read and edit when you connect, and you can disconnect at any time from Settings in Pinto Notes.\n\nEvery change ChatGPT makes keeps the previous version in the note's history, so it can be undone. Deleted notes go to Recently Deleted for 30 days.",
         "developerName": "Emil Wagman",
         "category": "Productivity",
         "capabilities": [
@@ -30,12 +30,12 @@
           "Move, pin and delete notes, and restore them",
           "See and restore earlier versions of a note"
         ],
-        "websiteURL": "https://ambernotes.app",
-        "supportURL": "https://ambernotes.app/support",
-        "privacyPolicyURL": "https://ambernotes.app/privacy",
-        "termsOfServiceURL": "https://ambernotes.app/terms",
+        "websiteURL": "https://pintonotes.com",
+        "supportURL": "https://pintonotes.com/support",
+        "privacyPolicyURL": "https://pintonotes.com/privacy",
+        "termsOfServiceURL": "https://pintonotes.com/terms",
         "defaultPrompt": [
-          "What's on my to-do lists in Amber Notes?",
+          "What's on my to-do lists in Pinto Notes?",
           "Find my notes about the Lisbon trip and summarize the plan.",
           "Add \"Buy sunscreen\" to the checklist in my Lisbon note."
         ],
@@ -51,7 +51,7 @@
           "positive": [
             {
               "description": "Find a note by topic and summarize it",
-              "prompt": "Find my Lisbon trip note in Amber Notes and summarize the plan.",
+              "prompt": "Find my Lisbon trip note in Pinto Notes and summarize the plan.",
               "tools_triggered": "search_notes (or search), read_note (or fetch)",
               "expected_behavior": "Finds \"Lisbon in May\" in the Travel folder and summarizes it: four days in Lisbon, a checklist (hotel in Príncipe Real, Tram 28 early, sunset at Miradouro da Senhora do Monte) with what is done and what is still open, and the Where to eat table lists Manteigaria, Cervejaria Ramiro and Time Out Market. Nothing is changed."
             },
@@ -82,25 +82,25 @@
           ],
           "negative": [
             {
-              "description": "Weather is not in the person's notes; Amber Notes should not be called. Expected: ChatGPT answers from its own tools or says it can't check the weather, without searching notes.",
+              "description": "Weather is not in the person's notes; Pinto Notes should not be called. Expected: ChatGPT answers from its own tools or says it can't check the weather, without searching notes.",
               "prompt": "What's the weather in Lisbon this weekend?"
             },
             {
-              "description": "Booking travel is outside what Amber Notes does. Expected: ChatGPT handles the request with its own abilities (for example asks for the departure airport, or says it can't book flights) and does not use Amber Notes to do it. It may offer to add a reminder to the Lisbon checklist, but changes no note unless asked.",
+              "description": "Booking travel is outside what Pinto Notes does. Expected: ChatGPT handles the request with its own abilities (for example asks for the departure airport, or says it can't book flights) and does not use Pinto Notes to do it. It may offer to add a reminder to the Lisbon checklist, but changes no note unless asked.",
               "prompt": "Book me a flight to Lisbon for May 12."
             },
             {
-              "description": "Amber Notes can't read other apps. Expected: ChatGPT explains that the connection covers notes in Amber Notes only and does not pretend to read Apple Notes or Google Docs.",
+              "description": "Pinto Notes can't read other apps. Expected: ChatGPT explains that the connection covers notes in Pinto Notes only and does not pretend to read Apple Notes or Google Docs.",
               "prompt": "Open my Apple Notes and read me my grocery list."
             }
           ]
         },
         "commerce": false,
-        "commerce_description": "Amber Notes does not sell anything or process payments."
+        "commerce_description": "Pinto Notes does not sell anything or process payments."
       },
       "publication": {
         "countries": [],
-        "release_notes": "First release: search, read and edit your Amber Notes from ChatGPT."
+        "release_notes": "First release: search, read and edit your notes in Pinto Notes from ChatGPT."
       }
     }
   }

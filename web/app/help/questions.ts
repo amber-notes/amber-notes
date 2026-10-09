@@ -1,4 +1,5 @@
-import { APP_STORE_LIVE } from "@/lib/site";
+import { MCP_URL, OLD_MCP_URL_STAYS } from "@/lib/facts";
+import { APP_STORE_LIVE, SUPPORT_EMAIL } from "@/lib/site";
 /// The Help page's questions. Short answers, accurate to the app as it ships. `more` links the
 /// blog post that covers the question in full.
 export type QA = { id: string; q: string; a: string[]; more?: { href: string; text: string } };
@@ -6,7 +7,7 @@ export type QA = { id: string; q: string; a: string[]; more?: { href: string; te
 export const FAQ: QA[] = [
   { id: "what", q: "What is Pinto Notes?", a: [
     "Pinto Notes is a free, open-source notes app for iPhone and Mac that ChatGPT, Claude, Claude Code, Codex and Incredible can search, read and edit, with your approval. It works like Apple Notes, imports your Apple Notes on the Mac, and syncs between iPhone and Mac.",
-  ], more: { href: "/blog/amber-notes-vs-apple-notes", text: "Pinto Notes vs Apple Notes" } },
+  ], more: { href: "/blog/pinto-notes-vs-apple-notes", text: "Pinto Notes vs Apple Notes" } },
   { id: "import", q: "How do I import my Apple Notes?", a: [
     "On your Mac, choose File → Import from Apple Notes. Import everything, or pick the notes you want. Folders, checklists and tables come along, and nothing in Apple Notes is changed.",
     "On iPhone, share a note from Apple Notes to Pinto Notes. Or import on your Mac, and everything shows up on your iPhone a second later.",
@@ -14,11 +15,12 @@ export const FAQ: QA[] = [
   { id: "connect", q: "How do I connect ChatGPT, Claude, Claude Code, Codex or Incredible?", a: [
     "Claude: Amber Notes is in Claude's connector directory. Open https://claude.ai/directory/amber-notes, choose Connect to Claude, then Allow in Pinto Notes. Do it once, on claude.ai or in the Claude desktop app, and Claude's phone apps can use it too.",
     "ChatGPT: in Pinto Notes, open Settings → Connect an AI, pick ChatGPT and follow the steps, on chatgpt.com, which is where OpenAI documents custom apps.",
-    "Adding it yourself, or Claude doesn't show the listing? The address is https://mcp.ambernotes.app; in Claude, add it as a custom connector. When ChatGPT or Claude asks for permission, sign in on the page that opens, then approve on your iPhone or Mac: type the number the page shows and choose Allow. No device nearby? Use your recovery key on that page.",
+    `Adding it yourself, or Claude doesn't show the listing? The address is ${MCP_URL}; in Claude, add it as a custom connector. ${OLD_MCP_URL_STAYS}`,
+    "When ChatGPT or Claude asks for permission, sign in on the page that opens, then approve on your iPhone or Mac: type the number the page shows and choose Allow. No device nearby? Use your recovery key on that page.",
     "Claude Code gets a one-line command with a token of its own, and Codex a few lines for its config file. In Incredible, open Apps, search for Amber Notes, choose Connect, then approve it on your iPhone or Mac. On an older version of Incredible, add the address as an MCP server instead. Settings → Connect an AI → Incredible has the steps. Any other app that supports MCP connects with the address and a sign-in too.",
   ], more: { href: "/blog/connect-chatgpt-to-your-notes", text: "How to connect ChatGPT to your notes" } },
   { id: "ai-tools", q: "Can I use Pinto Notes in Gemini CLI or VS Code?", a: [
-    "Yes. One command adds the address https://mcp.ambernotes.app, then you sign in to Pinto Notes in your browser the first time. Claude Code also has a plugin, and Codex takes one command too.",
+    `Yes. One command adds the address ${MCP_URL}, then you sign in to Pinto Notes in your browser the first time. Claude Code also has a plugin, and Codex takes one command too.`,
   ], more: { href: "/blog/mcp-server#install", text: "Install Pinto Notes in your AI tool" } },
   { id: "apple-notes-ai", q: "Can ChatGPT or Claude use my notes in Apple Notes?", a: [
     "Only in a limited way, and only on a Mac: Apple Notes has no public API, so AI apps can't reach your notes in iCloud. Pinto Notes has an MCP server built in, so once you import your notes, ChatGPT and Claude can use them from any device.",
@@ -46,7 +48,12 @@ export const FAQ: QA[] = [
   ] },
   { id: "delete", q: "How do I delete my account?", a: [
     "Open Settings → Account and choose Delete Account…. Your account and all your notes are deleted, and this can't be undone.",
+    `Can't get into the app? Write to ${SUPPORT_EMAIL} from the account's email address and I'll delete it for you.`,
   ] },
+  { id: "report-page", q: "How do I report a shared page?", a: [
+    `Every shared page ends with a "Report this page" link. Choose it and say what's wrong. Or write to ${SUPPORT_EMAIL} with the page's address.`,
+    "Reports are reviewed within 24 hours, and pages that break the terms of use are taken down.",
+  ], more: { href: "/terms", text: "Terms of use" } },
   { id: "feedback", q: "How do I report a bug or suggest a feature?", a: [
     "Open an issue on GitHub. Say what happened and what you expected, and a screenshot helps. Ideas are welcome there too.",
   ] },

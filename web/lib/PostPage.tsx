@@ -83,8 +83,9 @@ function AllPosts({ slug }: { slug: string }) {
 /// (PostParts' Answer) right under the intro, and open with a paper-cut banner (`art`) above the
 /// intro in place of the capture (or a real capture, `hero`, which wins over the art), which it then shows further down where it belongs. A share rail on wide screens, and at the end
 /// two more posts and every other post by title. Emits Article, BreadcrumbList and (when the post
-/// has real questions) FAQPage JSON-LD.
-export function PostPage({ slug, intro, answer, art, hero, faq, children }: { slug: string; intro: React.ReactNode; answer?: React.ReactNode; art?: string; hero?: React.ReactNode; faq?: QA[]; children: React.ReactNode }) {
+/// has real questions) FAQPage JSON-LD. `caption` goes under the post's own capture, for the OS it
+/// came from.
+export function PostPage({ slug, intro, answer, art, hero, caption, faq, children }: { slug: string; intro: React.ReactNode; answer?: React.ReactNode; art?: string; hero?: React.ReactNode; caption?: string; faq?: QA[]; children: React.ReactNode }) {
   const x = post(slug);
   const path = `/blog/${x.slug}`;
   const minutes = readingMinutes(slug);
@@ -132,7 +133,7 @@ export function PostPage({ slug, intro, answer, art, hero, faq, children }: { sl
           {hero ?? (art && <Banner src={art} />)}
           <p className={p.intro}>{intro}</p>
           {answer}
-          {!art && !hero && <Figure shot={x.image} ground={x.thumb.ground} priority />}
+          {!art && !hero && <Figure shot={x.image} ground={x.thumb.ground} caption={caption} priority />}
           {children}
           {faq?.length ? (
             <>

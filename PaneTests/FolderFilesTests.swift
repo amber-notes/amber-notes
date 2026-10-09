@@ -133,7 +133,8 @@ import Testing
         let pinned = context.createNote(in: .folder(folder.id), body: "Pinned\n")
         pinned.isPinned = true
         let note = context.createNote(in: .folder(folder.id), body: "Plan\n")
-        note.updatedAt = .now.addingTimeInterval(-3600)
+        // Older than the file and still today: an hour ago is yesterday for the first hour of a day.
+        note.updatedAt = Calendar.current.startOfDay(for: .now)
         let file = try #require(context.addFiles([try sample("Paper.pdf")], to: folder).first)
         let sections = DateBucket.sections([ListItem.note(pinned), .note(note), .file(file)])
         #expect(sections.map(\.0) == ["Pinned", "Today"])
@@ -320,6 +321,7 @@ import Testing
         #expect(FileVersions.nextPath(path, kept: ["u/9f1c.v2", "u/9f1c.v10", "u/9f1c.v9"]) == "u/9f1c.v11")
         #expect(FileVersions.nextPath(path, kept: ["u/other.v40", "u/9f1c.vx"]) == "u/9f1c.v1", "only this file's numbered versions count")
         #expect(FileVersions.kept == 10, "the same as folder_files.ts writeFile")
+        #expect(FileVersions.madeBy == "Pinto Notes", "what an AI reads as made_by, and what folder_files.ts shows old rows as")
     }
 
     @Test func textKindsOpenAsCodeAndHTMLCanBePreviewed() {

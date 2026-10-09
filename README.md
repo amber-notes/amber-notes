@@ -10,9 +10,9 @@
 </p>
 
 <p align="center">
-  <a href="https://ambernotes.app/download"><b>Download for Mac</b></a>
+  <a href="https://pintonotes.com/download"><b>Download for Mac</b></a>
   &nbsp;·&nbsp; iPhone app in App Store review
-  &nbsp;·&nbsp; <a href="https://ambernotes.app">ambernotes.app</a>
+  &nbsp;·&nbsp; <a href="https://pintonotes.com">pintonotes.com</a>
 </p>
 
 <p align="center">
@@ -59,7 +59,7 @@
 | App | `Pane/` | SwiftUI for iOS 26 and macOS 26. The editor is TextKit 2 with its own layout fragments for checkboxes, bullets, tables and embeds. SwiftData holds a local copy of everything. |
 | Sync | `Pane/Sync/` | Pushes and pulls through Supabase with version checks, and listens on Supabase Realtime for changes from other devices. |
 | Backend | `supabase/` | Postgres with row-level security on every table, per-account limits and rate limits in the database, Storage for files, and Edge Functions. |
-| AI server | `supabase/functions/mcp/` | An MCP server (Streamable HTTP) with 27 tools. Public address `https://mcp.ambernotes.app` (proxied by the site, `web/middleware.ts`). Web clients connect with OAuth 2.1 (PKCE, dynamic client registration) and approve in the app or on the web at `ambernotes.app/connect`. Claude Code and Codex use a revocable header token. Every call runs as the note owner with row-level security. |
+| AI server | `supabase/functions/mcp/` | An MCP server (Streamable HTTP) with 27 tools. Public address `https://mcp.pintonotes.com` (proxied by the site, `web/middleware.ts`). The older address, `https://mcp.ambernotes.app`, is the same server and keeps working. Web clients connect with OAuth 2.1 (PKCE, dynamic client registration) and approve in the app or on the web at `pintonotes.com/connect`. Claude Code and Codex use a revocable header token. Every call runs as the note owner with row-level security. |
 | Share site | `web/` | Next.js. Renders shared notes safely (sanitized markdown, strict CSP), with a report link and a privacy page. |
 | Share extension | `PaneShare/` | Share sheet target on iOS. |
 
@@ -72,8 +72,8 @@ You need macOS 26 with Xcode 26, Homebrew, and Docker (for the local Supabase st
 ```sh
 brew install xcodegen supabase/tap/supabase deno pnpm
 
-git clone https://github.com/amber-notes/amber-notes.git
-cd amber-notes
+git clone https://github.com/pinto-notes/pinto-notes.git
+cd pinto-notes
 supabase start            # local Postgres, Auth, Storage and Functions on ports 56420–56429
 xcodegen generate
 open Pane.xcodeproj       # run the "Pane" scheme on "My Mac" or an iPhone simulator
@@ -105,7 +105,7 @@ Everything the app needs runs on one Supabase project:
 
 ## Connect an AI
 
-In the app, open **Settings → Connect an AI** and follow the steps for your client. ChatGPT and Claude get a plain server address, `https://mcp.ambernotes.app`, and ask Pinto Notes for permission through OAuth: a page on ambernotes.app opens, where you answer in the app or sign in and answer on the web. Claude Code and Codex get a command with a revocable token. Connections are listed in Settings, where you can disconnect each one.
+In the app, open **Settings → Connect an AI** and follow the steps for your client. ChatGPT and Claude get a plain server address, `https://mcp.pintonotes.com`, and ask Pinto Notes for permission through OAuth: a page on pintonotes.com opens, where you answer in the app or sign in and answer on the web. Claude Code and Codex get a command with a revocable token. The app may still show the older address, `https://mcp.ambernotes.app`; it is the same server and keeps working. Connections are listed in Settings, where you can disconnect each one.
 
 ## Privacy and security
 
@@ -116,17 +116,17 @@ In the app, open **Settings → Connect an AI** and follow the steps for your cl
 - Row-level security applies to the app, the AI server and direct API calls alike, on top of the encryption.
 - AI tokens are stored as hashes and can be read-only.
 - Shared pages are public to anyone with the link. The app warns before creating one, and a page stops working the moment you stop sharing.
-- [Privacy policy](https://ambernotes.app/privacy) · [Security policy](SECURITY.md)
+- [Privacy policy](https://pintonotes.com/privacy) · [Security policy](SECURITY.md)
 
 ## Thanks
 
 Everyone who has had a pull request merged, in the order they joined:
 
-- [@wufangyong973](https://github.com/wufangyong973): brought the website's README up to date ([#97](https://github.com/amber-notes/amber-notes/pull/97))
-- [@arnavtambe](https://github.com/arnavtambe): removed an unused field from the app's connections ([#109](https://github.com/amber-notes/amber-notes/pull/109))
-- [@sameer-dhande](https://github.com/sameer-dhande): made each help answer announce its own question to screen readers ([#170](https://github.com/amber-notes/amber-notes/pull/170)) and named the table's row and column handles for VoiceOver ([#176](https://github.com/amber-notes/amber-notes/pull/176))
+- [@wufangyong973](https://github.com/wufangyong973): brought the website's README up to date ([#97](https://github.com/pinto-notes/pinto-notes/pull/97))
+- [@arnavtambe](https://github.com/arnavtambe): removed an unused field from the app's connections ([#109](https://github.com/pinto-notes/pinto-notes/pull/109))
+- [@sameer-dhande](https://github.com/sameer-dhande): made each help answer announce its own question to screen readers ([#170](https://github.com/pinto-notes/pinto-notes/pull/170)) and named the table's row and column handles for VoiceOver ([#176](https://github.com/pinto-notes/pinto-notes/pull/176))
 
-Want to be next? [CONTRIBUTING.md](CONTRIBUTING.md) has where to start, and ideas of your own are welcome in [Discussions](https://github.com/amber-notes/amber-notes/discussions/categories/ideas).
+Want to be next? [CONTRIBUTING.md](CONTRIBUTING.md) has where to start, and ideas of your own are welcome in [Discussions](https://github.com/pinto-notes/pinto-notes/discussions/categories/ideas).
 
 ## License
 

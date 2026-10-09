@@ -92,7 +92,7 @@ struct WhatsNewCard: View {
                 .accessibilityIdentifier("whatsNew.changelog")
             }
         }
-        .buttonStyle(.borderless)
+        .buttonStyle(.hoverLink)
         .foregroundStyle(.secondary)
         .fixedSize()
     }
