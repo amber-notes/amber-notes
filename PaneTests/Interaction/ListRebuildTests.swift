@@ -5,9 +5,9 @@ import SwiftUI
 import Testing
 @testable import Pane
 
-/// The note list is built new for another folder or another search (ListIdentity). What a new
-/// list must not lose: the selection, the search field's focus, the arrow keys, and a selection
-/// of several notes when one note changes. Real mouse and key events through the window, as in
+/// The note list is built new for another folder (ListIdentity), and stays the same list through
+/// a search. Neither may lose the selection, the search field's focus or the arrow keys, and a
+/// selection of several notes stays when one note changes. Real mouse and key events through the window, as in
 /// FileRowClickTests; CI only.
 @MainActor @Suite(.serialized) struct ListRebuildTests {
     @MainActor @Observable final class State {
@@ -32,7 +32,12 @@ import Testing
         let folder: Folder
 
         var table: NSTableView? { FileRowClickTests.table(in: window.contentView) }
-        func noteRows(_ t: NSTableView) -> [Int] { (0 ..< t.numberOfRows).filter { t.rect(ofRow: $0).height > 30 } }
+        /// The note rows are the tall ones; headers are shorter.
+        func noteRows(_ t: NSTableView) -> [Int] {
+            let heights = (0 ..< t.numberOfRows).map { t.rect(ofRow: $0).height }
+            let tallest = heights.max() ?? 0
+            return (0 ..< t.numberOfRows).filter { heights[$0] > tallest - 2 }
+        }
         func close() { window.orderOut(nil); window.close() }
         func settle(_ s: Double = 0.4) async {
             window.contentView?.layoutSubtreeIfNeeded()
@@ -118,7 +123,6 @@ import Testing
         }
         #expect(field.stringValue == "Bud")
         let found = try #require(rig.table)
-        #expect(found !== all, "the results are a new list")
         #expect(rig.noteRows(found).count == 6, "the six Budget notes")
         #expect(found.selectedRowIndexes.count == 1, "with Budget 3 marked in it")
 
