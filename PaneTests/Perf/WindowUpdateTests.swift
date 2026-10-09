@@ -214,6 +214,60 @@ import Testing
         #expect(updates.value == 1)
     }
 
+    /// A save of the note being typed in changes nothing the list is made of (it stays first,
+    /// in its folder, on the same day), so the list isn't worked out again: its entry is new, and
+    /// nobody is told. A note that moves, or any change while a search is on, is told.
+    @Test func aSaveInPlaceDoesNotWorkTheListOutAgain() async throws {
+        let c = try ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        let ctx = c.mainContext
+        let work = ctx.createFolder(named: "Work"), home = ctx.createFolder(named: "Home")
+        var notes: [Note] = []
+        for i in 0..<50 {
+            let n = ctx.createNote(in: .folder(work.id), body: "Note \(i)\n\ntext")
+            n.updatedAt = Date(timeIntervalSinceNow: -Double(i) * 10)
+            notes.append(n)
+        }
+        try ctx.save()
+        let library = LibraryNotes()
+        final class Count: @unchecked Sendable { var value = 0 }
+        let told = Count()
+        func watch() { withObservationTracking { _ = library.entries(in: ctx) } onChange: { told.value += 1 } }
+        func change(_ what: () -> Void) async -> Int {
+            watch()
+            let before = told.value
+            what()
+            try? await Task.sleep(for: .milliseconds(120))
+            return told.value - before
+        }
+        _ = library.entries(in: ctx)
+
+        let typed = await change {
+            notes[0].body = "Note 0\n\nmore text"
+            notes[0].touch()
+        }
+        #expect(typed == 0, "typing in the first note leaves the list as it is")
+        #expect(library.entries(in: ctx).first?.date == notes[0].updatedAt, "its entry has the new date all the same")
+
+        let moved = await change {
+            notes[7].body = "Note 7\n\nmore text"
+            notes[7].touch()
+        }
+        #expect(moved == 1, "a note that moves to the top is a change to the list")
+        #expect(library.entries(in: ctx).first?.id == notes[7].id)
+
+        let refiled = await change { notes[7].folder = home }
+        #expect(refiled == 1, "so is the first note changing folder")
+        let pinned = await change { notes[7].isPinned = true }
+        #expect(pinned == 1, "or being pinned")
+
+        library.publishesEveryChange = true
+        let searching = await change {
+            notes[7].body = "Note 7\n\nother text"
+            notes[7].touch()
+        }
+        #expect(searching == 1, "while a search is on, any change may change what is found")
+    }
+
     /// Many notes at once: a sync pull that changes thousands, an import that adds thousands, and
     /// an account switch that empties the library and fills it with another. After each the
     /// entries are what a fresh read of every note gives, and nothing of the old account is left.

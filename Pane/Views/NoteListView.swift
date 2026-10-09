@@ -132,6 +132,7 @@ struct NoteListView: View {
 
     var body: some View {
         // Worked out once per update and handed down: the list asks many times.
+        library.publishesEveryChange = !search.trimmingCharacters(in: .whitespaces).isEmpty
         let all = entries
         let scopedNotes = scoped(from: all)
         let visible = filtered(from: scopedNotes, all: all)
@@ -810,6 +811,13 @@ struct NoteEntry: Identifiable, DatedListItem {
 
     var listDate: Date { date }
     var pinnedInList: Bool { pinned && !trashed }
+
+    /// Whether the list shows this note in the same place as `other`: same folder, pin and trash,
+    /// and a date on the same day (the sections are days).
+    func listsLike(_ other: NoteEntry) -> Bool {
+        pinned == other.pinned && trashed == other.trashed && deleted == other.deleted && folderID == other.folderID
+            && parentID == other.parentID && Calendar.current.isDate(date, inSameDayAs: other.date)
+    }
 }
 
 /// A row of the list when files sit among the notes.
@@ -886,6 +894,9 @@ final class LibraryNotes {
     /// Goes up with each fetch, so a watch from before it is ignored.
     @ObservationIgnored private var epoch = 0
 
+    /// While a search is on, a note's text decides whether it is listed: every change counts.
+    @ObservationIgnored var publishesEveryChange = false
+
     func entries(in context: ModelContext) -> [NoteEntry] {
         if self.context !== context { start(context) }
         _ = generation
@@ -950,6 +961,20 @@ final class LibraryNotes {
         guard !changed.isEmpty else { return }
         let ids = changed
         changed = []
+        // One note changed and stays where it is, in the same folder and day: a save of the
+        // note being typed in. Nothing the list is made of changed (the row shows its own note),
+        // so the list isn't worked out again. Built again, the list put that note's row in anew
+        // on every save, on or off screen, and laid out twice the cells.
+        if ids.count == 1, let id = ids.first, let i = sorted.firstIndex(where: { $0.id == id }), sorted[i].note.modelContext != nil {
+            let old = sorted[i], new = watched(old.note)
+            let stays = (i == 0 || sorted[i - 1].date > new.date) && (i == sorted.count - 1 || sorted[i + 1].date <= new.date)
+            if stays {
+                sorted[i] = new
+                if !new.listsLike(old) || publishesEveryChange { generation += 1 }
+                return
+            }
+            // Its new entry is watched; the general path below reads it again and moves it.
+        }
         var moved: [NoteEntry] = []
         sorted.removeAll { e in
             guard ids.contains(e.id) else { return false }
