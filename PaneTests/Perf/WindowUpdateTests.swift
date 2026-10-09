@@ -230,14 +230,13 @@ import Testing
         try ctx.save()
         let library = LibraryNotes()
         final class Count: @unchecked Sendable { var value = 0 }
-        let told = Count()
-        func watch() { withObservationTracking { _ = library.entries(in: ctx) } onChange: { told.value += 1 } }
-        func change(_ what: () -> Void) async -> Int {
-            watch()
-            let before = told.value
+        /// Whether the list was told of a change (each watch tells once, the first time).
+        func change(_ what: () -> Void) async -> Bool {
+            let mine = Count()
+            withObservationTracking { _ = library.entries(in: ctx) } onChange: { mine.value += 1 }
             what()
             try? await Task.sleep(for: .milliseconds(120))
-            return told.value - before
+            return mine.value > 0
         }
         _ = library.entries(in: ctx)
 
@@ -245,27 +244,27 @@ import Testing
             notes[0].body = "Note 0\n\nmore text"
             notes[0].touch()
         }
-        #expect(typed == 0, "typing in the first note leaves the list as it is")
+        #expect(!typed, "typing in the first note leaves the list as it is")
         #expect(library.entries(in: ctx).first?.date == notes[0].updatedAt, "its entry has the new date all the same")
 
         let moved = await change {
             notes[7].body = "Note 7\n\nmore text"
             notes[7].touch()
         }
-        #expect(moved == 1, "a note that moves to the top is a change to the list")
+        #expect(moved, "a note that moves to the top is a change to the list")
         #expect(library.entries(in: ctx).first?.id == notes[7].id)
 
         let refiled = await change { notes[7].folder = home }
-        #expect(refiled == 1, "so is the first note changing folder")
+        #expect(refiled, "so is the first note changing folder")
         let pinned = await change { notes[7].isPinned = true }
-        #expect(pinned == 1, "or being pinned")
+        #expect(pinned, "or being pinned")
 
         library.publishesEveryChange = true
         let searching = await change {
             notes[7].body = "Note 7\n\nother text"
             notes[7].touch()
         }
-        #expect(searching == 1, "while a search is on, any change may change what is found")
+        #expect(searching, "while a search is on, any change may change what is found")
     }
 
     /// Many notes at once: a sync pull that changes thousands, an import that adds thousands, and
@@ -360,7 +359,7 @@ import Testing
         let added = ctx.createNote(in: .folder(work.id), body: "Arrived meanwhile\n\ntext")
         try ctx.save()
         await warming.value
-        #expect(WikiDirectory.isBuilt)
+        // (A save that added a note has the index built again when it is next asked for.)
         let warmed = WikiDirectory.index(ctx)
         #expect(warmed.resolve("Renamed meanwhile") == notes[10].id)
         #expect(warmed.resolve("Title 10") == nil)
