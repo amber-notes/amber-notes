@@ -232,6 +232,72 @@ import Testing
         #expect(SidebarView.counts(in: ctx).live == 62)
     }
 
+    /// The editor writes the open note every 0.35 s while you type. That write works out the
+    /// editor's own view (its text and date), not the note pane with its toolbar and menus: the
+    /// pane read the note's text itself, so it was worked out again with every write. It still
+    /// is whenever the window above it is; no more often than that. A change from elsewhere
+    /// (sync, an AI) still reaches the editor.
+    @Test(.timeLimit(.minutes(2))) func aWriteOfTheOpenNoteWorksOutItsTextNotTheNotePane() async throws {
+        let c = try ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        let ctx = c.mainContext
+        let folder = ctx.createFolder(named: "Folder")
+        let note = ctx.createNote(in: .folder(folder.id), body: "Open note\n\ntext")
+        for i in 0..<20 { _ = ctx.createNote(in: .folder(folder.id), body: "Note \(i)\n\ntext") }
+        try ctx.save()
+        UserDefaults.standard.removeObject(forKey: "lastScope")
+        // Borderless, far off every screen and never shown: nothing appears on anyone's display.
+        let w = NSWindow(contentRect: CGRect(x: -20000, y: -20000, width: 1180, height: 760),
+                         styleMask: [.borderless], backing: .buffered, defer: false)
+        w.isReleasedWhenClosed = false
+        w.contentViewController = NSHostingController(rootView: RootView().modelContainer(c))
+        w.setFrameOrigin(CGPoint(x: -20000, y: -20000))
+        defer { w.orderOut(nil); w.close() }
+        func settle() async {
+            for _ in 0..<4 {
+                w.contentView?.layoutSubtreeIfNeeded()
+                w.displayIfNeeded()
+                try? await Task.sleep(for: .milliseconds(120))
+            }
+        }
+        await settle()
+        NoteOpener.shared.request = note.id
+        await settle()
+        func find<T: NSView>(_ type: T.Type, in view: NSView) -> T? {
+            if let v = view as? T { return v }
+            for s in view.subviews { if let v = find(type, in: s) { return v } }
+            return nil
+        }
+        let editor = try #require(w.contentView.flatMap { find(PaneTextView.self, in: $0) }, "the note is open in the editor")
+        #expect(editor.string == "Open note\n\ntext")
+
+        // The views count their bodies while the hover probe is on (RenderProbe, in Hover.swift).
+        RenderProbe.counts = [:]
+        HoverProbe.enabled = true
+        defer { HoverProbe.enabled = false; HoverProbe.reset(); RenderProbe.counts = [:] }
+        // Three writes as the editor makes them, each followed by what a sync push does.
+        for i in 0..<3 {
+            note.body += " \(i)"
+            note.touch()
+            await settle()
+            note.serverVersion += 1
+            note.dirty = false
+            try ctx.save()
+            await settle()
+        }
+        print("PERF 3 saves of the open note: bodies worked out again \(RenderProbe.counts.sorted { $0.key < $1.key }.map { "\($0.key) \($0.value)" }.joined(separator: ", "))")
+        #expect((RenderProbe.counts["NoteEditorText"] ?? 0) > 0, "the editor's view follows the note")
+        // The pane no longer follows the note's text. It is still given again when the window above
+        // it is worked out (in this window that happens once per save), so it runs no more often
+        // than the window does; reading the text itself, it ran on every write as well.
+        #expect((RenderProbe.counts["NoteDetailView"] ?? 0) <= (RenderProbe.counts["RootView"] ?? 0), "the note pane is worked out only when the window is")
+
+        // Text that arrives from elsewhere still shows in the editor.
+        note.body = "Changed elsewhere\n\nby sync"
+        note.touch()
+        await settle()
+        #expect(editor.string == "Changed elsewhere\n\nby sync", "a change from elsewhere reaches the editor")
+    }
+
     /// The sidebar counts in the store. Notes made, deleted or recovered count straight away,
     /// before the library is saved.
     @Test func sidebarCountsIncludeUnsavedChanges() throws {

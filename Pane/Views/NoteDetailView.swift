@@ -47,6 +47,8 @@ struct NoteDetailView: View {
     /// Lock Note: setting the password up, asking for it, or confirming.
     @State private var lockSheet: LockSheet?
     @State private var confirmLock = false
+    /// The lock dialog's title, taken from the note as the dialog opens (see `askToLock`).
+    @State private var lockDialogTitle = ""
     @State private var lockProblem: String?
     /// A wiki link was tapped whose note doesn't exist yet: its name, while we offer to make it.
     @State private var missingNote: String?
@@ -120,10 +122,10 @@ struct NoteDetailView: View {
             .sheet(item: $lockSheet) { step in
                 switch step {
                 case .setUp: NotesPasswordSetupSheet { lockNote() }
-                case .password: NotesPasswordPrompt(message: "Enter your notes password to lock this note.") { confirmLock = true }
+                case .password: NotesPasswordPrompt(message: "Enter your notes password to lock this note.") { askToLock() }
                 }
             }
-            .confirmationDialog(lockTitle, isPresented: $confirmLock, titleVisibility: .visible) {
+            .confirmationDialog(lockDialogTitle, isPresented: $confirmLock, titleVisibility: .visible) {
                 Button("Lock Note") { lockNote() }
                     .accessibilityIdentifier("lock.confirm")
             } message: {
@@ -213,7 +215,7 @@ struct NoteDetailView: View {
             .onReceive(NotificationCenter.default.publisher(for: Capture.lockCapture)) { n in
                 switch n.object as? String {
                 case "setup": lockSheet = .setUp
-                case "confirm": confirmLock = true
+                case "confirm": askToLock()
                 default: break
                 }
             }
@@ -392,19 +394,18 @@ struct NoteDetailView: View {
     /// The editor, or for a locked note that isn't open, the lock.
     @ViewBuilder
     private var editor: some View {
-        if let text = vault.text(of: note) {
+        if readable {
             // Both stay alive, so switching is instant and the editor can tint what the page changed.
             ZStack {
                 // A shared note's editor takes merged text from its session (CollabWiring), not from
                 // the note's mirrored body, which can lag a keystroke behind and undo it.
-                MarkdownEditor(initialText: text, header: DateBucket.header(note.updatedAt), controller: controller, autofocus: autofocus,
-                               followsInitialText: collab == nil, onChange: save)
+                NoteEditorText(note: note, controller: controller, autofocus: autofocus, followsInitialText: collab == nil, onChange: save)
                     .onAppear { if note.isLocked { vault.touch() } }
                     .opacity(showingPage ? 0 : 1)
                     .allowsHitTesting(!showingPage)
                     .accessibilityHidden(showingPage)
                 if let page = notePage {
-                    NotePageView(noteID: note.id, html: page.html, text: text, onUpdate: applyPageEdit, onFailure: pageFailed, onData: pageData,
+                    NotePageView(noteID: note.id, html: page.html, text: vault.text(of: note) ?? "", onUpdate: applyPageEdit, onFailure: pageFailed, onData: pageData,
                                  files: { [context] id in NotePageActions.file(id, note: note, context: context) },
                                  onFocus: { focused in
                                      pageFieldFocused = focused
@@ -434,8 +435,14 @@ struct NoteDetailView: View {
         }
     }
 
+    /// Whether the note's text is here to show: always, unless the note is locked and not open.
+    /// Asked without reading the text of a note that isn't locked. This view reads the text
+    /// nowhere while you type (`NoteEditorText` does), so a save doesn't work out the note pane,
+    /// its toolbar and its menus again: the editor writes the note every 0.35 s.
+    private var readable: Bool { note.lockedBody == nil || vault.text(of: note) != nil }
+
     /// A locked note that isn't open: nothing on screen to edit. The page has no caret either.
-    private var hidden: Bool { vault.text(of: note) == nil || showingPage }
+    private var hidden: Bool { !readable || showingPage }
 
     // MARK: Note pages (prototype)
 
@@ -676,12 +683,20 @@ struct NoteDetailView: View {
         note.title.isEmpty ? "Lock this note?" : "Lock \u{201C}\(note.title)\u{201D}?"
     }
 
+    /// Asks before locking. The dialog's title names the note, and the note's title is read from
+    /// its text: it is read here, as the dialog opens, and not in the note pane's body, which
+    /// would then be worked out again with every write of the editor.
+    private func askToLock() {
+        lockDialogTitle = lockTitle
+        confirmLock = true
+    }
+
     /// Lock Note: sets the notes password up the first time, asks for it while notes are locked.
     private func startLock() {
         if let why = NoteVault.blocker(for: note) { lockProblem = why.errorDescription; return }
         Task { @MainActor in
             if !vault.isSetUp { await vault.refresh() }
-            if !vault.isSetUp { lockSheet = .setUp } else if !vault.isUnlocked { lockSheet = .password } else { confirmLock = true }
+            if !vault.isSetUp { lockSheet = .setUp } else if !vault.isUnlocked { lockSheet = .password } else { askToLock() }
         }
     }
 
@@ -704,7 +719,12 @@ struct NoteDetailView: View {
     }
 
     private func chrome(_ content: some View) -> some View {
-        content
+        // Counted here, once per body: a statement in the body itself is more than the
+        // compiler can type-check in time.
+        #if DEBUG
+        RenderProbe.count("NoteDetailView")
+        #endif
+        return content
             .ignoresSafeArea(.container, edges: .bottom)
             .background(Color.notePage.ignoresSafeArea())
             .safeAreaInset(edge: .top, spacing: 0) {
@@ -1011,9 +1031,7 @@ struct NoteDetailView: View {
         }
         ShareLinkMenuSection(store: shareLinks, note: note)
         Section {
-            ShareLink(item: note.body, preview: SharePreview(note.title)) {
-                Label("Send a Copy…", systemImage: "square.and.arrow.up")
-            }
+            SendCopyItem(note: note)
         }
     }
 
@@ -1097,6 +1115,38 @@ struct NoteDetailView: View {
         }
         #endif
         .accessibilityIdentifier("editor.more")
+    }
+}
+
+/// The note's text in the editor, under its date. A view of its own: it is what reads the text
+/// and the date, so a save while you type works out this view, not the whole note pane.
+private struct NoteEditorText: View {
+    let note: Note
+    let controller: EditorController
+    let autofocus: Bool
+    let followsInitialText: Bool
+    let onChange: (String) -> Void
+
+    var body: some View {
+        #if DEBUG
+        let _ = RenderProbe.count("NoteEditorText")
+        #endif
+        // A locked note that isn't open has no text to give the editor; its pane shows the lock.
+        if let text = NoteVault.shared.text(of: note) {
+            MarkdownEditor(initialText: text, header: DateBucket.header(note.updatedAt), controller: controller, autofocus: autofocus,
+                           followsInitialText: followsInitialText, onChange: onChange)
+        }
+    }
+}
+
+/// "Send a Copy…" with the note's text. A view of its own for the same reason: it reads the text.
+private struct SendCopyItem: View {
+    let note: Note
+
+    var body: some View {
+        ShareLink(item: note.body, preview: SharePreview(note.title)) {
+            Label("Send a Copy…", systemImage: "square.and.arrow.up")
+        }
     }
 }
 
