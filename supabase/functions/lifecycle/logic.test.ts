@@ -85,14 +85,14 @@ Deno.test("subject line variants: half and half, fixed per account", () => {
 
 Deno.test("click links: signed per email and link, only to the emails' own hosts, and named without the query", async () => {
   const s = "x".repeat(40);
-  const link = await trackedLink("https://ambernotes.app", s, 42, "https://chatgpt.com/?q=hi");
+  const link = await trackedLink("https://pintonotes.com", s, 42, "https://chatgpt.com/?q=hi");
   const q = new URL(link).searchParams;
   assertEquals(new URL(link).pathname, "/go");
   assert(await validClick(s, q.get("s"), q.get("to"), q.get("t")));
   assert(!await validClick(s, "43", q.get("to"), q.get("t")));
   assert(!await validClick(s, q.get("s"), "https://chatgpt.com/?q=other", q.get("t")));
   assert(!await validClick(s, q.get("s"), "https://evil.example/", q.get("t")));
-  assertEquals([clickable("https://claude.ai/new"), clickable("http://ambernotes.app/"), clickable("https://evil.example/")], [true, false, false]);
+  assertEquals([clickable("https://claude.ai/new"), clickable("https://pintonotes.com/download"), clickable("https://ambernotes.app/open/import"), clickable("http://pintonotes.com/"), clickable("https://evil.example/")], [true, true, true, false, false]);
   assertEquals(linkName("https://chatgpt.com/?q=private"), "chatgpt.com/");
 });
 
@@ -141,9 +141,9 @@ Deno.test("unsubscribe tokens work for their own account only", async () => {
   assert(!await validUnsubscribe("y".repeat(40), a, t));
   assert(!await validUnsubscribe(s, a, t.slice(1)));
   assert(!await validUnsubscribe(s, "nope", t));
-  const links = unsubscribeLinks("https://ambernotes.app", a, t);
-  assertEquals(links.page, `https://ambernotes.app/unsubscribe?u=${a}&t=${t}`);
-  assertEquals(links.oneClick, `https://ambernotes.app/unsubscribe/confirm?u=${a}&t=${t}`);
+  const links = unsubscribeLinks("https://pintonotes.com", a, t);
+  assertEquals(links.page, `https://pintonotes.com/unsubscribe?u=${a}&t=${t}`);
+  assertEquals(links.oneClick, `https://pintonotes.com/unsubscribe/confirm?u=${a}&t=${t}`);
 });
 
 Deno.test("settings: off unless LIFECYCLE_ENABLED is exactly true; missing secrets turn it off", () => {

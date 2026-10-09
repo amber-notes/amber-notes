@@ -147,7 +147,7 @@ max_indexes = 5
 enabled = true
 # The base URL of your website. Used as an allow-list for redirects and for constructing URLs used
 # in emails. Local: the website's dev server (web/, pnpm dev), where the reset email's link lands.
-# Production is https://ambernotes.app, set through the Management API (docs/Technical/password-reset.md).
+# Production is https://pintonotes.com, set through the Management API (docs/Technical/password-reset.md).
 site_url = "http://127.0.0.1:5210"
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
 additional_redirect_urls = ["https://127.0.0.1:3000", "ambernotes://auth-callback"]
@@ -231,27 +231,27 @@ otp_expiry = 3600
 # copies are set through the Management API, not from here. The "password changed" notice is set
 # there only (docs/Technical/password-reset.md).
 [auth.email.template.recovery]
-subject = "Reset your Amber Notes password"
+subject = "Reset your Pinto Notes password"
 content_path = "./supabase/templates/recovery.html"
 
 [auth.email.template.magic_link]
-subject = "Your Amber Notes sign-in code"
+subject = "Your Pinto Notes sign-in code"
 content_path = "./supabase/templates/magic_link.html"
 
 [auth.email.template.confirmation]
-subject = "Confirm your email for Amber Notes"
+subject = "Confirm your email for Pinto Notes"
 content_path = "./supabase/templates/confirmation.html"
 
 [auth.email.template.email_change]
-subject = "Confirm your new email for Amber Notes"
+subject = "Confirm your new email for Pinto Notes"
 content_path = "./supabase/templates/email_change.html"
 
 [auth.email.template.invite]
-subject = "You're invited to Amber Notes"
+subject = "You're invited to Pinto Notes"
 content_path = "./supabase/templates/invite.html"
 
 [auth.email.template.reauthentication]
-subject = "Your Amber Notes code"
+subject = "Your Pinto Notes code"
 content_path = "./supabase/templates/reauthentication.html"
 
 [auth.sms]

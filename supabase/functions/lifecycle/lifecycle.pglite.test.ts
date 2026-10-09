@@ -14,7 +14,7 @@ const at = (ms: number) => new Date(NOW.getTime() + ms);
 
 const cfg = (o: Partial<Config> = {}): Config => ({
   enabled: true, flags: { apps: false, appStore: false, sharing: false }, subjectTest: false, trackClicks: false, since: at(-60 * D), only: null, resendKey: "re_test", unsubscribeSecret: "u".repeat(40), cronSecret: "c".repeat(40),
-  from: "Emil at Amber Notes <emil@ambernotes.app>", replyTo: "emil@ambernotes.app", site: "https://ambernotes.app", ...o,
+  from: "Emil at Pinto Notes <emil@ambernotes.app>", replyTo: "emil@ambernotes.app", site: "https://pintonotes.com", open: "https://ambernotes.app", ...o,
 });
 
 /// A fake Resend that remembers what it was given.
@@ -209,12 +209,12 @@ Deno.test("measurement: the subject variant is kept, links go through /go, click
   const m = box.sent[0];
   const [row] = (await pg.query<{ id: number; variant: number }>(`select id, variant from public.email_sends`)).rows;
   assertEquals(row.variant, variantOf(a.id));
-  const goes = [...m.html.matchAll(/href="(https:\/\/ambernotes\.app\/go\?[^"]+)"/g)];
+  const goes = [...m.html.matchAll(/href="(https:\/\/pintonotes\.com\/go\?[^"]+)"/g)];
   assert(goes.length >= 1, "links are counted");
   assertStringIncludes(m.html, "/unsubscribe?u=");
   assert(!/\/go\?[^"]*unsubscribe/.test(m.html), "the unsubscribe link isn't wrapped");
-  assertEquals(await recordClick(sqlFor(pg), Number(row.id), "https://ambernotes.app/blog/connect-chatgpt-to-your-notes?x=1"), true);
-  assertEquals((await pg.query<{ link: string }>(`select link from public.email_clicks`)).rows[0].link, "ambernotes.app/blog/connect-chatgpt-to-your-notes");
+  assertEquals(await recordClick(sqlFor(pg), Number(row.id), "https://pintonotes.com/blog/connect-chatgpt-to-your-notes?x=1"), true);
+  assertEquals((await pg.query<{ link: string }>(`select link from public.email_clicks`)).rows[0].link, "pintonotes.com/blog/connect-chatgpt-to-your-notes");
   await pg.query(`insert into public.mcp_tokens (user_id, name, token_hash) values ($1, 'Claude', $2)`, [a.id, crypto.randomUUID()]);
   assertEquals(await stats(sqlFor(pg)), [{ kind: "connect", variant: variantOf(a.id), sent: 1, clicked: 1, done: 1 }]);
 });
@@ -252,8 +252,8 @@ Deno.test("each email carries an unsubscribe link and the one-click headers", as
   await run({ sql: sqlFor(pg), send: box.send, cfg: cfg(), ...quick });
   const m = box.sent[0];
   assertEquals(m.headers["List-Unsubscribe-Post"], "List-Unsubscribe=One-Click");
-  assert(m.headers["List-Unsubscribe"].startsWith(`<https://ambernotes.app/unsubscribe/confirm?u=${a.id}&t=`));
-  assertStringIncludes(m.text, `https://ambernotes.app/unsubscribe?u=${a.id}&t=`);
+  assert(m.headers["List-Unsubscribe"].startsWith(`<https://pintonotes.com/unsubscribe/confirm?u=${a.id}&t=`));
+  assertStringIncludes(m.text, `https://pintonotes.com/unsubscribe?u=${a.id}&t=`);
   assertEquals(m.reply_to, "emil@ambernotes.app");
 });
 

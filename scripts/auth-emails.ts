@@ -6,13 +6,20 @@
 //   deno run -A scripts/auth-emails.ts write    rewrite supabase/templates/*.html
 //   deno run -A scripts/auth-emails.ts patch    print the subjects and templates as the body of
 //                                               PATCH /v1/projects/<ref>/config/auth (nothing else)
+//   deno run -A scripts/auth-emails.ts config   print what the emails say as a whole: the site URL,
+//                                               the sender name, the subjects and templates
+//                                               (scripts/auth-email-config.sh; "config setup" adds
+//                                               the first-time SMTP settings and limits)
+//   deno run -A scripts/auth-emails.ts confirm  print the body that turns on email confirmation
+//                                               with a 6-digit code (docs/Technical/email-confirmation.md)
 //
 // Supabase Auth fills these in with Go's html/template, which drops every HTML comment. So there are
 // no comments in the output, Outlook's conditional comments (and a VML button) included: classic
 // Outlook gets the button as a coloured table cell, and only its label is pressable there.
 // Each template keeps the Go variables and link shapes it had: the reset link goes to
 // {{ .SiteURL }}/reset-password with the token hash in the fragment (docs/Technical/password-reset.md),
-// and {{ .SiteURL }} must be https://ambernotes.app in production.
+// and {{ .SiteURL }} must be https://pintonotes.com in production.
+import { HELLO, SENDER_NAME } from "../supabase/functions/_shared/sender.ts";
 
 export type AuthEmail = {
   file: string;
@@ -31,17 +38,18 @@ export type AuthEmail = {
   link?: string;
 };
 
-const SITE = "https://ambernotes.app";
+export const SITE = "https://pintonotes.com";
+/// For the people who made an account under the old name. Take it out when the old name is forgotten.
+const RENAMED = "Pinto Notes was called Amber Notes until October 2026.";
 const ASSETS = `${SITE}/email`;
 const RESET = "{{ .SiteURL }}/reset-password#token_hash={{ .TokenHash }}&amp;type=recovery";
-const CONFIRM = "{{ .SiteURL }}/account/confirm?token_hash={{ .TokenHash }}&type=email";
 const CHANGE = "{{ .SiteURL }}/account/confirm?token_hash={{ .TokenHash }}&type=email_change";
 
 export const EMAILS: AuthEmail[] = [
   {
     file: "recovery.html",
     key: "recovery",
-    subject: "Reset your Amber Notes password",
+    subject: "Reset your Pinto Notes password",
     preview: "Choose a new password. The link works for one hour.",
     title: "Let's get you back in",
     line: "Press the button to choose a new password for {{ .Email }}.",
@@ -52,29 +60,29 @@ export const EMAILS: AuthEmail[] = [
   {
     file: "magic_link.html",
     key: "magic_link",
-    subject: "Your Amber Notes sign-in code",
+    subject: "Your Pinto Notes sign-in code",
     preview: "Your code is inside. It works for one hour.",
     title: "Here's your way in",
-    line: "Type this code in Amber Notes to sign in as {{ .Email }}.",
+    line: "Type this code in Pinto Notes to sign in as {{ .Email }}.",
     code: "{{ .Token }}",
     note: "The code works for one hour. Didn't ask for it? Ignore this email.",
     link: "{{ .ConfirmationURL }}",
   },
   {
+    // A code, not a link: the apps ask for it right after sign-up (docs/Technical/email-confirmation.md).
     file: "confirmation.html",
     key: "confirmation",
-    subject: "Confirm your email for Amber Notes",
-    preview: "One quick check that this address is yours.",
+    subject: "Confirm your email for Pinto Notes",
+    preview: "Your code is inside. It works for one hour.",
     title: "One quick check",
-    line: "Press the button to confirm that {{ .Email }} is yours.",
-    button: { label: "Confirm my email", href: CONFIRM },
-    note: "Didn't make an Amber Notes account? Ignore this email.",
-    link: CONFIRM,
+    line: "Type this code in Pinto Notes to confirm that {{ .Email }} is yours.",
+    code: "{{ .Token }}",
+    note: "The code works for one hour. Didn't make a Pinto Notes account? Ignore this email.",
   },
   {
     file: "email_change.html",
     key: "email_change",
-    subject: "Confirm your new email for Amber Notes",
+    subject: "Confirm your new email for Pinto Notes",
     preview: "Confirm the change, and you'll sign in with your new address.",
     title: "New address, same notes",
     line: "Press the button to sign in with {{ .NewEmail }} instead of {{ .Email }}.",
@@ -85,10 +93,10 @@ export const EMAILS: AuthEmail[] = [
   {
     file: "invite.html",
     key: "invite",
-    subject: "You're invited to Amber Notes",
+    subject: "You're invited to Pinto Notes",
     preview: "Make your account, and you're in.",
     title: "Come on in",
-    line: "You're invited to make an Amber Notes account with {{ .Email }}.",
+    line: "You're invited to make a Pinto Notes account with {{ .Email }}.",
     button: { label: "Accept the invite", href: "{{ .ConfirmationURL }}" },
     note: "Not expecting this? Ignore this email.",
     link: "{{ .ConfirmationURL }}",
@@ -96,17 +104,17 @@ export const EMAILS: AuthEmail[] = [
   {
     file: "reauthentication.html",
     key: "reauthentication",
-    subject: "Your Amber Notes code",
+    subject: "Your Pinto Notes code",
     preview: "Type the code inside to confirm it's you.",
     title: "Just checking it's you",
-    line: "Type this code in Amber Notes to confirm it's you, {{ .Email }}.",
+    line: "Type this code in Pinto Notes to confirm it's you, {{ .Email }}.",
     code: "{{ .Token }}",
     note: "Didn't ask for a code? Ignore this email.",
   },
   {
     file: "password_changed.html",
     key: "password_changed_notification",
-    subject: "Your Amber Notes password was changed",
+    subject: "Your Pinto Notes password was changed",
     preview: "If this was you, there's nothing to do.",
     title: "Your password was changed",
     line: "If you didn't change the password for {{ .Email }}, reset it now.",
@@ -218,8 +226,8 @@ ${table(` class="ground" width="100%" bgcolor="${L.ground}" style="width:100%;mi
 ${table(' width="100%" style="width:100%;max-width:520px;"')}
   <tr><td style="padding:0 4px 18px;">
     ${table()}<tr>
-      <td style="padding-right:10px;">${table()}<tr><td width="28" height="28" align="center" valign="middle" bgcolor="#f0901a" style="width:28px;height:28px;background:#f0901a;border-radius:7px;text-align:center;"><img src="${ASSETS}/mark.png" width="28" height="28" alt="A" style="display:block;width:28px;height:28px;border:0;border-radius:7px;color:#fff4e6;font-family:${DISPLAY};font-size:16px;font-weight:800;line-height:28px;text-align:center;"></td></tr></table></td>
-      <td class="ink" style="font-family:${DISPLAY};font-size:18px;font-weight:700;color:#2a1d10;">Amber Notes</td>
+      <td style="padding-right:10px;">${table()}<tr><td width="28" height="28" align="center" valign="middle" bgcolor="#f0901a" style="width:28px;height:28px;background:#f0901a;border-radius:7px;text-align:center;"><img src="${ASSETS}/mark.png" width="28" height="28" alt="P" style="display:block;width:28px;height:28px;border:0;border-radius:7px;color:#fff4e6;font-family:${DISPLAY};font-size:16px;font-weight:800;line-height:28px;text-align:center;"></td></tr></table></td>
+      <td class="ink" style="font-family:${DISPLAY};font-size:18px;font-weight:700;color:#2a1d10;">Pinto Notes</td>
     </tr></table>
   </td></tr>
   <tr><td class="window" bgcolor="${L.page}" style="background:${L.page};border:1px solid ${L.edge};border-radius:14px;">
@@ -241,7 +249,7 @@ ${body}
             <td valign="middle" style="padding-right:12px;">${table()}<tr><td width="44" height="44" align="center" valign="middle" bgcolor="#74604c" style="width:44px;height:44px;background:#74604c;border-radius:22px;text-align:center;"><img src="${ASSETS}/emil.jpg" width="44" height="44" alt="E" style="display:block;width:44px;height:44px;border:0;border-radius:22px;color:#fff4e6;font-family:${DISPLAY};font-size:19px;font-weight:700;line-height:44px;text-align:center;"></td></tr></table></td>
             <td valign="middle" style="font-family:${SANS};">
               <p class="ink" style="margin:0;font-size:16px;line-height:1.35;font-weight:600;color:${L.text};">Emil</p>
-              <p class="sec" style="margin:0;font-size:14px;line-height:1.4;color:${L.secondary};">I make Amber Notes. Just reply to reach me.</p>
+              <p class="sec" style="margin:0;font-size:14px;line-height:1.4;color:${L.secondary};">I make Pinto Notes. Just reply to reach me.</p>
             </td>
           </tr></table>
         </td></tr></table>
@@ -249,7 +257,8 @@ ${body}
     </table>
   </td></tr>
   <tr><td class="muted" style="padding:20px 8px 0;font-family:${SANS};font-size:13px;line-height:1.55;color:${L.muted};">
-    Amber Notes, made by Emil Wagman in Sweden. <a class="foot-lnk" href="${SITE}/help" style="color:${L.link};">Help</a> &middot; <a class="foot-lnk" href="${SITE}/privacy" style="color:${L.link};">Privacy</a>
+    Pinto Notes, made by Emil Wagman in Sweden. <a class="foot-lnk" href="${SITE}/help" style="color:${L.link};">Help</a> &middot; <a class="foot-lnk" href="${SITE}/privacy" style="color:${L.link};">Privacy</a><br>
+    ${RENAMED}
   </td></tr>
 </table>
 </td></tr>
@@ -269,9 +278,47 @@ export function patch(): Record<string, string> {
   return out;
 }
 
+/// The body of PATCH /v1/projects/<ref>/config/auth for what the account emails say as a whole:
+/// the site their links open ({{ .SiteURL }}), the name they come from, and every subject and
+/// template. With `setup`, also what a project needs the first time: SMTP through Resend (the
+/// password, smtp_pass, is added by whoever applies it), the sender address, one email a minute per
+/// address, the hourly cap, links and codes that work for an hour, and the "password changed" notice.
+export function config(setup = false): Record<string, string | number | boolean> {
+  return {
+    site_url: SITE,
+    smtp_sender_name: SENDER_NAME,
+    ...patch(),
+    ...(setup ? {
+      smtp_admin_email: HELLO,
+      smtp_host: "smtp.resend.com",
+      smtp_port: "465",
+      smtp_user: "resend",
+      smtp_max_frequency: 60,
+      rate_limit_email_sent: 30,
+      mailer_otp_exp: 3600,
+      mailer_notifications_password_changed_enabled: true,
+    } : {}),
+  };
+}
+
+/// The body of PATCH /v1/projects/<ref>/config/auth that turns on email confirmation for email
+/// sign-ups, with the code email. Apple and Google sign-ups arrive confirmed and skip it.
+export function confirmPatch(subjectPrefix = ""): Record<string, string | number | boolean> {
+  const e = EMAILS.find((x) => x.key === "confirmation")!;
+  return {
+    mailer_autoconfirm: false,
+    mailer_otp_length: 6,
+    mailer_otp_exp: 3600,
+    mailer_subjects_confirmation: subjectPrefix + e.subject,
+    mailer_templates_confirmation_content: html(e),
+  };
+}
+
 if (import.meta.main) {
   const dir = new URL("../supabase/templates/", import.meta.url);
   if (Deno.args[0] === "write") for (const e of EMAILS) Deno.writeTextFileSync(new URL(e.file, dir), html(e));
   else if (Deno.args[0] === "patch") console.log(JSON.stringify(patch(), null, 2));
-  else throw new Error("Usage: deno run -A scripts/auth-emails.ts write|patch");
+  else if (Deno.args[0] === "config") console.log(JSON.stringify(config(Deno.args[1] === "setup"), null, 2));
+  else if (Deno.args[0] === "confirm") console.log(JSON.stringify(confirmPatch(Deno.args[1] ?? ""), null, 2));
+  else throw new Error("Usage: deno run -A scripts/auth-emails.ts write|patch|config [setup]|confirm [subject prefix]");
 }

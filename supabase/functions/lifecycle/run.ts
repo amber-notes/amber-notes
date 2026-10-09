@@ -62,7 +62,7 @@ async function claim(sql: Sql, f: Facts, kind: Kind, variant: number, now: Date)
   });
 }
 
-/// Puts every link that may be counted through ambernotes.app/go (only with LIFECYCLE_TRACK_CLICKS).
+/// Puts every link that may be counted through pintonotes.com/go (only with LIFECYCLE_TRACK_CLICKS).
 async function track(html: string, cfg: Config, sendId: number, skip: string[]): Promise<string> {
   const urls = [...new Set([...html.matchAll(/href="(https:[^"]+)"/g)].map((m) => m[1].replace(/&amp;/g, "&")))]
     .filter((u) => clickable(u) && !skip.includes(u));
@@ -94,7 +94,7 @@ export async function run({ sql, send, cfg, now = new Date(), anyHour = false, p
     const id = await claim(sql, f, kind, variant, now);
     if (id === null) continue;
     const links = unsubscribeLinks(cfg.site, f.user_id, await unsubscribeToken(cfg.unsubscribeSecret, f.user_id));
-    const email = render(kind, { site: cfg.site, assets: `${cfg.site}/email`, unsubscribe: links.page, sortable: sortable(f), connectTried: f.connect_tried, variant });
+    const email = render(kind, { site: cfg.site, open: cfg.open, assets: `${cfg.site}/email`, unsubscribe: links.page, sortable: sortable(f), connectTried: f.connect_tried, variant });
     if (cfg.trackClicks) email.html = await track(email.html, cfg, id, [links.page, `${cfg.site}/privacy`]);
     let result: SendResult;
     try {
@@ -137,7 +137,7 @@ export function resend(key: string, fetcher: typeof fetch = fetch): Send {
   };
 }
 
-/// Records a click from ambernotes.app/go: which email and the link's host and path. Returns false
+/// Records a click from pintonotes.com/go: which email and the link's host and path. Returns false
 /// for an email row that doesn't exist (an account deleted since).
 export async function recordClick(sql: Sql, sendId: number, url: string): Promise<boolean> {
   const rows = await sql`insert into public.email_clicks (send_id, link)
