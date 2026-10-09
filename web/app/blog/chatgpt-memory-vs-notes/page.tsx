@@ -75,7 +75,7 @@ export default function Page() {
         <li><strong>Lists.</strong> A shopping list or to-dos you tick off on your phone in the shop. <a href="/blog/chatgpt-to-do-list-on-iphone">Using ChatGPT as a to-do list</a> shows how.</li>
         <li><strong>Plans and drafts.</strong> A trip plan or a proposal you&apos;ll edit yourself, where the exact text matters.</li>
         <li><strong>Records.</strong> Meeting notes, decisions, a work log: things you&apos;ll look up months later, word for word.</li>
-        <li><strong>Several AIs.</strong> If you use Claude or a coding agent as well, notes are the one place they all read. <a href="/blog/work-log-with-claude-code">A work log with Claude Code</a> is one example.</li>
+        <li><strong>Several AIs.</strong> If you use Claude or a coding agent as well, notes are the one place they all read. <a href="/blog/work-log-with-claude-code">A work log with Claude Code</a> is one example, and Claude has a memory of its own: <a href="/blog/claude-memory-vs-notes">Claude memory vs notes</a>.</li>
       </ul>
 
       <h2>How to use both</h2>

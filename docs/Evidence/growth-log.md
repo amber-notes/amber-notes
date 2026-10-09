@@ -52,6 +52,27 @@ The app was renamed from Amber Notes to Pinto Notes on 8 October, and the site m
 - **Every week:** 404s in PostHog (pathname of page views on the not-found page) for an old address nobody redirected; Bing Webmaster Tools, Site Explorer, for pintonotes.com pages found.
 - **Keep for good:** ambernotes.app registered with auto-renew, and its redirects in place. Google asks for at least a year; links and installed apps need it longer.
 
+## 7 October 2026: measured per post, "Recover deleted Apple Notes" upgraded, "Claude memory vs notes"
+
+### Measured
+
+- **PostHog (EU project 291184), 2 October to 7 October 09:00 UTC.** Page views: 148, 39, 53, 90, 143, and 11 so far on 7 October; 484 in all. `download_mac_clicked` 10 (2, 1, 0, 3, 4, 0). `cookies_accepted` 8, mostly our own checks of the new banner.
+- **Per post:** the new [blog-roi.md](blog-roi.md) table. Google landed people on four posts: apple-notes-ios-27 (5), apple-notes-api (3), forgot-apple-notes-password (1) and best-notes-app-for-ai-agents (1). Those visits read deep (62 to 79% on average), but none clicked Download the same day. The three measured blog events from PR 201 haven't fired yet.
+- **Google Search Console, last 7 days (Google's data to 4 October):** 11 clicks, 470 impressions, 2.3% click rate, average position 10.3, 60 queries. Top by impressions: "forgot notes password" 10 (position 11.6), "apple notes api" 8 (6.6), "amber notes" 6 (6.2, 1 click), "icloud notes api" 4, "i forgot my notes password" 4, "how to reset notes password" 3 (30.7), "how to restore deleted notes" 3 (32.0), "apple notes mcp" 3 (52.0).
+- **Found at 390 px:** the short answer's jump links ran off the screen on the three upgraded posts (fixed in its own PR).
+
+Reading: Apple Notes problem posts bring the search visits and get read; nothing converts from them yet. The upgraded posts' calls to action are a day old, so tomorrow's numbers are the first real test.
+
+### Changed
+
+- **Upgraded `/blog/recover-deleted-apple-notes`** (branch `site/recover-deleted-upgrade`). Picked by impressions: it gets impressions for "how to restore deleted notes", a big query where it sits at position 32, and it was still a wall of text. It now has the short answer first, a "Where did my note go?" chooser, and real captures from a throwaway macOS 27 VM on the fleet Air (vanilla image, no Apple Account, On My Mac, demo notes; VM and image deleted afterwards). The captures show Recently Deleted with Apple's own line about 30 days plus up to 40 more for iCloud, the first-delete dialog, and Control-click, Move to, Notes. That last one is a Mac step the post didn't have, and moving a note back that way was tested in the VM. The Amber Notes section drops "up to 100 earlier versions": the server's ceiling is now 500 and old versions are thinned (`20260929200000_version_history.sql`).
+- **New post `/blog/claude-memory-vs-notes`**, in Comparisons (branch `site/claude-memory-vs-notes`). It's a converting post, the Claude counterpart of the ChatGPT memory post, and links to the connect guide. Claude's memory facts come from Anthropic's help pages "Use Claude's chat search and memory" and "Import and export your memory", read on 7 October: Settings, Memory; Generate memory from chats; topics you can edit; on by default on Free, Pro and Max; owners decide on Team and Enterprise; separate memory per project; incognito left out. Two prompts to copy: a line for Claude's memory, and Anthropic's own export prompt extended to save the memory into a note. The connect steps follow the published connect guide and `ConnectGuide.swift`. The hero is a new offscreen capture of Claude's edit to the Lisbon note (`BlogSnapshots.claudeEditForMemoryPost`), and the card has a new slate ground.
+
+### To measure next
+
+- PostHog: `blog_helper_used` on the recover post, `blog_copy_clicked` on the Claude memory post, and any blog visit followed by `download_mac_clicked`.
+- Search Console: position for "how to restore deleted notes" and "recover deleted apple notes" after the upgrade is crawled, and impressions for "claude memory".
+
 ## 6 October 2026: a week of PostHog, Search Console, and "One memory for Claude Code, Codex and your other agents"
 
 ### Measured
