@@ -6,8 +6,8 @@ import Foundation
 /// its data stay stored and synced untouched.
 ///
 /// The released app (Release, Pinto Notes' own bundle id) is always off. Development builds (Debug,
-/// QA) are on; `-noteApps NO` shows them as released. Pinto Notes Beta is off until `-noteApps YES`
-/// (a launch argument, or `defaults write dev.emilwagman.pane.beta noteApps -bool YES`).
+/// QA) and Pinto Notes Beta are on; `-noteApps NO` (a launch argument, or `defaults write
+/// dev.emilwagman.pane.beta noteApps -bool NO`) shows them as released.
 enum NoteApps {
     static let key = "noteApps"
 
@@ -23,8 +23,7 @@ enum NoteApps {
     }()
 
     static func isEnabled(development: Bool, beta: Bool, setting: Bool?) -> Bool {
-        if development { return setting ?? true }
-        return beta && setting == true
+        development || beta ? setting ?? true : false
     }
 
     /// The app a note runs, as NotePageStore.live: none while apps are off.
