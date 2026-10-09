@@ -18,31 +18,31 @@ export type NumberAction = "type" | "compare";
 type Named = Exclude<Lead, "recover" | "any">;
 
 const TITLE: Record<Named, string> = {
-  iphone: "Open Amber Notes on your iPhone", mac: "Open Amber Notes on your Mac",
-  thisMac: "Open Amber Notes on this Mac", thisIphone: "Open Amber Notes on this iPhone",
+  iphone: "Open Pinto Notes on your iPhone", mac: "Open Pinto Notes on your Mac",
+  thisMac: "Open Pinto Notes on this Mac", thisIphone: "Open Pinto Notes on this iPhone",
 };
 const BODY: Record<Named, string> = {
-  iphone: "Amber Notes sent a notification to your iPhone. Open the notification to approve this connection.",
-  mac: "Amber Notes on your Mac asks you to approve this connection.",
-  thisMac: "Amber Notes asks you to approve this connection.",
-  thisIphone: "Amber Notes asks you to approve this connection.",
+  iphone: "Pinto Notes sent a notification to your iPhone. Open the notification to approve this connection.",
+  mac: "Pinto Notes on your Mac asks you to approve this connection.",
+  thisMac: "Pinto Notes asks you to approve this connection.",
+  thisIphone: "Pinto Notes asks you to approve this connection.",
 };
-const WHERE: Record<Named, string> = { iphone: "on your iPhone", mac: "on your Mac", thisMac: "in Amber Notes", thisIphone: "in Amber Notes" };
+const WHERE: Record<Named, string> = { iphone: "on your iPhone", mac: "on your Mac", thisMac: "in Pinto Notes", thisIphone: "in Pinto Notes" };
 
 /// The heading once the number shows: it names the number, the device and what to do with it.
 export function numberTitle(lead: Named, number: string, action: NumberAction): string {
   if (action === "type") return `Type ${number} ${WHERE[lead]}`;
-  return lead === "iphone" ? `Check that your iPhone shows ${number}` : lead === "mac" ? `Check that your Mac shows ${number}` : `Check that Amber Notes shows ${number}`;
+  return lead === "iphone" ? `Check that your iPhone shows ${number}` : lead === "mac" ? `Check that your Mac shows ${number}` : `Check that Pinto Notes shows ${number}`;
 }
 
 /// The one sentence under the picture once the number shows. The second half is the safety check:
 /// an app that doesn't ask for the number, or shows another one, isn't answering this page.
 export function numberBody(lead: Named, number: string, action: NumberAction): string {
-  const first = lead === "iphone" ? "Open the notification from Amber Notes" : null;
+  const first = lead === "iphone" ? "Open the notification from Pinto Notes" : null;
   if (action === "type") {
-    return `${first ? `${first}, type ${number},` : `Type ${number} in Amber Notes,`} then choose Allow. If Amber Notes shows no number box, choose Don't allow.`;
+    return `${first ? `${first}, type ${number},` : `Type ${number} in Pinto Notes,`} then choose Allow. If Pinto Notes shows no number box, choose Don't allow.`;
   }
-  return `${first ? `${first} and check that it shows ${number},` : `Check that Amber Notes shows ${number},`} then choose Allow. If the number is different, choose Don't allow.`;
+  return `${first ? `${first} and check that it shows ${number},` : `Check that Pinto Notes shows ${number},`} then choose Allow. If the number is different, choose Don't allow.`;
 }
 
 /// Signed in: the one device to use, its picture, and the number once that device has opened the
@@ -59,10 +59,10 @@ export function DeviceScreen({ lead, devices, number, action, openLink, onRecove
       <DeviceArt mac={lead === "mac" || lead === "thisMac"} />
       {number && <span className={styles.matchNumber} aria-hidden="true">{number}</span>}
       <p className={styles.lede}>{number ? numberBody(lead, number, action) : BODY[lead]}</p>
-      {here && !number && <a className={styles.primary} href={openLink}>Open Amber Notes</a>}
+      {here && !number && <a className={styles.primary} href={openLink}>Open Pinto Notes</a>}
       {lead === "thisMac" && !number && (
         <p className={styles.small}>
-          {devices.iphone ? "Nothing opened? Open the notification on your iPhone instead." : "Nothing opened? Amber Notes may be on another Mac."}
+          {devices.iphone ? "Nothing opened? Open the notification on your iPhone instead." : "Nothing opened? Pinto Notes may be on another Mac."}
         </p>
       )}
       <div className={styles.links}>
@@ -97,7 +97,7 @@ function Resend({ onResend }: { onResend: () => Promise<string | null> }) {
 
 /// The words of the push, as the server sends them (notifyDevices in the MCP function).
 const PUSH_TITLE = "An AI connection request";
-const PUSH_BODY = "Open Amber Notes to see it.";
+const PUSH_BODY = "Open Pinto Notes to see it.";
 
 /// The top of the device, running off the soft field's edge. On an iPhone: the notification in
 /// its real words, with the app's mark and name, so you know what to look for and which app it is.
@@ -110,7 +110,7 @@ export function DeviceArt({ mac = false }: { mac?: boolean }) {
           <span className={styles.macCamera} />
           <div className={styles.macApp}>
             <img className={styles.pushMark} src="/mark-256.png" alt="" width={52} height={52} />
-            <span>Amber Notes</span>
+            <span>Pinto Notes</span>
           </div>
         </div>
       ) : (
@@ -119,7 +119,7 @@ export function DeviceArt({ mac = false }: { mac?: boolean }) {
           <div className={styles.push}>
             <img className={styles.pushMark} src="/mark-256.png" alt="" width={34} height={34} />
             <div className={styles.pushText}>
-              <span className={styles.pushApp}>Amber Notes<span>now</span></span>
+              <span className={styles.pushApp}>Pinto Notes<span>now</span></span>
               <span className={styles.pushTitle}>{PUSH_TITLE}</span>
               <span className={styles.pushBody}>{PUSH_BODY}</span>
             </div>

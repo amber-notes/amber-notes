@@ -36,7 +36,7 @@ export default function Page() {
         <Answer jump={[
           { href: "#set-it-up", label: "Set it up once" },
           { href: "#templates", label: "Five templates" },
-          { href: "#paste", label: "Paste them formatted" },
+          { href: "#paste", label: "Paste formatted" },
         ]}>
           <p>
             Apple Notes has no templates. Make a Templates folder with one note per template. When you need one, duplicate it on a Mac
@@ -88,14 +88,14 @@ export default function Page() {
 
       <h2 id="amber-notes">Templates that fill themselves in</h2>
       <p>
-        A template in Apple Notes stays a blank form you fill in by hand. I make Amber Notes, a notes app for iPhone and Mac that ChatGPT
+        A template in Apple Notes stays a blank form you fill in by hand. I make Pinto Notes, a notes app for iPhone and Mac that ChatGPT
         and Claude can read and write, and its free <a href="/templates">template library</a> works differently. Use template adds the note
-        to Amber Notes, and each one comes with a prompt, so you tell ChatGPT or Claude what happened and it files it under the right
+        to Pinto Notes, and each one comes with a prompt, so you tell ChatGPT or Claude what happened and it files it under the right
         heading, ticking things off as you go. <a href="/blog/move-from-apple-notes">Your Apple Notes come over</a> in one import, and
         Apple Notes isn&apos;t changed.
       </p>
-      <Figure shot={SHOTS.lisbon} caption="A trip note in Amber Notes on a Mac: a plan checklist, places to see, a linked booking and a table of where to eat." />
-      <PostCta slug="apple-notes-templates" position="how-amber-helps" title="Try Amber Notes on your Mac">
+      <Figure shot={SHOTS.lisbon} caption="A trip note in Pinto Notes on a Mac: a plan checklist, places to see, a linked booking and a table of where to eat." />
+      <PostCta slug="apple-notes-templates" position="how-amber-helps" title="Try Pinto Notes on your Mac">
         <p>Free templates that ChatGPT and Claude fill in for you, with every change marked and undoable.</p>
       </PostCta>
     </PostPage>

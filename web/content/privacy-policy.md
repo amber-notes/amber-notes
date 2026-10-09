@@ -4,12 +4,13 @@ Last updated: 6 October 2026
 
 ## The short version
 
+- Pinto Notes was called Amber Notes until October 2026. Same app, same service, and this policy covers both names.
 - Your notes are yours. Your notes, their titles, folder names, file names and files, and earlier versions are encrypted on your iPhone or Mac with a key only your devices hold, before they're uploaded. We store the encrypted copies so they sync, and we can't read them.
 - Some details stay readable to us, such as your email address, dates and sizes, and how your notes are organized. The section on end-to-end encryption lists all of them, and its limits.
 - No ads, no tracking and no third-party analytics in the apps, and we never sell or share your data.
 - The website counts page views and where visitors came from with Vercel Web Analytics, and which links and buttons are clicked, where on a page people click and how far pages are scrolled with PostHog, in the EU. These are counted across all visitors; no visit is recorded. Neither keeps a profile of you, and neither runs on shared notes or the connect pages. Vercel never uses cookies. PostHog uses none either, unless you choose Accept on the website's cookie banner: then it keeps one cookie for up to a year, so it can recognise your return visits. It also counts Mac downloads as daily totals. None of this touches your notes or your computer.
 - We count how features are used on our own server to improve the app. We never share or sell it.
-- An AI assistant can only read your notes if you connect it and approve it on your iPhone or Mac, or with your recovery key on ambernotes.app. While it works, our server opens the notes it asks for in memory. You can disconnect it at any time.
+- An AI assistant can only read your notes if you connect it and approve it on your iPhone or Mac, or with your recovery key on pintonotes.com. While it works, our server opens the notes it asks for in memory. You can disconnect it at any time.
 - A note you lock is encrypted a second time with your notes password. Not us and not an AI can read its text.
 - A note you share can be read by anyone with its link, until you stop sharing.
 - Your data is stored in the European Union (Frankfurt, Germany).
@@ -18,9 +19,9 @@ Last updated: 6 October 2026
 
 ## Who we are
 
-Amber Notes is made by Emil Wagman, an individual developer in Sweden. He is the controller of the personal data described here. Questions about privacy go to **hello@ambernotes.app**.
+Pinto Notes is made by Emil Wagman, an individual developer in Sweden. He is the controller of the personal data described here. Questions about privacy go to **hello@ambernotes.app**.
 
-This policy covers the Amber Notes apps for iPhone and Mac, the service that lets AI assistants connect to your notes, and the website at ambernotes.app, including shared note pages.
+This policy covers the Pinto Notes apps for iPhone and Mac, the service that lets AI assistants connect to your notes, and the website at pintonotes.com, including shared note pages.
 
 ## What we collect
 
@@ -79,13 +80,13 @@ We count how features are used on our own server to improve the app. We never sh
 
 - how many notes an AI connection changed on each day;
 - which steps of the first-run setup you've completed;
-- if you answer it, how you heard about Amber Notes: the choice you tap, and any words you add under Something else. We only look at it added up across accounts;
+- if you answer it, how you heard about Pinto Notes: the choice you tap, and any words you add under Something else. We only look at it added up across accounts;
 - a random identifier for each installation of the app and its platform (iPhone or Mac), to count how many devices an account uses. It isn't linked to your device's hardware or advertising identifiers.
 
 **Visits to the website**
 
 - **Page views,** with Vercel Web Analytics: which page was viewed, the site you came from, and your country, browser and type of device. It uses no cookies and stores nothing on your device, and it doesn't identify you or follow you to other sites. Vercel tells visits apart for a day with a hash it doesn't store. Shared notes, the connect pages and report pages are never counted, and page addresses are counted without anything after them, such as a code in a link.
-- **Clicks and scrolling,** with PostHog, hosted in Frankfurt, Germany (EU): which pages were viewed, which links and buttons were clicked on them (such as Download for Mac, Use template, or a link to the App Store or GitHub), how far down each page you scrolled, the site you came from, and your browser and type of device. On the home, download, templates, blog, help, changelog and Privacy & Security pages it also notes where on the page each click landed, and clicks that did nothing or were repeated on one spot, so we can see which parts of a page people try to use. These are added up across all visitors into a map of each page; no visit is recorded or replayed. Unless you accept cookies, it uses no cookies and stores nothing on your device. Like Vercel, it then tells visits apart for a day: PostHog's servers make a one-way hash of your IP address and browser details together with a random value that changes every day and that PostHog deletes once that day's visits are counted. The next day gives a different hash, so visits on different days can't be linked. If you choose Accept on the website's cookie banner, PostHog instead keeps a random identifier in a cookie on ambernotes.app for up to a year, so your visits on different days count as the same visitor. That lets us see, for example, that someone who read a blog post came back a week later and downloaded the app. The identifier is random and isn't linked to your name, email address or account. You can change your answer at any time with Cookie settings at the bottom of every page, and choosing Reject deletes the cookie. Either way, it keeps no profile of you, records no screens or keystrokes, and is set not to keep your IP address. It never runs on shared notes, the connect pages, report pages or the links that open the app, page addresses are sent without anything after them, and it doesn't run at all if your browser sends Do Not Track or Global Privacy Control.
+- **Clicks and scrolling,** with PostHog, hosted in Frankfurt, Germany (EU): which pages were viewed, which links and buttons were clicked on them (such as Download for Mac, Use template, or a link to the App Store or GitHub), how far down each page you scrolled, the site you came from, and your browser and type of device. On the home, download, templates, blog, help, changelog and Privacy & Security pages it also notes where on the page each click landed, and clicks that did nothing or were repeated on one spot, so we can see which parts of a page people try to use. These are added up across all visitors into a map of each page; no visit is recorded or replayed. Unless you accept cookies, it uses no cookies and stores nothing on your device. Like Vercel, it then tells visits apart for a day: PostHog's servers make a one-way hash of your IP address and browser details together with a random value that changes every day and that PostHog deletes once that day's visits are counted. The next day gives a different hash, so visits on different days can't be linked. If you choose Accept on the website's cookie banner, PostHog instead keeps a random identifier in a cookie on pintonotes.com for up to a year, so your visits on different days count as the same visitor. That lets us see, for example, that someone who read a blog post came back a week later and downloaded the app. The identifier is random and isn't linked to your name, email address or account. You can change your answer at any time with Cookie settings at the bottom of every page, and choosing Reject deletes the cookie. Either way, it keeps no profile of you, records no screens or keystrokes, and is set not to keep your IP address. It never runs on shared notes, the connect pages, report pages or the links that open the app, page addresses are sent without anything after them, and it doesn't run at all if your browser sends Do Not Track or Global Privacy Control.
 - **Mac downloads,** as one total per day: the date and a number. Nothing about who downloaded, not even a network address. Updates the Mac app installs itself aren't counted.
 - None of this touches your notes or your computer, and none of it is linked to your account.
 
@@ -131,7 +132,7 @@ We don't use your data for advertising, and we don't make automated decisions ab
 **Limits.** End-to-end encryption doesn't cover everything, and we'd rather say so:
 
 - **AI requests.** While an AI you connected works, our server unlocks your whole notes' key in memory and handles the text the AI asks for (see AI connections). A changed server could copy it.
-- **The recovery key in the browser.** Approving on ambernotes.app with your recovery key runs our code in your browser. The page never stores the recovery key or your notes' key or sends them to us, but a changed page could read them. When you can, approve from your iPhone or Mac instead.
+- **The recovery key in the browser.** Approving on pintonotes.com with your recovery key runs our code in your browser. The page never stores the recovery key or your notes' key or sends them to us, but a changed page could read them. When you can, approve from your iPhone or Mac instead.
 - **No key rotation yet.** Your notes' key stays the same for the life of your account.
 - **The database.** Someone running the database can't read your notes, but could roll a note back to an earlier encrypted version, or hide notes from your devices.
 
@@ -139,7 +140,7 @@ We don't use your data for advertising, and we don't make automated decisions ab
 
 Nothing reaches an AI assistant unless you connect one. When you connect ChatGPT, Claude, Claude Code, Codex or another assistant:
 
-- You approve the connection on your iPhone or Mac and choose **read only** or **read and edit**. When you start from a browser, the page shows a number and your device asks you to tap the same one. With no device nearby, you can approve on ambernotes.app with your recovery key.
+- You approve the connection on your iPhone or Mac and choose **read only** or **read and edit**. When you start from a browser, the page shows a number and your device asks you to tap the same one. With no device nearby, you can approve on pintonotes.com with your recovery key.
 - Approving gives that connection a copy of your notes' key, locked with a key derived from that connection's access token. We keep only a hash of the token; the token itself arrives with each of the assistant's requests. During each request, our server unlocks your whole notes' key in memory, decrypts the notes the assistant asks for, encrypts any change it makes, and forgets the key when the request ends.
 - For those requests, the text the assistant reads or writes, and its access tokens, pass through our hosting providers Vercel and Supabase in readable form on their way. Neither stores your notes.
 - The assistant can read the notes it asks for and, if you allowed editing, change them. Every change it makes keeps the previous version, so you can undo it.
@@ -149,7 +150,7 @@ Nothing reaches an AI assistant unless you connect one. When you connect ChatGPT
 
 ## Shared notes
 
-- A note you share becomes a web page at ambernotes.app. Your device publishes a readable copy of it for the page, so the shared note isn't end-to-end encrypted while it's shared. Changes, including an AI's, show on the page after your device's next sync. Anyone with the link can read it without signing in, and the link may be passed on.
+- A note you share becomes a web page at pintonotes.com. Your device publishes a readable copy of it for the page, so the shared note isn't end-to-end encrypted while it's shared. Changes, including an AI's, show on the page after your device's next sync. Anyone with the link can read it without signing in, and the link may be passed on.
 - The page shows the note, your profile name and photo, and your email address unless it's an Apple relay address.
 - Shared pages are hidden from search engines.
 - **Stop Sharing** takes the page down at once and deletes the readable copy. Images and files on a shared page are served through links that expire after an hour.
@@ -220,9 +221,9 @@ Write to **hello@ambernotes.app**. We answer within one month. If you think we'v
 The website asks before it sets a cookie. Its page view counts (Vercel Web Analytics) never store anything in your browser. Its click and scroll counts (PostHog) don't either, and tell visits apart for a day with a hash made on PostHog's servers, unless you choose Accept on the cookie banner (see Visits to the website). This is everything the website can store in your browser:
 
 - **localStorage, `amber_consent`:** your answer to the cookie banner, 1 for Accept or 0 for Reject, so it doesn't ask again. It's stored only once you answer, and stays until you clear your browser's data. Cookie settings, at the bottom of every page, changes it.
-- **Cookie, `ph_<project key>_posthog`, only if you accept:** PostHog's random identifier for your browser, the current visit, and the address and referring site of the first page you opened. It's kept on ambernotes.app only, and expires a year after your last visit. Choosing Reject deletes it.
+- **Cookie, `ph_<project key>_posthog`, only if you accept:** PostHog's random identifier for your browser, the current visit, and the address and referring site of the first page you opened. It's kept on pintonotes.com only, and expires a year after your last visit. Choosing Reject deletes it.
 - **sessionStorage, `ph_<project key>_posthog` and `ph_<project key>_window_id`, only if you accept:** PostHog's note of the current visit in this tab, deleted when you close the tab or choose Reject.
-- **sessionStorage, `amber.connect.pkce`,** only on the page where you connect an AI (ambernotes.app/connect): a one-time code for Sign in with Apple or Google, kept while you go to Apple or Google and back, and deleted as soon as you return.
+- **sessionStorage, `amber.connect.pkce`,** only on the page where you connect an AI (pintonotes.com/connect): a one-time code for Sign in with Apple or Google, kept while you go to Apple or Google and back, and deleted as soon as you return.
 
 If your browser sends Do Not Track or Global Privacy Control, we treat it as Reject: the banner doesn't ask, and PostHog doesn't run at all. The banner never appears on shared notes, the connect pages or report pages, and PostHog never runs there.
 
@@ -230,7 +231,7 @@ Everything else on the connect page stays in its memory and is gone when you clo
 
 ## Children
 
-Amber Notes isn't directed at children under 13, or in the EU under the age your country sets for consenting to online services (up to 16). If you believe a child has given us personal data, write to us and we'll delete it.
+Pinto Notes isn't directed at children under 13, or in the EU under the age your country sets for consenting to online services (up to 16). If you believe a child has given us personal data, write to us and we'll delete it.
 
 ## Security
 

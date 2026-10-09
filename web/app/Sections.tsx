@@ -125,7 +125,7 @@ export function ImportSection() {
     <section ref={ref} className={a.section} aria-labelledby="import">
       <div className={a.head}>
         <h2 id="import" className={a.h2}>Bring all your Apple Notes over in one go</h2>
-        <p className={a.lede}>If you know Apple Notes, you already know Amber Notes.</p>
+        <p className={a.lede}>If you know Apple Notes, you already know Pinto Notes.</p>
         <p className={a.lede}>
           Pick everything, or just the notes you want. Folders, checklists and tables come along, pins too if you allow Full Disk Access, and your Apple Notes stay untouched.
           Import on your Mac. Everything's on your iPhone a second later.

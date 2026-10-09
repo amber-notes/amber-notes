@@ -23,6 +23,7 @@ describe("universal links", () => {
   it("only claims what the connect page links to", () => {
     const path = new URL(universalLink(ID)).pathname;
     expect(path.startsWith("/open/")).toBe(true);
+    // Installed apps claim only ambernotes.app until a release that adds pintonotes.com is everywhere.
     expect(new URL(universalLink(ID)).host).toBe("ambernotes.app");
   });
 
@@ -48,7 +49,7 @@ describe("the universal link's page in a browser", () => {
   it("offers the app's own scheme for the request, and the download", async () => {
     const html = await render(ID.toUpperCase());
     expect(html).toContain(`href="ambernotes://connect?request=${ID}"`);
-    expect(html).toContain(">Open Amber Notes</a>");
+    expect(html).toContain(">Open Pinto Notes</a>");
     expect(html).toContain('href="/download"');
   });
 

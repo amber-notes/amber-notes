@@ -133,7 +133,7 @@
 .tpl .ticks { padding-top: 0; }
 .dashes.dashes { list-style: none; margin: 0; padding: 0 2px; display: grid; gap: 6px; }
 .dashes > li { position: relative; padding-left: 32px; line-height: 1.45; }
-.dashes > li::before { content: "–"; position: absolute; left: 6px; color: var(--muted); }
+.dashes > li::before { content: ""; position: absolute; left: 6px; top: 0.72em; width: 8px; height: 1.5px; background: var(--muted); }
 
 /* ── A real capture of Apple's apps: the window or dialog itself on the page, with a soft shadow ── */
 .capture { margin: 12px 0 30px; }

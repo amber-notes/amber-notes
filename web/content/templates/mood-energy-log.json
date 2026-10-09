@@ -6,13 +6,13 @@
     "Personal"
   ],
   "audience": "For anyone who wants to see what lifts them and what drains them.",
-  "description": "An evening mood and energy log. Tell your AI about your day in your own words and it scores and logs it in Amber Notes.",
+  "description": "An evening mood and energy log. Tell your AI about your day in your own words and it scores and logs it in Pinto Notes.",
   "tagline": "A short evening check-in that shows patterns.",
   "seoTitle": "Mood and energy log template for ChatGPT and Claude",
   "folder": "Habits",
   "note": "Mood and energy log\n\nA short check-in each evening. After a few weeks, the patterns show what lifts you and what drains you.\n\n<!-- pane-table: Date=date; Mood=scale 1-5; Energy=scale 1-5; Sleep (hours)=number; Caffeine=choice None|1 cup|2 cups|3+ cups; What happened=text -->\n| Date | Mood | Energy | Sleep (hours) | Caffeine | What happened |\n| --- | --- | --- | --- | --- | --- |\n\n## Patterns\n",
   "prompt": {
-    "default": "Use my Amber Notes note \"Mood and energy log\". Each evening I'll tell you about my day in my own words. Log one row with log_table_row: Mood and Energy from 1 (low) to 5 (great), Sleep in hours, Caffeine as one of the options, and one short line in What happened. If you're unsure about a score, ask me instead of guessing. When I ask about patterns, read the table with read_table and add what you notice under \"Patterns\" with append_to_note. Don't give medical advice."
+    "default": "Use my Pinto Notes note \"Mood and energy log\". Each evening I'll tell you about my day in my own words. Log one row with log_table_row: Mood and Energy from 1 (low) to 5 (great), Sleep in hours, Caffeine as one of the options, and one short line in What happened. If you're unsure about a score, ask me instead of guessing. When I ask about patterns, read the table with read_table and add what you notice under \"Patterns\" with append_to_note. Don't give medical advice."
   },
   "asks": [
     "Today was long but good. Slept 6 hours, two coffees, great lunch with Maja.",

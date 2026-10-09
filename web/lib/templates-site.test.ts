@@ -70,8 +70,8 @@ describe("a shared page", () => {
 
   it("mentions the app once, after the note", () => {
     const html = page();
-    expect(html.match(/Get Amber Notes/g)).toHaveLength(1);
-    expect(html.indexOf("Get Amber Notes")).toBeGreaterThan(html.indexOf('<article class="note">'));
+    expect(html.match(/Get Pinto Notes/g)).toHaveLength(1);
+    expect(html.indexOf("Get Pinto Notes")).toBeGreaterThan(html.indexOf('<article class="note">'));
   });
 });
 
@@ -241,11 +241,11 @@ describe("the template data and the site around it", () => {
 
   it("lists every template in the sitemap and llms.txt", () => {
     const urls = sitemap().map((e) => e.url);
-    expect(urls).toContain("https://ambernotes.app/templates");
+    expect(urls).toContain("https://pintonotes.com/templates");
     const txt = llmsTxt();
     for (const t of templates()) {
-      expect(urls).toContain(`https://ambernotes.app/templates/${t.slug}`);
-      expect(txt).toContain(`https://ambernotes.app/templates/${t.slug})`);
+      expect(urls).toContain(`https://pintonotes.com/templates/${t.slug}`);
+      expect(txt).toContain(`https://pintonotes.com/templates/${t.slug})`);
     }
   });
 

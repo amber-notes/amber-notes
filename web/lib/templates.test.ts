@@ -211,7 +211,7 @@ describe("the instructions", () => {
     }
   });
 
-  it("only use tools the Amber Notes MCP server has, and use at least one that writes", () => {
+  it("only use tools the Pinto Notes MCP server has, and use at least one that writes", () => {
     const writes = new Set(MCP_TOOLS.filter((x) => x.kind !== "read").map((x) => x.name));
     for (const t of all) {
       for (const i of instructions(t)) {
@@ -279,7 +279,7 @@ describe("the public data the app reads", () => {
     for (const t of all) {
       const p = publicTemplate(t);
       expect(p.version).toBe(1);
-      expect(p.url).toBe(`https://ambernotes.app/templates/${t.slug}`);
+      expect(p.url).toBe(`https://pintonotes.com/templates/${t.slug}`);
       expect(p.instructions.map((i) => i.client)).toEqual(["chatgpt", "claude", "claude-code"]);
       expect(p.instructions.map((i) => i.name)).toEqual(["ChatGPT", "Claude", "Claude Code"]);
       expect(Object.keys(p)).not.toContain("demo");
