@@ -358,11 +358,9 @@ struct KeyGateView: View {
             }
         } else {
             field {
-                SecureField("Password for \(email)", text: $password)
-                    .textContentType(.password)
+                PasswordField("Password for \(email)", text: $password, id: "e2ee.password")
                     .onSubmit { if !password.isEmpty { signInWithPassword() } }
             }
-            .accessibilityIdentifier("e2ee.password")
             mainButton("Sign in and start fresh", id: "e2ee.signInStartFresh", enabled: !password.isEmpty, destructive: true) {
                 try await signInAndStartFresh()
             }

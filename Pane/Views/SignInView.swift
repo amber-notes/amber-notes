@@ -12,8 +12,8 @@ struct SignInView: View {
     @State private var flow: EmailSignInFlow
     @State private var working = false
     @State private var error: String?
-    /// The password in plain text, from the eye button.
-    @State private var revealPassword = false
+    /// The cursor is in the password field (PasswordField keeps its own two fields in step).
+    @State private var passwordFocused = false
     /// Resend code: a new code is on its way.
     @State private var resending = false
     /// Under the code: a new code went out (Resend code's "done").
@@ -23,7 +23,7 @@ struct SignInView: View {
     @FocusState private var focus: Field?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    enum Field { case email, password, code }
+    enum Field { case email, code }
 
     /// The words above the form: the card's own (icon, title and promise, centred), or a title
     /// and a line from the welcome flow, which sets the form beside its picture.
@@ -172,7 +172,7 @@ struct SignInView: View {
         .animation(reduceMotion ? nil : .smooth(duration: 0.3), value: flow.step)
         // Once the password field is there (focusing it in the same update as it appears is
         // lost, and a paste then lands on the email row).
-        .onChange(of: flow.showsPassword) { _, shows in if shows { focus = .password } }
+        .onChange(of: flow.showsPassword) { _, shows in if shows { passwordFocused = true } }
         .onChange(of: flow.step) { _, step in if step == .confirm { focus = .code } }
         // Six digits, typed or filled in from the email by iOS: confirm straight away.
         .onChange(of: flow.code) { _, code in if code.count == EmailSignInFlow.codeLength, flow.step == .confirm { primary() } }
@@ -260,7 +260,6 @@ struct SignInView: View {
                     flow.back()
                     error = nil
                     codeNotice = nil
-                    revealPassword = false
                     focus = .email
                 } label: {
                     // The whole row takes the tap, not just the words.
@@ -276,39 +275,12 @@ struct SignInView: View {
             }
 
             if flow.showsPassword {
-                field(focused: focus == .password) {
+                field(focused: passwordFocused) {
                     let prompt = flow.step == .create ? "Create a password (12+ characters)" : "Password"
-                    HStack(spacing: 6) {
-                        Group {
-                            if revealPassword {
-                                TextField(prompt, text: $flow.password, prompt: Text(prompt).foregroundStyle(Color(Palette.placeholder)))
-                                    #if os(iOS)
-                                    .textInputAutocapitalization(.never)
-                                    #endif
-                                    .autocorrectionDisabled()
-                            } else {
-                                SecureField(prompt, text: $flow.password, prompt: Text(prompt).foregroundStyle(Color(Palette.placeholder)))
-                            }
-                        }
-                        .textContentType(flow.step == .create ? .newPassword : .password)
-                        .focused($focus, equals: .password)
+                    PasswordField(prompt, text: $flow.password, prompt: Text(prompt).foregroundStyle(Color(Palette.placeholder)),
+                                  kind: flow.step == .create ? .new : .current, id: "signin.password", focused: $passwordFocused)
                         .submitLabel(.go)
                         .onSubmit(primary)
-                        .accessibilityIdentifier("signin.password")
-                        // Show or hide the password; the cursor stays in the field.
-                        Button {
-                            revealPassword.toggle()
-                            focus = .password
-                        } label: {
-                            Image(systemName: revealPassword ? "eye.slash" : "eye")
-                                .frame(width: 28, height: 28)
-                                .contentShape(.rect)
-                        }
-                        .buttonStyle(.plain)
-                        .foregroundStyle(.secondary)
-                        .accessibilityLabel(revealPassword ? "Hide password" : "Show password")
-                        .accessibilityIdentifier("signin.reveal")
-                    }
                 }
                 .transition(.opacity)
             }
@@ -356,7 +328,7 @@ struct SignInView: View {
                 smallButton("Back to sign in", id: "signin.backToSignIn") {
                     flow.backToSignIn()
                     error = nil
-                    focus = .password
+                    passwordFocused = true
                 }
             }
 
@@ -364,7 +336,7 @@ struct SignInView: View {
                 smallButton("New? Create an account", id: "signin.create") {
                     flow.chooseCreate()
                     error = nil
-                    focus = .password
+                    passwordFocused = true
                 }
             }
         }
@@ -548,7 +520,6 @@ struct SignInView: View {
                         // Confirmation on: no session yet, a code is on its way.
                         if try await backend.signUp(email: email, password: password) {
                             flow.needsConfirmation(sentAt: .now)
-                            revealPassword = false
                         }
                     } else {
                         try await backend.signIn(email: email, password: password)
@@ -556,7 +527,6 @@ struct SignInView: View {
                 } catch where Backend.isEmailNotConfirmed(error) {
                     // An account made earlier and never confirmed: the code screen, with a new code.
                     flow.needsConfirmation(sentAt: nil)
-                    revealPassword = false
                     working = false
                     resendCode()
                     return
@@ -595,7 +565,7 @@ struct SignInView: View {
             }
         case .backToSignIn:
             flow.backToSignIn()
-            focus = .password
+            passwordFocused = true
         case nil:
             break
         }

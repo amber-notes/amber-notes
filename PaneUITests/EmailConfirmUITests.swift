@@ -37,7 +37,7 @@ final class EmailConfirmUITests: XCTestCase {
         XCTAssertEqual(app.buttons["signin.submit"].label, "Create account")
         XCTAssertEqual(app.staticTexts["signin.title"].label, "Create your account", "the heading follows the new email")
         secret.typeText(password)
-        app.buttons["signin.reveal"].tap()
+        app.buttons["signin.password.reveal"].tap()
         XCTAssertTrue(app.textFields["signin.password"].waitForExistence(timeout: 3), "the eye shows the password")
         Thread.sleep(forTimeInterval: 0.8)
         shot("1-create")

@@ -8,8 +8,15 @@ struct LockedNoteView: View {
     @State private var problem: String?
     @State private var wrongTries = 0
     @State private var working = false
-    @FocusState private var focused: Bool
+    @State private var focused = false
     private var vault: NoteVault { .shared }
+
+    private static let fieldShape = RoundedRectangle(cornerRadius: 8, style: .continuous)
+    #if os(macOS)
+    private static let fieldHeight: CGFloat = 30
+    #else
+    private static let fieldHeight: CGFloat = 40
+    #endif
 
     /// Sealed with a password from before it was changed on another device.
     private var earlier: Bool { vault.needsEarlierPassword(note) }
@@ -35,14 +42,17 @@ struct LockedNoteView: View {
                 .font(.callout)
                 .foregroundStyle(Color.muted)
                 .multilineTextAlignment(.center)
-            SecureField("Password", text: $password)
-                .textContentType(.password)
-                .focused($focused)
+            // The app's own field (as on the sign-in card), so the eye sits inside it.
+            PasswordField("Password", text: $password, id: "lock.password", focused: $focused)
                 .onSubmit(submit)
-                .textFieldStyle(.roundedBorder)
+                .textFieldStyle(.plain)
+                .padding(.leading, 10)
+                .padding(.trailing, 4)
+                .frame(height: Self.fieldHeight)
+                .background(Color(Palette.field), in: Self.fieldShape)
+                .overlay(Self.fieldShape.strokeBorder(focused ? Color(Palette.amber) : Color(Palette.fieldHairline), lineWidth: focused ? 2 : 1))
                 .frame(maxWidth: 260)
                 .padding(.top, 6)
-                .accessibilityIdentifier("lock.password")
             if let problem {
                 Text(problem)
                     .font(.callout)
@@ -120,12 +130,8 @@ struct NotesPasswordSetupSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    SecureField("Password", text: $password)
-                        .textContentType(.newPassword)
-                        .accessibilityIdentifier("setup.password")
-                    SecureField("Verify", text: $verify)
-                        .textContentType(.newPassword)
-                        .accessibilityIdentifier("setup.verify")
+                    PasswordField("Password", text: $password, kind: .new, id: "setup.password")
+                    PasswordField("Verify", text: $verify, kind: .new, id: "setup.verify")
                     TextField("Hint (recommended)", text: $hint)
                         .accessibilityIdentifier("setup.hint")
                 } header: {
@@ -199,10 +205,8 @@ struct NotesPasswordPrompt: View {
         NavigationStack {
             Form {
                 Section {
-                    SecureField("Password", text: $password)
-                        .textContentType(.password)
+                    PasswordField("Password", text: $password, id: "prompt.password")
                         .onSubmit(submit)
-                        .accessibilityIdentifier("prompt.password")
                 } footer: {
                     VStack(alignment: .leading, spacing: 6) {
                         Text(message)
@@ -277,13 +281,13 @@ struct ChangeNotesPasswordSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    SecureField("Old Password", text: $old).textContentType(.password)
+                    PasswordField("Old Password", text: $old, id: "change.old")
                 } footer: {
                     if let hint = vault.settings?.hint { Text("Hint: \(hint)").foregroundStyle(Color.muted) }
                 }
                 Section {
-                    SecureField("New Password", text: $new).textContentType(.newPassword)
-                    SecureField("Verify", text: $verify).textContentType(.newPassword)
+                    PasswordField("New Password", text: $new, kind: .new, id: "change.new")
+                    PasswordField("Verify", text: $verify, kind: .new, id: "change.verify")
                     TextField("Hint (recommended)", text: $hint)
                 } footer: {
                     Text("Your locked notes are encrypted again with the new password, on all your devices, and their earlier versions are removed from version history. If you forget it, they can't be recovered, not even by us.")
