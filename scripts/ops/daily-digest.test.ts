@@ -10,6 +10,7 @@ function digest(over: Partial<Digest> = {}): Digest {
     mcp: { posts: [], refused_by: [], grants_used: 2, last_used: null, ai_edits: 4 },
     connect: { started: 0, signed_in: 0, approved: 0, finished: 0, stuck_without_device: 0, by_client: [], asks: [] },
     app: { table: true, failures: [] },
+    reports: { open: 0, pages: 0, oldest: null, new: 0 },
     email: { sends: [], resend: "" },
     database: [], gaps: [],
     ...over,
@@ -51,6 +52,15 @@ Deno.test("a connect funnel where nobody finished leads the report", () => {
   const f = findings(d);
   assertEquals(f[0], "Connecting an AI: 5 tries, none finished (2 signed in, 0 approved).");
   assert(f[1].startsWith("2 signed in to connect an AI on an account with no Amber Notes device"));
+});
+
+Deno.test("open reports of shared pages lead the report, and say when the 24 hours are over", () => {
+  const soon = digest({ reports: { open: 2, pages: 1, oldest: "2026-10-06T12:30:00Z", new: 2 } });
+  assertEquals(findings(soon)[0], "Reports of shared pages waiting for a review: 2 on 1 page, the oldest for 5 hours. They are in public.share_reports.");
+  assert(render(soon).includes("2 came in. 2 open in all, on 1 page, the oldest from 2026-10-06 12:30 UTC."));
+  const late = digest({ reports: { open: 3, pages: 2, oldest: "2026-10-04T18:00:00Z", new: 0 } });
+  assert(findings(late)[0].includes("3 on 2 pages, the oldest for 48 hours, past the 24 hours the report page promises."));
+  assert(render(digest()).includes("0 came in. 0 open in all, on 0 pages."));
 });
 
 Deno.test("5xx, crashes and tool errors are findings; quiet days say so", () => {
