@@ -133,8 +133,13 @@ import Testing
         let pinned = context.createNote(in: .folder(folder.id), body: "Pinned\n")
         pinned.isPinned = true
         let note = context.createNote(in: .folder(folder.id), body: "Plan\n")
-        note.updatedAt = .now.addingTimeInterval(-3600)
+        // A minute older than the file, on the same day (an hour back was yesterday for the first
+        // hour after midnight, where CI's clock is UTC).
+        let noon = Calendar.current.date(bySettingHour: 12, minute: 0, second: 0, of: .now) ?? .now
+        note.updatedAt = noon.addingTimeInterval(-60)
+        pinned.updatedAt = noon
         let file = try #require(context.addFiles([try sample("Paper.pdf")], to: folder).first)
+        file.modifiedAt = noon
         let sections = DateBucket.sections([ListItem.note(pinned), .note(note), .file(file)])
         #expect(sections.map(\.0) == ["Pinned", "Today"])
         #expect(sections[1].1.map(\.id) == [file.id, note.id], "newest first, files among the notes")
