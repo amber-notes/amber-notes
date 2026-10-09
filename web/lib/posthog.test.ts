@@ -1,7 +1,7 @@
 import type { CaptureResult } from "posthog-js";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { CONSENT_KEY } from "./consent";
-import { clickEvent, clickEvents, ctaEvent, heatmapsAllowed, newScrollMarks, POSTHOG_DEFAULT_HOST, posthogAllowed, posthogOptions, posthogSettings, sanitizeEvent, scrolledPercent, visitorOptedOut } from "./posthog";
+import { clickEvent, clickEvents, ctaEvent, heatmapsAllowed, newScrollMarks, POSTHOG_DEFAULT_HOST, posthogAllowed, posthogOptions, posthogSettings, REPLAY_REMOTE_CONFIG, replayAllowed, sanitizeEvent, scrolledPercent, visitorOptedOut } from "./posthog";
 
 const here = new URL("https://pintonotes.com/blog/claude-and-apple-notes");
 const link = (href: string, attrs: Record<string, string> = {}) => ({ tagName: "A", getAttribute: (n: string) => (n === "href" ? href : attrs[n] ?? null) });
@@ -192,5 +192,47 @@ describe("heatmaps, rage clicks and dead clicks", () => {
   it("leave ordinary events on other public pages alone", () => {
     expect(sanitizeEvent(event({ $current_url: "https://pintonotes.com/terms", $pathname: "/terms" }))).not.toBeNull();
     expect(sanitizeEvent(event({ $current_url: "https://pintonotes.com/terms" }, { event: "$autocapture" }))).not.toBeNull();
+  });
+});
+
+describe("session replay", () => {
+  afterEach(() => vi.unstubAllGlobals());
+  const storage = (value: string | null) => vi.stubGlobal("localStorage", { getItem: () => value });
+
+  it("records only a visitor who pressed Accept, on public pages, without Do Not Track", () => {
+    expect(replayAllowed("/", "1", false)).toBe(true);
+    expect(replayAllowed("/blog/some-post", "1", false)).toBe(true);
+    // Rejected, never answered, or the browser asks not to be tracked.
+    expect(replayAllowed("/", "0", false)).toBe(false);
+    expect(replayAllowed("/", null, false)).toBe(false);
+    expect(replayAllowed("/", "1", true)).toBe(false);
+  });
+
+  it("never records the connect pages, password reset, account pages or shared notes", () => {
+    for (const path of ["/connect", "/connect/preview", "/reset-password", "/account/confirm", "/n/abc123", "/open/connect", "/report/x", "/unsubscribe"]) {
+      expect(replayAllowed(path, "1", false), path).toBe(false);
+    }
+  });
+
+  it("starts off, masks every field, and records no console, network or canvas", () => {
+    const o = posthogOptions(POSTHOG_DEFAULT_HOST);
+    expect(o.disable_session_recording).toBe(true);
+    expect(o.enable_recording_console_log).toBe(false);
+    expect(o.capture_performance).toBe(false);
+    expect(o.session_recording).toMatchObject({ maskAllInputs: true, recordCrossOriginIframes: false, recordHeaders: false, recordBody: false });
+    expect(o.session_recording?.maskInputOptions).toMatchObject({ password: true, email: true, text: true, textarea: true });
+    expect(REPLAY_REMOTE_CONFIG.sessionRecording).toMatchObject({ consoleLogRecordingEnabled: false, recordCanvas: false });
+    expect(REPLAY_REMOTE_CONFIG.capturePerformance).toBe(false);
+  });
+
+  it("drops a replay batch unless the stored answer is Accept", () => {
+    const snapshot = () => event({ $current_url: "https://pintonotes.com/", $pathname: "/" }, { event: "$snapshot" });
+    storage(null);
+    expect(sanitizeEvent(snapshot())).toBeNull();
+    storage("0");
+    expect(sanitizeEvent(snapshot())).toBeNull();
+    storage("1");
+    expect(sanitizeEvent(snapshot())?.event).toBe("$snapshot");
+    expect(sanitizeEvent(event({ $current_url: "https://pintonotes.com/connect", $pathname: "/connect" }, { event: "$snapshot" }))).toBeNull();
   });
 });
