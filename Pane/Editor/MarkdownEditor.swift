@@ -707,23 +707,28 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
     var currentSelection: NSRange { selectedRange }
 
     func apply(_ edit: TextEdit) {
+        // The keyboard is somewhere else, in a table cell say. Through the text-input call
+        // below, iOS then ran the new text past that keyboard's smart punctuation a moment
+        // later: a table's `---` came out as `—` and it was a table no more. Straight into
+        // the storage, as a change from elsewhere goes in, the text stays as given.
+        guard isFirstResponder else {
+            guard NSMaxRange(edit.range) <= textStorage.length else { return }
+            let keep = selectedRange
+            textStorage.replaceCharacters(in: edit.range, with: edit.replacement)
+            // Undo steps recorded against the old text would land in the wrong place now.
+            undoManager?.removeAllActions()
+            let caret = min(edit.caret, textStorage.length)
+            selectedRange = caret >= 0 ? NSRange(location: caret, length: 0)
+                : TextDiff.map(keep, through: TextDiff.Edit(range: edit.range, replacement: edit.replacement))
+            textDidChange()
+            return
+        }
         guard let start = position(from: beginningOfDocument, offset: edit.range.location),
               let end = position(from: start, offset: edit.range.length),
               let range = textRange(from: start, to: end) else { return }
         core.applyingEdit = true
-        let before = (text as NSString).length
         replace(range, withText: edit.replacement)
         core.applyingEdit = false
-        // The text system can pass what it's given through smart punctuation even with it
-        // turned off here (a table's `---` came out as `—`, and the table was a table no
-        // more). What was asked for is what goes in.
-        let landed = NSRange(location: edit.range.location, length: (text as NSString).length - (before - edit.range.length))
-        if landed.length >= 0, NSMaxRange(landed) <= (text as NSString).length, (text as NSString).substring(with: landed) != edit.replacement {
-            qaTrace("apply: text changed on the way in, put back")
-            textStorage.replaceCharacters(in: landed, with: edit.replacement)
-            // Undo steps recorded against the changed text would land in the wrong place now.
-            undoManager?.removeAllActions()
-        }
         if edit.caret >= 0 { selectedRange = NSRange(location: min(edit.caret, (text as NSString).length), length: 0) }
         textDidChange()
     }
