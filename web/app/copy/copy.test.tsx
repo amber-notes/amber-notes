@@ -16,10 +16,10 @@ describe("the Ask Claude copy page", () => {
 
   it("shows the prompt, one copy button and the ChatGPT way", async () => {
     const html = renderToStaticMarkup(await CopyPage({ params: Promise.resolve({ id: "latest" }) }));
-    expect(html).toContain("Search my Amber Notes and tell me what I wrote most recently.");
+    expect(html).toContain("Search my Pinto Notes and tell me what I wrote most recently.");
     expect(html.match(/<button /g)).toHaveLength(1);
     expect(html).toContain("Copy and open Claude");
-    expect(html).toContain(`href="https://chatgpt.com/?q=${encodeURIComponent("Search my Amber Notes and tell me what I wrote most recently.")}"`);
+    expect(html).toContain(`href="https://chatgpt.com/?q=${encodeURIComponent("Search my Pinto Notes and tell me what I wrote most recently.")}"`);
   });
 
   it("only copies the emails' own prompts", async () => {
@@ -29,15 +29,15 @@ describe("the Ask Claude copy page", () => {
 
 describe("GET /go", () => {
   afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
-  const go = (q: string) => GET(new Request(`https://ambernotes.app/go?${q}`));
+  const go = (q: string) => GET(new Request(`https://pintonotes.com/go?${q}`));
 
   it("counts the click through the lifecycle function, then sends the reader on", async () => {
     vi.stubEnv("SUPABASE_URL", "https://example.supabase.co");
     const f = vi.fn(async (_u: string) => new Response("{}"));
     vi.stubGlobal("fetch", f);
-    const res = await go(new URLSearchParams({ s: "12", to: "https://ambernotes.app/templates", t: "abc" }).toString());
-    expect(f.mock.calls[0][0]).toBe("https://example.supabase.co/functions/v1/lifecycle/click?s=12&to=https%3A%2F%2Fambernotes.app%2Ftemplates&t=abc");
-    expect([res.status, res.headers.get("location")]).toEqual([302, "https://ambernotes.app/templates"]);
+    const res = await go(new URLSearchParams({ s: "12", to: "https://pintonotes.com/templates", t: "abc" }).toString());
+    expect(f.mock.calls[0][0]).toBe("https://example.supabase.co/functions/v1/lifecycle/click?s=12&to=https%3A%2F%2Fpintonotes.com%2Ftemplates&t=abc");
+    expect([res.status, res.headers.get("location")]).toEqual([302, "https://pintonotes.com/templates"]);
   });
 
   it("still sends the reader on when the count fails", async () => {
@@ -50,7 +50,7 @@ describe("GET /go", () => {
   it("never sends anyone elsewhere", async () => {
     const f = vi.fn();
     vi.stubGlobal("fetch", f);
-    for (const to of ["https://evil.example/", "http://ambernotes.app/", "javascript:alert(1)", ""]) {
+    for (const to of ["https://evil.example/", "http://pintonotes.com/", "javascript:alert(1)", ""]) {
       const res = await go(new URLSearchParams({ s: "1", to, t: "x" }).toString());
       expect(res.headers.get("location")).toBe("/");
     }

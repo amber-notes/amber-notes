@@ -24,7 +24,7 @@ export default function PlatformNote({ place, className = "", style, appStoreLiv
   return (
     <>
       <div className={`pi pi-other ${group}`} style={style}>
-        <p className="pi-line"><strong>Amber Notes is for iPhone and Mac.</strong>{appStoreLive ? "" : " The iPhone app is coming to the App Store soon."}</p>
+        <p className="pi-line"><strong>Pinto Notes is for iPhone and Mac.</strong>{appStoreLive ? "" : " The iPhone app is coming to the App Store soon."}</p>
         <a className="pi-send" href={mailLink(url)} onClick={(e) => sendLink(navigator, e, url)}>Send myself the link</a>
         <p className="pi-links">
           {appStoreLive && <a className="pi-link" href={APP_STORE_URL} target="_blank" rel="noopener noreferrer">See it on the App Store</a>}
@@ -38,7 +38,7 @@ export default function PlatformNote({ place, className = "", style, appStoreLiv
           {appStoreLive ? (
             <a className="pi-button" href={APP_STORE_URL} target="_blank" rel="noopener noreferrer">Download for iPhone</a>
           ) : (
-            <p className="pi-line"><strong>Amber Notes for iPhone is coming to the App Store soon.</strong> It's on Mac today.</p>
+            <p className="pi-line"><strong>Pinto Notes for iPhone is coming to the App Store soon.</strong> It's on Mac today.</p>
           )}
           <p className="pi-links"><a className="pi-link" href="/download">Download for Mac</a></p>
         </div>

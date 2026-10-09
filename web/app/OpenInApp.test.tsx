@@ -63,7 +63,7 @@ describe("Use template on the page", () => {
     expect(attempts.calls).toHaveLength(0);
   });
 
-  it("shows nothing more when Amber Notes opened, and says so to analytics", () => {
+  it("shows nothing more when Pinto Notes opened, and says so to analytics", () => {
     mount();
     click();
     act(() => attempts.calls[0].done(true));
@@ -79,7 +79,7 @@ describe("Use template on the page", () => {
     const s = sheet()!;
     expect(s.getAttribute("role")).toBe("dialog");
     expect(s.textContent).toContain("Didn't open?");
-    expect(s.querySelector('a[href="/download/mac"]')?.textContent).toContain("Get Amber Notes for Mac");
+    expect(s.querySelector('a[href="/download/mac"]')?.textContent).toContain("Get Pinto Notes for Mac");
     expect(s.textContent).toContain("Already have it?");
     expect(document.activeElement).toBe(s);
     expect(events).toEqual([{ event: "use_template_not_found", properties: { path: "/", template: "habit-tracker" }, leaves: false }]);

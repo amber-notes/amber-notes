@@ -53,6 +53,14 @@ describe("the MCP proxy", () => {
     expect(await proxied("/token?redirect_uri=http%3A%2F%2F127.0.0.1%3A1%2F")).toBe(`${FN}/token?redirect_uri=http%3A%2F%2F127.0.0.1%3A1%2F`);
   });
 
+  it("serves the same server on mcp.pintonotes.com, naming that address to the function", async () => {
+    for (const host of ["mcp.pintonotes.com", "mcp.ambernotes.app"]) {
+      const res = await middleware(new NextRequest(`https://${host}/token`, { headers: { host } }));
+      expect(res.headers.get("x-middleware-rewrite")).toBe(`${FN}/token`);
+      expect(res.headers.get("x-middleware-request-x-mcp-public-url")).toBe(`https://${host}`);
+    }
+  });
+
   it("maps the root to the function itself", async () => {
     expect(await proxied("/")).toBe(FN);
   });
@@ -72,11 +80,20 @@ describe("the MCP proxy", () => {
     expect(ico.readUInt16LE(4)).toBeGreaterThan(0);
   });
 
-  it("asks crawlers to stay off the MCP host, without asking the server", async () => {
-    const res = await middleware(new NextRequest("https://mcp.ambernotes.app/robots.txt", { headers: { host: "mcp.ambernotes.app" } }));
-    expect(res.status).toBe(200);
-    expect(res.headers.get("x-middleware-rewrite")).toBeNull();
-    expect(await res.text()).toBe("User-agent: *\nDisallow: /\n");
+  it("asks crawlers to stay off both MCP hosts, without asking the server", async () => {
+    for (const host of ["mcp.ambernotes.app", "mcp.pintonotes.com"]) {
+      const res = await middleware(new NextRequest(`https://${host}/robots.txt`, { headers: { host } }));
+      expect(res.status).toBe(200);
+      expect(res.headers.get("content-type")).toContain("text/plain");
+      expect(res.headers.get("x-middleware-rewrite")).toBeNull();
+      expect(res.headers.get("location")).toBeNull();
+      expect(await res.text()).toBe("User-agent: *\nDisallow: /\n");
+    }
+  });
+
+  it("leaves the site's own robots.txt alone", async () => {
+    const res = await middleware(new NextRequest("https://pintonotes.com/robots.txt", { headers: { host: "pintonotes.com" } }));
+    expect(res.headers.get("x-middleware-next")).toBe("1");
   });
 
   it("never forwards paths the server doesn't have", async () => {
@@ -87,7 +104,7 @@ describe("the MCP proxy", () => {
 
 describe("the connect pages' CSP", () => {
   const csp = async (path: string) =>
-    (await middleware(new NextRequest(`https://ambernotes.app${path}`, { headers: { host: "ambernotes.app" } }))).headers.get("content-security-policy") ?? "";
+    (await middleware(new NextRequest(`https://pintonotes.com${path}`, { headers: { host: "pintonotes.com" } }))).headers.get("content-security-policy") ?? "";
 
   it("lets /connect call the Supabase project", async () => {
     expect(await csp(`/connect?request=5a0f6c1e-2b1d-4c36-9e0a-6b6f0c1a2b3c`)).toContain(`connect-src 'self' ${SUPABASE};`);
@@ -114,7 +131,7 @@ describe("the connect pages' CSP", () => {
 });
 
 describe("the connect pages' referrer", () => {
-  const page = (path: string) => middleware(new NextRequest(`https://ambernotes.app${path}`, { headers: { host: "ambernotes.app" } }));
+  const page = (path: string) => middleware(new NextRequest(`https://pintonotes.com${path}`, { headers: { host: "pintonotes.com" } }));
 
   it("sends no referrer from /connect, /open/connect or /reset-password", async () => {
     for (const path of ["/connect?request=5a0f6c1e-2b1d-4c36-9e0a-6b6f0c1a2b3c", "/open/connect?request=5a0f6c1e-2b1d-4c36-9e0a-6b6f0c1a2b3c", "/reset-password?token_hash=abc&type=recovery"]) {

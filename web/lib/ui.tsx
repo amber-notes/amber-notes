@@ -15,9 +15,9 @@ export function TopBar({ href = "/", children }: { href?: string; children?: Rea
   return (
     <header className={s.bar}>
       <div className={s.barRow}>
-        <a href={href} className={s.brand} aria-label="Amber Notes">
+        <a href={href} className={s.brand} aria-label="Pinto Notes">
           <img src="/mark-256.png" alt="" width={28} height={28} />
-          <span>Amber Notes</span>
+          <span>Pinto Notes</span>
         </a>
         {children && <div className={s.barEnd}>{children}</div>}
       </div>

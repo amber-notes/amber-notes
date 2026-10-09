@@ -2,6 +2,14 @@
 import { MCP_URL } from "./facts";
 
 export const MCP_HOST = new URL(MCP_URL).host;
+/// The new name's address for the same server, served alongside MCP_HOST (never instead of it:
+/// connectors people already added call mcp.ambernotes.app).
+export const NEW_MCP_HOST = "mcp.pintonotes.com";
+
+/// The public address for a request that came in on `host`, or null when this isn't an MCP host.
+export function mcpPublicURL(host: string): string | null {
+  return host === MCP_HOST || host === NEW_MCP_HOST ? `https://${host}` : null;
+}
 
 /// The only paths the server has. Anything else, and anything encoded that could walk out of the
 /// function's path (%2f, %5c, backslashes, dots), never reaches Supabase.
@@ -11,7 +19,7 @@ const PATHS = /^\/(?:|register|authorize|token|revoke|connect\/(?:request|label|
 /// Claude shows next to the server, and OpenAI's domain challenge (app/.well-known/).
 const SITE_PATHS = ["/favicon.ico", "/.well-known/openai-apps-challenge"];
 
-/// robots.txt on the MCP host: crawl nothing. The host is an API for AI apps, not pages; without
+/// robots.txt on the MCP hosts (both names): crawl nothing. The host is an API for AI apps, not pages; without
 /// this, Google crawled its root, got the 401 that asks an MCP client to sign in, and listed it in
 /// Search Console as "Blocked due to unauthorized request (401)". MCP clients don't read robots.txt.
 export const MCP_ROBOTS = "User-agent: *\nDisallow: /\n";
@@ -48,13 +56,13 @@ export function functionRegion(value: string | undefined): string | null {
   return /^[a-z]{2}-[a-z]+-\d$/.test(r) ? r : null;
 }
 
-export function upstreamHeaders(incoming: Headers, secret: string, region: string | null = null): Headers {
+export function upstreamHeaders(incoming: Headers, secret: string, region: string | null = null, publicURL: string = MCP_URL): Headers {
   const headers = new Headers();
   for (const h of PASS) {
     const v = incoming.get(h);
     if (v !== null) headers.set(h, v);
   }
-  headers.set("x-mcp-public-url", MCP_URL);
+  headers.set("x-mcp-public-url", publicURL);
   headers.set("x-mcp-proxy-secret", secret);
   // Vercel sets these itself and drops what a client sent.
   const ip = incoming.get("x-real-ip") ?? incoming.get("x-forwarded-for")?.split(",")[0].trim();

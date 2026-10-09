@@ -1,5 +1,9 @@
 # SEO and AI-answer plan, 30 September 2026
 
+> **8 October 2026:** the app is now Pinto Notes and the site is https://pintonotes.com. ambernotes.app
+> sends every page there. Read "Amber Notes" and "ambernotes.app" below as the names at the time. The
+> move, and what to watch for four weeks, is at the end: [The move to pintonotes.com](#the-move-to-pintonotescom-8-october-2026).
+
 The working plan for ambernotes.app: where to look for trends, what is trending now, the queries worth
 winning, fixes to existing posts, and what to publish over the next 14 days. It builds on
 [seo-aeo-research-2026-09-30.md](seo-aeo-research-2026-09-30.md), which covers the AI and MCP queries in
@@ -189,3 +193,23 @@ Google Keep, publishing the ChatGPT and Apple Notes draft, and a second brain Cl
 - Search Console, weekly: impressions and position for each P1 query, and indexing of new posts.
 - Once a month, ask ChatGPT, Claude, Gemini and Perplexity the P1 questions and note whether ambernotes.app is cited.
 - Re-run the autocomplete seeds above every two weeks and note new variants.
+
+## The move to pintonotes.com (8 October 2026)
+
+The audit and the changes are in [growth-log.md](growth-log.md), 8 October. The plan for search:
+
+- **Brand queries.** "pinto notes" is new and has no history, so the home page should take it within days. "amber notes" was our only brand query (5 impressions in the week to 3 October), and another product ranks for it; [/amber-notes](https://pintonotes.com/amber-notes) is the page for it, and the home page's JSON-LD names "Amber Notes" as an alternate name.
+- **Everything else** (the Apple Notes how-tos, the MCP and ChatGPT guides) ranks by page, not by brand. Those pages moved path for path with a 308 each, so their positions should carry over once Google has fetched the old addresses again. Change of Address in Search Console speeds that up.
+- **Don't change during the four weeks:** post addresses, titles of the posts that earn impressions (forgot-apple-notes-password, apple-notes-ios-27, apple-notes-api), and the redirects. One move at a time, so a drop can be read.
+- **New posts** keep going out at the usual pace, on pintonotes.com addresses only.
+
+### What to watch, weekly, to 5 November
+
+| Week ending | Search Console | PostHog and Bing |
+|---|---|---|
+| 15 October | pintonotes.com: sitemap read, 70 addresses found, first pages indexed. ambernotes.app: "Page with redirect" growing, no "Redirect error" | No page views on ambernotes.app or www.pintonotes.com |
+| 22 October | Impressions on pintonotes.com pass ambernotes.app. Clicks for both together no lower than 6 a week | Landings from Google and Bing arrive on pintonotes.com |
+| 29 October | "pinto notes" shows the home page in the top three; "amber notes" shows a pintonotes.com page; the site name reads "Pinto Notes" | Bing Site Explorer lists the pintonotes.com pages |
+| 5 November | Most of the 69 pages indexed on pintonotes.com; ambernotes.app impressions near zero | 404s on old addresses: none |
+
+If clicks for both properties together stay under half of the week before the move for two weeks running, check in this order: a redirect that broke (run the old sitemap addresses through curl), a noindex that crept in (the `X-Robots-Tag` header on a page that should be indexed), the Change of Address status, then ask for indexing on the top pages.
