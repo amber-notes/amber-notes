@@ -47,6 +47,13 @@ Deno.test("only the listed sources are taken", async () => {
   await assertRejects(() => answer(pg, me, "billboard"));
 });
 
+Deno.test("GitHub is one of them (20261007152100_heard_from_github.sql)", async () => {
+  const pg = await schemaDB();
+  const me = await newUser(pg);
+  await answer(pg, me, "github");
+  assertEquals(await row(pg, me), [{ source: "github", detail: null }]);
+});
+
 Deno.test("each account sees only its own answer, and nobody signed in can read the totals", async () => {
   const pg = await schemaDB();
   const me = await newUser(pg), them = await newUser(pg);

@@ -115,9 +115,9 @@ describe("email first, as the app does it", () => {
     const { signedIn } = render("none");
     act(() => type("connect-email", "new@example.com"));
     await submit();
-    expect(container.textContent).toContain("No Amber Notes account uses this email.");
-    expect(container.textContent).toContain("Get Amber Notes, sign up there, then connect again.");
-    const get = [...container.querySelectorAll("a")].find((a) => a.textContent === "Get Amber Notes")!;
+    expect(container.textContent).toContain("No Pinto Notes account uses this email.");
+    expect(container.textContent).toContain("Get Pinto Notes, sign up there, then connect again.");
+    const get = [...container.querySelectorAll("a")].find((a) => a.textContent === "Get Pinto Notes")!;
     expect(get.getAttribute("href")).toMatch(/^(\/download|https:\/\/apps\.apple\.com\/)/);
     expect(container.querySelector('button[type="submit"]')).toBeNull();
     expect(hidden("connect-password")).toBe(true);

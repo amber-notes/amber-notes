@@ -1,0 +1,20 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "com.pintonotes/pinto-notes",
+  "title": "Pinto Notes",
+  "description": "Search, read and edit your notes in Pinto Notes: folders, checklists, tables and trackers.",
+  "version": "1.0.0",
+  "websiteUrl": "https://pintonotes.com/blog/mcp-server",
+  "repository": {
+    "url": "https://github.com/amber-notes/amber-notes",
+    "source": "github",
+    "id": "1394754812",
+    "subfolder": "supabase/functions/mcp"
+  },
+  "icons": [
+    { "src": "https://pintonotes.com/mark-256.png", "mimeType": "image/png", "sizes": ["256x256"] }
+  ],
+  "remotes": [
+    { "type": "streamable-http", "url": "https://mcp.pintonotes.com" }
+  ]
+}

@@ -7,13 +7,13 @@
     "Families"
   ],
   "audience": "For households tired of deciding what's for dinner at 6 pm.",
-  "description": "A weekly meal plan with the grocery list that goes with it. Your AI plans the dinners and writes the list in Amber Notes.",
+  "description": "A weekly meal plan with the grocery list that goes with it. Your AI plans the dinners and writes the list in Pinto Notes.",
   "tagline": "This week's dinners and the shopping list.",
   "seoTitle": "Meal plan and grocery list template for ChatGPT",
   "folder": "Home",
   "note": "Meal plan and groceries\n\nThis week's dinners and the shopping list that goes with them. Tick things off in the shop.\n\n## Dinners\n| Day | Dinner | Who cooks |\n| --- | --- | --- |\n| Monday | | |\n| Tuesday | | |\n| Wednesday | | |\n| Thursday | | |\n| Friday | | |\n| Saturday | | |\n| Sunday | | |\n\n## Groceries\n\n## Always in the cupboard\n- Olive oil, salt, pepper\n- Rice, pasta, oats\n- Onions, garlic\n",
   "prompt": {
-    "default": "Use my Amber Notes note \"Meal plan and groceries\". On the weekend, ask me which nights we're cooking and anything to avoid, then suggest dinners and fill in the Dinners table with edit_note (read the note with read_note first). Then add what we need under \"Groceries\" as a checklist with append_to_note, grouped by aisle, leaving out what's under \"Always in the cupboard\". Keep weeknight dinners under 30 minutes. If I add something during the week, add it to the list."
+    "default": "Use my Pinto Notes note \"Meal plan and groceries\". On the weekend, ask me which nights we're cooking and anything to avoid, then suggest dinners and fill in the Dinners table with edit_note (read the note with read_note first). Then add what we need under \"Groceries\" as a checklist with append_to_note, grouped by aisle, leaving out what's under \"Always in the cupboard\". Keep weeknight dinners under 30 minutes. If I add something during the week, add it to the list."
   },
   "asks": [
     "Plan dinners for this week. We're out on Friday, and no mushrooms.",

@@ -1,15 +1,15 @@
 {
   "name": "amber-notes",
-  "description": "Amber Notes (ambernotes.app): your notes app, in Claude Code.",
+  "description": "Pinto Notes (pintonotes.com, formerly Amber Notes): your notes app, in Claude Code.",
   "owner": {
     "name": "Emil Wagman",
-    "url": "https://ambernotes.app"
+    "url": "https://pintonotes.com"
   },
   "plugins": [
     {
       "name": "amber-notes",
       "source": "./plugins/amber-notes",
-      "description": "Search, read and edit your Amber Notes from Claude Code. Sign in once with /mcp.",
+      "description": "Search, read and edit your notes in Pinto Notes from Claude Code. Sign in once with /mcp.",
       "category": "productivity"
     }
   ]

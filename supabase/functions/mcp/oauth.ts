@@ -42,9 +42,10 @@ const LIMITS: Record<string, [number, number]> = { register: [30, 3600], authori
 
 export type Grant = { user_id: string; token_id: string; name: string; can_write: boolean; resource?: string; dk_wrap: string | null };
 
-/// Other public addresses of this server, e.g. https://mcp.ambernotes.app (comma-separated).
+/// Other public addresses of this server (comma-separated): mcp.ambernotes.app, which existing
+/// connectors call, and mcp.pintonotes.com, the new name's address.
 export function aliasBases(): string[] {
-  const raw = Deno.env.get("MCP_ALIAS_URLS") ?? "https://mcp.ambernotes.app";
+  const raw = Deno.env.get("MCP_ALIAS_URLS") ?? "https://mcp.ambernotes.app,https://mcp.pintonotes.com";
   return raw.split(",").map((s) => s.trim().replace(/\/+$/, "")).filter(Boolean);
 }
 
@@ -241,11 +242,11 @@ const LOOKALIKES: Record<string, string> = {
   "α": "a", "ο": "o", "ρ": "p", "τ": "t", "ν": "v", "ι": "i", "κ": "k", "μ": "m",
 };
 
-/// Names only ChatGPT, Claude or Amber Notes itself may use.
+/// Names only ChatGPT, Claude or Pinto Notes itself (once Amber Notes) may use.
 export function claimsATrustedName(name: string): boolean {
   const flat = [...name.normalize("NFKC").toLowerCase()].map((c) => LOOKALIKES[c] ?? c).join("")
     .replace(/[^a-z0-9]/g, "").replace(/0/g, "o").replace(/1/g, "l").replace(/4/g, "a");
-  return ["chatgpt", "openai", "claude", "anthropic", "amber"].some((w) => flat.includes(w));
+  return ["chatgpt", "openai", "claude", "anthropic", "amber", "pinto"].some((w) => flat.includes(w));
 }
 
 /// A registered name made safe to show: no control, format or direction characters, one line, short.

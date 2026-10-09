@@ -8,12 +8,12 @@ describe("structured data", () => {
   it("describes the app as a free productivity app for iOS and macOS", () => {
     const a = app("1.0");
     expect(a["@type"]).toBe("SoftwareApplication");
-    expect(a.name).toBe("Amber Notes");
+    expect(a.name).toBe("Pinto Notes");
     expect(a.applicationCategory).toBe("ProductivityApplication");
     expect(a.operatingSystem).toBe("iOS, macOS");
     expect(a.offers).toEqual({ "@type": "Offer", price: "0", priceCurrency: "USD" });
     expect(a.softwareVersion).toBe("1.0");
-    expect(String(a.downloadUrl)).toMatch(/^https:\/\/ambernotes\.app\//);
+    expect(String(a.downloadUrl)).toMatch(/^https:\/\/pintonotes\.com\//);
     // No invented ratings or reviews.
     expect(a).not.toHaveProperty("aggregateRating");
     expect(a).not.toHaveProperty("review");
@@ -28,9 +28,9 @@ describe("structured data", () => {
     expect(app("1.0").publisher).toEqual({ "@id": organization["@id"] });
   });
 
-  it("names the site Amber Notes for Google, with the domain only as a fallback", () => {
-    expect(website.name).toBe("Amber Notes");
-    expect(website.alternateName).toEqual(["Amber Notes app", "ambernotes.app"]);
+  it("names the site Pinto Notes for Google, with the domain only as a fallback", () => {
+    expect(website.name).toBe("Pinto Notes");
+    expect(website.alternateName).toEqual(["Pinto Notes app", "Amber Notes", "ambernotes.app"]);
   });
 
   it("serves a favicon whose first frame is 48px, the size Google needs for its results", () => {
@@ -39,8 +39,8 @@ describe("structured data", () => {
     expect(frames).toEqual([48, 32, 16]);
   });
 
-  it("ties the name to the GitHub repository, so it isn't mixed up with other apps called Amber Notes", () => {
-    expect(organization).toMatchObject({ "@type": "Organization", name: "Amber Notes", url: "https://ambernotes.app" });
+  it("ties the name to the GitHub repository, so it isn't mixed up with other apps called Pinto Notes", () => {
+    expect(organization).toMatchObject({ "@type": "Organization", name: "Pinto Notes", url: "https://pintonotes.com" });
     expect(organization.sameAs).toContain("https://github.com/amber-notes/amber-notes");
     expect(app("1.0").sameAs).toContain("https://github.com/amber-notes/amber-notes");
   });
@@ -48,8 +48,8 @@ describe("structured data", () => {
   it("describes a post as an Article with its dates, an author and a publisher", () => {
     const a = article({ title: "T", description: "D", path: "/blog/x", date: "2026-09-29", updated: "2026-09-30", image: "/blog/x.webp" });
     expect(a).toMatchObject({
-      "@type": "Article", headline: "T", url: "https://ambernotes.app/blog/x", datePublished: "2026-09-29", dateModified: "2026-09-30",
-      image: "https://ambernotes.app/blog/x.webp", author: { "@id": maker["@id"] }, publisher: { "@id": organization["@id"] },
+      "@type": "Article", headline: "T", url: "https://pintonotes.com/blog/x", datePublished: "2026-09-29", dateModified: "2026-09-30",
+      image: "https://pintonotes.com/blog/x.webp", author: { "@id": maker["@id"] }, publisher: { "@id": organization["@id"] },
     });
   });
 
@@ -61,8 +61,8 @@ describe("structured data", () => {
   it("numbers breadcrumbs from 1, with full URLs", () => {
     const b = breadcrumbs([{ name: "Blog", path: "/blog" }, { name: "Guides", path: "/blog#guides" }]);
     expect(b.itemListElement).toEqual([
-      { "@type": "ListItem", position: 1, name: "Blog", item: "https://ambernotes.app/blog" },
-      { "@type": "ListItem", position: 2, name: "Guides", item: "https://ambernotes.app/blog#guides" },
+      { "@type": "ListItem", position: 1, name: "Blog", item: "https://pintonotes.com/blog" },
+      { "@type": "ListItem", position: 2, name: "Guides", item: "https://pintonotes.com/blog#guides" },
     ]);
   });
 

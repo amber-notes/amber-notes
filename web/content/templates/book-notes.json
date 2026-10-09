@@ -12,7 +12,7 @@
   "folder": "Reading",
   "note": "Book notes\n\nWhat stuck from each book: the big idea, the lines worth keeping, and what you'll do differently. Newest book first.\n\n## Books\n",
   "prompt": {
-    "default": "Use my Amber Notes note \"Book notes\". When I start a book, add a heading for it at the start of \"Books\" with append_to_note (at_start), like \"### Title by Author\". As I send you highlights and thoughts, add them under that book's heading with append_to_note: quotes as > quotes with the page number, my own thoughts as bullets. Keep my words; don't polish them. When I say I've finished, add \"**The big idea:**\" in three sentences and two to four things I'll do differently as a checklist."
+    "default": "Use my Pinto Notes note \"Book notes\". When I start a book, add a heading for it at the start of \"Books\" with append_to_note (at_start), like \"### Title by Author\". As I send you highlights and thoughts, add them under that book's heading with append_to_note: quotes as > quotes with the page number, my own thoughts as bullets. Keep my words; don't polish them. When I say I've finished, add \"**The big idea:**\" in three sentences and two to four things I'll do differently as a checklist."
   },
   "asks": [
     "Starting Four Thousand Weeks by Oliver Burkeman.",
