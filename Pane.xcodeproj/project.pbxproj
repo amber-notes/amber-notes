@@ -366,7 +366,6 @@
 		A4C68911479F117417B9D237 /* CodeBoxes.swift in Sources */ = {isa = PBXBuildFile; fileRef = E30BFBB10DA2DD2468EE9BE2 /* CodeBoxes.swift */; };
 		A4E5F8D6483FDF064391E9F8 /* LegalLinks.swift in Sources */ = {isa = PBXBuildFile; fileRef = E43C8835EE05529FC6C66B17 /* LegalLinks.swift */; };
 		A50C0FAD1144F7132ADA1FC1 /* AppSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3595708C4A80422C798DEB09 /* AppSnapshotTests.swift */; };
-		A5246D36AECD7DDF77659A16 /* ListRebuildTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA8B74BEBCF5CD1CC9931AD4 /* ListRebuildTests.swift */; };
 		A57F38039DCFD1089D606728 /* WikiSuggestions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6437AEF31BCCDC5E8092B053 /* WikiSuggestions.swift */; };
 		A6AA8911AB195561551D80DA /* NoteHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0F00B2175265FE9DFF9E83C /* NoteHistory.swift */; };
 		A70D13605754FCC0DAF6D739 /* sample-habit-tracker.html in Resources */ = {isa = PBXBuildFile; fileRef = 4F33B74A850251D3F2D92C97 /* sample-habit-tracker.html */; };
@@ -851,7 +850,6 @@
 		B2F4669A5302E1C0A8EC6874 /* OfflineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineTests.swift; sourceTree = "<group>"; };
 		B394F34406452615E3F6C32D /* automerge-swift */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "automerge-swift"; path = "Vendor/automerge-swift"; sourceTree = SOURCE_ROOT; };
 		B3C667730E3C8E3C905E7874 /* AIEditSnapshots.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIEditSnapshots.swift; sourceTree = "<group>"; };
-		BA8B74BEBCF5CD1CC9931AD4 /* ListRebuildTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListRebuildTests.swift; sourceTree = "<group>"; };
 		BAC7D1ED7E22C1612C2680B3 /* SaveTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SaveTests.swift; sourceTree = "<group>"; };
 		BAE155CC8D3D50CB90D4C532 /* ApplePinsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApplePinsTests.swift; sourceTree = "<group>"; };
 		BB13DA6BCCFA3953F88228D7 /* tracker-sample.xlsx */ = {isa = PBXFileReference; path = "tracker-sample.xlsx"; sourceTree = "<group>"; };
@@ -1245,7 +1243,6 @@
 				E0C106B1F9776D0E452FE8BA /* HarnessSanityTests.swift */,
 				599DE60FE9E6F13C56486743 /* IncrementalStyleTests.swift */,
 				3DFAA356C8EA6422D73B1A4F /* LayoutHangTests.swift */,
-				BA8B74BEBCF5CD1CC9931AD4 /* ListRebuildTests.swift */,
 				005D993BB051DBCB7CB4CED0 /* LiveViewerTests.swift */,
 				D82B1491DE222D4C7AFA3D82 /* MultiSelectTests.swift */,
 				8009A12E24480934013AE276 /* NoteRowClickTests.swift */,
@@ -1980,7 +1977,6 @@
 				E795903ACDE819E7CC521941 /* LinkPolicyTests.swift in Sources */,
 				582627587918D7195B435F61 /* ListEditingTests.swift in Sources */,
 				28428F0BD59F90A9425C853D /* ListLayoutSnapshots.swift in Sources */,
-				A5246D36AECD7DDF77659A16 /* ListRebuildTests.swift in Sources */,
 				0E21A62A8EB76E514AEADA04 /* LiveSyncTests.swift in Sources */,
 				6ECD30112C54E00E2746A529 /* LiveViewerTests.swift in Sources */,
 				7ECADA0C2388363A6D3D3178 /* LocalUpkeepTests.swift in Sources */,

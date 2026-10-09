@@ -893,6 +893,7 @@ final class LibraryNotes {
     private var generation = 0
     @ObservationIgnored private var sorted: [NoteEntry] = []
     @ObservationIgnored private weak var context: ModelContext?
+    @ObservationIgnored private var container: ModelContainer?
     @ObservationIgnored private var observer: NSObjectProtocol?
     /// Notes that changed since the entries were last brought up to date.
     @ObservationIgnored private var changed: Set<UUID> = []
@@ -911,6 +912,9 @@ final class LibraryNotes {
 
     private func start(_ context: ModelContext) {
         self.context = context
+        // The notes read here stay readable for as long as this list is around, also after
+        // its window has closed with changes still waiting.
+        container = context.container
         load()
         if let observer { NotificationCenter.default.removeObserver(observer) }
         observer = NotificationCenter.default.addObserver(forName: ModelContext.didSave, object: context, queue: nil) { [weak self] n in
@@ -964,6 +968,12 @@ final class LibraryNotes {
 
     private func flush() {
         flushScheduled = false
+        // The library is gone (its window closed, or a test let its container go) with changes
+        // still waiting: its notes can't be read any more.
+        guard context != nil else {
+            changed = []
+            return
+        }
         guard !changed.isEmpty else { return }
         let ids = changed
         changed = []

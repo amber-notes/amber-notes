@@ -32,8 +32,8 @@ jobs:
     timeout-minutes: 45
     env:
       # The suites that time things (PaneTests/Perf): run apart from the rest.
-      PERF_SKIP: -skip-testing:PaneTests/EditorPerfTests -skip-testing:PaneTests/AppPerfTests -skip-testing:PaneTests/ScanPerfTests -skip-testing:PaneTests/WindowUpdateTests -skip-testing:PaneTests/ListPiecesPerfTests -skip-testing:PaneTests/ListRebuildTests
-      PERF_ONLY: -only-testing:PaneTests/EditorPerfTests -only-testing:PaneTests/AppPerfTests -only-testing:PaneTests/ScanPerfTests -only-testing:PaneTests/WindowUpdateTests -only-testing:PaneTests/ListPiecesPerfTests -only-testing:PaneTests/ListRebuildTests
+      PERF_SKIP: -skip-testing:PaneTests/EditorPerfTests -skip-testing:PaneTests/AppPerfTests -skip-testing:PaneTests/ScanPerfTests -skip-testing:PaneTests/WindowUpdateTests -skip-testing:PaneTests/ListPiecesPerfTests
+      PERF_ONLY: -only-testing:PaneTests/EditorPerfTests -only-testing:PaneTests/AppPerfTests -only-testing:PaneTests/ScanPerfTests -only-testing:PaneTests/WindowUpdateTests -only-testing:PaneTests/ListPiecesPerfTests
     steps:
       - uses: actions/checkout@v4
       - name: Select the newest Xcode
@@ -74,7 +74,8 @@ jobs:
           # test-without-building says TEST EXECUTE SUCCEEDED.
           grep -qE "\*\* TEST (EXECUTE )?SUCCEEDED \*\*" build/ci-perf.log
       # A failure keeps the whole log and the result bundle: a test host that hangs or crashes
-      # records no issue in the filtered output above, only its name under "Failing tests".
+      # records no issue in the filtered output above, only its name under "Failing tests". The
+      # crash reports say where it died.
       - name: Keep the test results
         if: failure()
         uses: actions/upload-artifact@v4
@@ -85,6 +86,7 @@ jobs:
             build/ci-tests.xcresult
             build/ci-perf.log
             build/ci-perf.xcresult
+            ~/Library/Logs/DiagnosticReports/Pane*
           retention-days: 7
       # Pictures the snapshot tests attach (FileViewerSnapshots and others): kept after every run, so a
       # UI change can be looked at without running anything on a developer's screen.
