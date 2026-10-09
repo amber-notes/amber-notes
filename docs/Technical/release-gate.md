@@ -54,13 +54,36 @@ three times and plays the flows. Numbers are the median of the three runs.
 | Launch to synced | Process start to the first completed sync |
 | Longest frame, frames drawn, hitches | The main thread's display-link callbacks during each step: a gap is a frame the window couldn't draw. Steps: sidebar hide and show (6 toggles), opening a short note (4), the 5,000-line note (2), typing 25 keys and the save and push that follow, folder switches (6), a note arriving by sync (the gate changes a note on the server and the app pulls it) |
 | Views laid out | Layout passes per view class during each step and during 20 s of idle, counted by swizzling `layout` on every view class in the windows (the status item's too). Idle must be 0: anything laid out again and again while nothing happens is a loop like the MenuBarExtra one |
-| Idle CPU, wake-ups | 20 s with nothing happening, after sync: the process's CPU time and the main run loop's wake-ups, without the probe's own clocks |
+| Idle CPU, wake-ups | 20 s with nothing happening, after sync and at least 15 s after launch: the process's CPU time and the main run loop's wake-ups, without the probe's own clocks |
 | Main-thread hangs over 250 ms | A background thread pings the main thread every 50 ms. When a hang starts, the launcher on the Mac runs `sample` on the app's pid; the report shows the main thread's stack, symbolicated from the archive's dSYM |
 | Crash, hang or spin reports | New files about the app in `~/Library/Logs/DiagnosticReports` on the Mac |
 | Leftover folders after an account switch | Before each sign-in the probe counts folders still on the Mac that are marked deleted and waiting to be pushed, then removes the local library for real, so each account starts clean. Any count fails: those are the last account's folders, which the app would push into the next account and, when the last account signs in again, delete on the server (found 2026-10-08: `AccountLibrary.adopt` calls `context.delete(f)`, which resolves to Library's `delete(_ folder:)`) |
 
 iPhone flows are not measured: a simulator would run on the hub Mac's screen, under its load, and its
 timings are not a phone's. The iPhone app's size is measured.
+
+### The bench accounts' state
+
+Each bench account is put in the same settled state before every run (`staging.ts ensure`), the state
+of someone who has used the app for a while: the first-run setup card dismissed, "How did you hear
+about us?" skipped, the share ask dismissed, and no account notices waiting. Without that the app
+opens a sheet or an alert over the notes window at launch, and the gate measures a dimmed window
+with a disabled toolbar. That happened on 2026-10-08: checks run against the bench accounts had left
+1, 5 and 6 "an AI was connected" notices on them, and the 2,000-note run laid out thousands of views
+more than the build did the day before. The probe now stops a run when a sheet or an alert is
+attached to a window, and names it; nothing is measured under one.
+
+Each account also starts from a clean local store: with the notes, the probe removes the memory of
+where sync was (signing the same account in twice in a row otherwise pulls only what changed) and
+the store's change history (otherwise every account's database carries the runs before it: by
+2026-10-08 a one-note account measured 15.9 MB, of which 0.35 MB was the account).
+
+Idle is measured from 15 seconds after launch at the earliest, for every account. A one-note
+account is synced two seconds after launch, and the window's last settling pass (six layouts, once)
+then fell inside its idle window; it was never a loop (a second idle window right after it counts 0).
+
+`AMBER_GATE_KEEP_SAMPLES=1` keeps each hang's whole `sample` report in `build/release-gate/out/<sha>/samples/`;
+`AMBER_GATE_IDLE_TWICE=1` measures a second idle window after the first (`idleAgain` in the raw run).
 
 ### Security
 
