@@ -55,4 +55,5 @@ www.linkedin.com
 www.macrumors.com
 www.visitlisboa.com
 www.w3.org
+purl.org                      # the Dublin Core namespace in the site's RSS feed (web/lib/feed.ts)
 x.com
