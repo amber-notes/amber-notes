@@ -30,6 +30,10 @@ import Testing
 
     @Test func theFoldersAreThereWhileTheMenuIsOpen() async throws {
         guard FileRowClickTests.onCI else { return }
+        // Another suite's menu or key equivalent may have just been tracked: wait it out before
+        // the menu here is even made.
+        for _ in 0..<100 where MenuTracking.shared.open { try? await Task.sleep(for: .milliseconds(100)) }
+        try #require(!MenuTracking.shared.open, "no menu is open in this process")
         let c = try ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
         let ctx = c.mainContext
         let folders = (0..<150).map { ctx.createFolder(named: "Folder \($0)") }
@@ -49,10 +53,6 @@ import Testing
         w.contentView?.layoutSubtreeIfNeeded()
         w.displayIfNeeded()
         try? await Task.sleep(for: .milliseconds(500))
-        // Another suite's menu or key equivalent may have just been tracked: wait it out.
-        for _ in 0..<100 where MenuTracking.shared.open { try? await Task.sleep(for: .milliseconds(100)) }
-        w.contentView?.layoutSubtreeIfNeeded()
-        try #require(!MenuTracking.shared.open, "no menu is open in this process")
         let button = try #require(Self.popUp(in: w.contentView), "the Menu is a pop-up button (views: \(Self.classes(in: w.contentView).joined(separator: " ")))")
         func moveTo() -> NSMenuItem? { button.menu?.items.first { $0.title == "Move to" } }
         #expect((moveTo()?.submenu?.items.count ?? 0) == 0, "no folder is listed before the menu opens")

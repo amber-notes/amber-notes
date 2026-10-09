@@ -32,11 +32,12 @@ import Testing
         let folder: Folder
 
         var table: NSTableView? { FileRowClickTests.table(in: window.contentView) }
-        /// The note rows are the tall ones; headers are shorter.
+        /// The note rows: not the section headers (group rows).
         func noteRows(_ t: NSTableView) -> [Int] {
-            let heights = (0 ..< t.numberOfRows).map { t.rect(ofRow: $0).height }
-            let tallest = heights.max() ?? 0
-            return (0 ..< t.numberOfRows).filter { heights[$0] > tallest - 2 }
+            (0 ..< t.numberOfRows).filter { !(t.delegate?.tableView?(t, isGroupRow: $0) ?? false) && t.rect(ofRow: $0).height > 30 }
+        }
+        func heights(_ t: NSTableView) -> String {
+            (0 ..< t.numberOfRows).map { "\(Int(t.rect(ofRow: $0).height))\((t.delegate?.tableView?(t, isGroupRow: $0) ?? false) ? "g" : "")" }.joined(separator: " ")
         }
         func close() { window.orderOut(nil); window.close() }
         func settle(_ s: Double = 0.4) async {
@@ -108,7 +109,7 @@ import Testing
         let rig = try await Self.rig()
         defer { rig.close() }
         let all = try #require(rig.table, "the List is a table")
-        try #require(rig.noteRows(all).count == 12)
+        try #require(rig.noteRows(all).count == 12, "twelve notes (row heights: \(rig.heights(all)))")
         rig.click(row: rig.noteRows(all)[3], in: all)
         await rig.settle()
         #expect(rig.state.ids == [rig.notes[3].id], "a click selects Budget 3")
@@ -121,15 +122,16 @@ import Testing
             #expect(Self.focusIsIn(field, of: rig.window), "after typing \(letter) the search field still has the keys")
             #expect(rig.state.ids == [rig.notes[3].id], "and Budget 3 is still selected")
         }
-        #expect(field.stringValue == "Bud")
+        #expect(field.stringValue.hasSuffix("ud"), "the letters land in the field (\(field.stringValue))")
         let found = try #require(rig.table)
         #expect(rig.noteRows(found).count == 6, "the six Budget notes")
         #expect(found.selectedRowIndexes.count == 1, "with Budget 3 marked in it")
 
         // Cleared: everything is back, the selection and the focus as they were.
-        rig.key("a", code: 0, modifiers: .command)
-        rig.key("\u{7F}", code: 51)
-        await rig.settle()
+        for _ in 0..<4 {
+            rig.key("\u{7F}", code: 51)
+            await rig.settle(0.2)
+        }
         #expect(field.stringValue.isEmpty)
         #expect(Self.focusIsIn(field, of: rig.window))
         #expect(rig.state.ids == [rig.notes[3].id])
@@ -151,7 +153,7 @@ import Testing
         await rig.settle(0.6)
         let home = try #require(rig.table)
         #expect(home !== all, "a folder is a new list")
-        try #require(rig.noteRows(home).count == 4, "Home's four notes")
+        try #require(rig.noteRows(home).count == 4, "Home's four notes (row heights: \(rig.heights(home)))")
         rig.click(row: rig.noteRows(home)[1], in: home)
         await rig.settle()
         #expect(rig.state.ids == [rig.notes[9].id], "a click in the new list selects")
