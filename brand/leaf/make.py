@@ -170,7 +170,7 @@ def social():
     card.alpha_composite(icon, (x, y))
     d = ImageDraw.Draw(card)
     fonts = os.path.join(REPO, "web", "lib", "og")
-    d.text((464, 232), "Amber Notes", font=ImageFont.truetype(f"{fonts}/Inter-ExtraBold.ttf", 104), fill=(0x2A, 0x1D, 0x10))
+    d.text((464, 232), "Pinto Notes", font=ImageFont.truetype(f"{fonts}/Inter-ExtraBold.ttf", 104), fill=(0x2A, 0x1D, 0x10))
     d.text((468, 372), "The notes app your AI can actually use.", font=ImageFont.truetype(f"{fonts}/Inter-SemiBold.ttf", 38), fill=(0x74, 0x60, 0x4C))
     save(card, "brand/social/github-social-preview.png", opaque=True)
 

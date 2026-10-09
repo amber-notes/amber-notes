@@ -11,7 +11,7 @@ import { isBlogList } from "@/lib/blog-list";
 import { CONSENT_OPEN_EVENT } from "@/lib/consent";
 import { filterTransition } from "@/lib/filter-transition";
 
-const GITHUB = "https://github.com/amber-notes/amber-notes";
+const GITHUB = "https://github.com/pinto-notes/pinto-notes";
 const X_URL = "https://x.com/EmilWagman";
 const LINKEDIN_URL = "https://www.linkedin.com/in/emil-wagman-52a907287/";
 const MAKER_URL = "https://emilwagman.com";

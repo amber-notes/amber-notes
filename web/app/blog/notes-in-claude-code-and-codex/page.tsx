@@ -56,7 +56,7 @@ export default function Page() {
         Rather sign in than paste a token? Install the Pinto Notes plugin, then run <code>/mcp</code> in Claude Code, pick{" "}
         <code>amber-notes</code> and sign in. The plugin also teaches Claude how your notes are laid out.
       </p>
-      <pre><code>{`claude plugin marketplace add amber-notes/amber-notes
+      <pre><code>{`claude plugin marketplace add pinto-notes/pinto-notes
 claude plugin install amber-notes`}</code></pre>
       <p>
         Already connected Claude on claude.ai with the same Claude account? Then Claude Code may already have Pinto Notes as a connector,

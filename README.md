@@ -72,8 +72,8 @@ You need macOS 26 with Xcode 26, Homebrew, and Docker (for the local Supabase st
 ```sh
 brew install xcodegen supabase/tap/supabase deno pnpm
 
-git clone https://github.com/amber-notes/amber-notes.git
-cd amber-notes
+git clone https://github.com/pinto-notes/pinto-notes.git
+cd pinto-notes
 supabase start            # local Postgres, Auth, Storage and Functions on ports 56420–56429
 xcodegen generate
 open Pane.xcodeproj       # run the "Pane" scheme on "My Mac" or an iPhone simulator
@@ -122,11 +122,11 @@ In the app, open **Settings → Connect an AI** and follow the steps for your cl
 
 Everyone who has had a pull request merged, in the order they joined:
 
-- [@wufangyong973](https://github.com/wufangyong973): brought the website's README up to date ([#97](https://github.com/amber-notes/amber-notes/pull/97))
-- [@arnavtambe](https://github.com/arnavtambe): removed an unused field from the app's connections ([#109](https://github.com/amber-notes/amber-notes/pull/109))
-- [@sameer-dhande](https://github.com/sameer-dhande): made each help answer announce its own question to screen readers ([#170](https://github.com/amber-notes/amber-notes/pull/170)) and named the table's row and column handles for VoiceOver ([#176](https://github.com/amber-notes/amber-notes/pull/176))
+- [@wufangyong973](https://github.com/wufangyong973): brought the website's README up to date ([#97](https://github.com/pinto-notes/pinto-notes/pull/97))
+- [@arnavtambe](https://github.com/arnavtambe): removed an unused field from the app's connections ([#109](https://github.com/pinto-notes/pinto-notes/pull/109))
+- [@sameer-dhande](https://github.com/sameer-dhande): made each help answer announce its own question to screen readers ([#170](https://github.com/pinto-notes/pinto-notes/pull/170)) and named the table's row and column handles for VoiceOver ([#176](https://github.com/pinto-notes/pinto-notes/pull/176))
 
-Want to be next? [CONTRIBUTING.md](CONTRIBUTING.md) has where to start, and ideas of your own are welcome in [Discussions](https://github.com/amber-notes/amber-notes/discussions/categories/ideas).
+Want to be next? [CONTRIBUTING.md](CONTRIBUTING.md) has where to start, and ideas of your own are welcome in [Discussions](https://github.com/pinto-notes/pinto-notes/discussions/categories/ideas).
 
 ## License
 

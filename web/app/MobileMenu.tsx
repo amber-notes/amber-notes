@@ -6,7 +6,7 @@ import { AppleGlyph } from "./SiteChrome";
 import { GitHubGlyph, useStars } from "./GitHubLink";
 import { APP_STORE_LIVE, APP_STORE_URL } from "@/lib/site";
 
-const GITHUB = "https://github.com/amber-notes/amber-notes";
+const GITHUB = "https://github.com/pinto-notes/pinto-notes";
 /// As long as the sheet's exit in site.css.
 const EXIT_MS = 150;
 

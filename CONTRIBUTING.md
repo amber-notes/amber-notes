@@ -6,21 +6,21 @@ Everyone taking part follows the [code of conduct](CODE_OF_CONDUCT.md). Report s
 
 ## Bring your own idea
 
-Open a post in [Ideas](https://github.com/amber-notes/amber-notes/discussions/categories/ideas). Say what you were trying to do and where the app got in your way. You don't need a design or a plan. I reply within a day.
+Open a post in [Ideas](https://github.com/pinto-notes/pinto-notes/discussions/categories/ideas). Say what you were trying to do and where the app got in your way. You don't need a design or a plan. I reply within a day.
 
 Good ideas become issues, credited to you, and you're first in line to build it if you want to. If you'd rather just build, say so in the post and we'll agree on the approach before you spend time on it.
 
 ## Where to start
 
-- [**help wanted**](https://github.com/amber-notes/amber-notes/labels/help%20wanted): real features with a short spec, where the code lives, how to test it and a size. Comment on one to claim it.
-  - [Shortcuts actions: add to a note, and create a note](https://github.com/amber-notes/amber-notes/issues/131) (Swift, M)
-  - [Let an AI update any table row](https://github.com/amber-notes/amber-notes/issues/132) (TypeScript, M)
-  - [Import Notion databases as tables](https://github.com/amber-notes/amber-notes/issues/133) (Swift, M)
-  - [Import from Day One](https://github.com/amber-notes/amber-notes/issues/134) (Swift, M)
-  - [Import Bear backups](https://github.com/amber-notes/amber-notes/issues/139) (Swift, S)
-  - [Translate the app, starting with Swedish](https://github.com/amber-notes/amber-notes/issues/135) (Swift, L)
-  - [Write a template for the gallery](https://github.com/amber-notes/amber-notes/issues/136) (JSON, S)
-- [**good first issue**](https://github.com/amber-notes/amber-notes/labels/good%20first%20issue): small, well-scoped fixes for a first pull request.
+- [**help wanted**](https://github.com/pinto-notes/pinto-notes/labels/help%20wanted): real features with a short spec, where the code lives, how to test it and a size. Comment on one to claim it.
+  - [Shortcuts actions: add to a note, and create a note](https://github.com/pinto-notes/pinto-notes/issues/131) (Swift, M)
+  - [Let an AI update any table row](https://github.com/pinto-notes/pinto-notes/issues/132) (TypeScript, M)
+  - [Import Notion databases as tables](https://github.com/pinto-notes/pinto-notes/issues/133) (Swift, M)
+  - [Import from Day One](https://github.com/pinto-notes/pinto-notes/issues/134) (Swift, M)
+  - [Import Bear backups](https://github.com/pinto-notes/pinto-notes/issues/139) (Swift, S)
+  - [Translate the app, starting with Swedish](https://github.com/pinto-notes/pinto-notes/issues/135) (Swift, L)
+  - [Write a template for the gallery](https://github.com/pinto-notes/pinto-notes/issues/136) (JSON, S)
+- [**good first issue**](https://github.com/pinto-notes/pinto-notes/labels/good%20first%20issue): small, well-scoped fixes for a first pull request.
 - **A template** for the [template gallery](https://pintonotes.com/templates): no Swift needed, see [Add a template](#add-a-template).
 
 ## What you can expect from me
@@ -35,7 +35,7 @@ You need macOS 26 with Xcode 26, Homebrew, and Docker (for the local backend).
 
 ```sh
 brew install xcodegen supabase/tap/supabase deno pnpm
-git clone https://github.com/amber-notes/amber-notes.git && cd amber-notes
+git clone https://github.com/pinto-notes/pinto-notes.git && cd pinto-notes
 supabase start          # local Postgres, Auth, Storage and Functions (needs Docker)
 xcodegen generate       # makes Pane.xcodeproj from project.yml
 ```
@@ -125,7 +125,7 @@ A small example, trimmed (a real one has three `asks` and a few `demo` calls):
 }
 ```
 
-Not sure your idea fits? Open a [Template idea](https://github.com/amber-notes/amber-notes/issues/new?template=template-idea.md) issue first and I'll tell you before you write it.
+Not sure your idea fits? Open a [Template idea](https://github.com/pinto-notes/pinto-notes/issues/new?template=template-idea.md) issue first and I'll tell you before you write it.
 
 ## Pull requests
 
