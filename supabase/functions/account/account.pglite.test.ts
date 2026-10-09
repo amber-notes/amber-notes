@@ -251,6 +251,8 @@ Deno.test("Delete Account is paused for 72 hours after a completed reset or an e
   const reset = await newUser(pg);
   await pg.query(`update auth.users set encrypted_password = 'new hash' where id = $1`, [reset]);
   const linked = await newUser(pg);
+  // An account that exists: its address was confirmed long ago (sign_up_pause.pglite.test.ts has the rest).
+  await pg.query(`update auth.users set email_confirmed_at = now() - interval '30 days' where id = $1`, [linked]);
   const [{ id: session }] = (await pg.query<any>(`insert into auth.sessions (user_id) values ($1) returning id`, [linked])).rows;
   await pg.query(`insert into auth.mfa_amr_claims (session_id, authentication_method) values ($1, 'otp')`, [session]);
   for (const me of [reset, linked]) {

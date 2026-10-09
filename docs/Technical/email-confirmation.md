@@ -41,6 +41,13 @@ The website has no sign-up (an account's key is made on its first device). Signi
 `/connect` with an unconfirmed account says to open the app, sign in there and type the code
 (`web/lib/connect.ts`, `EMAIL_NOT_CONFIRMED`).
 
+## Deleting the account right after
+
+Confirming with the code does not start the 72-hour pause on Delete Account and Start fresh, which
+is for password resets and emailed sign-ins (`docs/Technical/password-reset.md`). Before migration
+`20261009233000_sign_up_code_is_not_a_reset.sql` it did, so a new account could not be deleted for
+three days. That migration must be applied before confirmation is turned on in production.
+
 ## The email
 
 `supabase/templates/confirmation.html`, written by `scripts/auth-emails.ts`: "One quick check",
