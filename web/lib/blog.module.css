@@ -51,6 +51,7 @@
 .ground[data-ground="lagoon"] { background: linear-gradient(160deg, #e2f2f1, #b9dcdb); }
 .ground[data-ground="slate"] { background: linear-gradient(160deg, #eceef3, #c9cfdb); }
 .ground[data-ground="olive"] { background: linear-gradient(160deg, #eef0dd, #d3d8b0); }
+.ground[data-ground="plum"] { background: linear-gradient(160deg, #f3e6ef, #dcc0d6); }
 .ground[data-ground="denim"] { background: linear-gradient(160deg, #e6e9f7, #bcc6e8); }
 .ground[data-ground="dunes"] { background: #f9c98a url(/blog/desk.svg) center / cover no-repeat; }
 
@@ -103,6 +104,7 @@
 .thumb[data-ground="lagoon"] { background: #dcefee; }
 .thumb[data-ground="slate"] { background: #e4e7ee; }
 .thumb[data-ground="olive"] { background: #e8ebd2; }
+.thumb[data-ground="plum"] { background: #eddfe9; }
 .thumb[data-ground="denim"] { background: #dfe4f5; }
 
 /* An iPhone screen on its own, with the screen's corners. */
