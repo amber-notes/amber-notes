@@ -70,10 +70,18 @@ struct RootView: View {
 
     private var split: some View {
         NavigationSplitView(columnVisibility: $visibility) {
+            // On the Mac the folders and the list are compared before they're worked out again (see
+            // their `==`): the split view hands its columns over again whenever one is hidden or shown.
             SidebarView(scope: $scope, onNewNote: newNote)
+                #if os(macOS)
+                .equatable()
+                #endif
                 .navigationSplitViewColumnWidth(min: 200, ideal: 230, max: 320)
         } content: {
             NoteListView(scope: scope ?? .all, selection: $selection, onNewNote: newNote)
+                #if os(macOS)
+                .equatable()
+                #endif
                 .navigationSplitViewColumnWidth(min: 260, ideal: 310, max: 420)
                 #if os(iOS)
                 // Each visit to a folder starts at the top with its large title, as in Notes.
