@@ -220,6 +220,7 @@ struct FileDetailView: View {
     @Environment(SyncEngine.self) private var sync: SyncEngine?
     @State private var state: Load = .checking
     @State private var renaming = false
+    @State private var moving = false
     @State private var nameDraft = ""
     @State private var confirmForever = false
     @State private var exporting = false
@@ -384,12 +385,17 @@ struct FileDetailView: View {
                         .accessibilityIdentifier("file.export")
                     Divider()
                     Button("Rename…", systemImage: "pencil") { nameDraft = FolderFileName.stem(file.filename); renaming = true }
+                    #if os(macOS)
+                    Button("Move to…", systemImage: "folder") { moving = true }
+                        .accessibilityIdentifier("file.moveTo")
+                    #else
                     Menu("Move to", systemImage: "folder") {
                         ForEach(context.allFolders().sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }) { f in
                             Button(f.name) { withAnimation(.snappy) { context.move(file, to: f) } }
                                 .disabled(file.folderID == f.id)
                         }
                     }
+                    #endif
                     Divider()
                     Button("Delete", systemImage: "trash", role: .destructive) { withAnimation(.snappy) { context.trash(file) } }
                 } else {
@@ -401,6 +407,11 @@ struct FileDetailView: View {
             }
             .menuIndicator(.hidden)
             .accessibilityIdentifier("file.more")
+            #if os(macOS)
+            .popover(isPresented: $moving, arrowEdge: .bottom) {
+                MoveToPicker(current: file.folderID) { f in withAnimation(.snappy) { context.move(file, to: f) } }
+            }
+            #endif
         }
     }
 }

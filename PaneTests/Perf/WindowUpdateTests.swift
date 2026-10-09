@@ -394,6 +394,7 @@ import Testing
         try ctx.save()
         let note = try #require(open)
         WikiDirectory.invalidate()
+        let foldersListed = MoveToPicker.listed
         let w = NSWindow(contentRect: CGRect(x: -20000, y: -20000, width: 1180, height: 760),
                          styleMask: [.borderless], backing: .buffered, defer: false)
         w.isReleasedWhenClosed = false
@@ -409,6 +410,7 @@ import Testing
         w.contentView?.layoutSubtreeIfNeeded()
         w.displayIfNeeded()
         #expect(!WikiDirectory.isBuilt, "the library's titles aren't read before the note's first frame")
+        #expect(MoveToPicker.listed == foldersListed, "the toolbar lists no folders for Move to until its picker opens")
 
         for _ in 0..<100 where !WikiDirectory.isBuilt {
             w.contentView?.layoutSubtreeIfNeeded()

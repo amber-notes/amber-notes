@@ -1,0 +1,122 @@
+#if os(macOS)
+import AppKit
+import SwiftData
+import SwiftUI
+import Testing
+@testable import Pane
+
+/// "Move to…": the folders in the sidebar's order with a search field. The order and the search
+/// are checked as values; a click and Return go through a real window on CI, and the picker is
+/// drawn light and dark for the test results (CI's "snapshots" artifact).
+@MainActor @Suite(.serialized) struct MoveToPickerTests {
+    /// Work > (Clients > Acme, Plans), Home, Travel; the note is in Plans.
+    static func library() throws -> (ModelContainer, [String: Folder]) {
+        let c = try ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        let ctx = c.mainContext
+        var by: [String: Folder] = [:]
+        for name in ["Work", "Home", "Travel", "Clients", "Plans", "Acme"] { by[name] = ctx.createFolder(named: name) }
+        ctx.move(by["Clients"]!, into: by["Work"])
+        ctx.move(by["Plans"]!, into: by["Work"])
+        ctx.move(by["Acme"]!, into: by["Clients"])
+        try ctx.save()
+        return (c, by)
+    }
+
+    @Test func theFoldersAreListedAsTheSidebarHasThem() throws {
+        let (c, by) = try Self.library()
+        let rows = MoveToPicker.rows(c.mainContext.allFolders())
+        #expect(Set(rows.map(\.name)) == ["Work", "Home", "Travel", "Clients", "Plans", "Acme"])
+        let names = rows.map(\.name)
+        // Each folder right under its parent, a level in.
+        let work = try #require(names.firstIndex(of: "Work")), clients = try #require(names.firstIndex(of: "Clients")), acme = try #require(names.firstIndex(of: "Acme"))
+        #expect(work < clients && clients < acme && acme == clients + 1)
+        #expect(rows[work].depth == 0 && rows[clients].depth == 1 && rows[acme].depth == 2)
+        #expect(rows[acme].path == "Work / Clients")
+        // The top level in the sidebar's order.
+        let top = rows.filter { $0.depth == 0 }.map(\.name)
+        #expect(top == [by["Work"]!, by["Home"]!, by["Travel"]!].sorted { $0.sortIndex < $1.sortIndex }.map(\.name))
+    }
+
+    @Test func aSearchListsMatchingFoldersFlatWithWhereTheyAre() throws {
+        let (c, _) = try Self.library()
+        let found = MoveToPicker.rows(c.mainContext.allFolders(), matching: " pl ")
+        #expect(found.map(\.name) == ["Plans"])
+        #expect(found.first?.depth == 0 && found.first?.path == "Work")
+        #expect(MoveToPicker.rows(c.mainContext.allFolders(), matching: "zzz").isEmpty)
+        #expect(MoveToPicker.rows(c.mainContext.allFolders(), matching: "a").map(\.name).sorted() == ["Acme", "Plans", "Travel"])
+    }
+
+    /// The number of folders doesn't change what the toolbar's menu holds: listing them costs
+    /// nothing until the picker is on screen.
+    @Test func manyFoldersAreListedOnlyWhenThePickerShows() throws {
+        let c = try ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        for i in 0..<150 { _ = c.mainContext.createFolder(named: "Folder \(i)") }
+        let before = MoveToPicker.listed
+        let rows = MoveToPicker.rows(c.mainContext.allFolders())
+        #expect(rows.count == 150)
+        #expect(MoveToPicker.listed == before + 1)
+    }
+
+    struct Host: View {
+        let current: UUID?
+        let moved: (Folder) -> Void
+        var body: some View { MoveToPicker(current: current, move: moved) }
+    }
+
+    static func window(_ c: ModelContainer, current: UUID?, dark: Bool = false, moved: @escaping (Folder) -> Void) -> NSWindow {
+        let w = FileRowClickTests.KeyWindow(contentRect: CGRect(x: -20000, y: -20000, width: 280, height: 400), styleMask: [.borderless], backing: .buffered, defer: false)
+        w.isReleasedWhenClosed = false
+        w.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
+        w.contentViewController = NSHostingController(rootView: Host(current: current, moved: moved).modelContainer(c))
+        w.setFrameOrigin(CGPoint(x: -20000, y: -20000))
+        return w
+    }
+
+    @Test func aClickMovesAndTheCurrentFolderIsNotAChoice() async throws {
+        guard FileRowClickTests.onCI else { return }
+        let (c, by) = try Self.library()
+        var moved: [String] = []
+        let w = Self.window(c, current: by["Plans"]!.id) { moved.append($0.name) }
+        defer { w.orderOut(nil); w.close() }
+        NSApp.activate(ignoringOtherApps: true)
+        w.makeKeyAndOrderFront(nil)
+        w.contentView?.layoutSubtreeIfNeeded()
+        w.displayIfNeeded()
+        try? await Task.sleep(for: .milliseconds(600))
+        let rows = MoveToPicker.rows(c.mainContext.allFolders())
+        let content = try #require(w.contentView)
+        func click(_ name: String) throws {
+            let i = try #require(rows.firstIndex { $0.name == name })
+            // Rows start under the search field and its line, 6 pt in; AppKit's y runs up.
+            let fromTop = MoveToPicker.Metrics.search + 1 + 6 + (CGFloat(i) + 0.5) * MoveToPicker.Metrics.row
+            let p = content.convert(NSPoint(x: content.bounds.midX, y: content.isFlipped ? fromTop : content.bounds.height - fromTop), to: nil)
+            func event(_ type: NSEvent.EventType) -> NSEvent {
+                NSEvent.mouseEvent(with: type, location: p, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
+                                   windowNumber: w.windowNumber, context: nil, eventNumber: 0, clickCount: 1, pressure: type == .leftMouseDown ? 1 : 0)!
+            }
+            NSApp.postEvent(event(.leftMouseUp), atStart: false)
+            w.sendEvent(event(.leftMouseDown))
+        }
+        try click("Plans")
+        try? await Task.sleep(for: .milliseconds(300))
+        #expect(moved.isEmpty, "the folder the note is in is not a choice")
+        try click("Acme")
+        try? await Task.sleep(for: .milliseconds(300))
+        #expect(moved == ["Acme"], "a click on a folder moves there")
+    }
+
+    @Test(arguments: [false, true]) func thePickerLightAndDark(dark: Bool) async throws {
+        guard FileRowClickTests.onCI else { return }
+        let (c, by) = try Self.library()
+        let w = Self.window(c, current: by["Plans"]!.id, dark: dark) { _ in }
+        defer { w.orderOut(nil); w.close() }
+        w.orderFrontRegardless()
+        try? await Task.sleep(for: .seconds(1))
+        let v = try #require(w.contentView)
+        v.layoutSubtreeIfNeeded()
+        let rep = try #require(v.bitmapImageRepForCachingDisplay(in: v.bounds))
+        v.cacheDisplay(in: v.bounds, to: rep)
+        Testing.Attachment.record(try #require(rep.representation(using: .png, properties: [:])), named: "move-to-picker-\(dark ? "dark" : "light").png")
+    }
+}
+#endif
