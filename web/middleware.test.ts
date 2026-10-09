@@ -80,6 +80,22 @@ describe("the MCP proxy", () => {
     expect(ico.readUInt16LE(4)).toBeGreaterThan(0);
   });
 
+  it("asks crawlers to stay off both MCP hosts, without asking the server", async () => {
+    for (const host of ["mcp.ambernotes.app", "mcp.pintonotes.com"]) {
+      const res = await middleware(new NextRequest(`https://${host}/robots.txt`, { headers: { host } }));
+      expect(res.status).toBe(200);
+      expect(res.headers.get("content-type")).toContain("text/plain");
+      expect(res.headers.get("x-middleware-rewrite")).toBeNull();
+      expect(res.headers.get("location")).toBeNull();
+      expect(await res.text()).toBe("User-agent: *\nDisallow: /\n");
+    }
+  });
+
+  it("leaves the site's own robots.txt alone", async () => {
+    const res = await middleware(new NextRequest("https://pintonotes.com/robots.txt", { headers: { host: "pintonotes.com" } }));
+    expect(res.headers.get("x-middleware-next")).toBe("1");
+  });
+
   it("never forwards paths the server doesn't have", async () => {
     expect(await proxied("/admin?redirect_uri=http%3A%2F%2F127.0.0.1%2F")).toBeNull();
     expect(await proxied("/connect%2f..%2fadmin")).toBeNull();

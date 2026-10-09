@@ -29,7 +29,7 @@ export default function Page() {
         OAuth, which is how Pinto Notes works. I&apos;ve checked this path end to end.
       </p>
       <ol>
-        <li>Install the Pinto Notes extension: <code>gemini extensions install https://github.com/amber-notes/amber-notes</code></li>
+        <li>Install the Pinto Notes extension: <code>gemini extensions install https://github.com/pinto-notes/pinto-notes</code></li>
         <li>Start Gemini CLI and run <code>/mcp auth amber-notes</code>. Your browser opens pintonotes.com to sign in.</li>
         <li>The page shows a two-digit number. Pinto Notes on your iPhone or Mac asks whether to allow the app: type the number, choose Read Only or Read and Edit, and choose Allow.</li>
         <li>Back in Gemini CLI, run <code>/mcp</code> to see amber-notes connected with its tools, then ask: &ldquo;Search my Pinto Notes for the standup and summarise this week.&rdquo;</li>
