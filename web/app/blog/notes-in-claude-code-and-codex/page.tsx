@@ -11,7 +11,7 @@ const FAQ = [
     "Yes. Add Pinto Notes as an MCP server with an access token, and Claude Code can search, read, create and edit your notes, or only read them if you make the token read only.",
   ] },
   { q: "How do I add a notes MCP server to Codex?", a: [
-    "Run codex mcp add amber_notes --url https://mcp.ambernotes.app. Codex opens your browser to sign in, and you approve it on your iPhone or Mac. If you'd rather use a token, Pinto Notes, Settings, Connect an AI, Codex shows a few lines for ~/.codex/config.toml with the token in an Authorization header.",
+    `Run codex mcp add amber_notes --url ${MCP_URL}. Codex opens your browser to sign in, and you approve it on your iPhone or Mac. If you'd rather use a token, Pinto Notes, Settings, Connect an AI, Codex shows a few lines for ~/.codex/config.toml with the token in an Authorization header.`,
   ] },
   { q: "Where is the access token stored?", a: [
     "In your Claude Code or Codex configuration on your computer. Pinto Notes shows it once. Anyone with the token can use your notes, so keep it private, and disconnect it in Pinto Notes if it leaks.",

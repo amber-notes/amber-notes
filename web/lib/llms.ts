@@ -1,4 +1,4 @@
-import { CLAUDE_DIRECTORY_URL, FACTS, MCP_URL, WHAT_IT_IS } from "./facts";
+import { CLAUDE_DIRECTORY_URL, FACTS, MCP_URL, OLD_MCP_URL_STAYS, WHAT_IT_IS } from "./facts";
 import { GITHUB_URL } from "./github";
 import { published } from "./posts";
 import { searchTitle, templates } from "./templates";
@@ -24,6 +24,7 @@ function summary(): string[] {
     "## Connect an AI (MCP)",
     "",
     `- MCP server (Streamable HTTP, OAuth 2.1 sign-in or a bearer access token): ${MCP_URL}`,
+    `- ${OLD_MCP_URL_STAYS}`,
     "- ChatGPT: add it as your own app in Developer mode (Plus, Pro, Business, Enterprise or Edu, on the web), choose OAuth, then Allow in Pinto Notes.",
     `- Claude: open ${CLAUDE_DIRECTORY_URL} (Amber Notes in Claude's connector directory), choose Connect to Claude, then Allow in Pinto Notes. Fallback: add ${MCP_URL} as a custom connector (every plan; the free plan includes one).`,
     "- Claude Code and Codex: an access token from Pinto Notes, Settings, Connect an AI, sent as an Authorization header.",

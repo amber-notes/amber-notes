@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { MCP_URL, WHAT_IT_IS } from "@/lib/facts";
+import { MCP_URL, OLD_MCP_URL, WHAT_IT_IS } from "@/lib/facts";
 import { OLD_NAME, SITE_NAME, pageMetadata } from "@/lib/site";
 import { JsonLd, breadcrumbs, renamed } from "@/lib/structured-data";
 import styles from "../home.module.css";
@@ -33,7 +33,7 @@ export default function Renamed() {
           </section>
           <section {...rise(3)}>
             <h2>What stayed the same</h2>
-            <p>Your notes, your account and the encryption. ChatGPT, Claude and the other AI apps you connected keep working at {MCP_URL}, and that address stays. There&apos;s nothing to reconnect and nothing you need to do.</p>
+            <p>Your notes, your account and the encryption. ChatGPT, Claude and the other AI apps you connected keep working at {OLD_MCP_URL}, and that address stays. There&apos;s nothing to reconnect and nothing you need to do. A new connection uses {MCP_URL}, which reaches the same notes.</p>
             <p>The app on your Mac shows the new name after its next update. Until then it still says {OLD_NAME}, and so do a few listings, such as Claude&apos;s connector directory. It&apos;s the same app.</p>
           </section>
           <section {...rise(4)}>

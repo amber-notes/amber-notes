@@ -5,6 +5,8 @@ import { MCP_URL } from "./facts";
 /// listed (checked 2026-09-30). Codex and VS Code sign in on 127.0.0.1, which reaches the server as
 /// sent only with the proxy fix in middleware.ts (PR 47). Cursor isn't listed: it registers a
 /// cursor:// redirect, which the server doesn't accept. Goose, Zed and Windsurf weren't checked.
+/// The commands give mcp.pintonotes.com since 2026-10-09 (the same server; sign-in checked at that
+/// address). The Claude Code plugin and the Gemini CLI extension still carry mcp.ambernotes.app.
 
 /// The name each tool shows for the server.
 export const SERVER_NAME = "amber-notes";

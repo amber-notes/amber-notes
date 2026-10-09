@@ -1,11 +1,17 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { AGENT_INSTALLS } from "./agent-installs";
-import { MCP_URL } from "./facts";
+import { MCP_URL, OLD_MCP_URL, OLD_MCP_URL_STAYS } from "./facts";
 
 const repo = (path: string) => JSON.parse(readFileSync(new URL(`../../${path}`, import.meta.url), "utf8"));
 
 describe("installs for AI tools", () => {
+  it("a new connection gets the pintonotes.com address, and the page says the older one keeps working", () => {
+    expect(MCP_URL).toBe("https://mcp.pintonotes.com");
+    expect(OLD_MCP_URL).toBe("https://mcp.ambernotes.app");
+    expect(OLD_MCP_URL_STAYS).toContain(OLD_MCP_URL);
+  });
+
   it("every command adds the server", () => {
     for (const x of AGENT_INSTALLS.filter((x) => x.code && x.tool !== "Claude Code" && x.tool !== "Gemini CLI")) {
       expect(x.code).toContain(MCP_URL);
@@ -26,9 +32,11 @@ describe("installs for AI tools", () => {
 });
 
 describe("plugin and extension manifests in the repo", () => {
+  // Both update in place for people who already installed them, and a sign-in is tied to the address
+  // it was made at, so these keep the older address until that move is planned.
   it("the Claude Code plugin and the Gemini CLI extension point at the server", () => {
-    expect(repo("plugins/amber-notes/.mcp.json").mcpServers["amber-notes"]).toEqual({ type: "http", url: MCP_URL });
-    expect(repo("gemini-extension.json").mcpServers["amber-notes"].httpUrl).toBe(MCP_URL);
+    expect(repo("plugins/amber-notes/.mcp.json").mcpServers["amber-notes"]).toEqual({ type: "http", url: OLD_MCP_URL });
+    expect(repo("gemini-extension.json").mcpServers["amber-notes"].httpUrl).toBe(OLD_MCP_URL);
     expect(repo(".claude-plugin/marketplace.json").plugins[0].source).toBe("./plugins/amber-notes");
   });
 
@@ -49,7 +57,7 @@ describe("MCP Registry entries in the repo", () => {
     const live = repo("server.json");
     expect(live.name).toBe("app.ambernotes/amber-notes");
     expect(live.title).toBe("Pinto Notes");
-    expect(live.remotes).toEqual([{ type: "streamable-http", url: MCP_URL }]);
+    expect(live.remotes).toEqual([{ type: "streamable-http", url: OLD_MCP_URL }]);
     expect(live.description.length).toBeLessThanOrEqual(100);
   });
 
@@ -58,7 +66,7 @@ describe("MCP Registry entries in the repo", () => {
     expect(next.name).toBe("com.pintonotes/pinto-notes");
     expect(next.title).toBe("Pinto Notes");
     // The registry lets one address belong to one name only, so the new entry can't reuse the old one.
-    expect(next.remotes).toEqual([{ type: "streamable-http", url: "https://mcp.pintonotes.com" }]);
+    expect(next.remotes).toEqual([{ type: "streamable-http", url: MCP_URL }]);
     expect(next.description.length).toBeLessThanOrEqual(100);
     expect(next.repository).toEqual(repo("server.json").repository);
   });
