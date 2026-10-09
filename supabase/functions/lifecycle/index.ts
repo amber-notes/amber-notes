@@ -12,6 +12,10 @@
 //   POST /functions/v1/lifecycle/welcome   (x-lifecycle-secret)
 //        → 200 { enabled, accounts, due, sent, failed, deferred }: the welcome to accounts made 2 to 60
 //        minutes ago. lifecycle_welcome_tick calls it every minute, only when one is waiting.
+//   POST /functions/v1/lifecycle/reports   (x-lifecycle-secret)
+//        → 200 { new, pages, sent, waiting, failed }: one email to support with the reports of shared
+//        pages it hasn't been told about (reports.ts). share_report_tick calls it, only when one is
+//        waiting. It doesn't look at LIFECYCLE_ENABLED: that switch is for the onboarding emails.
 //   POST /functions/v1/lifecycle/stats   (x-lifecycle-secret)
 //        → 200 [{ kind, variant, sent, clicked, done }]: counts per email and subject line.
 //
@@ -22,6 +26,7 @@ import { connect, readiness } from "../_shared/db.ts";
 import { atHome } from "../_shared/region.ts";
 import { errorKind, log } from "../_shared/log.ts";
 import { config, sameSecret, validClick, validUnsubscribe } from "./logic.ts";
+import { reportNotices } from "./reports.ts";
 import { recordClick, resend, run, stats, welcome } from "./run.ts";
 
 const sql = connect(Deno.env, 2);
@@ -73,6 +78,21 @@ Deno.serve(atHome("lifecycle", async (req) => {
     if (!settings.ok || !sameSecret(req.headers.get("x-lifecycle-secret") ?? "", settings.config.cronSecret)) return reply({ error: "not allowed" }, 401);
     await ready();
     return reply(await stats(sql));
+  }
+
+  if (path === "/reports") {
+    const settings = config(Deno.env);
+    if (!settings.ok) return reply({ sent: false, reason: settings.reason });
+    if (!sameSecret(req.headers.get("x-lifecycle-secret") ?? "", settings.config.cronSecret)) return reply({ error: "not allowed" }, 401);
+    await ready();
+    try {
+      const report = await reportNotices({ sql, send: resend(settings.config.resendKey), cfg: settings.config });
+      log("share_report_notice", { status: report.sent ? "sent" : report.failed ? "failed" : report.waiting ? "waiting" : "none", count: report.new });
+      return reply(report);
+    } catch (e) {
+      log("share_report_notice", { status: "failed", ...errorKind(e) });
+      return reply({ error: "unavailable" }, 500);
+    }
   }
 
   if (path === "/welcome") {
