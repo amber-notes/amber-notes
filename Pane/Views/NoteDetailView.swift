@@ -770,7 +770,7 @@ struct NoteDetailView: View {
                     .font(.system(size: 12, weight: .medium))
                     .lineLimit(1)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.hoverLink)
             .foregroundStyle(.tint)
             .accessibilityIdentifier("subnote.parent")
             Spacer()

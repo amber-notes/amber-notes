@@ -66,7 +66,7 @@ private struct FileChip: View {
             }
             .padding(.horizontal, 10)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .contentShape(.rect(cornerRadius: 12, style: .continuous))
+            .hoverHighlight(RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
         .buttonStyle(PressScale())
         // Content, not a control: a solid surface like the sub-note chip (glass is for the navigation layer).
@@ -113,6 +113,7 @@ private struct SubNoteChip: View {
             }
             .padding(.horizontal, 10)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .hoverHighlight(RoundedRectangle(cornerRadius: 12, style: .continuous))
             .background(Color.paneChip, in: .rect(cornerRadius: 12, style: .continuous))
             .contentShape(.rect(cornerRadius: 12))
         }
@@ -155,6 +156,7 @@ private struct ImageEmbed: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .clipShape(.rect(cornerRadius: 14))
             .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(.primary.opacity(0.08), lineWidth: 1))
+            .hoverOverlay(RoundedRectangle(cornerRadius: 14), .hoverDarken)
         }
         .buttonStyle(PressScale())
         .contextMenu { EmbedMenu(open: { controller?.openAttachment(id) }, remove: remove) }
@@ -215,7 +217,7 @@ private struct LinkCard: View {
             }
             .padding(.horizontal, 12)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .contentShape(.rect(cornerRadius: 12, style: .continuous))
+            .hoverHighlight(RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
         .buttonStyle(PressScale())
         // Content, not a control: a solid surface like the sub-note chip (glass is for the navigation layer).

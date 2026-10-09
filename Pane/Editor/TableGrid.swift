@@ -622,6 +622,7 @@ struct TableGridView: View {
                 .font(.system(size: 10, weight: .bold))
                 .foregroundStyle(.secondary)
                 .frame(width: horizontal ? 28 : 14, height: horizontal ? 14 : 24)
+                .hoverHighlight(Capsule())
                 .background(.fill.secondary, in: .capsule)
         }
         .menuStyle(.button)
