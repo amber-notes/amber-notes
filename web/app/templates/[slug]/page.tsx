@@ -5,8 +5,9 @@ import { CLAUDE_DIRECTORY_URL } from "@/lib/facts";
 import { APP_TEMPLATES, pageMetadata } from "@/lib/site";
 import { JsonLd, breadcrumbs, maker, organization, templateHowTo, templateWork } from "@/lib/structured-data";
 import { COVERS, coverPath } from "@/lib/template-covers";
-import { anchor, authorLink, changedCount, instructions, noteTitle, searchTitle, template, templates, usePath, type Template } from "@/lib/templates";
+import { anchor, appLink, authorLink, changedCount, instructions, noteTitle, searchTitle, template, templates, usePath, type Template } from "@/lib/templates";
 import Card from "../Card";
+import OpenInApp from "../../OpenInApp";
 import CopyButton from "../CopyButton";
 import Instructions from "../Instructions";
 import PromptCopy from "../PromptCopy";
@@ -25,20 +26,20 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const t = template((await params).slug);
   if (!t) return {};
-  return pageMetadata({ title: searchTitle(t), shareTitle: `${t.title}: a template your AI fills in`, description: t.description, path: `/templates/${t.slug}`, image: { url: `/templates/${t.slug}/opengraph-image`, alt: `The ${t.title.toLowerCase()} template for Amber Notes` } });
+  return pageMetadata({ title: searchTitle(t), shareTitle: `${t.title}: a template your AI fills in`, description: t.description, path: `/templates/${t.slug}`, image: { url: `/templates/${t.slug}/opengraph-image`, alt: `The ${t.title.toLowerCase()} template for Pinto Notes` } });
 }
 
 /// The steps, for the page and its HowTo data. Until the app opens template links, the AI makes the note.
 const steps = (t: Template) => APP_TEMPLATES.live
   ? [
-      { name: "Add the template to Amber Notes", text: `Choose Use template. Amber Notes opens and adds the "${noteTitle(t)}" note to the folder you pick.` },
-      { name: "Connect your AI", text: "Connect ChatGPT, Claude or Claude Code to Amber Notes once, and choose Read and Edit so it can fill in the note." },
+      { name: "Add the template to Pinto Notes", text: `Choose Use template. Pinto Notes opens and adds the "${noteTitle(t)}" note to the folder you pick.` },
+      { name: "Connect your AI", text: "Connect ChatGPT, Claude or Claude Code to Pinto Notes once, and choose Read and Edit so it can fill in the note." },
       { name: "Give your AI the prompt", text: "Copy the prompt for your AI and paste it into a chat. Then tell it what happened, in your own words." },
     ]
   : [
-      { name: "Connect your AI", text: "Connect ChatGPT, Claude or Claude Code to Amber Notes once, and choose Read and Edit so it can write the note." },
+      { name: "Connect your AI", text: "Connect ChatGPT, Claude or Claude Code to Pinto Notes once, and choose Read and Edit so it can write the note." },
       { name: "Paste the prompt", text: `Copy the prompt for your AI and paste it into a chat. It creates the "${noteTitle(t)}" note in your ${t.folder} folder, if you don't have it yet.` },
-      { name: "Talk to your AI", text: "Tell it what happened, in your own words. It fills in the note, and you see every change in Amber Notes." },
+      { name: "Talk to your AI", text: "Tell it what happened, in your own words. It fills in the note, and you see every change in Pinto Notes." },
     ];
 
 const at = (i: number) => ({ "--i": i }) as React.CSSProperties;
@@ -81,7 +82,7 @@ export default async function Page({ params }: Props) {
               {t.author && <> A community template by <a className={s.forBy} href={authorLink(t.author)}>@{t.author}</a>.</>}
             </p>
             <div className={`${s.ctas} rise`} style={at(2)}>
-              {APP_TEMPLATES.live && <a className={s.primary} href={usePath(t.slug)}><PlusGlyph /> Use template</a>}
+              {APP_TEMPLATES.live && <OpenInApp className={s.primary} href={usePath(t.slug)} app={appLink(t.slug)} auto><PlusGlyph /> Use template</OpenInApp>}
               {APP_TEMPLATES.live ? (
                 <>
                   <PromptCopy variants={vs} className={s.secondary} />
@@ -94,7 +95,7 @@ export default async function Page({ params }: Props) {
               )}
             </div>
             <p className={`${s.fine} rise`} style={at(3)}>
-              Free. {APP_TEMPLATES.live && <>Use template opens Amber Notes and adds the note. </>}No Amber Notes yet? <a href="/download">Download it for Mac</a>.
+              Free. {APP_TEMPLATES.live && <>Use template opens Pinto Notes and adds the note. </>}No Pinto Notes yet? <a href="/download">Download it for Mac</a>.
             </p>
           </header>
           <div className={`${s.heroExample} rise-soft`} style={at(2)}>
@@ -107,7 +108,7 @@ export default async function Page({ params }: Props) {
               </div>
             </div>
             <p className={s.caption}>
-              The note after a few days of talking to your AI. Tinted lines are what it added, the way Amber Notes shows an AI&apos;s changes, with
+              The note after a few days of talking to your AI. Tinted lines are what it added, the way Pinto Notes shows an AI&apos;s changes, with
               Undo and the earlier version kept in the note&apos;s history.
             </p>
           </div>
@@ -120,12 +121,12 @@ export default async function Page({ params }: Props) {
         <div className={s.sectionHead}>
           <h2 id="result" className={s.h2}>The note you start with</h2>
           <p className={s.sectionLede}>
-            This is what the prompt creates in Amber Notes: an ordinary note with the headings{t.note.includes("|") ? " and the table" : ""} ready.
+            This is what the prompt creates in Pinto Notes: an ordinary note with the headings{t.note.includes("|") ? " and the table" : ""} ready.
             Your AI fills it in from there, and you can still edit every line yourself.
           </p>
         </div>
         <div className={s.result}>
-          <NoteWindow markdown={t.note} folder={t.folder} date="Today" label={`The ${t.title.toLowerCase()} template as a note in Amber Notes`} />
+          <NoteWindow markdown={t.note} folder={t.folder} date="Today" label={`The ${t.title.toLowerCase()} template as a note in Pinto Notes`} />
         </div>
       </section>
 
@@ -139,7 +140,7 @@ export default async function Page({ params }: Props) {
         <ul className={s.connect}>
           <li><a href="/blog/connect-chatgpt-to-your-notes"><b><AIGlyph name="openai" size={18} />ChatGPT</b><span>Plus, Pro, Business, Enterprise or Edu, on the web. A few minutes in Developer mode.</span><em>Connect ChatGPT</em></a></li>
           <li><a href={CLAUDE_DIRECTORY_URL} rel="noopener"><b><AIGlyph name="claude" size={18} />Claude</b><span>Open Amber Notes in Claude&apos;s connector directory, choose Connect to Claude, then Allow.</span><em>Connect Claude</em></a></li>
-          <li><a href="/blog/notes-in-claude-code-and-codex"><b><AIGlyph name="claude" size={18} />Claude Code</b><span>One command in your terminal, or the button in Amber Notes on a Mac.</span><em>Connect Claude Code</em></a></li>
+          <li><a href="/blog/notes-in-claude-code-and-codex"><b><AIGlyph name="claude" size={18} />Claude Code</b><span>One command in your terminal, or the button in Pinto Notes on a Mac.</span><em>Connect Claude Code</em></a></li>
         </ul>
       </section>
 

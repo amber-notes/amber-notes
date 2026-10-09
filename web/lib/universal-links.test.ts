@@ -23,6 +23,7 @@ describe("universal links", () => {
   it("only claims what the connect page links to", () => {
     const path = new URL(universalLink(ID)).pathname;
     expect(path.startsWith("/open/")).toBe(true);
+    // Installed apps claim only ambernotes.app until a release that adds pintonotes.com is everywhere.
     expect(new URL(universalLink(ID)).host).toBe("ambernotes.app");
   });
 
@@ -35,7 +36,10 @@ describe("universal links", () => {
     expect(catchAll.test("/open/connect")).toBe(false);
     expect(catchAll.test("/n/some-shared-note")).toBe(true);
     const redirects = await nextConfig.redirects!();
-    expect(redirects.some((r) => r.source.includes("well-known") || r.source.startsWith("/open"))).toBe(false);
+    expect(redirects.some((r) => r.source.includes("well-known"))).toBe(false);
+    // Only Use template's and Use this note's links go back to their page in a browser; the app's
+    // other hand-offs (/open/connect, /open/connect-ai, /open/history, /open/import) stay pages.
+    expect(redirects.filter((r) => r.source.startsWith("/open")).map((r) => r.source)).toEqual(["/open/template/:slug", "/open/copy/:slug"]);
   });
 });
 
@@ -45,7 +49,7 @@ describe("the universal link's page in a browser", () => {
   it("offers the app's own scheme for the request, and the download", async () => {
     const html = await render(ID.toUpperCase());
     expect(html).toContain(`href="ambernotes://connect?request=${ID}"`);
-    expect(html).toContain(">Open Amber Notes</a>");
+    expect(html).toContain(">Open Pinto Notes</a>");
     expect(html).toContain('href="/download"');
   });
 

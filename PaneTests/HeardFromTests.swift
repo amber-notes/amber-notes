@@ -27,9 +27,6 @@ import Testing
         return s
     }
 
-    /// Lets the store's send task run.
-    static func settle() async { for _ in 0..<5 { await Task.yield() } }
-
     @Test func itShowsOnlyWhenTheServerSaysToAsk() async {
         let quiet = FakeService()
         quiet.ask = false
@@ -48,12 +45,12 @@ import Testing
         await s.refresh()
         s.answer(.tiktok)
         #expect(s.chosen == .tiktok)
-        await Self.settle()
+        await s.sending?.value
         #expect(service.answers.map(\.0) == [.tiktok])
         #expect(service.answers.first?.1 == nil)
         // A second tap while the tick shows changes nothing.
         s.answer(.google)
-        await Self.settle()
+        await s.sending?.value
         #expect(service.answers.count == 1)
     }
 
@@ -63,7 +60,8 @@ import Testing
         await a.refresh(); await b.refresh()
         a.skip()
         b.closed()
-        await Self.settle()
+        await a.sending?.value
+        await b.sending?.value
         #expect(!a.visible && !b.visible)
         #expect(one.answers.map(\.0) == [.skipped])
         #expect(two.answers.map(\.0) == [.skipped])
@@ -73,13 +71,13 @@ import Testing
         let service = FakeService()
         let s = Self.store(service)
         s.answer(.other, detail: "  a newsletter \n")
-        await Self.settle()
+        await s.sending?.value
         #expect(service.answers.first?.1 == "a newsletter")
 
         let other = FakeService()
         let t = Self.store(other)
         t.answer(.other, detail: "   ")
-        await Self.settle()
+        await t.sending?.value
         #expect(other.answers.first?.1 == nil, "an empty field is just Something else")
     }
 
@@ -88,7 +86,7 @@ import Testing
         service.reachable = false
         let s = Self.store(service)
         s.answer(.friend)
-        await Self.settle()
+        await s.sending?.value
         #expect(service.answers.isEmpty)
         s.visible = false
 
@@ -101,10 +99,10 @@ import Testing
     }
 
     @Test func everyChoiceHasPlainWordsAndTheServersName() {
-        #expect(HeardFrom.choices.count == 9)
+        #expect(HeardFrom.choices.count == 10)
         #expect(!HeardFrom.choices.contains(.skipped))
         let names = HeardFrom.Source.allCases.map(\.rawValue)
-        #expect(names == ["google", "blog", "ai_assistant", "tiktok", "youtube", "instagram", "friend", "product_hunt_hn", "other", "skipped"])
+        #expect(names == ["google", "blog", "ai_assistant", "tiktok", "youtube", "instagram", "friend", "product_hunt_hn", "github", "other", "skipped"])
         for source in HeardFrom.choices { #expect(!HeardFrom.title(source).isEmpty) }
     }
 }

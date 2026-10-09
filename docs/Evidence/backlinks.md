@@ -1,5 +1,7 @@
 # Backlinks and citations
 
+> **8 October 2026:** the app is now Pinto Notes at https://pintonotes.com. ambernotes.app redirects there. The two open list pull requests (awesome-remote-mcp-servers #866, open-source-mac-os-apps #1459) were updated to the new name on 8 October. Use "Pinto Notes" and "pintonotes.com" in every new submission, and never the bare word "Pinto".
+
 Where Amber Notes (ambernotes.app) is linked from, where it should be, and what each place needs. Checked on 2026-09-30. Research on search and AI citations is in [seo-aeo-research-2026-09-30.md](seo-aeo-research-2026-09-30.md); the Claude and ChatGPT directory listings are prepared in [directory-submissions.md](directory-submissions.md).
 
 Two facts shape every submission:

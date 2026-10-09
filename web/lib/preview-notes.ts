@@ -1,4 +1,4 @@
-// Dev only: made-up shared notes for the preview pages (/n/preview, /open/copy/preview), so the
+// Dev only: made-up shared notes for the preview pages (/n/preview), so the
 // shared-note pages can be designed and photographed with no backend and nobody's real note.
 import type { SharedFile } from "./render";
 import type { SharedNote } from "./shared";

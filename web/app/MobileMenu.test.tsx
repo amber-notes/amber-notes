@@ -51,7 +51,7 @@ describe("what the phone menu holds", () => {
   });
 
   it("tells an iPhone where the iPhone app stands, and links the App Store only once it's there", () => {
-    expect(text(part(menu(), "site-sheet-ios"))).toBe("Amber Notes for iPhone is coming to the App Store soon. Download for Mac");
+    expect(text(part(menu(), "site-sheet-ios"))).toBe("Pinto Notes for iPhone is coming to the App Store soon. Download for Mac");
     expect(hrefs(part(menu(), "site-sheet-ios"))).toEqual(["/download"]);
     expect(menu()).not.toContain("apps.apple.com");
     expect(hrefs(part(menu(true), "site-sheet-ios"))).toEqual(["https://apps.apple.com/app/id6817253103", "/download"]);

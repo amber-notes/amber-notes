@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { renderNote, withoutTitle } from "./render";
 import type { SharedFile } from "./render";
-import { avatarURL, copyLink, type SharedNote } from "./shared";
+import { avatarURL, copyAppLink, copyLink, type SharedNote } from "./shared";
 import { APP_TEMPLATES } from "./site";
+import OpenInApp from "../app/OpenInApp";
 import { sharerLabel, type Sharer } from "./sharer";
 import { Shell, TopBar, ui } from "./ui";
 import s from "./note-page.module.css";
@@ -22,13 +23,13 @@ function edited(iso: string): string {
 /// The one mention of the app on someone's shared note: after the note, never over it.
 function GetAmberNotes() {
   return (
-    <aside className={s.get} aria-label="About Amber Notes">
+    <aside className={s.get} aria-label="About Pinto Notes">
       <img src="/mark-256.png" alt="" width={44} height={44} />
       <p>
-        <strong>Shared from Amber Notes</strong>
+        <strong>Shared from Pinto Notes</strong>
         <span>A notes app for iPhone and Mac that ChatGPT and Claude can read and edit.</span>
       </p>
-      <a className={ui.secondary} href="/">Get Amber Notes</a>
+      <a className={ui.secondary} href="/">Get Pinto Notes</a>
     </aside>
   );
 }
@@ -60,8 +61,8 @@ export function NotePage({ slug, note, files }: { slug: string; note: SharedNote
       ))}
     </nav>
   );
-  // Copies the whole note into the visitor's own Amber Notes, once the app handles the link.
-  const use = APP_TEMPLATES.live && <a className={s.use} href={copyLink(slug)}>Use this note</a>;
+  // Copies the whole note into the visitor's own Amber Notes, opened from this page.
+  const use = APP_TEMPLATES.live && <OpenInApp className={s.use} href={copyLink(slug)} app={copyAppLink(slug)} auto>Use this note</OpenInApp>;
 
   return (
     <Shell className={s.plain}>

@@ -1,0 +1,7 @@
+/* /amber-notes: a few short sections under the page's title, in the changelog's column. */
+.body { display: grid; gap: 36px; }
+.body section { display: grid; gap: 10px; }
+.body h2 { margin: 0; font-size: 24px; letter-spacing: -0.02em; }
+.body p { margin: 0; max-width: 38em; font-size: 17px; line-height: 1.55; color: var(--muted); }
+.body a { color: var(--ink); font-weight: 600; text-decoration: underline; text-decoration-color: var(--amber); text-decoration-thickness: 2px; text-underline-offset: 3px; border-radius: 3px; }
+.body a:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }

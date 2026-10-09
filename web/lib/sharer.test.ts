@@ -8,8 +8,8 @@ describe("shared by", () => {
   });
   it("falls back to the email, then to a neutral label", () => {
     expect(sharerLabel({ name: null, email: "emil@example.com", avatar: null })).toEqual({ name: "emil@example.com", email: null, initials: "E" });
-    expect(sharerLabel({ name: null, email: null, avatar: null }).name).toBe("Amber Notes user");
-    expect(sharerLabel(undefined).name).toBe("Amber Notes user");
+    expect(sharerLabel({ name: null, email: null, avatar: null }).name).toBe("Pinto Notes user");
+    expect(sharerLabel(undefined).name).toBe("Pinto Notes user");
   });
   it("only builds photo URLs for real photo names", () => {
     expect(avatarURL("../../etc/passwd")).toBeNull();

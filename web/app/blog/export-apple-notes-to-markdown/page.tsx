@@ -103,12 +103,12 @@ export default function Page() {
       <p>
         An export is the right tool for a backup or a one-off move into Obsidian or a repository. <a href="/blog/apple-notes-vs-obsidian">Apple
         Notes vs Obsidian</a> covers what you gain and give up there. If what you actually want is Markdown notes that still work like Apple
-        Notes, that&apos;s why I made Amber Notes: it looks and works like Apple Notes on iPhone and Mac, and every note is Markdown underneath.
+        Notes, that&apos;s why I made Pinto Notes: it looks and works like Apple Notes on iPhone and Mac, and every note is Markdown underneath.
       </p>
       <p>
         On a Mac, <a href="/blog/move-from-apple-notes">File, Import from Apple Notes</a> brings over the notes you pick in one go, in their
         folders, with checklists and tables. Be aware of what it leaves behind: images, attachments and locked notes stay in Apple Notes. And
-        once your notes are Markdown in Amber Notes, ChatGPT and Claude can read and edit them directly, with your approval, instead of you
+        once your notes are Markdown in Pinto Notes, ChatGPT and Claude can read and edit them directly, with your approval, instead of you
         pasting files into a chat. <a href="/blog/connect-chatgpt-to-your-notes">Connecting ChatGPT or Claude</a> takes a couple of minutes.
       </p>
       <p>

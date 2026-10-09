@@ -2,15 +2,24 @@ import type { Metadata } from "next";
 
 /// The site's address and the facts every page's metadata and structured data share.
 
-export const SITE_URL = "https://ambernotes.app";
-export const SITE_NAME = "Amber Notes";
+export const SITE_URL = "https://pintonotes.com";
+/// The site's old address, from before the rename (October 2026). It sends every page here, path for
+/// path (middleware.ts), but stays the host of the app's universal links: installed apps claim only
+/// ambernotes.app until a release that adds pintonotes.com is everywhere.
+export const OLD_SITE_URL = "https://ambernotes.app";
+export const APP_LINK_URL = OLD_SITE_URL;
+export const SITE_NAME = "Pinto Notes";
+/// What the app was called until October 2026. /amber-notes says so to people who search for it.
+export const OLD_NAME = "Amber Notes";
+/// The blog's feed (app/blog/feed.xml), which every page names for feed readers.
+export const FEED_PATH = "/blog/feed.xml";
 export const X_URL = "https://x.com/EmilWagman";
 export const X_HANDLE = "@EmilWagman";
 export const LINKEDIN_URL = "https://www.linkedin.com/in/emil-wagman-52a907287/";
 /// Emil's own site: where his name links, and the first place search engines should look for him.
 export const MAKER_URL = "https://emilwagman.com";
 export const MAKER_GITHUB = "https://github.com/emilwagman";
-/// The maker's company, and its AI assistant, which can use Amber Notes like any MCP client.
+/// The maker's company, and its AI assistant, which can use Pinto Notes like any MCP client.
 export const INCREDIBLE_URL = "https://incredible.one";
 
 // The iPhone app. Flipping this shows the App Store button and turns on Safari's Smart App Banner.
@@ -23,7 +32,7 @@ export const APP_STORE_URL = `https://apps.apple.com/app/id${APP_STORE_ID}`;
 /// note": an older app opens on those links and does nothing. Flip `live` with that release.
 export const APP_TEMPLATES = { version: "1.1.1", live: true } as const;
 
-/// Where Amber Notes runs, in a table cell: true today, and right again the day the iPhone app ships.
+/// Where Pinto Notes runs, in a table cell: true today, and right again the day the iPhone app ships.
 export const DEVICES = APP_STORE_LIVE ? "iPhone and Mac" : "Mac now; iPhone coming soon";
 
 type Page = {
@@ -44,7 +53,7 @@ type Page = {
 };
 
 /// The site's own share card (app/opengraph-image.tsx), for pages without one of their own.
-export const DEFAULT_SHARE_IMAGE = { url: "/opengraph-image", alt: "Amber Notes: the notes app your AI can actually use. A note open on an iPhone." };
+export const DEFAULT_SHARE_IMAGE = { url: "/opengraph-image", alt: "Pinto Notes: the notes app your AI can actually use. A note open on an iPhone." };
 
 /// Title, description, canonical, robots, Open Graph and Twitter for one page. Next.js replaces
 /// (doesn't merge) openGraph and twitter between layouts and pages, so each page gets all of it.
@@ -54,7 +63,7 @@ export function pageMetadata({ title, description, path, shareTitle, index = tru
   return {
     title,
     description,
-    alternates: { canonical: path },
+    alternates: { canonical: path, types: { "application/rss+xml": [{ url: FEED_PATH, title: `${SITE_NAME} blog` }] } },
     robots: index ? { index: true, follow: true } : { index: false, follow: true },
     openGraph: article
       ? { ...og, type: "article", publishedTime: article.published, modifiedTime: article.modified, authors: [article.author] }

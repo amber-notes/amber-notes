@@ -16,12 +16,13 @@ enum HeardFrom {
         case instagram
         case friend
         case productHuntHN = "product_hunt_hn"
+        case github
         case other
         case skipped
     }
 
     /// The choices, in the order they're shown.
-    static let choices: [Source] = [.google, .blog, .aiAssistant, .tiktok, .youtube, .instagram, .friend, .productHuntHN, .other]
+    static let choices: [Source] = [.google, .blog, .aiAssistant, .tiktok, .youtube, .instagram, .friend, .productHuntHN, .github, .other]
 
     static func title(_ source: Source) -> String {
         switch source {
@@ -33,6 +34,7 @@ enum HeardFrom {
         case .instagram: "Instagram"
         case .friend: "A friend"
         case .productHuntHN: "Product Hunt or Hacker News"
+        case .github: "GitHub"
         case .other: "Something else"
         case .skipped: "Skip"
         }
@@ -70,6 +72,8 @@ final class HeardFromStore {
     /// The choice just tapped: its row shows a tick for a moment before the sheet goes.
     private(set) var chosen: HeardFrom.Source?
 
+    /// The latest answer's send, so tests can wait for it rather than guess.
+    @ObservationIgnored private(set) var sending: Task<Void, Never>?
     @ObservationIgnored private var service: HeardFromService?
     @ObservationIgnored private var account: UUID?
     @ObservationIgnored let defaults: UserDefaults
@@ -126,7 +130,7 @@ final class HeardFromStore {
             defaults.set(saved, forKey: answerKey)
             if let service {
                 let key = answerKey
-                Task {
+                sending = Task {
                     if (try? await service.answer(source, detail: kept)) != nil {
                         defaults.set(["source": source.rawValue, "sent": "1"], forKey: key)
                     }

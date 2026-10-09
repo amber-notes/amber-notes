@@ -21,7 +21,7 @@ describe("the Dev-only preview pages", () => {
 
   it.each(DEV_ONLY_PATHS)("%s calls devOnly before it renders", async (path) => {
     vi.stubEnv("VERCEL_ENV", "production");
-    const file = { "/n/preview": "../app/n/preview/page", "/open/copy/preview": "../app/open/copy/preview/page", "/dev/account": "../app/dev/account/page" }[path];
+    const file = { "/n/preview": "../app/n/preview/page", "/dev/account": "../app/dev/account/page" }[path];
     const page = (await import(/* @vite-ignore */ file)).default as (p: { searchParams: Promise<object> }) => unknown;
     await expect(Promise.resolve().then(() => page({ searchParams: Promise.resolve({}) }))).rejects.toThrow("NEXT_NOT_FOUND");
   });
@@ -42,6 +42,6 @@ describe("the Dev-only preview pages", () => {
 describe("analytics on the private pages", () => {
   it.each(["/n/abc", "/n/abc/def", "/n/preview", "/connect", "/open/connect", "/open/copy/abc", "/open/template/trip-plan", "/report/abc"])("never loads on %s", (path) => {
     expect(posthogAllowed(path)).toBe(false);
-    expect(analyticsEvent({ url: `https://ambernotes.app${path}?x=1` })).toBeNull();
+    expect(analyticsEvent({ url: `https://pintonotes.com${path}?x=1` })).toBeNull();
   });
 });

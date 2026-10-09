@@ -1,4 +1,4 @@
-/// The onboarding emails' unsubscribe link: ambernotes.app/unsubscribe?u=<account id>&t=<token>. The
+/// The onboarding emails' unsubscribe link: pintonotes.com/unsubscribe?u=<account id>&t=<token>. The
 /// token is an HMAC the lifecycle function checks (supabase/functions/lifecycle/logic.ts); here only
 /// its shape is checked, so a mangled link says so instead of offering a button that can't work.
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;

@@ -126,14 +126,14 @@ export default function Page() {
         main servers side by side. Exporters that turn every note into markdown files are the other common kind; <a href="/blog/export-apple-notes-to-markdown">exporting Apple Notes to Markdown</a> covers those and the built-in export.
       </p>
       <p>
-        Amber Notes uses the same two doors when it imports: AppleScript to read your notes, and, if you ask it to keep your pins, the notes
+        Pinto Notes uses the same two doors when it imports: AppleScript to read your notes, and, if you ask it to keep your pins, the notes
         database, which is why that option asks for Full Disk Access. It only reads; nothing in Apple Notes changes.
       </p>
 
       <h2 id="real-api">What to use when you need a real API</h2>
       <p>
         If you want something outside your Mac to read and write your notes, whether that&apos;s ChatGPT on your phone, a script on a server
-        or a coding agent, the notes need to live in an app that has an API of its own. Notion and Evernote have one. Amber Notes, the notes app
+        or a coding agent, the notes need to live in an app that has an API of its own. Notion and Evernote have one. Pinto Notes, the notes app
         for iPhone and Mac that I make, has an MCP server built in, which is the kind of API AI apps speak:
       </p>
       <ul>
@@ -141,13 +141,13 @@ export default function Page() {
         <li>Sign-in with OAuth and your approval in the app, read only or read and edit, or an access token for scripts, Claude Code and Codex.</li>
         <li>Every change keeps the previous version, so a bad edit can be put back.</li>
       </ul>
-      <Figure shot={SHOTS.connectList} caption="Settings, Connect an AI, in Amber Notes on a Mac: a guided setup for each app, and everything that's connected." />
+      <Figure shot={SHOTS.connectList} caption="Settings, Connect an AI, in Pinto Notes on a Mac: a guided setup for each app, and everything that's connected." />
       <p>
-        ChatGPT, Claude, Claude Code, Codex and Incredible can all use it. The <a href="/blog/mcp-server">Amber Notes MCP server</a> page has
+        ChatGPT, Claude, Claude Code, Codex and Incredible can all use it. The <a href="/blog/mcp-server">Pinto Notes MCP server</a> page has
         the address and every tool, and <a href="/blog/move-from-apple-notes">moving from Apple Notes</a> takes one import on your Mac.
       </p>
       <PostCta slug="apple-notes-api" position="how-amber-helps" title="Notes with an API ChatGPT and Claude can use">
-        <p>Amber Notes works like Apple Notes, imports your notes from it, and has the MCP server built in.</p>
+        <p>Pinto Notes works like Apple Notes, imports your notes from it, and has the MCP server built in.</p>
       </PostCta>
     </PostPage>
   );

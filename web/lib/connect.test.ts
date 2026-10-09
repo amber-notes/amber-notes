@@ -42,23 +42,23 @@ describe("the connect page", () => {
   });
 
   it("comes back from Sign in with Apple to the same request, and to the recovery key when asked", () => {
-    expect(returnURL("https://ambernotes.app", ID.toUpperCase())).toBe(`https://ambernotes.app/connect?request=${ID}`);
-    expect(returnURL("https://ambernotes.app", ID, true)).toBe(`https://ambernotes.app/connect?request=${ID}&recover=1`);
-    expect(returnURL("https://ambernotes.app", ID, false, true)).toBe(`https://ambernotes.app/connect?request=${ID}&qr=1`);
-    expect(returnURL("https://ambernotes.app", ID, true, true)).toBe(`https://ambernotes.app/connect?request=${ID}&recover=1&qr=1`);
-    const u = new URL(appleSignInURL("https://ref.supabase.co/", returnURL("https://ambernotes.app", ID, true), "chal"));
+    expect(returnURL("https://pintonotes.com", ID.toUpperCase())).toBe(`https://pintonotes.com/connect?request=${ID}`);
+    expect(returnURL("https://pintonotes.com", ID, true)).toBe(`https://pintonotes.com/connect?request=${ID}&recover=1`);
+    expect(returnURL("https://pintonotes.com", ID, false, true)).toBe(`https://pintonotes.com/connect?request=${ID}&qr=1`);
+    expect(returnURL("https://pintonotes.com", ID, true, true)).toBe(`https://pintonotes.com/connect?request=${ID}&recover=1&qr=1`);
+    const u = new URL(appleSignInURL("https://ref.supabase.co/", returnURL("https://pintonotes.com", ID, true), "chal"));
     expect(u.origin + u.pathname).toBe("https://ref.supabase.co/auth/v1/authorize");
     expect(u.searchParams.get("provider")).toBe("apple");
-    expect(u.searchParams.get("redirect_to")).toBe(`https://ambernotes.app/connect?request=${ID}&recover=1`);
+    expect(u.searchParams.get("redirect_to")).toBe(`https://pintonotes.com/connect?request=${ID}&recover=1`);
     expect(u.searchParams.get("code_challenge")).toBe("chal");
     expect(u.searchParams.get("code_challenge_method")).toBe("s256");
   });
 
   it("starts Sign in with Google the same way, with Google's account chooser and no Apple scopes", () => {
-    const u = new URL(oauthSignInURL("google", "https://ref.supabase.co", returnURL("https://ambernotes.app", ID), "chal"));
+    const u = new URL(oauthSignInURL("google", "https://ref.supabase.co", returnURL("https://pintonotes.com", ID), "chal"));
     expect(u.origin + u.pathname).toBe("https://ref.supabase.co/auth/v1/authorize");
     expect(u.searchParams.get("provider")).toBe("google");
-    expect(u.searchParams.get("redirect_to")).toBe(`https://ambernotes.app/connect?request=${ID}`);
+    expect(u.searchParams.get("redirect_to")).toBe(`https://pintonotes.com/connect?request=${ID}`);
     expect(u.searchParams.get("prompt")).toBe("select_account");
     expect(u.searchParams.has("scopes")).toBe(false);
     expect(u.searchParams.get("code_challenge")).toBe("chal");
@@ -147,11 +147,11 @@ describe("the mcp.ambernotes.app proxy", () => {
   });
 
   it("passes only the headers MCP needs", () => {
-    const h = upstreamHeaders(new Headers({ cookie: "a=b", "x-forwarded-host": "evil.example", "mcp-protocol-version": "2025-06-18", origin: "https://ambernotes.app" }), "secret");
+    const h = upstreamHeaders(new Headers({ cookie: "a=b", "x-forwarded-host": "evil.example", "mcp-protocol-version": "2025-06-18", origin: "https://pintonotes.com" }), "secret");
     expect(h.get("cookie")).toBe(null);
     expect(h.get("x-forwarded-host")).toBe(null);
     expect(h.get("mcp-protocol-version")).toBe("2025-06-18");
-    expect(h.get("origin")).toBe("https://ambernotes.app");
+    expect(h.get("origin")).toBe("https://pintonotes.com");
   });
 
   it("serves only the server's own paths, nothing encoded", () => {
