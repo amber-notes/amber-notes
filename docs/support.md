@@ -1,6 +1,6 @@
 # Pinto Notes support
 
-Write to **hello@ambernotes.app**. You'll normally get an answer within a day or two.
+Write to **hello@pintonotes.com**. You'll normally get an answer within a day or two.
 
 ## Common questions
 
@@ -20,7 +20,7 @@ Deleted notes stay in **Recently Deleted**. Open it, and restore the note.
 Open **Settings → Account**, scroll to the bottom, and choose **Delete Account…**. This deletes your account and everything in it, and can't be undone. You can also email us to ask for it.
 
 **I want to report a shared page.**
-Use the **Report this page** link at the bottom of the page, or write to hello@ambernotes.app with the page's address.
+Use the **Report this page** link at the bottom of the page, or write to hello@pintonotes.com with the page's address.
 
 ## Policies
 

@@ -48,7 +48,7 @@ const type = (id: string, value: string) => {
 };
 const submit = () => act(async () => container.querySelector("form")!.requestSubmit());
 const buttonText = () => container.querySelector<HTMLButtonElement>('button[type="submit"]')?.textContent;
-const hidden = (id: string) => field(id).closest("label")!.getAttribute("aria-hidden") === "true";
+const hidden = (id: string) => container.querySelector(`label[for="${id}"]`)!.parentElement!.getAttribute("aria-hidden") === "true";
 
 describe("email first, as the app does it", () => {
   it("reads the account-status answer the way the app does, and shows a password when it can't say", () => {
@@ -68,6 +68,24 @@ describe("email first, as the app does it", () => {
     expect(field("connect-email").getAttribute("autocomplete")).toBe("username");
     expect(field("connect-password").getAttribute("autocomplete")).toBe("current-password");
     expect(field("connect-email").form).toBe(field("connect-password").form);
+  });
+
+  it("the password field's eye waits with it, then shows and hides the password without signing in", async () => {
+    const { signedIn } = render("password");
+    const eye = () => container.querySelector<HTMLButtonElement>('button[aria-controls="connect-password"]')!;
+    expect(eye().tabIndex, "out of the tab order while the field waits").toBe(-1);
+    act(() => type("connect-email", "sara@example.com"));
+    await submit();
+    expect(eye().tabIndex).toBe(0);
+    expect(eye().getAttribute("aria-label")).toBe("Show password");
+    act(() => type("connect-password", "correct horse"));
+    act(() => eye().click());
+    expect(field("connect-password").type).toBe("text");
+    expect(field("connect-password").value).toBe("correct horse");
+    expect(field("connect-password").getAttribute("autocomplete")).toBe("current-password");
+    expect(signedIn).toEqual([]);
+    act(() => eye().click());
+    expect(field("connect-password").type).toBe("password");
   });
 
   it("an account with a password: the password field opens in place, focused, and the button signs in", async () => {

@@ -17,7 +17,7 @@ export const metadata: Metadata = pageMetadata({
 });
 
 const r = (i: number) => ({ "--i": i }) as React.CSSProperties;
-const GITHUB = "https://github.com/amber-notes/amber-notes";
+const GITHUB = "https://github.com/pinto-notes/pinto-notes";
 
 const SECTIONS = [
   { id: "what-we-store", title: "What we store, and where" },

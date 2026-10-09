@@ -29,7 +29,7 @@ export type Post = {
 
 /// The ground a cover (and the post's first picture) sits on: the site's palette, the help page's
 /// leaf brown, the app's dark look, or the home page's dunes.
-export type Ground = "paper" | "soft" | "tint" | "amber" | "leaf" | "dark" | "dunes" | "ink" | "peach" | "cream" | "sand" | "clay" | "mist" | "honey" | "sage" | "heather" | "blush" | "wheat" | "fog" | "dusk" | "pearl" | "linen" | "night" | "rose" | "mint" | "sky" | "lemon" | "coral" | "lagoon" | "denim";
+export type Ground = "paper" | "soft" | "tint" | "amber" | "leaf" | "dark" | "dunes" | "ink" | "peach" | "cream" | "sand" | "clay" | "mist" | "honey" | "sage" | "heather" | "blush" | "wheat" | "fog" | "dusk" | "pearl" | "linen" | "night" | "rose" | "mint" | "sky" | "lemon" | "coral" | "lagoon" | "denim" | "slate" | "olive" | "plum";
 
 /// A card's picture: one real capture of the element the post is about, on the post's ground. The
 /// capture is cropped at 2x (3x from iPhone) to about the card's width, so it shows at full size.
@@ -66,6 +66,42 @@ export const SHOTS = {
 
 export const posts: Post[] = [
   {
+    slug: "meeting-notes-to-action-items",
+    title: "Turn meeting notes into action items with ChatGPT or Claude",
+    description: "A prompt that turns rough meeting notes or a transcript into decisions and action items with owners and dates, and how to keep the list ticked off.",
+    excerpt: "Paste rough notes, get decisions and a checklist with an owner and a date on every line. One prompt for any AI, and a way to keep the list alive after the chat.",
+    category: "Guides",
+    date: "2026-10-09",
+    updated: "2026-10-09",
+    image: SHOTS.aiEdit,
+    thumb: thumb("plum", "thumb-checklist-ticked", 700, 462, "A checklist in Pinto Notes with three of its items ticked"),
+    draft: false,
+  },
+  {
+    slug: "apple-notes-templates",
+    title: "Apple Notes templates: make your own, plus five to copy",
+    description: "Apple Notes has no templates, but a folder of notes works. How to set it up on iPhone and Mac, plus five templates that paste in as checklists.",
+    excerpt: "No templates button, but a folder of notes does the job. How to set it up, and five templates that paste in with real headings and checklists.",
+    category: "Apple Notes",
+    date: "2026-10-08",
+    updated: "2026-10-08",
+    image: { src: "/blog/macos27/notes-templates-window.webp", alt: "Apple Notes on macOS 27 with a Templates folder of five notes, and a Packing list open with three checklists.", width: 1538, height: 984, window: true },
+    thumb: thumb("olive", "thumb-notes-templates", 660, 730, "A Packing list note in Apple Notes with Documents, Clothes and Bag checklists"),
+    draft: false,
+  },
+  {
+    slug: "claude-memory-vs-notes",
+    title: "Claude memory vs notes Claude can read and write",
+    description: "What Claude's memory keeps and where to edit it, when you want notes Claude can read and write instead, and two prompts to use both.",
+    excerpt: "Memory is Claude's own summary of you. Notes are your words, on your phone and computer. What each is for, and how to use both.",
+    category: "Comparisons",
+    date: "2026-10-07",
+    updated: "2026-10-07",
+    image: { src: "/blog/amber-notes-claude-edit-lisbon.webp", alt: "A Lisbon trip note in Pinto Notes on a Mac, with the line Claude just added tinted and a bar saying Claude changed 1 line, with Undo.", width: 1500, height: 748, window: false, title: "Lisbon" },
+    thumb: thumb("slate", "thumb-lisbon-claude", 900, 555, "A Lisbon plan checklist with the line Claude added tinted, and Claude changed 1 line, Undo"),
+    draft: false,
+  },
+  {
     slug: "shared-memory-for-coding-agents",
     title: "One memory for Claude Code, Codex and your other agents",
     description: "Give Claude Code, Codex and other agents one shared memory in a note you can read: connect both, a Project memory note, and who changed what.",
@@ -81,10 +117,10 @@ export const posts: Post[] = [
     slug: "apple-notes-not-syncing",
     title: "Apple Notes not syncing between iPhone and Mac: how to fix it",
     description: "Why Apple Notes stops syncing between iPhone and Mac, and the fixes in order: iCloud settings, Apple Account, note account, storage, iOS 27 updates.",
-    excerpt: "A note from your iPhone isn't on your Mac. Six things to check, in the order that finds the cause fastest, plus shared notes that won't update.",
+    excerpt: "A note from your iPhone isn't on your Mac. Three questions find the cause, then six checks in order, plus shared notes that won't update.",
     category: "Apple Notes",
     date: "2026-10-05",
-    updated: "2026-10-05",
+    updated: "2026-10-09",
     image: SHOTS.notesDefaultAccount,
     thumb: thumb("lagoon", "thumb-notes-sync-default-account", 800, 528, "Apple Notes settings on a Mac with Default account set to iCloud"),
     draft: false,
@@ -156,7 +192,7 @@ export const posts: Post[] = [
     excerpt: "Within 30 days it's almost always in Recently Deleted. After that, what still works, what doesn't, and what recovery apps won't tell you.",
     category: "Apple Notes",
     date: "2026-10-01",
-    updated: "2026-10-02",
+    updated: "2026-10-07",
     image: SHOTS.history,
     thumb: thumb("night", "thumb-restore-dark", 846, 558, "An earlier version of a Groceries note in Pinto Notes, in dark mode"),
     draft: false,
@@ -272,11 +308,11 @@ export const posts: Post[] = [
   {
     slug: "apple-notes-mcp",
     title: "Apple Notes MCP servers compared (2026)",
-    description: "There's no official Apple Notes MCP server. The community ones compared: what each can do, how to set one up in Claude, and the limits they share.",
-    excerpt: "Apple doesn't make one, so every Apple Notes MCP server is a community project on your Mac. Four compared, the setup, and the limits they all share.",
+    description: "There's no official Apple Notes MCP server. Which community one to use, the commands for Claude Code, Codex and Claude, and why none reach iPhone or iCloud.",
+    excerpt: "Apple doesn't make one, so every Apple Notes MCP server is a community project on your Mac. Which to use, the commands, and where none of them reach.",
     category: "Comparisons",
     date: "2026-09-30",
-    updated: "2026-09-30",
+    updated: "2026-10-08",
     image: SHOTS.history,
     thumb: thumb("sage", "thumb-history-list", 640, 973, "Version history for a note, listing who made each version"),
     draft: false,

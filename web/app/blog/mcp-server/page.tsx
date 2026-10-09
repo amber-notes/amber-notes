@@ -1,7 +1,7 @@
 import { Figure } from "@/lib/blog";
 import { PostPage, postMetadata } from "@/lib/PostPage";
 import { SHOTS } from "@/lib/posts";
-import { CLAUDE_DIRECTORY_URL, MCP_URL } from "@/lib/facts";
+import { CLAUDE_DIRECTORY_URL, MCP_URL, OLD_MCP_URL_STAYS } from "@/lib/facts";
 import { MCP_TOOLS, type McpTool } from "@/lib/mcp-tools";
 import { AGENT_INSTALLS } from "@/lib/agent-installs";
 
@@ -18,6 +18,7 @@ export default function Page() {
     >
       <h2>The address</h2>
       <pre><code>{MCP_URL}</code></pre>
+      <p>{OLD_MCP_URL_STAYS}</p>
       <ul>
         <li>Transport: MCP Streamable HTTP, answering with JSON. There is no server-sent stream; clients post each request.</li>
         <li>Protocol versions: 2025-11-25, 2025-06-18, 2025-03-26 and 2024-11-05.</li>
@@ -118,7 +119,7 @@ export default function Page() {
         same for Obsidian vaults.
       </p>
       <p>
-        The server is open source. Read it in <a href="https://github.com/amber-notes/amber-notes/tree/main/supabase/functions/mcp" rel="noopener">supabase/functions/mcp</a> on GitHub.
+        The server is open source. Read it in <a href="https://github.com/pinto-notes/pinto-notes/tree/main/supabase/functions/mcp" rel="noopener">supabase/functions/mcp</a> on GitHub.
       </p>
     </PostPage>
   );

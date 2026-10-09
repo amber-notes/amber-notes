@@ -41,8 +41,8 @@ describe("structured data", () => {
 
   it("ties the name to the GitHub repository, so it isn't mixed up with other apps called Pinto Notes", () => {
     expect(organization).toMatchObject({ "@type": "Organization", name: "Pinto Notes", url: "https://pintonotes.com" });
-    expect(organization.sameAs).toContain("https://github.com/amber-notes/amber-notes");
-    expect(app("1.0").sameAs).toContain("https://github.com/amber-notes/amber-notes");
+    expect(organization.sameAs).toContain("https://github.com/pinto-notes/pinto-notes");
+    expect(app("1.0").sameAs).toContain("https://github.com/pinto-notes/pinto-notes");
   });
 
   it("describes a post as an Article with its dates, an author and a publisher", () => {

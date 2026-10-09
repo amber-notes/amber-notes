@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { APPLE_ON_WEB, GOOGLE_ON_WEB } from "@/lib/connect";
 import { afterCheck, emailLooksValid, parseEmailStatus, type Devices, type EmailStatus, type EmailStep, type Lead } from "@/lib/connect-flow";
+import { PasswordInput } from "@/lib/PasswordInput";
 import { APP_STORE_LIVE, APP_STORE_URL } from "@/lib/site";
 import { DeviceScreen } from "./DeviceLead";
 import { QRCode } from "./QRCode";
@@ -63,8 +64,12 @@ export function NotifySignInScreen({ to, onSubmit, onScan, ...signIn }: SignInPr
     <>
       <h1 className={styles.title}>Sign in to get a notification</h1>
       <AccessLine to={to} />
-      {APPLE_ON_WEB ? <SignInButtons onApple={signIn.onApple} onGoogle={signIn.onGoogle} busy={signIn.busy} /> : <p className={styles.small}>{APPLE_INSTEAD}</p>}
-      <EmailFirst {...signIn} onSubmit={onSubmit} />
+      {APPLE_ON_WEB ? <SignIn {...signIn} onSubmit={onSubmit} /> : (
+        <>
+          <p className={styles.small}>{APPLE_INSTEAD}</p>
+          <EmailFirst {...signIn} onSubmit={onSubmit} />
+        </>
+      )}
       <BottomLinks>
         <button type="button" className={styles.link} onClick={onScan}>Scan the code instead</button>
       </BottomLinks>
@@ -146,8 +151,7 @@ export function RecoverScreen({ to, signedIn, recoveryKey, onRecoveryKey, access
       <>
         <h1 className={styles.title}>Use your recovery key</h1>
         <p className={styles.lede}>Sign in first. Then enter your recovery key to allow <b>{where}</b>.</p>
-        {APPLE_ON_WEB && <SignInButtons onApple={signIn.onApple} onGoogle={signIn.onGoogle} busy={signIn.busy} />}
-        <EmailFirst {...signIn} onSubmit={onSignIn} />
+        {APPLE_ON_WEB ? <SignIn {...signIn} onSubmit={onSignIn} /> : <EmailFirst {...signIn} onSubmit={onSignIn} />}
         {!APPLE_ON_WEB && <p className={styles.small}>{appleInstead}</p>}
         {back}
       </>
@@ -230,6 +234,53 @@ export function SignInButtons({ onApple, onGoogle, busy }: { onApple: () => void
   );
 }
 
+/// The ways to sign in, at one height. Once the email turns out to be the way in (its account has a
+/// password, or there's no account), the Apple and Google buttons and the divider leave and the
+/// email form takes their room: the password field, the button and what the form says fit where
+/// the buttons were, so the card around them doesn't grow. "Other ways to sign in" brings the
+/// buttons back. The height is held by a copy of the first layout's boxes that nobody can see or
+/// reach, under the real one.
+export function SignIn({ onSubmit, check, ...signIn }: SignInProps & {
+  onSubmit: (e: React.FormEvent) => void; check?: (email: string) => Promise<EmailStatus | null>;
+}) {
+  // Null until the first swap, so nothing moves when the page opens.
+  const [ways, setWays] = useState<"email" | "all" | null>(null);
+  const live = useRef<HTMLDivElement>(null);
+  const asked = useRef(false);
+  const alone = ways === "email";
+  useEffect(() => {
+    // Back by the person's own choice: the keyboard lands on the first button that returned.
+    if (!alone && asked.current) live.current?.querySelector("button")?.focus();
+    asked.current = false;
+  }, [alone]);
+  function onAlone(next: boolean, byChoice = false) {
+    if (next === alone) return;
+    asked.current = byChoice;
+    setWays(next ? "email" : "all");
+  }
+  return (
+    <div className={styles.signIn}>
+      <div className={styles.signInSizer} aria-hidden="true" inert>
+        <div className={styles.apple} />
+        {GOOGLE_ON_WEB && signIn.onGoogle && <div className={styles.google} />}
+        <div className={styles.or}><span>&nbsp;</span></div>
+        <div className={styles.form}>
+          <div className={styles.field}>
+            <span>&nbsp;</span>
+            <input type="text" disabled tabIndex={-1} autoComplete="off" />
+          </div>
+          <p className={styles.error} />
+          <div className={styles.secondary} />
+        </div>
+      </div>
+      <div className={styles.signInLive} ref={live} data-ways={ways ?? undefined}>
+        {!alone && <SignInButtons onApple={signIn.onApple} onGoogle={signIn.onGoogle} busy={signIn.busy} />}
+        <EmailFirst {...signIn} onSubmit={onSubmit} check={check} alone={alone} onAlone={onAlone} />
+      </div>
+    </div>
+  );
+}
+
 /// Asks the site whether an email has an account (app/connect/account-status). Null when it can't say.
 export async function askEmailStatus(email: string): Promise<EmailStatus | null> {
   try {
@@ -249,9 +300,12 @@ export async function askEmailStatus(email: string): Promise<EmailStatus | null>
 /// account's key is made on its first device, so the page says so and points to the app. The
 /// password field is in the form from the start, so a password manager that fills both at once
 /// can: Continue then signs in straight away. `onSubmit` is the page's own email and password
-/// sign-in; `check` asks about the email (askEmailStatus, or a test's).
-export function EmailFirst({ email, password, onEmail, onPassword, busy, ready, failure, onSubmit, check = askEmailStatus }: SignInProps & {
+/// sign-in; `check` asks about the email (askEmailStatus, or a test's). Under SignIn, `onAlone` hears
+/// when the form should stand alone (a password to type, or no account) or needs the buttons back
+/// (the account signs in with them), and `alone` adds the way back to them.
+export function EmailFirst({ email, password, onEmail, onPassword, busy, ready, failure, onSubmit, check = askEmailStatus, alone = false, onAlone }: SignInProps & {
   onSubmit: (e: React.FormEvent) => void; check?: (email: string) => Promise<EmailStatus | null>;
+  alone?: boolean; onAlone?: (alone: boolean, byChoice?: boolean) => void;
 }) {
   const [step, setStep] = useState<EmailStep>({ kind: "email" });
   const passwordRef = useRef<HTMLInputElement>(null);
@@ -264,6 +318,7 @@ export function EmailFirst({ email, password, onEmail, onPassword, busy, ready, 
     setStep({ kind: "checking" });
     const next = afterCheck(await check(email));
     setStep(next);
+    onAlone?.(next.kind !== "apple");
     // Filled by a password manager along with the email: no reason to ask again.
     if (next.kind === "password" && password) onSubmit(e);
   }
@@ -276,6 +331,11 @@ export function EmailFirst({ email, password, onEmail, onPassword, busy, ready, 
     setStep({ kind: "email" });
     document.getElementById("connect-email")?.focus();
   }
+  function otherWays() {
+    onPassword("");
+    setStep({ kind: "email" });
+    onAlone?.(false, true);
+  }
   const checking = step.kind === "checking";
   return (
     <form className={styles.form} method="post" onSubmit={submit}>
@@ -283,13 +343,14 @@ export function EmailFirst({ email, password, onEmail, onPassword, busy, ready, 
         <span>Email</span>
         <input type="email" id="connect-email" autoComplete="username" required value={email} onChange={(e) => editEmail(e.target.value)} readOnly={checking} />
       </label>
-      <label className={open ? styles.field : `${styles.field} ${styles.waiting}`} aria-hidden={open ? undefined : true}>
-        <span>Password</span>
-        <input
-          ref={passwordRef} type="password" id="connect-password" autoComplete="current-password" required={open} tabIndex={open ? 0 : -1}
+      {/* Not a label around the input: the eye button's name would become part of the field's. */}
+      <div className={open ? styles.field : `${styles.field} ${styles.waiting}`} aria-hidden={open ? undefined : true}>
+        <label htmlFor="connect-password">Password</label>
+        <PasswordInput
+          ref={passwordRef} id="connect-password" autoComplete="current-password" required={open} tabIndex={open ? 0 : -1}
           value={password} onChange={(e) => onPassword(e.target.value)}
         />
-      </label>
+      </div>
       {step.kind === "apple" && <p className={styles.said} role="status">{NO_PASSWORD}</p>}
       {step.kind === "none" ? (
         <div className={styles.said} role="status">
@@ -307,10 +368,15 @@ export function EmailFirst({ email, password, onEmail, onPassword, busy, ready, 
           )}
         </>
       )}
-      {/* In a new tab, so this request's page stays open; the email goes in the fragment, which reaches no server. */}
-      {open && <a className={styles.link} href={`/reset-password#email=${encodeURIComponent(email.trim())}`} target="_blank" rel="noopener">Forgot password?</a>}
-      {(step.kind === "none" || step.kind === "apple") && (
-        <button type="button" className={styles.link} onClick={differentEmail}>Use a different email</button>
+      {(open || alone || step.kind === "none" || step.kind === "apple") && (
+        <div className={styles.formLinks}>
+          {/* In a new tab, so this request's page stays open; the email goes in the fragment, which reaches no server. */}
+          {open && <a className={styles.link} href={`/reset-password#email=${encodeURIComponent(email.trim())}`} target="_blank" rel="noopener">Forgot password?</a>}
+          {(step.kind === "none" || step.kind === "apple") && (
+            <button type="button" className={styles.link} onClick={differentEmail}>Use a different email</button>
+          )}
+          {alone && <button type="button" className={styles.link} onClick={otherWays}>Other ways to sign in</button>}
+        </div>
       )}
     </form>
   );
@@ -325,10 +391,10 @@ export function EmailFields({ email, password, onEmail, onPassword }: Pick<SignI
         <span>Email</span>
         <input type="email" id="connect-email" autoComplete="username" required value={email} onChange={(e) => onEmail(e.target.value)} />
       </label>
-      <label className={styles.field}>
-        <span>Password</span>
-        <input type="password" id="connect-password" autoComplete="current-password" required value={password} onChange={(e) => onPassword(e.target.value)} />
-      </label>
+      <div className={styles.field}>
+        <label htmlFor="connect-password">Password</label>
+        <PasswordInput id="connect-password" autoComplete="current-password" required value={password} onChange={(e) => onPassword(e.target.value)} />
+      </div>
     </>
   );
 }

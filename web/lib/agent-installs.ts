@@ -5,6 +5,8 @@ import { MCP_URL } from "./facts";
 /// listed (checked 2026-09-30). Codex and VS Code sign in on 127.0.0.1, which reaches the server as
 /// sent only with the proxy fix in middleware.ts (PR 47). Cursor isn't listed: it registers a
 /// cursor:// redirect, which the server doesn't accept. Goose, Zed and Windsurf weren't checked.
+/// The commands give mcp.pintonotes.com since 2026-10-09 (the same server; sign-in checked at that
+/// address). The Claude Code plugin and the Gemini CLI extension still carry mcp.ambernotes.app.
 
 /// The name each tool shows for the server.
 export const SERVER_NAME = "amber-notes";
@@ -24,7 +26,7 @@ export type AgentInstall = {
 export const AGENT_INSTALLS: AgentInstall[] = [
   {
     tool: "Claude Code",
-    code: `claude plugin marketplace add amber-notes/amber-notes
+    code: `claude plugin marketplace add pinto-notes/pinto-notes
 claude plugin install amber-notes`,
     signIn: "The plugin adds the server and a skill that tells Claude how your notes are laid out. Then run /mcp in Claude Code, pick amber-notes and sign in.",
     alt: { text: "Or add only the server, for every project:", code: `claude mcp add --scope user --transport http ${SERVER_NAME} ${MCP_URL}` },
@@ -36,7 +38,7 @@ claude plugin install amber-notes`,
   },
   {
     tool: "Gemini CLI",
-    code: `gemini extensions install https://github.com/amber-notes/amber-notes`,
+    code: `gemini extensions install https://github.com/pinto-notes/pinto-notes`,
     signIn: "Then run /mcp auth amber-notes in Gemini CLI to sign in.",
   },
   {

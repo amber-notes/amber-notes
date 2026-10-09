@@ -5,6 +5,83 @@ assistants. Newest first. Research behind it: [seo-aeo-research-2026-09-30.md](s
 
 `docs/` had no README naming a folder for evidence, so this and the research live in `docs/Evidence/`.
 
+## 9 October 2026: the first day on pintonotes.com, "Apple Notes not syncing" answer first, "Meeting notes to action items"
+
+### Measured
+
+- **PostHog (EU project 291184), page views per day and host, read at 09:15 UTC.** 6 October: 137 on
+  ambernotes.app. 7 October: 32. 8 October: 36 on ambernotes.app, 51 on pintonotes.com from 15:54 UTC, and 8 on www.pintonotes.com before PR 323
+  made it a redirect. 9 October so far: 20, all on pintonotes.com.
+- **Who that was.** 68 of the 79 views on the new hosts were the home page, nearly all opened directly, one
+  page each, from Linux, Windows, Android and iPhone browsers with no country. That pattern fits our own
+  checks of the move and link scanners more than readers, so it isn't counted as demand. One landing
+  from bing.com on the home page. No landing from Google on either host since 8 October 10:00 UTC.
+- **Clicks that matter, since yesterday's reading:** `download_mac_clicked` 0, `use_template_clicked` 0,
+  `copy_prompt_clicked` 0, `blog_helper_used` 0. Three visitors accepted cookies. `blog_cta_clicked`
+  and `blog_copy_clicked` still haven't fired.
+- **A correction to how this is counted.** Cookieless events carry no user agent, so PostHog's bot
+  check (`isLikelyBot`) calls every one of them a bot. Filtering with it drops most real visitors
+  (6 October would read 77, not 137). The numbers here and in earlier entries count every page view on
+  the site's hosts.
+- **Per post:** [blog-roi.md](blog-roi.md). Three post visits on the new host, none from search. One,
+  on an iPhone, read connect-chatgpt-to-your-notes to the middle and logged a dead click and two dead
+  swipes there.
+- **Google Search Console, ambernotes.app, last 7 days (Google's data to 6 October), read in Chrome:**
+  14 clicks, 987 impressions, 1.4% click rate, average position 9.9, 112 queries. The week before the
+  move is the baseline to hold: 13 clicks and 674 impressions a day earlier. Impressions per day rose
+  every day: 11, 69, 99, 140, 151, 204, 313 (30 September to 6 October).
+  - Top pages by impressions: forgot-apple-notes-password 190 (1 click), move-apple-notes-to-icloud 109
+    (0), apple-notes-not-syncing 92 (1), apple-notes-ios-27 91 (3), connect-chatgpt-to-your-notes 68
+    (0), apple-notes-api 57 (3), apple-notes-tables 55 (0), the home page 39 (4).
+  - Top queries: "forgot notes password" 15, "apple notes api" 14 (1 click), "amber notes" 11 (1 click).
+    New: "why aren't my notes syncing from iphone to mac" 4 and "notion vs apple notes" 4.
+- **Page indexing (ambernotes.app):** 62 indexed, 22 not, the same six reasons as on 8 October.
+  apple-notes-not-syncing now gets impressions, so it is indexed.
+- **pintonotes.com has no Search Console property yet.** Opening it says "you don't have access to
+  this property". Steps 1, 2, 4 and 5 of the browser pass (SEO-MOVE.md) are still to do, so Google has
+  not been told about the move other than by the redirects.
+- **Live checks:** ambernotes.app pages answer one 308 to the same path; www.pintonotes.com answers a
+  308; /blog/amber-notes-vs-apple-notes answers a 308; /blog/feed.xml and /amber-notes answer 200; the
+  sitemap lists 70 pages. `https://mcp.ambernotes.app/robots.txt` is still a 404 (PR 275 is open).
+
+Reading: search demand grew through the week before the move, and the move itself is clean. The risk
+now is the gap until Google knows the new host, which the Search Console property and Change of
+Address close.
+
+### Picked
+
+- **Upgrade: `/blog/apple-notes-not-syncing`.** 92 impressions and 1 click in the week, a new query
+  that matches it word for word, and it was a wall of text. move-apple-notes-to-icloud has more
+  impressions (109) and no clicks, so it is next.
+- **New: `/blog/meeting-notes-to-action-items`,** a post for people who already want this ("meeting
+  notes to action items chatgpt" is query 45 in the plan). Yesterday's new post was an Apple Notes
+  how-to, so today's is the converting kind.
+
+### Changed
+
+- **`/blog/apple-notes-not-syncing`** (branch `site/not-syncing-answer-first`): the short answer first; a
+  chooser that starts at "Is the note at icloud.com/notes?" and ends in the one thing to do; a table of
+  which accounts sync; the six checks as numbered steps with menu paths per OS version; the call to
+  action at the end. Same facts as on 5 October. The capture is now captioned as macOS 26.
+- **New post `/blog/meeting-notes-to-action-items`** (branch `site/meeting-notes-action-items`, on top of
+  `site/apple-notes-templates`), in Guides: one prompt that works in any AI (summary, decisions, a
+  checklist with an owner and a date, and two rules against guessing), what comes back, three habits
+  for better notes, a table of where the list can live, and how the Meeting notes template keeps it in
+  one note. Checked at the `mac-v1.1.2` tag: `append_to_note` with `under_heading` and `at_start`,
+  `set_checklist_item`, the "changed N lines, Undo" bar and "Use this template" links. New plum ground.
+- **No new captures.** The fleet Air was held by another job for most of the run. Both posts use
+  captures the site already had. The new post's cover and figure are the Groceries capture, captioned as
+  that; a real capture of a Meeting notes note should replace them.
+- **Open site PRs brought up to date:** 215, 235, 238, 239, 273, 274 and 275 had main merged in after
+  the rename.
+
+### To measure next
+
+- Search Console: whether clicks for both hosts together hold at 13 to 14 a week through the move, and
+  position for "apple notes not syncing" queries after the upgrade.
+- PostHog: `blog_helper_used` on apple-notes-not-syncing, `blog_copy_clicked` on the meeting notes
+  prompt, and the first Google landing on pintonotes.com.
+
 ## 8 October 2026: the site moved to pintonotes.com, audited and tightened
 
 The app was renamed from Amber Notes to Pinto Notes on 8 October, and the site moved from ambernotes.app to pintonotes.com (PR 312). This is the audit of the live move, and what the follow-up branch `site/seo-move-pinto` changes.
@@ -51,6 +128,97 @@ The app was renamed from Amber Notes to Pinto Notes on 8 October, and the site m
 - **Week 4 (to 5 November):** most of the 69 pages indexed on pintonotes.com, ambernotes.app impressions near zero. If more than a third of the pages are still not indexed on pintonotes.com, use URL Inspection on the home page, /blog and the five posts with the most impressions, and ask for indexing.
 - **Every week:** 404s in PostHog (pathname of page views on the not-found page) for an old address nobody redirected; Bing Webmaster Tools, Site Explorer, for pintonotes.com pages found.
 - **Keep for good:** ambernotes.app registered with auto-renew, and its redirects in place. Google asks for at least a year; links and installed apps need it longer.
+
+## 8 October 2026: a quiet day after launch, "Apple Notes MCP" answer first, "Apple Notes templates"
+
+### Measured
+
+- **PostHog (EU project 291184), 2 October to 8 October 10:00 UTC, bots and other hosts left out.** Page
+  views: 143, 37, 53, 89, 137 (Product Hunt day), 32 on 7 October and 9 so far on 8 October.
+  `download_mac_clicked`: 1, 1, 0, 3, 4, 0, 1. Since yesterday's reading one download, from github.com to
+  /download, by a visitor who accepted cookies first.
+- **Per post:** [blog-roi.md](blog-roi.md). Google landings are still on the same four Apple Notes
+  posts. New: the first real `blog_helper_used`, from a Google visitor on forgot-apple-notes-password
+  who answered the chooser four times and left after 37 seconds. `blog_cta_clicked` and
+  `blog_copy_clicked` still haven't fired.
+- **Google Search Console, last 7 days (Google's data to 5 October), read in Chrome:** 13 clicks, 674
+  impressions, 1.9% click rate, average position 10.1, 82 queries. Top by impressions: "forgot notes
+  password" 13, "apple notes api" 11, "amber notes" 10 (1 click), "i forgot my notes password" 5, "icloud
+  notes api" 4, "how to reset notes password" 4, "how to recover deleted icloud notes" 3, "how to restore
+  deleted notes" 3, "apple notes mcp" 3.
+- **Page indexing (last update 4 October):** 62 indexed, 22 not. Search Console's 7 October email was
+  about these reasons:
+  - Blocked due to unauthorized request (401): `https://mcp.ambernotes.app/`, the MCP server's root.
+    Fixed in its own PR: the MCP host now serves a robots.txt that disallows everything.
+  - Excluded by noindex: 8 `/open/template/*` universal links. By design.
+  - Page with redirect: http and www addresses. By design.
+  - Alternate page with proper canonical tag: 3 `/templates?category=...` filters. By design.
+  - Crawled, currently not indexed: `/blog/apple-notes-not-syncing`, `/templates/cornell-notes`, and
+    the favicon and OG images. The sync post is still a wall of text, so it's next in line for an
+    upgrade.
+  - Discovered, currently not indexed: `/blog/category/apple-notes` and `/blog/category/building-amber-notes`.
+- **Site health:** all 69 sitemap addresses answer 200. No 404s in the last day.
+
+Reading: traffic fell back to its pre-launch level. The posts people find from Google get read; the
+next step is getting a reader from a post to the download, which hasn't happened yet.
+
+### Picked
+
+- **Upgrade: `/blog/apple-notes-mcp`.** Search Console showed "apple notes mcp" at position 52, and the
+  post was a long comparison with no short answer. It's also a converting topic: everyone who searches
+  it wants an AI to use their notes.
+- **New: `/blog/apple-notes-templates`,** a helpful Apple Notes post. Autocomplete on 8 October:
+  "apple notes templates" suggests *free download*, *free download pdf*, *free*, *reddit*, *travel*,
+  *download* and *etsy*; "apple notes meeting notes" suggests *template*. Nothing on the site covered it,
+  and it links naturally to the template library.
+
+### Changed
+
+- **`/blog/apple-notes-mcp`** (branch `site/apple-notes-mcp-answer-first`): the short answer first; a
+  one-question chooser (where do you use AI) that ends in the setup that works there, or says plainly
+  that none does; the commands as copyable blocks for Claude Code, Codex (new: sweetrb's Codex plugin)
+  and the Claude app; a section answering "iCloud notes MCP" and "iOS notes MCP"; the call to action at
+  the end. Facts rechecked on 8 October: sweetrb/apple-notes-mcp is at 2.14.2 (7 October, 152 versions
+  on npm), the other three unchanged. The hero is a new capture of the real macOS 27 prompt
+  ("Terminal" wants access to control "Notes"), taken by running osascript in Terminal in the VM.
+- **New post `/blog/apple-notes-templates`** (branch `site/apple-notes-templates`), in Apple Notes:
+  a Templates folder, File, Duplicate Note on a Mac, copy and paste on iPhone, and five templates in a
+  picker that shows each the way Notes draws it and copies it as Markdown. Checked in Notes on macOS 27:
+  there's no template feature (no such string in the app); File, Duplicate Note (Command-D) copies a
+  note into the same folder with its checklists; Edit, Paste as Markdown turns #, ## and - [ ] into a
+  title, headings and a checklist in an On My Mac account; an empty "- [ ]" pastes as the text [ ] and
+  an empty "- " disappears, so every template item has words in it (a test keeps it that way). New
+  olive ground for the card.
+- **Captures:** a throwaway macOS 27 VM on the fleet Air (cirruslabs' vanilla golden-gate image, no
+  Apple Account, On My Mac, demo templates only). VM and image deleted afterwards.
+
+### To measure next
+
+- PostHog: `blog_helper_used` and `blog_copy_clicked` on both posts, and the first post visit followed
+  by `download_mac_clicked`.
+- Search Console: position for "apple notes mcp" and "apple notes templates"; Validate Fix on the 401
+  reason once the robots.txt PR is deployed.
+
+## 7 October 2026: measured per post, "Recover deleted Apple Notes" upgraded, "Claude memory vs notes"
+
+### Measured
+
+- **PostHog (EU project 291184), 2 October to 7 October 09:00 UTC.** Page views: 148, 39, 53, 90, 143, and 11 so far on 7 October; 484 in all. `download_mac_clicked` 10 (2, 1, 0, 3, 4, 0). `cookies_accepted` 8, mostly our own checks of the new banner.
+- **Per post:** the new [blog-roi.md](blog-roi.md) table. Google landed people on four posts: apple-notes-ios-27 (5), apple-notes-api (3), forgot-apple-notes-password (1) and best-notes-app-for-ai-agents (1). Those visits read deep (62 to 79% on average), but none clicked Download the same day. The three measured blog events from PR 201 haven't fired yet.
+- **Google Search Console, last 7 days (Google's data to 4 October):** 11 clicks, 470 impressions, 2.3% click rate, average position 10.3, 60 queries. Top by impressions: "forgot notes password" 10 (position 11.6), "apple notes api" 8 (6.6), "amber notes" 6 (6.2, 1 click), "icloud notes api" 4, "i forgot my notes password" 4, "how to reset notes password" 3 (30.7), "how to restore deleted notes" 3 (32.0), "apple notes mcp" 3 (52.0).
+- **Found at 390 px:** the short answer's jump links ran off the screen on the three upgraded posts (fixed in its own PR).
+
+Reading: Apple Notes problem posts bring the search visits and get read; nothing converts from them yet. The upgraded posts' calls to action are a day old, so tomorrow's numbers are the first real test.
+
+### Changed
+
+- **Upgraded `/blog/recover-deleted-apple-notes`** (branch `site/recover-deleted-upgrade`). Picked by impressions: it gets impressions for "how to restore deleted notes", a big query where it sits at position 32, and it was still a wall of text. It now has the short answer first, a "Where did my note go?" chooser, and real captures from a throwaway macOS 27 VM on the fleet Air (vanilla image, no Apple Account, On My Mac, demo notes; VM and image deleted afterwards). The captures show Recently Deleted with Apple's own line about 30 days plus up to 40 more for iCloud, the first-delete dialog, and Control-click, Move to, Notes. That last one is a Mac step the post didn't have, and moving a note back that way was tested in the VM. The Amber Notes section drops "up to 100 earlier versions": the server's ceiling is now 500 and old versions are thinned (`20260929200000_version_history.sql`).
+- **New post `/blog/claude-memory-vs-notes`**, in Comparisons (branch `site/claude-memory-vs-notes`). It's a converting post, the Claude counterpart of the ChatGPT memory post, and links to the connect guide. Claude's memory facts come from Anthropic's help pages "Use Claude's chat search and memory" and "Import and export your memory", read on 7 October: Settings, Memory; Generate memory from chats; topics you can edit; on by default on Free, Pro and Max; owners decide on Team and Enterprise; separate memory per project; incognito left out. Two prompts to copy: a line for Claude's memory, and Anthropic's own export prompt extended to save the memory into a note. The connect steps follow the published connect guide and `ConnectGuide.swift`. The hero is a new offscreen capture of Claude's edit to the Lisbon note (`BlogSnapshots.claudeEditForMemoryPost`), and the card has a new slate ground.
+
+### To measure next
+
+- PostHog: `blog_helper_used` on the recover post, `blog_copy_clicked` on the Claude memory post, and any blog visit followed by `download_mac_clicked`.
+- Search Console: position for "how to restore deleted notes" and "recover deleted apple notes" after the upgrade is crawled, and impressions for "claude memory".
 
 ## 6 October 2026: a week of PostHog, Search Console, and "One memory for Claude Code, Codex and your other agents"
 

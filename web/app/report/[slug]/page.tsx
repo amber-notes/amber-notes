@@ -12,9 +12,9 @@ const MESSAGES: Record<ReportOutcome, { title: string; text: string; again?: boo
   received: { title: "Thanks, we got your report", text: "We review reports within 24 hours and take down pages that break the terms of use." },
   taken_down: { title: "Thanks, the page is down for review", text: "Several people reported this page, so it's been taken down while we review it." },
   not_found: { title: "This page isn't shared any more", text: "Its owner stopped sharing it, or it was already taken down." },
-  too_many: { title: "Too many reports", text: "You've sent several reports in a short time. Try again in an hour, or write to hello@ambernotes.app.", again: true },
+  too_many: { title: "Too many reports", text: "You've sent several reports in a short time. Try again in an hour, or write to hello@pintonotes.com.", again: true },
   missing_reason: { title: "Say what's wrong", text: "Write a few words about the problem, then send the report.", again: true },
-  error: { title: "The report didn't go through", text: "Try again in a moment, or write to hello@ambernotes.app with the page's address.", again: true },
+  error: { title: "The report didn't go through", text: "Try again in a moment, or write to hello@pintonotes.com with the page's address.", again: true },
 };
 
 export default async function Report({ params, searchParams }: {

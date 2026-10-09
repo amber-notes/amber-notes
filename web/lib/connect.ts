@@ -34,7 +34,9 @@
 // the PKCE verifier for one Sign in with Apple round trip (sessionStorage, removed on return).
 // Sign in with Apple comes back to /connect?request=<id>[&recover=1]&code=<one-time code>, so
 // Supabase must list https://pintonotes.com/connect** among its redirect URLs.
+
 import { APP_LINK_ORIGIN, appURL } from "./app-scheme";
+import { MCP_URL, OLD_MCP_URL } from "./facts";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const validRequest = (id: string | undefined): id is string => !!id && UUID.test(id);
@@ -105,11 +107,11 @@ export async function fetchLabel(functionBase: string, id: string, headers: Head
 export function problemText(code: string | undefined): string {
   switch (code) {
     case "unknown_app":
-      return "Pinto Notes doesn't know this app's connection anymore. In Claude, remove the Pinto Notes connector under Settings → Connectors and add it again. In ChatGPT, delete the Pinto Notes app under Settings → Apps and add it again. In any other app, remove the server and add https://mcp.ambernotes.app again.";
+      return `Pinto Notes doesn't know this app's connection anymore. In Claude, remove the Pinto Notes connector under Settings → Connectors and add it again. In ChatGPT, delete the Pinto Notes app under Settings → Apps and add it again. In any other app, remove the server and add it again at ${MCP_URL}.`;
     case "wrong_return": return "The app's return address doesn't match what it registered. Remove the connector and add it again.";
     case "too_many": return "Too many attempts. Wait a few minutes, then start connecting again.";
     case "pkce": case "unsupported": case "wrong_server":
-      return "The app asked to connect in a way Pinto Notes doesn't support. Check that it uses the address https://mcp.ambernotes.app.";
+      return `The app asked to connect in a way Pinto Notes doesn't support. Check that it uses the address ${MCP_URL}. The older ${OLD_MCP_URL} works too.`;
     default: return "Start connecting again from ChatGPT, Claude or the other app you were using.";
   }
 }
