@@ -52,19 +52,37 @@ struct MoveToPicker: View {
         return out.filter { $0.name.localizedStandardContains(q) }.map { Row(id: $0.id, name: $0.name, path: $0.path, depth: 0) }
     }
 
+    /// The highlighted row, which is the one Return moves to: the row the arrows left, while it
+    /// is listed and a choice, else the first choice.
+    static func choice(in rows: [Row], highlighted: UUID?, current: UUID?) -> Row? {
+        highlighted.flatMap { id in rows.first { $0.id == id && $0.id != current } } ?? rows.first { $0.id != current }
+    }
+
+    /// Where an arrow key takes the highlight: the next choice down or up, stopping at the ends.
+    static func step(_ by: Int, in rows: [Row], highlighted: UUID?, current: UUID?) -> UUID? {
+        let choices = rows.filter { $0.id != current }
+        guard let from = choice(in: rows, highlighted: highlighted, current: current), let at = choices.firstIndex(of: from) else { return nil }
+        return choices[min(max(at + by, 0), choices.count - 1)].id
+    }
+
+    /// The rows as they are now. The keys read them, and the highlight, when pressed: the search
+    /// field keeps its Return action from when it was last drawn, so values handed to it then
+    /// moved the note to a row that was no longer the highlighted one.
+    private var shown: [Row] { Self.rows(context.allFolders(), matching: query) }
+
     var body: some View {
-        let rows = Self.rows(context.allFolders(), matching: query)
-        let choice = highlighted.flatMap { id in rows.first { $0.id == id && $0.id != current } } ?? rows.first { $0.id != current }
+        let rows = shown
+        let choice = Self.choice(in: rows, highlighted: highlighted, current: current)
         VStack(spacing: 0) {
             HStack(spacing: 6) {
                 Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
                 TextField("Move to", text: $query)
                     .textFieldStyle(.plain)
                     .focused($searching)
-                    .onSubmit { if let choice { pick(choice.id) } }
+                    .onSubmit { submit() }
                     #if os(macOS)
-                    .onKeyPress(.downArrow) { step(1, in: rows, from: choice); return .handled }
-                    .onKeyPress(.upArrow) { step(-1, in: rows, from: choice); return .handled }
+                    .onKeyPress(.downArrow) { step(1); return .handled }
+                    .onKeyPress(.upArrow) { step(-1); return .handled }
                     #endif
                     .accessibilityIdentifier("moveTo.search")
             }
@@ -115,11 +133,12 @@ struct MoveToPicker: View {
         .accessibilityIdentifier("moveTo.folder.\(row.name)")
     }
 
-    private func step(_ by: Int, in rows: [Row], from choice: Row?) {
-        let choices = rows.filter { $0.id != current }
-        guard !choices.isEmpty else { return }
-        let at = choice.flatMap { c in choices.firstIndex { $0.id == c.id } } ?? (by > 0 ? -1 : choices.count)
-        highlighted = choices[min(max(at + by, 0), choices.count - 1)].id
+    private func step(_ by: Int) {
+        if let to = Self.step(by, in: shown, highlighted: highlighted, current: current) { highlighted = to }
+    }
+
+    private func submit() {
+        if let choice = Self.choice(in: shown, highlighted: highlighted, current: current) { pick(choice.id) }
     }
 
     private func pick(_ id: UUID) {

@@ -6,8 +6,9 @@ import Testing
 @testable import Pane
 
 /// "Move to…": the folders in the sidebar's order with a search field. The order and the search
-/// are checked as values; a click and Return go through a real window on CI, and the picker is
-/// drawn light and dark for the test results (CI's "snapshots" artifact).
+/// are checked as values, and so is the row the arrows highlight and Return moves to; a click
+/// and the keys go through a real window on CI, and the picker is drawn light and dark for the
+/// test results (CI's "snapshots" artifact).
 @MainActor @Suite(.serialized) struct MoveToPickerTests {
     /// Work > (Clients > Acme, Plans), Home, Travel; the note is in Plans.
     static func library() throws -> (ModelContainer, [String: Folder]) {
@@ -44,6 +45,75 @@ import Testing
         #expect(found.first?.depth == 0 && found.first?.path == "Work")
         #expect(MoveToPicker.rows(c.mainContext.allFolders(), matching: "zzz").isEmpty)
         #expect(MoveToPicker.rows(c.mainContext.allFolders(), matching: "a").map(\.name).sorted() == ["Acme", "Plans", "Travel"])
+    }
+
+    /// The keys as values: each arrow moves the highlight from where it is, a search changes the
+    /// rows under it, and what comes back is the folder Return moves to (the highlighted row).
+    static func choice(after keys: [Key], in folders: [Folder], current: UUID?) -> String? {
+        var query = "", highlighted: UUID?
+        for key in keys {
+            let rows = MoveToPicker.rows(folders, matching: query)
+            switch key {
+            case .down: highlighted = MoveToPicker.step(1, in: rows, highlighted: highlighted, current: current) ?? highlighted
+            case .up: highlighted = MoveToPicker.step(-1, in: rows, highlighted: highlighted, current: current) ?? highlighted
+            case .text(let text): query += text
+            case .enter: return MoveToPicker.choice(in: rows, highlighted: highlighted, current: current)?.name
+            }
+        }
+        return nil
+    }
+
+    @Test func returnMovesToTheHighlightedRow() throws {
+        let (c, by) = try Self.library()
+        let folders = c.mainContext.allFolders(), plans = by["Plans"]!.id
+        // Work, Clients, Acme, Home, Travel: Plans, where the note is, is not a choice.
+        let choices = MoveToPicker.rows(folders).filter { $0.id != plans }.map(\.name)
+        try #require(choices.count == 5)
+        func after(_ keys: Key...) -> String? { Self.choice(after: keys, in: folders, current: plans) }
+        #expect(after(.enter) == choices[0])
+        #expect(after(.down, .enter) == choices[1])
+        #expect(after(.down, .down, .up, .enter) == choices[1])
+        // Past the folder the note is in, both ways.
+        #expect(after(.down, .down, .down, .enter) == choices[3])
+        #expect(after(.down, .down, .down, .up, .enter) == choices[2])
+        // The ends hold.
+        #expect(after(.up, .up, .enter) == choices[0])
+        #expect(after(.down, .down, .down, .down, .down, .down, .up, .enter) == choices[3])
+        // With no folder the note is in, every row is a choice.
+        #expect(Self.choice(after: [.down, .down, .down, .enter], in: folders, current: nil) == MoveToPicker.rows(folders)[3].name)
+    }
+
+    @Test func returnAfterASearchMovesToTheHighlightedResult() throws {
+        let (c, by) = try Self.library()
+        let folders = c.mainContext.allFolders(), plans = by["Plans"]!.id
+        // "a" finds Acme, Plans and Travel.
+        let found = MoveToPicker.rows(folders, matching: "a").filter { $0.id != plans }.map(\.name)
+        try #require(found.count == 2)
+        func after(_ keys: Key...) -> String? { Self.choice(after: keys, in: folders, current: plans) }
+        #expect(after(.text("a"), .enter) == found[0])
+        #expect(after(.text("a"), .down, .enter) == found[1])
+        #expect(after(.text("a"), .down, .down, .up, .enter) == found[0])
+        // The highlighted folder leaves the list as the search narrows: the first result.
+        #expect(after(.down, .down, .down, .text("a"), .enter) == found[0])
+        // It stays in the list: still the one.
+        #expect(after(.text("a"), .down, .text("v"), .enter) == "Travel")
+        // No result, or only the folder the note is in: nothing to move to, and the arrows have nowhere to go.
+        #expect(after(.text("zzz"), .down, .enter) == nil)
+        #expect(after(.text("plans"), .down, .up, .enter) == nil)
+        #expect(MoveToPicker.step(1, in: [], highlighted: nil, current: plans) == nil)
+    }
+
+    /// The folder the note is in is never where Return goes, even if it is the highlighted id.
+    @Test func theCurrentFolderIsNeverTheChoice() throws {
+        let (c, by) = try Self.library()
+        let rows = MoveToPicker.rows(c.mainContext.allFolders()), plans = by["Plans"]!.id
+        #expect(MoveToPicker.choice(in: rows, highlighted: plans, current: plans)?.id == rows.first { $0.id != plans }?.id)
+        var highlighted: UUID?
+        for arrow in [1, 1, 1, 1, 1, -1, -1, -1, -1, -1] {
+            highlighted = MoveToPicker.step(arrow, in: rows, highlighted: highlighted, current: plans)
+            #expect(highlighted != nil && highlighted != plans)
+            #expect(MoveToPicker.choice(in: rows, highlighted: highlighted, current: plans)?.id == highlighted, "the row Return moves to is the highlighted one")
+        }
     }
 
     /// The number of folders doesn't change what the toolbar's menu holds: listing them costs
