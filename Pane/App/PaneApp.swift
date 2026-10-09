@@ -385,6 +385,51 @@ final class ShaperView: NSView {
     }
 }
 
+/// The top of the notes window is each column's own warm ground, never the system's grey band.
+/// In a window a see-through title bar does it: AppKit then draws no background behind the
+/// toolbar. In full screen the toolbar lives in a window of its own, where AppKit keeps one
+/// opaque background per column whatever the title bar says; those are hidden, so the columns
+/// (which reach the top of the screen) show through there as well.
+@MainActor
+enum NotesChrome {
+    private static var watching: [ObjectIdentifier: [NSObjectProtocol]] = [:]
+
+    static func apply(to window: NSWindow) {
+        window.titlebarAppearsTransparent = true
+        window.titlebarSeparatorStyle = .none
+        let key = ObjectIdentifier(window)
+        guard watching[key] == nil else { return }
+        let center = NotificationCenter.default
+        watching[key] = [
+            // AppKit puts the backgrounds back when the full-screen toolbar is laid out again.
+            center.addObserver(forName: NSWindow.didUpdateNotification, object: window, queue: nil) { [weak window] _ in
+                MainActor.assumeIsolated {
+                    guard let window, window.styleMask.contains(.fullScreen) else { return }
+                    clearFullScreenBar(of: window)
+                }
+            },
+            center.addObserver(forName: NSWindow.willCloseNotification, object: window, queue: nil) { _ in
+                MainActor.assumeIsolated { watching.removeValue(forKey: key)?.forEach(center.removeObserver) }
+            },
+        ]
+    }
+
+    private static func clearFullScreenBar(of window: NSWindow) {
+        for child in window.childWindows ?? [] where String(describing: type(of: child)) == "NSToolbarFullScreenWindow" {
+            if let content = child.contentView { hideBackgrounds(in: content, depth: 0) }
+        }
+    }
+
+    private static func hideBackgrounds(in view: NSView, depth: Int) {
+        if String(describing: type(of: view)) == "NSTitlebarBackgroundView" {
+            if !view.isHidden { view.isHidden = true }
+            return
+        }
+        guard depth < 4 else { return }
+        for sub in view.subviews { hideBackgrounds(in: sub, depth: depth + 1) }
+    }
+}
+
 /// Signed out, the window is just the sign-in card: small, no title bar.
 /// Signed in, it becomes the normal three-column window, back where you left it.
 private struct WindowShaper: NSViewRepresentable {
@@ -442,9 +487,9 @@ private struct WindowShaper: NSViewRepresentable {
         window.toolbar?.isVisible = !compact
         // Notes' full-height toolbar with large buttons; compact only for the sign-in card.
         window.toolbarStyle = compact ? .unifiedCompact : .unified
-        window.titlebarSeparatorStyle = compact ? .none : .automatic
         // The card runs under a see-through title bar: one surface, just the window buttons on it.
-        window.titlebarAppearsTransparent = compact
+        // The notes window too: each column's own ground runs up under the toolbar.
+        NotesChrome.apply(to: window)
         if compact { window.styleMask.insert(.fullSizeContentView) }
         // Card mode keeps close and minimise; zoom makes no sense for a fixed-size card.
         window.standardWindowButton(.zoomButton)?.isEnabled = !compact
