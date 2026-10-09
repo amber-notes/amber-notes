@@ -324,7 +324,7 @@ struct CopyCodeButton: View {
                 .frame(minHeight: 28)
                 .contentShape(.rect)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.hoverText)
         .font(.subheadline.weight(.semibold))
         .foregroundStyle(.tint)
         .animation(.snappy(duration: 0.2), value: copied)

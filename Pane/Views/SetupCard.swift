@@ -134,7 +134,7 @@ struct SetupCard: View {
                 .contentShape(.rect)
                 .padding(-Metrics.closeSlop)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.hoverIcon(cornerRadius: Metrics.closeSize / 2))
         .accessibilityLabel("Hide")
         .accessibilityHint("Hides these steps for good")
         .accessibilityIdentifier("setup.hide")
@@ -251,7 +251,7 @@ struct SetupCard: View {
                 .presentationCompactAdaptation(.popover)
             }
         Button("Start Fresh", action: onStartFresh)
-            .buttonStyle(.borderless)
+            .buttonStyle(.hoverLink)
             .foregroundStyle(.secondary)
             .fixedSize()
             .accessibilityIdentifier("setup.fresh")
@@ -266,7 +266,7 @@ struct SetupCard: View {
             Label(title, systemImage: symbol)
                 .frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
                 .padding(.horizontal, 8)
-                .contentShape(.rect)
+                .hoverHighlight(RoundedRectangle(cornerRadius: 6, style: .continuous))
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("setup.import.\(symbol)")

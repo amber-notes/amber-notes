@@ -97,7 +97,7 @@ struct AIReceipt: View {
             if receipt.kind != .heldBack {
             Divider().frame(height: 14)
             Button("Undo", action: undo)
-                .buttonStyle(.plain)
+                .buttonStyle(.hoverLink)
                 .font(.system(size: compact ? 13 : Self.text, weight: .semibold))
                 .foregroundStyle(Color.amberInk)
                 .contentShape(.rect)

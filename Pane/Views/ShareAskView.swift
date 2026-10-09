@@ -58,7 +58,7 @@ struct ShareAskView: View {
                 Button { store.choose(.dismissed) } label: {
                     Text(ShareAsk.buttonTitle(.dismissed)).frame(maxWidth: .infinity).frame(minHeight: Metrics.quietHeight)
                 }
-                .buttonStyle(.borderless)
+                .buttonStyle(.hoverText)
                 .foregroundStyle(Color.muted)
                 .accessibilityIdentifier("shareAsk.notNow")
             }

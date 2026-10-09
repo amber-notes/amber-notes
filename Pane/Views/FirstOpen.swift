@@ -180,6 +180,7 @@ struct FirstOpenContent: View {
                         .foregroundStyle(Color.ink)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 10)
+                        .hoverHighlight(RoundedRectangle(cornerRadius: 12, style: .continuous))
                         .background(Color.amberSoft, in: .rect(cornerRadius: 12, style: .continuous))
                         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Color.line, lineWidth: 1))
                         .contentShape(.rect)
@@ -192,7 +193,7 @@ struct FirstOpenContent: View {
                     Button("Connect an AI") { connecting = true }
                         .font(.callout.weight(.semibold))
                         .foregroundStyle(Color.amberInk)
-                        .buttonStyle(.plain)
+                        .buttonStyle(.hoverLink)
                         .accessibilityIdentifier("firstOpen.connect")
                 }
             }

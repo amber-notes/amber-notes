@@ -624,7 +624,7 @@ struct NotePageView: View {
                 .lineLimit(1)
             Spacer(minLength: 8)
             Button("Switch") { Task { await swap() } }
-                .buttonStyle(.plain)
+                .buttonStyle(.hoverText)
                 .font(.subheadline.weight(.bold))
                 .foregroundStyle(accent)
                 .padding(.horizontal, 6)
@@ -976,7 +976,7 @@ struct SubNoteWidget: View {
                     Label("Open", systemImage: "arrow.up.left.and.arrow.down.right")
                         .font(.system(size: EditorMetrics.body * 0.8, weight: .semibold))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.hoverText)
                 .foregroundStyle(Color.amberInk)
                 .accessibilityIdentifier("widget.open.\(note?.title ?? name)")
             }

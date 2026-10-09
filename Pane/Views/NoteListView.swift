@@ -131,6 +131,9 @@ struct NoteListView: View {
     }
 
     var body: some View {
+        #if DEBUG
+        RenderProbe.count("NoteListView")
+        #endif
         // Worked out once per update and handed down: the list asks many times.
         let all = entries
         let scopedNotes = scoped(from: all)
@@ -230,6 +233,7 @@ struct NoteListView: View {
                         case .file(let file):
                             FileListRow(file: file, query: search, showFolder: scope == .all || !search.isEmpty, remove: { remove([file.id]) })
                                 .tag(file.id)
+                                .hoverRow(file.filename)
                                 #if os(iOS)
                                 .listRowBackground(Color(Palette.row))
                                 #endif
@@ -487,6 +491,8 @@ struct NoteListView: View {
                 remove: { remove(note) })
             .equatable()
             .tag(note.id)
+            // Outside the equatable row, so the list sees its background.
+            .hoverRow(note.title)
             #if os(iOS)
             .listRowBackground(Color(Palette.row))
             #endif

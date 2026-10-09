@@ -42,6 +42,7 @@ struct LegalLinksRow: View {
         }
         .font(.footnote)
         .tint(Color(PColor.paneAccent))
+        .buttonStyle(.hoverLink)
         .frame(maxWidth: .infinity, minHeight: 24)
     }
 }
