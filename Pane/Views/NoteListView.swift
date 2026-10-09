@@ -132,6 +132,7 @@ struct NoteListView: View {
 
     var body: some View {
         // Worked out once per update and handed down: the list asks many times.
+        library.publishesEveryChange = !search.trimmingCharacters(in: .whitespaces).isEmpty
         let all = entries
         let scopedNotes = scoped(from: all)
         let visible = filtered(from: scopedNotes, all: all)
@@ -254,6 +255,13 @@ struct NoteListView: View {
         .contextMenu(forSelectionType: UUID.self) { ids in
             menu(for: ids, folders: folders)
         }
+        #if os(macOS)
+        // Another folder or another library is another list, built new. Kept as one list,
+        // SwiftUI worked out the difference row by row and sized every row that came or went:
+        // 3 to 4 s on the main thread going from a folder back to All Notes with 2,000. A search
+        // stays the same list: a new one took the keys away from the search field.
+        .id(ListIdentity(scope: scope, library: library.wholesale))
+        #endif
         #if os(iOS)
         .listStyle(.insetGrouped)
         .environment(\.editMode, $editMode)
@@ -804,6 +812,13 @@ struct NoteEntry: Identifiable, DatedListItem {
 
     var listDate: Date { date }
     var pinnedInList: Bool { pinned && !trashed }
+
+    /// Whether the list shows this note in the same place as `other`: same folder, pin and trash,
+    /// and a date on the same day (the sections are days).
+    func listsLike(_ other: NoteEntry) -> Bool {
+        pinned == other.pinned && trashed == other.trashed && deleted == other.deleted && folderID == other.folderID
+            && parentID == other.parentID && Calendar.current.isDate(date, inSameDayAs: other.date)
+    }
 }
 
 /// A row of the list when files sit among the notes.
@@ -852,6 +867,12 @@ enum ListEntry: Identifiable, DatedListItem {
     }
 }
 
+/// What makes the note list a different list (see where it's used).
+struct ListIdentity: Hashable {
+    let scope: Scope
+    let library: Int
+}
+
 /// Every note in the library, for the list, newest first.
 ///
 /// The list used to read each note's date, folder, trash and parent from the store on every
@@ -866,12 +887,16 @@ final class LibraryNotes {
     private var generation = 0
     @ObservationIgnored private var sorted: [NoteEntry] = []
     @ObservationIgnored private weak var context: ModelContext?
+    @ObservationIgnored private var container: ModelContainer?
     @ObservationIgnored private var observer: NSObjectProtocol?
     /// Notes that changed since the entries were last brought up to date.
     @ObservationIgnored private var changed: Set<UUID> = []
     @ObservationIgnored private var flushScheduled = false
     /// Goes up with each fetch, so a watch from before it is ignored.
     @ObservationIgnored private var epoch = 0
+
+    /// While a search is on, a note's text decides whether it is listed: every change counts.
+    @ObservationIgnored var publishesEveryChange = false
 
     func entries(in context: ModelContext) -> [NoteEntry] {
         if self.context !== context { start(context) }
@@ -881,6 +906,9 @@ final class LibraryNotes {
 
     private func start(_ context: ModelContext) {
         self.context = context
+        // The notes read here stay readable for as long as this list is around, also after
+        // its window has closed with changes still waiting.
+        container = context.container
         load()
         if let observer { NotificationCenter.default.removeObserver(observer) }
         observer = NotificationCenter.default.addObserver(forName: ModelContext.didSave, object: context, queue: nil) { [weak self] n in
@@ -899,9 +927,19 @@ final class LibraryNotes {
         guard let context else { return }
         epoch += 1
         changed = []
+        let before = Set(sorted.map(\.id))
         let notes = (try? context.fetch(FetchDescriptor<Note>())) ?? []
         sorted = notes.map { watched($0) }.sorted { $0.date > $1.date }
+        // An import, a first sync or another account: hundreds of notes came or went at once.
+        var differing = 0
+        for e in sorted where !before.contains(e.id) { differing += 1 }
+        differing += before.count - (sorted.count - differing)
+        if differing > Self.wholesaleChange { wholesale += 1 }
     }
+
+    /// Goes up when so many notes came or went in one save that the list is shown as a new list.
+    @ObservationIgnored private(set) var wholesale = 0
+    static let wholesaleChange = 200
 
     /// The note's entry as it is now; the next change to what it holds marks the note changed.
     private func watched(_ note: Note) -> NoteEntry {
@@ -924,9 +962,29 @@ final class LibraryNotes {
 
     private func flush() {
         flushScheduled = false
+        // The library is gone (its window closed, or a test let its container go) with changes
+        // still waiting: its notes can't be read any more.
+        guard context != nil else {
+            changed = []
+            return
+        }
         guard !changed.isEmpty else { return }
         let ids = changed
         changed = []
+        // One note changed and stays where it is, in the same folder and day: a save of the
+        // note being typed in. Nothing the list is made of changed (the row shows its own note),
+        // so the list isn't worked out again. Built again, the list put that note's row in anew
+        // on every save, on or off screen, and laid out twice the cells.
+        if ids.count == 1, let id = ids.first, let i = sorted.firstIndex(where: { $0.id == id }), sorted[i].note.modelContext != nil {
+            let old = sorted[i], new = watched(old.note)
+            let stays = (i == 0 || sorted[i - 1].date > new.date) && (i == sorted.count - 1 || sorted[i + 1].date <= new.date)
+            if stays {
+                sorted[i] = new
+                if !new.listsLike(old) || publishesEveryChange { generation += 1 }
+                return
+            }
+            // Its new entry is watched; the general path below reads it again and moves it.
+        }
         var moved: [NoteEntry] = []
         sorted.removeAll { e in
             guard ids.contains(e.id) else { return false }

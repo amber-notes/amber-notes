@@ -209,6 +209,59 @@ extension AppPerfTests {
         #expect(save < budget.save * PerfBudget.slack, "a save shown with \(count) notes")
     }
 
+    /// The scope of a list in a test, changed the way the sidebar changes it.
+    @MainActor @Observable final class ScopeBox { var scope: Scope = .all }
+    struct ScopedList: View {
+        let box: ScopeBox
+        var body: some View { NoteListView(scope: box.scope, selection: .constant([]), onNewNote: {}) }
+    }
+
+    /// From a folder of 25 notes back to All Notes with 2,000: the list is built new, as it is at
+    /// launch. As one list whose rows changed, SwiftUI sized every row that came back, 3 to 4 s on
+    /// the main thread. The switch back may cost a few first displays, not twenty of them.
+    @Test(.timeLimit(.minutes(5))) func switchingBackToAllNotesBuildsTheListNew() async throws {
+        let (c, notes) = try library(notes: 2_000, big: false)
+        let ctx = c.mainContext
+        let small = ctx.createFolder(named: "Small")
+        for n in notes.prefix(25) { n.folder = small }
+        try ctx.save()
+        let box = ScopeBox()
+        let clock = ContinuousClock()
+        let (w, host) = window(ScopedList(box: box).modelContainer(c))
+        defer { w.close() }
+        func show() async -> Double {
+            let start = clock.now
+            // The list hears of the change once the main queue turns, as in the app.
+            try? await Task.sleep(for: .milliseconds(2))
+            host.layoutSubtreeIfNeeded()
+            w.displayIfNeeded()
+            return ms(clock.now - start)
+        }
+        let first = await show()
+        try? await Task.sleep(for: .milliseconds(300))
+        func table() -> NSTableView? { FileRowClickTests.table(in: host) }
+        let allNotes = try #require(table(), "the list is a table")
+        #expect(allNotes.numberOfRows > 1_000)
+
+        var toFolder: [Double] = [], back: [Double] = []
+        for _ in 0..<3 {
+            box.scope = .folder(small.id)
+            toFolder.append(await show())
+            try? await Task.sleep(for: .milliseconds(200))
+            let inFolder = try #require(table())
+            #expect(inFolder !== allNotes, "a folder is another list, not the same one with other rows")
+            #expect(inFolder.numberOfRows < 100)
+            box.scope = .all
+            back.append(await show())
+            try? await Task.sleep(for: .milliseconds(200))
+            #expect((table()?.numberOfRows ?? 0) > 1_000)
+        }
+        toFolder.sort(); back.sort()
+        print("PERF list of 2000 notes: first display \(String(format: "%.0f", first)) ms, to a folder of 25 \(String(format: "%.0f", toFolder[1])) ms, back to All Notes \(String(format: "%.0f", back[1])) ms (medians of 3)")
+        #expect(back[2] < max(first, 100) * 5, "back to All Notes costs about what showing the list first did")
+        #expect(toFolder[2] < max(first, 100) * 5)
+    }
+
     /// Milliseconds on a developer's Mac (CI multiplies by its slack of 4). Set from CI's Debug runs
     /// on 2026-10-08 (171 to 258 and 82 to 88 ms at 2,000; 901 to 997 and 608 to 773 ms at 20,000),
     /// with three to six times their room: they catch a list that reads the whole library again,
