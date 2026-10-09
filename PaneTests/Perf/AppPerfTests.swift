@@ -262,7 +262,10 @@ extension AppPerfTests {
         #expect(toFolder[2] < max(first, 100) * 5)
     }
 
-    /// Milliseconds on a developer's Mac (CI multiplies by its slack).
-    static let listBudgets: [Int: (first: Double, save: Double)] = [2_000: (first: 400, save: 100), 20_000: (first: 2000, save: 400)]
+    /// Milliseconds on a developer's Mac (CI multiplies by its slack of 4). Set from CI's Debug runs
+    /// on 2026-10-08 (171 to 258 and 82 to 88 ms at 2,000; 901 to 997 and 608 to 773 ms at 20,000),
+    /// with three to six times their room: they catch a list that reads the whole library again,
+    /// not a slow runner.
+    static let listBudgets: [Int: (first: Double, save: Double)] = [2_000: (first: 250, save: 100), 20_000: (first: 1000, save: 600)]
 }
 #endif

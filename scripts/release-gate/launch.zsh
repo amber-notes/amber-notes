@@ -1,7 +1,7 @@
 # Runs on the measuring Mac (scripts/release-gate/gate.ts sends it over ssh):
 #   zsh -s -- <out file> <app> <stdin file or -> <app arguments...>
 # Opens the app the way Finder does, passes on the probe's lines as they come, waits for it to quit,
-# and samples it (by its own pid) the moment the probe says the main thread hangs, up to 5 times.
+# and samples it (by its own pid) the moment the probe says the main thread hangs, up to 40 times.
 out=$1 app=$2 input=$3; shift 3
 rm -f "$out" "$out".hang*(N)
 if [[ $input == - ]]; then open -W -n --stdout "$out" --stderr "$out.err" "$app" --args "$@" &
@@ -23,7 +23,7 @@ while kill -0 $op 2>/dev/null; do
     [[ -n $pid && $input != - ]] && rm -f "$input"
   fi
   # One sample at a time: a second one on the same process fails.
-  if [[ -n $pid ]] && (( hangs < 5 )) && { [[ -z $sp ]] || ! kill -0 $sp 2>/dev/null; } && print -r -- "$new" | grep -q '^GATE hang'; then
+  if [[ -n $pid ]] && (( hangs < 40 )) && { [[ -z $sp ]] || ! kill -0 $sp 2>/dev/null; } && print -r -- "$new" | grep -q '^GATE hang'; then
     hangs=$((hangs + 1))
     sample "$pid" 1 -file "$out.hang$hangs" >/dev/null 2>&1 &
     sp=$!
