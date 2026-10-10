@@ -28,6 +28,54 @@ final class EditorController {
     /// Fetches a file that isn't on this device yet.
     @ObservationIgnored var download: @MainActor (Attachment) async -> Bool = { _ in false }
 
+    // MARK: A note's images, fetched when it opens
+
+    /// Bumps when images of the open note arrive: the editor lays their lines out again (their
+    /// sizes are known now) and the embeds draw them.
+    private(set) var imagesArrived = 0
+    /// Images already asked for while this note is open: each is tried once, like a tap. One
+    /// that fails stays a placeholder until it's tapped or the note is opened again.
+    @ObservationIgnored private var imagesTried: Set<UUID> = []
+    @ObservationIgnored private var imagesFor: UUID?
+    /// Whether a file's bytes are on this device (tests answer for themselves).
+    @ObservationIgnored var isLocal: (Attachment) -> Bool = { FileStore.exists($0) }
+
+    /// At most this many of a note's images are fetched on their own (one at a time), and none
+    /// larger than this: the rest wait for a tap, as every image did before.
+    nonisolated static let autoImageLimit = 40
+    nonisolated static let autoImageMaxBytes: Int64 = 25 * 1024 * 1024
+
+    /// The images a note's text shows (`![name](pane-file:<id>)`), in order, each once.
+    nonisolated static func imageIDs(in body: String) -> [UUID] {
+        var out: [UUID] = []
+        for m in body.matches(of: /!\[[^\]\n]*\]\(pane-file:([0-9a-fA-F-]{36})\)/) {
+            if let id = UUID(uuidString: String(m.1)), !out.contains(id) { out.append(id) }
+        }
+        return out
+    }
+
+    /// The open note's images that are on the server and not on this device: fetched, one after
+    /// the other, so a note opened on another device shows its pictures without a tap on each. Only
+    /// images this note's text shows; never one that's here already, one this device hasn't sent,
+    /// or one asked for before while the note is open.
+    func fetchMissingImages(note: UUID, body: String) async {
+        if imagesFor != note { imagesFor = note; imagesTried = [] }
+        let wanted = Self.imageIDs(in: body).compactMap { resolveAttachment($0) }
+            .filter { $0.isImage && $0.uploaded && $0.deletedAt == nil && $0.size <= Self.autoImageMaxBytes && !imagesTried.contains($0.id) && !isLocal($0) }
+            .prefix(Self.autoImageLimit)
+        for a in wanted {
+            guard !Task.isCancelled else { return }
+            imagesTried.insert(a.id)
+            // Each shows as it arrives.
+            if await download(a) {
+                imagesArrived += 1
+            } else if Task.isCancelled {
+                // The note was left mid-request: not a try that failed.
+                imagesTried.remove(a.id)
+            }
+        }
+    }
+
     func openAttachment(_ id: UUID) {
         guard let a = resolveAttachment(id) else { return }
         let url = FileStore.url(for: a.id, filename: a.filename)
@@ -36,7 +84,7 @@ final class EditorController {
         Task {
             let ok = await download(a)
             downloading.remove(id)
-            if ok { previewURL = url }
+            if ok { previewURL = url; if a.isImage { imagesArrived += 1 } }
         }
     }
 

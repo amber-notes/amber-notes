@@ -140,6 +140,8 @@ private struct ImageEmbed: View {
 
     var body: some View {
         let url = controller?.resolveAttachment(id).map { FileStore.url(for: $0.id, filename: $0.filename) }
+        // Read so the image is drawn when its bytes arrive (fetched as the note opened, or by a tap).
+        let _ = controller?.imagesArrived
         Button { controller?.openAttachment(id) } label: {
             // The image fills the slot without changing its size.
             Color.clear

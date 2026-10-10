@@ -224,6 +224,51 @@ extension NetworkFaults {
         await a.engine.stop(); await b.engine.stop()
     }
 
+    /// A note opened on a device that doesn't have its pictures: the images its text shows are
+    /// fetched without a tap. Only those: not one that's here, not another kind of file, not one
+    /// this device hasn't sent, not a very large one, and each once while the note is open.
+    @Test func aNotesImagesAreFetchedWhenItOpens() async throws {
+        let a = try device()
+        func file(_ name: String, _ type: String, uploaded: Bool = true, size: Int64 = 100) -> Pane.Attachment {
+            let f = Pane.Attachment(filename: name, contentType: type, size: size)
+            f.uploaded = uploaded
+            f.dirty = !uploaded
+            a.context.insert(f)
+            return f
+        }
+        let here = file("here.png", "public.png"), away = file("away.png", "public.png"), failing = file("failing.png", "public.png")
+        let pdf = file("doc.pdf", "com.adobe.pdf"), unsent = file("new.png", "public.png", uploaded: false)
+        let huge = file("huge.png", "public.png", size: EditorController.autoImageMaxBytes + 1)
+        let elsewhere = file("other-note.png", "public.png")
+        let body = ["Trip", here.markdown, away.markdown, pdf.markdown, unsent.markdown, huge.markdown, away.markdown, failing.markdown].joined(separator: "\n")
+        #expect(EditorController.imageIDs(in: body) == [here.id, away.id, unsent.id, huge.id, failing.id], "images only, each once, in order")
+
+        let controller = EditorController()
+        controller.resolveAttachment = { a.context.attachment($0) }
+        var local: Set<UUID> = [here.id]
+        controller.isLocal = { local.contains($0.id) }
+        var fetched: [UUID] = []
+        controller.download = { f in
+            fetched.append(f.id)
+            guard f.id != failing.id else { return false }
+            local.insert(f.id)
+            return true
+        }
+        let note = UUID()
+        await controller.fetchMissingImages(note: note, body: body)
+        #expect(fetched == [away.id, failing.id])
+        #expect(!fetched.contains(elsewhere.id))
+        #expect(controller.imagesArrived == 1, "the one that arrived is drawn")
+        // Still open (a sync came in): nothing is asked for twice, the failed one included.
+        await controller.fetchMissingImages(note: note, body: body)
+        #expect(fetched == [away.id, failing.id])
+        // Opened again later: the one that failed gets another try; the one that's here doesn't.
+        await controller.fetchMissingImages(note: UUID(), body: "No pictures")
+        await controller.fetchMissingImages(note: note, body: body)
+        #expect(fetched == [away.id, failing.id, failing.id])
+        await a.engine.stop()
+    }
+
     @Test func aNewAccountKeySendsEverythingUpAgain() async throws {
         let a = try device()
         let n = a.context.createNote(in: .all, body: "Kept on this device")

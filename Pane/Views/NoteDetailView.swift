@@ -116,6 +116,12 @@ struct NoteDetailView: View {
                 refreshLinks(after: saved)
             }
             .shareLinkChrome(shareLinks, note: note)
+            // The note's images that are on the server and not here are fetched as it opens, and
+            // again when a sync brings changes (a picture added on another device).
+            .task(id: ImagesAsk(note: note.id, pulled: sync?.remoteChangeTick ?? 0)) {
+                guard !note.isLocked || vault.isUnlocked, let text = vault.text(of: note) else { return }
+                await controller.fetchMissingImages(note: note.id, body: text)
+            }
             .focusedSceneValue(\.showHistoryAction, { if !note.isLocked { showHistory = true } })
             .sheet(item: $lockSheet) { step in
                 switch step {
@@ -388,6 +394,7 @@ struct NoteDetailView: View {
     }
 
     private var vault: NoteVault { .shared }
+    private struct ImagesAsk: Equatable { var note: UUID; var pulled: Int }
 
     /// The editor, or for a locked note that isn't open, the lock.
     @ViewBuilder
