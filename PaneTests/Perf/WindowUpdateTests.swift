@@ -171,6 +171,67 @@ import Testing
         #expect(list.numberOfRows < 60, "and shows that folder's notes, not all 120")
     }
 
+    /// A save of the note being typed in works the folder rows out at most once. The sidebar
+    /// followed every note through a query of its own, and each write of the editor (one every
+    /// 0.35 s) with the sync mark after it worked every folder row out five times (415 row bodies
+    /// for 83 folders, measured on a MacBook Air). The query now sits in the two rows that count
+    /// notes: the write itself works out no folder row, the sync mark's save one pass of them.
+    /// (The sidebar's own body still runs on a save: its remaining queries hear of every save,
+    /// whatever was saved. That is left as it is.) The counting rows still show a new note at once.
+    @Test(.timeLimit(.minutes(2))) func aSaveOfTheOpenNoteWorksTheFolderRowsOutAtMostOnce() async throws {
+        let c = try ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        let ctx = c.mainContext
+        let folders = (0..<12).map { ctx.createFolder(named: "Folder \($0)") }
+        let note = ctx.createNote(in: .folder(folders[0].id), body: "Open note\n\ntext")
+        for i in 0..<60 { _ = ctx.createNote(in: .folder(folders[i % 12].id), body: "Note \(i)\n\ntext") }
+        try ctx.save()
+        UserDefaults.standard.removeObject(forKey: "lastScope")
+        // Borderless, far off every screen and never shown: nothing appears on anyone's display.
+        let w = NSWindow(contentRect: CGRect(x: -20000, y: -20000, width: 1180, height: 760),
+                         styleMask: [.borderless], backing: .buffered, defer: false)
+        w.isReleasedWhenClosed = false
+        w.contentViewController = NSHostingController(rootView: RootView().modelContainer(c))
+        w.setFrameOrigin(CGPoint(x: -20000, y: -20000))
+        defer { w.orderOut(nil); w.close() }
+        func settle() async {
+            for _ in 0..<4 {
+                w.contentView?.layoutSubtreeIfNeeded()
+                w.displayIfNeeded()
+                try? await Task.sleep(for: .milliseconds(120))
+            }
+        }
+        await settle()
+        NoteOpener.shared.request = note.id
+        await settle()
+
+        // The views count their bodies while the hover probe is on (RenderProbe, in Hover.swift).
+        RenderProbe.counts = [:]
+        HoverProbe.enabled = true
+        defer { HoverProbe.enabled = false; HoverProbe.reset(); RenderProbe.counts = [:] }
+        // Three writes as the editor makes them, each followed by what a sync push does.
+        for i in 0..<3 {
+            note.body += " \(i)"
+            note.touch()
+            await settle()
+            note.serverVersion += 1
+            note.dirty = false
+            try ctx.save()
+            await settle()
+        }
+        print("PERF 3 saves of the open note: bodies worked out again \(RenderProbe.counts.sorted { $0.key < $1.key }.map { "\($0.key) \($0.value)" }.joined(separator: ", "))")
+        // Three writes, each with its sync mark: at most one pass over the 12 folder rows each
+        // (it was five passes).
+        #expect((RenderProbe.counts["FolderTree"] ?? 0) <= 12 * 3, "a save works the folder rows out at most once")
+
+        // A new note still counts at once, in All Notes and in its folder.
+        RenderProbe.counts = [:]
+        _ = ctx.createNote(in: .folder(folders[3].id), body: "New\n\nnote")
+        await settle()
+        #expect((RenderProbe.counts["CountedRow"] ?? 0) > 0, "All Notes counts the new note")
+        #expect((RenderProbe.counts["FolderTree"] ?? 0) > 0, "and so does its folder")
+        #expect(SidebarView.counts(in: ctx).live == 62)
+    }
+
     /// The sidebar counts in the store. Notes made, deleted or recovered count straight away,
     /// before the library is saved.
     @Test func sidebarCountsIncludeUnsavedChanges() throws {
