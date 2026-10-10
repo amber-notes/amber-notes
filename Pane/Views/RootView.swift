@@ -49,6 +49,8 @@ struct RootView: View {
         RenderProbe.count("RootView")
         #endif
         return imports(lifecycle(split))
+            // Reports: the notes are on screen, for the cold launch time (Telemetry).
+            .onAppear { Telemetry.shared.notesShown() }
             .focusedSceneValue(\.newNoteAction, newNote)
             .focusedSceneValue(\.editorController, editor)
             .focusedSceneValue(\.importAction, { showImport = true })
@@ -290,6 +292,7 @@ struct RootView: View {
             return
         }
         let note = context.createNote(in: target)
+        Telemetry.shared.record(.firstNoteCreated)
         #if os(iOS)
         // From the iPhone folder list: open the note's folder under it, as Notes does, so the
         // editor is pushed and back leads to the folder the note is in.

@@ -189,7 +189,39 @@ final class Backend {
     private func signedIn(_ session: Session) {
         willSignIn(session.user.id)
         userID = session.user.id
+        Telemetry.shared.identify(session.user.id)
         state = .signedIn(email: session.user.email ?? "")
+    }
+
+    /// The session ended (signed out here, or the server refused its refresh).
+    private func signedOut() {
+        if userID != nil { Telemetry.shared.signedOut() }
+        userID = nil
+        state = .signedOut
+    }
+
+    // MARK: Reports (Telemetry): which way in, and what kind of failure. Never the email.
+
+    /// An account made in the last few minutes signed up; any other signed in.
+    nonisolated static func signInEvent(_ method: SignInMethod, created: Date, now: Date = .now) -> TelemetryEvent {
+        now.timeIntervalSince(created) < 5 * 60 ? .signedUp(method) : .signedIn(method)
+    }
+
+    /// A sign-in worked: said under the account it signed in to (the auth stream, which also
+    /// names the account, may not have delivered yet).
+    private func report(_ event: TelemetryEvent, for session: Session?) {
+        if let session { Telemetry.shared.identify(session.user.id) }
+        Telemetry.shared.record(event)
+    }
+
+    /// Runs a sign-in and reports a failure; the error goes on to the caller as before.
+    private func reporting<T>(_ method: SignInMethod, _ work: () async throws -> T) async throws -> T {
+        do {
+            return try await work()
+        } catch {
+            if let failure = SignInFailureKind.of(error) { Telemetry.shared.record(.signInFailed(method, failure.kind, status: failure.status)) }
+            throw error
+        }
     }
 
     /// For screenshots and previews only: shows the signed-in screens without a session.
@@ -214,13 +246,11 @@ final class Backend {
                     if Self.keepsSession(afterRefreshError: error) {
                         signedIn(session)
                     } else {
-                        userID = nil
-                        state = .signedOut
+                        signedOut()
                     }
                 }
             } else {
-                userID = nil
-                state = .signedOut
+                signedOut()
             }
         }
     }
@@ -255,7 +285,10 @@ final class Backend {
     /// the server refuses to create new accounts for anyone not invited.
     func signInWithApple(_ credential: AppleSignIn.Credential) async throws {
         guard let client else { return }
-        try await client.auth.signInWithIdToken(credentials: OpenIDConnectCredentials(provider: .apple, idToken: credential.idToken, nonce: credential.rawNonce))
+        let session = try await reporting(.apple) {
+            try await client.auth.signInWithIdToken(credentials: OpenIDConnectCredentials(provider: .apple, idToken: credential.idToken, nonce: credential.rawNonce))
+        }
+        report(Self.signInEvent(.apple, created: session.user.createdAt), for: session)
     }
 
     /// Adds your Apple ID to the account you're signed in to, so Apple signs you in from now on.
@@ -278,9 +311,12 @@ final class Backend {
     @discardableResult
     func signInWithGoogle(hint: String? = nil) async throws -> UUID? {
         guard let client else { return nil }
-        let session = try await client.auth.signInWithOAuth(provider: .google, redirectTo: Self.webCallback, queryParams: Self.googleQuery(hint: hint)) { url in
-            try await WebAuthSession.run(url, callbackScheme: AppIdentity.scheme)
+        let session = try await reporting(.google) {
+            try await client.auth.signInWithOAuth(provider: .google, redirectTo: Self.webCallback, queryParams: Self.googleQuery(hint: hint)) { url in
+                try await WebAuthSession.run(url, callbackScheme: AppIdentity.scheme)
+            }
         }
+        report(Self.signInEvent(.google, created: session.user.createdAt), for: session)
         return session.user.id
     }
 
@@ -323,7 +359,10 @@ final class Backend {
     /// account as the App Store and iPhone apps (Apple's user id is shared across the team).
     func signInWithAppleOnTheWeb() async throws {
         guard let client else { return }
-        try await client.auth.signInWithOAuth(provider: .apple, redirectTo: Self.webCallback, scopes: "name email")
+        let session = try await reporting(.apple) {
+            try await client.auth.signInWithOAuth(provider: .apple, redirectTo: Self.webCallback, scopes: "name email")
+        }
+        report(Self.signInEvent(.apple, created: session.user.createdAt), for: session)
     }
 
     /// Adds your Apple ID to this account through the web, for the Mac download.
@@ -353,7 +392,8 @@ final class Backend {
     /// Email and password sign-in, next to Sign in with Apple.
     func signIn(email: String, password: String) async throws {
         guard let client else { return }
-        try await client.auth.signIn(email: email.trimmingCharacters(in: .whitespaces), password: password)
+        let session = try await reporting(.email) { try await client.auth.signIn(email: email.trimmingCharacters(in: .whitespaces), password: password) }
+        report(.signedIn(.email), for: session)
     }
 
     /// Whether an email already has an account, for the email-first sign-in (the `account-status`
@@ -373,7 +413,9 @@ final class Backend {
     /// (docs/Technical/email-confirmation.md). With confirmation off, the session starts at once.
     func signUp(email: String, password: String) async throws -> Bool {
         guard let client else { return false }
-        let response = try await client.auth.signUp(email: email.trimmingCharacters(in: .whitespaces), password: password)
+        let response = try await reporting(.email) { try await client.auth.signUp(email: email.trimmingCharacters(in: .whitespaces), password: password) }
+        // With confirmation on, the account counts as made once its code is typed (confirmSignUp).
+        if let session = response.session { report(.signedUp(.email), for: session) }
         return response.session == nil
     }
 
@@ -381,7 +423,8 @@ final class Backend {
     /// first run follows from the session.
     func confirmSignUp(email: String, code: String) async throws {
         guard let client else { return }
-        try await client.auth.verifyOTP(email: email.trimmingCharacters(in: .whitespaces), token: code, type: .signup)
+        let response = try await reporting(.email) { try await client.auth.verifyOTP(email: email.trimmingCharacters(in: .whitespaces), token: code, type: .signup) }
+        report(.signedUp(.email), for: response.session)
     }
 
     /// A new confirmation code. Supabase sends at most one a minute to an address.

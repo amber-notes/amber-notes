@@ -43,10 +43,13 @@ final class SessionStorage: AuthLocalStorage, @unchecked Sendable {
             add[kSecValueData as String] = value
             // This device only: a session never travels in a backup to another device.
             add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-            if SecItemAdd(add as CFDictionary, nil) == errSecSuccess {
+            let status = SecItemAdd(add as CFDictionary, nil)
+            if status == errSecSuccess {
                 try? FileManager.default.removeItem(at: fileURL(for: key))
                 return
             }
+            // It goes to the file below instead; why the Keychain refused is worth knowing.
+            Telemetry.shared.record(.keychainFailed(item: Self.item(key), operation: .save, status: Int(status)))
         }
         #if os(iOS)
         try value.write(to: fileURL(for: key), options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
@@ -63,6 +66,14 @@ final class SessionStorage: AuthLocalStorage, @unchecked Sendable {
             try FileManager.default.moveItem(at: temp, to: target)
         }
         #endif
+    }
+
+    /// What a stored name holds, for reports: the session, or what the key and device stores keep
+    /// here on builds without the data protection keychain (`KeychainAccountKeyStore.fallbackName`).
+    static func item(_ key: String) -> KeychainItem {
+        if key == "device-identity" { return .deviceIdentity }
+        for slot in KeySlot.allCases where key.hasPrefix("data-key-\(slot.rawValue)-") { return KeychainItem(slot) }
+        return .session
     }
 
     func retrieve(key: String) throws -> Data? {

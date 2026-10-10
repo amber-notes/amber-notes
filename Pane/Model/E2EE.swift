@@ -481,9 +481,15 @@ enum KeySlot: String, Sendable, CaseIterable {
 protocol AccountKeyStore: Sendable {
     /// Whether a key saved here reaches the account's other devices.
     var syncs: Bool { get }
+    /// Where it keeps the key, for reports (Telemetry).
+    var kind: KeyStoreKind { get }
     func load(account: UUID, slot: KeySlot) -> StoredKey?
     @discardableResult func save(_ key: StoredKey, account: UUID, slot: KeySlot) -> Bool
     func remove(account: UUID, slot: KeySlot)
+}
+
+extension AccountKeyStore {
+    var kind: KeyStoreKind { .memory }
 }
 
 /// In-memory runs (UI tests, captures).
@@ -532,6 +538,12 @@ struct KeychainAccountKeyStore: AccountKeyStore {
         add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
         let write = SecItemAdd(add as CFDictionary, nil)
         SecItemDelete(probe as CFDictionary)
+        // A write that fails for another reason still counts as usable below; it's reported, since
+        // every save that follows is likely to fail the same way.
+        if write != errSecSuccess { Telemetry.shared.record(.keychainFailed(item: .keySynced, operation: .probeWrite, status: Int(write))) }
+        if read != errSecSuccess, read != errSecItemNotFound {
+            Telemetry.shared.record(.keychainFailed(item: .keySynced, operation: .probeRead, status: Int(read)))
+        }
         return usable(read: read, write: write)
     }()
 
@@ -543,6 +555,7 @@ struct KeychainAccountKeyStore: AccountKeyStore {
     }
 
     var syncs: Bool { Self.dataProtectionAvailable }
+    var kind: KeyStoreKind { Self.dataProtectionAvailable ? .keychain : .file }
 
     private static func query(_ account: UUID, slot: KeySlot) -> [String: Any] {
         [kSecClass as String: kSecClassGenericPassword,
@@ -564,13 +577,24 @@ struct KeychainAccountKeyStore: AccountKeyStore {
         q[kSecReturnData as String] = true
         q[kSecMatchLimit as String] = kSecMatchLimitOne
         var out: CFTypeRef?
-        guard SecItemCopyMatching(q as CFDictionary, &out) == errSecSuccess, let data = out as? Data else { return nil }
+        let status = SecItemCopyMatching(q as CFDictionary, &out)
+        // "No such item" is an answer; anything else is a Keychain that couldn't be read.
+        if status != errSecSuccess, status != errSecItemNotFound {
+            Telemetry.shared.record(.keychainFailed(item: KeychainItem(slot), operation: .read, status: Int(status)))
+        }
+        guard status == errSecSuccess, let data = out as? Data else { return nil }
         return StoredKey(encoded: data)
     }
 
     func save(_ key: StoredKey, account: UUID, slot: KeySlot) -> Bool {
         guard Self.dataProtectionAvailable else {
-            return (try? Self.fallback.store(key: Self.fallbackName(account, slot), value: key.encoded)) != nil
+            do {
+                try Self.fallback.store(key: Self.fallbackName(account, slot), value: key.encoded)
+                return true
+            } catch {
+                Telemetry.shared.record(.keychainFailed(item: KeychainItem(slot), operation: .save, status: (error as NSError).code))
+                return false
+            }
         }
         remove(account: account, slot: slot)
         var q = Self.query(account, slot: slot)
@@ -579,7 +603,11 @@ struct KeychainAccountKeyStore: AccountKeyStore {
         q[kSecAttrLabel as String] = slot == .previous ? "Amber Notes encryption key (before starting fresh)"
             : slot == .local ? "Amber Notes encryption key (this device)" : "Amber Notes encryption key"
         q[kSecValueData as String] = key.encoded
-        return SecItemAdd(q as CFDictionary, nil) == errSecSuccess
+        let status = SecItemAdd(q as CFDictionary, nil)
+        // Most callers go on whatever this returns (AccountCrypto), so a key that wasn't kept is
+        // said here: the next launch would ask for the recovery key with nothing to explain why.
+        if status != errSecSuccess { Telemetry.shared.record(.keychainFailed(item: KeychainItem(slot), operation: .save, status: Int(status))) }
+        return status == errSecSuccess
     }
 
     func remove(account: UUID, slot: KeySlot) {
@@ -740,6 +768,8 @@ final class AccountCrypto {
     private var key: StoredKey?
     private var server: AccountKeyServer?
     let store: AccountKeyStore
+    /// Where startup's outcomes are reported; tests give their own.
+    private let telemetry: Telemetry
     private let defaults: UserDefaults
     private let pollInterval: Duration
     private let retryInterval: Duration
@@ -765,9 +795,10 @@ final class AccountCrypto {
 
     init(store: AccountKeyStore, defaults: UserDefaults = .standard, pollInterval: Duration = .seconds(2),
          helpAfter: Duration = .seconds(20), retryInterval: Duration = .seconds(10), fetchTimeout: Duration = .seconds(12),
-         quickCheck: Duration = AccountCrypto.defaultQuickCheck,
+         quickCheck: Duration = AccountCrypto.defaultQuickCheck, telemetry: Telemetry = .shared,
          sleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) }) {
         self.store = store
+        self.telemetry = telemetry
         self.defaults = defaults
         self.pollInterval = pollInterval
         self.retryInterval = retryInterval
@@ -857,6 +888,9 @@ final class AccountCrypto {
 
     private func carryOut(_ decision: KeyStartup.Decision) async {
         guard let account else { return }
+        // `hadKey`: the key was open on this device before. With an outcome that isn't "ready",
+        // that's a device that lost its key.
+        telemetry.record(.keyStartup(Self.outcome(decision), hadKey: defaults.bool(forKey: Self.hadKeyKey(account)), store: store.kind))
         switch decision {
         case .ready(let k, let verified, let promote):
             if promote { store.save(k, account: account, slot: .synced) }
@@ -885,6 +919,18 @@ final class AccountCrypto {
         case .unreachable:
             phase = .unreachable
             startRetrying()
+        }
+    }
+
+    nonisolated static func outcome(_ decision: KeyStartup.Decision) -> KeyStartupOutcome {
+        switch decision {
+        case .ready(_, let verified, _): verified ? .ready : .readyUnverified
+        case .create: .create
+        case .reregister: .reregister
+        case .replace: .replace
+        case .wait: .wait
+        case .mismatch: .mismatch
+        case .unreachable: .unreachable
         }
     }
 
@@ -1026,6 +1072,7 @@ final class AccountCrypto {
 
     /// The same, for an account that isn't attached (a removal being finished at launch).
     func forgetLocalKey(of account: UUID) {
+        defaults.removeObject(forKey: Self.hadKeyKey(account))
         store.remove(account: account, slot: .local)
         if !store.syncs {
             store.remove(account: account, slot: .synced)
@@ -1126,6 +1173,8 @@ final class AccountCrypto {
     nonisolated static func recoveryProvenKey(_ account: UUID) -> String { "e2ee.recoveryProven.\(account.uuidString.lowercased())" }
     /// This device started fresh: the notice every device gets about it isn't news here.
     nonisolated static func startedFreshHereKey(_ account: UUID) -> String { "e2ee.startedFreshHere.\(account.uuidString.lowercased())" }
+    /// The account's key has been open on this device (for reports: see `carryOut`).
+    nonisolated static func hadKeyKey(_ account: UUID) -> String { "e2ee.hadKey.\(account.uuidString.lowercased())" }
 
     // MARK: First launch
 
@@ -1152,7 +1201,7 @@ final class AccountCrypto {
     func forgetKey(account: UUID) {
         for slot in KeySlot.allCases { store.remove(account: account, slot: slot) }
         for key in [welcomedKey(account), Self.recoveryChangedKey(account), Self.recoveryChangeSaidKey(account), Self.startedFreshHereKey(account),
-                    Self.recoveryProvenKey(account)] {
+                    Self.recoveryProvenKey(account), Self.hadKeyKey(account)] {
             defaults.removeObject(forKey: key)
         }
         if account == self.account { signedOut() }
@@ -1188,7 +1237,11 @@ final class AccountCrypto {
         stop()
         staleRestarts = 0
         key = k
-        if let how { arrivedHow = how }
+        if let how {
+            arrivedHow = how
+            if let said = Self.readyHow(how, startingFresh: startingFresh) { telemetry.record(.keyReady(said)) }
+        }
+        defaults.set(true, forKey: Self.hadKeyKey(account))
         backedUp = store.syncs && store.load(account: account, slot: .synced) == k
         unverified = !verified
         showsKeychainHelp = false
@@ -1198,6 +1251,17 @@ final class AccountCrypto {
         recoveryKeyChangeNeedsSaying = recoveryKeyChanged && !defaults.bool(forKey: Self.recoveryChangeSaidKey(account))
         phase = .ready
         if !verified { startRetrying() }
+    }
+
+    /// How the key got here, as reports say it. Nil for `unknown`, which nothing arrives as.
+    nonisolated static func readyHow(_ how: KeyHow, startingFresh: Bool) -> KeyReadyHow? {
+        switch how {
+        case .made: startingFresh ? .startFresh : .created
+        case .keychain: .icloudKeychain
+        case .added: .linked
+        case .recovery: .recoveryKey
+        case .unknown: nil
+        }
     }
 
     private func drop() {

@@ -281,7 +281,8 @@ private enum SettingsLayout {
     static let width: CGFloat = 520
 }
 
-/// General: the menu bar item (on iPhone, the setup guide), API keys for apps in notes, and about.
+/// General: the menu bar item (on iPhone, the setup guide), API keys for apps in notes, the
+/// diagnostics switch, and about.
 private struct GeneralSettings: View {
     let signedIn: Bool
     let close: () -> Void
@@ -304,6 +305,7 @@ private struct GeneralSettings: View {
         }
         #endif
         if NoteApps.enabled { APIKeysSection() }
+        DiagnosticsSection()
         AboutSection()
     }
 }

@@ -78,7 +78,7 @@ extension ModelContext {
         if case .folder(let id) = scope, let f = folder(id), f.deletedAt == nil { target = f } else { target = defaultFolder() }
         let n = Note(body: body, folder: target)
         insert(n)
-        try? save()
+        saveOrReport()
         return n
     }
 
@@ -97,7 +97,7 @@ extension ModelContext {
         let siblings = allFolders().filter { $0.parent?.id == parent?.id }
         let f = Folder(name: name, parent: parent, sortIndex: (siblings.map(\.sortIndex).max() ?? 0) + 1)
         insert(f)
-        try? save()
+        saveOrReport()
         return f
     }
 
@@ -126,7 +126,7 @@ extension ModelContext {
         let n = Note(body: body, folder: parent.folder)
         n.parentID = parent.id
         insert(n)
-        try? save()
+        saveOrReport()
         return n
     }
 
@@ -156,7 +156,7 @@ extension ModelContext {
             child.dirty = true
             filled += 1
         }
-        if filled > 0 { try? save(); SyncSignal.changed() }
+        if filled > 0 { saveOrReport(); SyncSignal.changed() }
         return filled
     }
 
@@ -173,7 +173,7 @@ extension ModelContext {
         note.touch()
         // A parent takes its sub-notes with it.
         for child in subNotes(of: note) where child.trashedAt == nil { trash(child) }
-        try? save()
+        saveOrReport()
     }
 
     func restore(_ note: Note) {
@@ -181,7 +181,7 @@ extension ModelContext {
         if note.folder == nil || note.folder?.deletedAt != nil { note.folder = defaultFolder() }
         note.touch()
         for child in subNotes(of: note) where child.trashedAt != nil { restore(child) }
-        try? save()
+        saveOrReport()
     }
 
     func purge(_ note: Note) {
@@ -189,7 +189,7 @@ extension ModelContext {
         note.body = ""
         note.lockedBody = nil
         note.touch()
-        try? save()
+        saveOrReport()
     }
 
     /// Deletes several notes the way one is deleted: live notes go to Recently Deleted
@@ -207,7 +207,7 @@ extension ModelContext {
     func togglePin(_ note: Note) {
         note.isPinned.toggle()
         note.touch()
-        try? save()
+        saveOrReport()
     }
 
     func move(_ note: Note, to folder: Folder) {
@@ -215,7 +215,7 @@ extension ModelContext {
         note.folder = folder
         note.trashedAt = nil
         note.touch()
-        try? save()
+        saveOrReport()
     }
 
     /// Nests `folder` inside `parent` (nil = top level), refusing cycles.
@@ -227,7 +227,7 @@ extension ModelContext {
         }
         folder.parent = parent
         folder.touch()
-        try? save()
+        saveOrReport()
     }
 
     /// Deleting a folder sends its notes and files (and sub-folders') to Recently Deleted, and the
@@ -239,7 +239,7 @@ extension ModelContext {
         for child in folder.liveChildren { trash(child) }
         for note in folder.liveNotes { trash(note) }
         for file in files(in: folder.id) { trash(file) }
-        try? save()
+        saveOrReport()
     }
 
     /// Removes a folder from this device for good, without telling the server (SwiftData's delete).
@@ -280,7 +280,7 @@ extension ModelContext {
                 made += addFiles([url], to: folderForFiles(scope)).map(\.id)
             }
         }
-        try? save()
+        saveOrReport()
         return made
     }
 
@@ -299,7 +299,7 @@ extension ModelContext {
     func addAttachments(_ urls: [URL]) -> [Attachment] {
         let files = FileKinds.accept(urls).compactMap { try? FileStore.importFile(at: $0) }
         files.forEach(insert)
-        try? save()
+        saveOrReport()
         SyncSignal.changed()
         return files
     }

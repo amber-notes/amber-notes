@@ -625,7 +625,10 @@ struct KeychainKeyStore: LockKeyStore {
         var q = query(keyID)
         q[kSecValueData as String] = key.withUnsafeBytes { Data($0) }
         q[kSecAttrAccessControl as String] = access
-        return SecItemAdd(q as CFDictionary, nil) == errSecSuccess
+        let status = SecItemAdd(q as CFDictionary, nil)
+        // The caller goes on without it (Face ID then asks for the notes password instead).
+        if status != errSecSuccess { Telemetry.shared.record(.keychainFailed(item: .notesLock, operation: .save, status: Int(status))) }
+        return status == errSecSuccess
     }
 
     func load(keyID: String, reason: String) async -> SymmetricKey? {

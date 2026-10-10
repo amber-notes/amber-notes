@@ -15,10 +15,11 @@ enum Legal {
     }
 }
 
-/// The quiet line under the sign-in form. One sentence for VoiceOver, with its two links.
+/// The quiet lines under the sign-in form: the terms and privacy policy, with their two links, then
+/// what the app reports about itself (DiagnosticsCopy). One paragraph for VoiceOver.
 struct ConsentFooter: View {
     var body: some View {
-        Text(Legal.consentSentence)
+        Text(Legal.consentSentence + AttributedString(" " + DiagnosticsCopy.signIn))
             .font(.footnote)
             .foregroundStyle(Color.muted)
             .tint(Color(PColor.paneAccent))

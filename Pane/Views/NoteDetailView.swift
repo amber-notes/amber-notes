@@ -334,6 +334,7 @@ struct NoteDetailView: View {
     /// counts as seeing it; the tint and the receipt then go on their own.
     private func showAIEdit() {
         guard let r = AIEdit.markSeen(note) else { return }
+        Telemetry.shared.record(.firstAIEditSeen)
         try? context.save()
         let slow = ChangeTint.slowMotion
         Task { @MainActor in
