@@ -262,8 +262,12 @@ struct KeyGateView: View {
         VStack(spacing: 18) {
             heading("Enter your recovery key", nil)
             VStack(spacing: 10) {
-                field {
-                    TextField("Recovery key", text: $recovery)
+                // One field, drawn like the email and password fields of the sign-in screen. The
+                // text field's own style is off: on the Mac its bezel made a box inside the box.
+                field(focused: focused) {
+                    TextField("Recovery key", text: $recovery,
+                              prompt: Text("Recovery key").foregroundStyle(Color(Palette.placeholder)))
+                        .textFieldStyle(.plain)
                         .font(.system(size: Row.text, design: .monospaced))
                         .autocorrectionDisabled()
                         #if os(iOS)
@@ -322,6 +326,7 @@ struct KeyGateView: View {
                 } else {
                     field {
                         TextField("Type \u{201C}\(AccountCrypto.startFreshPhrase)\u{201D} to confirm", text: $confirmation)
+                            .textFieldStyle(.plain)
                             .autocorrectionDisabled()
                             #if os(iOS)
                             .textInputAutocapitalization(.never)
@@ -371,6 +376,7 @@ struct KeyGateView: View {
         } else {
             field {
                 SecureField("Password for \(email)", text: $password)
+                    .textFieldStyle(.plain)
                     .textContentType(.password)
                     .onSubmit { if !password.isEmpty { signInWithPassword() } }
             }
@@ -487,14 +493,17 @@ struct KeyGateView: View {
 
     // MARK: Pieces
 
-    private func field(@ViewBuilder _ content: () -> some View) -> some View {
+    /// The sign-in screen's field (SignInView.field): the same height, radius, border and padding,
+    /// and the same amber border while it's being typed in.
+    private func field(focused: Bool = false, @ViewBuilder _ content: () -> some View) -> some View {
         let shape = RoundedRectangle(cornerRadius: Row.radius, style: .continuous)
         return content()
             .font(.system(size: Row.text))
             .padding(.horizontal, 12)
             .frame(height: Row.height)
             .background(Color(Palette.field), in: shape)
-            .overlay(shape.strokeBorder(Color(Palette.fieldHairline), lineWidth: 1 / displayScale))
+            .overlay(shape.strokeBorder(focused ? Color(Palette.amber) : Color(Palette.fieldHairline), lineWidth: focused ? 2 : 1))
+            .animation(.easeOut(duration: 0.12), value: focused)
     }
 
     private func quietButton(_ title: String, id: String, muted: Bool = false, action: @escaping () -> Void) -> some View {

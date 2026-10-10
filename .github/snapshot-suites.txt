@@ -4,6 +4,7 @@
 PaneTests/HoverSnapshots
 PaneTests/ChromeSnapshots
 PaneTests/HeardFromSnapshots
+PaneTests/KeyGateCardSnapshotTests
 # Window-server captures gated on AMBER_DEMO_FRAMES (#257): never run on a developer's Mac.
 PaneTests/TipSnapshots
 PaneTests/AIEditSnapshots
