@@ -388,6 +388,7 @@ struct NoteDetailView: View {
     }
 
     private var vault: NoteVault { .shared }
+    private struct ImagesAsk: Equatable { var note: UUID; var pulled: Int }
 
     /// The editor, or for a locked note that isn't open, the lock.
     @ViewBuilder
@@ -400,6 +401,11 @@ struct NoteDetailView: View {
                 MarkdownEditor(initialText: text, header: DateBucket.header(note.updatedAt), controller: controller, autofocus: autofocus,
                                followsInitialText: collab == nil, onChange: save)
                     .onAppear { if note.isLocked { vault.touch() } }
+                    // The note's images that are on the server and not here are fetched as it opens,
+                    // and again when a sync brings changes (a picture added on another device).
+                    .task(id: ImagesAsk(note: note.id, pulled: sync?.remoteChangeTick ?? 0)) {
+                        await controller.fetchMissingImages(note: note.id, body: text)
+                    }
                     .opacity(showingPage ? 0 : 1)
                     .allowsHitTesting(!showingPage)
                     .accessibilityHidden(showingPage)
