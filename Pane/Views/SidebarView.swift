@@ -372,6 +372,15 @@ struct SidebarView: View {
     }
 }
 
+/// Hiding or showing the sidebar hands the split view's columns over again, and a view that holds
+/// an action can't be compared, so the folders were worked out again on every toggle: this view,
+/// then every folder row. Nothing it is given changes what it shows: the selection reaches it
+/// through its binding, the folders and counts through its queries, and the action is the same
+/// action. So two of them are always equal.
+extension SidebarView: @MainActor Equatable {
+    static func == (a: SidebarView, b: SidebarView) -> Bool { true }
+}
+
 /// A folder row with its sub-folders; accepts dropped notes and folders. Not an equatable view:
 /// skipping its updates kept the sidebar's selection from following some clicks on folder rows.
 private struct FolderTree: View {
@@ -391,6 +400,9 @@ private struct FolderTree: View {
     @State private var expanded = true
 
     var body: some View {
+        #if DEBUG
+        let _ = RenderProbe.count("FolderTree")
+        #endif
         if folder.liveChildren.isEmpty {
             label
         } else {

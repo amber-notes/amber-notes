@@ -6,7 +6,8 @@ import DownloadLink from "./DownloadLink";
 import GitHubLink, { GitHubGlyph } from "./GitHubLink";
 import PlatformNote from "./PlatformNote";
 import MobileMenu from "./MobileMenu";
-import { themeFor } from "@/lib/theme";
+import { ownTopBar, themeFor } from "@/lib/theme";
+import PROMPTS from "@/lib/try-prompts.json";
 import { isBlogList } from "@/lib/blog-list";
 import { CONSENT_OPEN_EVENT } from "@/lib/consent";
 import { filterTransition } from "@/lib/filter-transition";
@@ -15,6 +16,7 @@ const GITHUB = "https://github.com/pinto-notes/pinto-notes";
 const X_URL = "https://x.com/EmilWagman";
 const LINKEDIN_URL = "https://www.linkedin.com/in/emil-wagman-52a907287/";
 const MAKER_URL = "https://emilwagman.com";
+const COPY_IDS = PROMPTS.map((p) => p.id);
 
 export default function SiteChrome({ version, stars, children }: { version: string | null; stars: number | null; children: React.ReactNode }) {
   const path = usePathname();
@@ -71,9 +73,10 @@ export default function SiteChrome({ version, stars, children }: { version: stri
     return () => document.removeEventListener("click", onClick);
   }, [router]);
 
-  // The connect pages and the reset page are one card under a quiet top bar (lib/ui.tsx TopBar): the
-  // site's colours without its header and footer. The Dev preview of /connect renders the same way.
-  if (!site || ["/connect", "/connect/preview", "/open/connect", "/reset-password"].includes(path)) return <>{children}</>;
+  // The connect pages, the reset page, the unsubscribe page and the emails' "Ask Claude" page are one
+  // card under a quiet top bar (lib/ui.tsx TopBar): the site's colours without its header and footer.
+  // The Dev preview of /connect renders the same way.
+  if (!site || ownTopBar(path, COPY_IDS)) return <>{children}</>;
 
   const current = (href: string) => (path === href ? "page" : undefined);
   // On the home page the logo takes you back to the top instead of reloading.

@@ -92,38 +92,46 @@ extension EditorPerfTests {
     /// there the long notes are held to a multiple of the same run's 80-line note, which a slow
     /// runner slows just as much, and to a wide absolute ceiling that still fails if everything
     /// got slower. Locally (no PANE_PERF_SLACK) the strict frame budgets apply.
+    ///
+    /// The three notes are timed in turns (three rounds of every width for each), not one note
+    /// after the other: the ratio compares numbers from the same stretch of the run, where it
+    /// compared a note timed while the runner was quiet with one timed while it was not (it
+    /// failed once at 11.1 times the 80-line note against the 10 allowed; see PerfTiming).
     @Test func widthChangeLikeTheSidebar() async {
         var medians: [String: Double] = [:]
+        let clock = ContinuousClock()
+        // 15 frames from 760 to 990 points wide, and back: the sidebar's width.
+        let widths = (0...15).map { 760 + 230 * Double($0) / 15 }
+        func step(_ h: EditorHarness, _ w: Double) {
+            h.window.setContentSize(NSSize(width: w, height: 900))
+            h.scroll.frame.size = NSSize(width: w, height: 900)
+            h.window.contentView?.layoutSubtreeIfNeeded()
+            // What the next turn of the run loop does after a resize.
+            h.view.layoutCards(animated: false)
+            h.window.displayIfNeeded()
+        }
+        var notes: [(name: String, harness: EditorHarness, steps: [Double])] = []
         for (name, text) in [("80 lines", PerfFixtures.longNote(lines: 80)), ("5000 lines", PerfFixtures.longNote()), ("blocks", PerfFixtures.blockyNote())] {
             let h = await EditorHarness(text, width: 760, focus: false)
             h.window.displayIfNeeded()
             await h.settle(0.3)
-            let clock = ContinuousClock()
-            var steps: [Double] = []
-            // 15 frames from 760 to 990 points wide, and back: the sidebar's width.
-            let widths = (0...15).map { 760 + 230 * Double($0) / 15 }
             // One pass untimed first: the first layout at each width fills caches the rest reuse.
-            for w in widths {
-                h.window.setContentSize(NSSize(width: w, height: 900))
-                h.scroll.frame.size = NSSize(width: w, height: 900)
-                h.window.contentView?.layoutSubtreeIfNeeded()
-                h.view.layoutCards(animated: false)
-                h.window.displayIfNeeded()
+            for w in widths { step(h, w) }
+            notes.append((name, h, []))
+        }
+        await PerfTiming.quietMainQueue()
+        for _ in 0..<3 {
+            for i in notes.indices {
+                for w in widths.reversed() + widths {
+                    notes[i].steps.append(ms(clock.measure { step(notes[i].harness, w) }))
+                }
             }
-            for w in widths.reversed() + widths {
-                steps.append(ms(clock.measure {
-                    h.window.setContentSize(NSSize(width: w, height: 900))
-                    h.scroll.frame.size = NSSize(width: w, height: 900)
-                    h.window.contentView?.layoutSubtreeIfNeeded()
-                    // What the next turn of the run loop does after a resize.
-                    h.view.layoutCards(animated: false)
-                    h.window.displayIfNeeded()
-                }))
-            }
-            steps.sort()
-            medians[name] = steps[steps.count / 2]
-            print("PERF sidebar-like width change [\(name)]: median \(String(format: "%.2f", steps[steps.count / 2])) ms, max \(String(format: "%.2f", steps.last!)) ms a frame")
-            h.close()
+        }
+        for note in notes {
+            let steps = note.steps.sorted()
+            medians[note.name] = PerfTiming.median(steps)
+            print("PERF sidebar-like width change [\(note.name)]: median \(String(format: "%.2f", PerfTiming.median(steps))) ms, max \(String(format: "%.2f", steps.last!)) ms a frame (\(steps.count) frames in 3 turns)")
+            note.harness.close()
         }
         let reference = medians["80 lines"] ?? 0
         // (name, a frame's budget on a developer's Mac, at most this many times the 80-line note).

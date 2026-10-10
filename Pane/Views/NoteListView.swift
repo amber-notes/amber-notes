@@ -311,8 +311,12 @@ struct NoteListView: View {
             try? await Task.sleep(for: .seconds(1))
             withAnimation(.snappy(duration: 0.3)) { settled = true }
         }
-        .onChange(of: setup?.progress?.needsToDoNote ?? false) { _, needs in
-            if needs { ensureToDoNote() }
+        // Only once the account's notes have come down: before that the library is empty on a
+        // new device, and a To-do made then went up as one more beside the account's own. (Asked
+        // in the action, not here: the list has no reason to redraw when a pull finishes.
+        // AppGate.openLibrary makes the note when the pull comes after the guide's progress.)
+        .onChange(of: setup?.progress?.needsToDoNote ?? false, initial: true) { _, needs in
+            if needs, sync?.knowsAccount == true { ensureToDoNote() }
         }
         .overlay {
             if fileDropTargeted {
@@ -596,11 +600,7 @@ struct NoteListView: View {
 
     /// Step 3's prompt adds to "To-do": make sure there is one.
     private func ensureToDoNote() {
-        let exists = entries.contains { !$0.deleted && !$0.trashed && $0.note.title.caseInsensitiveCompare("To-do") == .orderedSame }
-        guard !exists else { return }
-        let home = context.allFolders().first { $0.name == "Notes" && $0.parent == nil }
-        _ = context.createNote(in: home.map { .folder($0.id) } ?? .all, body: "To-do\n\n")
-        try? context.save()
+        guard context.makeToDoNoteIfMissing() != nil else { return }
         SyncSignal.changed()
     }
 
@@ -791,6 +791,13 @@ struct NoteListView: View {
             }
         }
     }
+}
+
+/// The list is the same list while it shows the same folder: the selection reaches it through its
+/// binding, and the action is the same action. Hiding or showing the sidebar hands the split
+/// view's columns over again, and without this the list was worked out again on every toggle.
+extension NoteListView: @MainActor Equatable {
+    static func == (a: NoteListView, b: NoteListView) -> Bool { a.scope == b.scope }
 }
 
 /// What the list needs to know about a note to place it: plain values, read from the note once

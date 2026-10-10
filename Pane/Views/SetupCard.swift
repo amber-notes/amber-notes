@@ -284,10 +284,20 @@ struct SetupCard: View {
 
     /// The app's amber primary button (white on the deeper amber, in light and dark).
     private func primary(_ title: String, id: String, action: @escaping () -> Void) -> some View {
-        Button(title, action: action)
-            .buttonStyle(.amberProminent)
-            .fixedSize()
-            .accessibilityIdentifier(id)
+        // At its own width when that fits. At the largest text sizes it's wider than the card,
+        // which pushed the card's text out past the left edge: there it takes the card's width
+        // and its title shrinks to fit.
+        ViewThatFits(in: .horizontal) {
+            Button(title, action: action)
+                .buttonStyle(.amberProminent)
+                .fixedSize()
+                .accessibilityIdentifier(id)
+            Button(title, action: action)
+                .buttonStyle(.amberProminent)
+                .minimumScaleFactor(0.5)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier(id)
+        }
     }
 
     private func copy() {

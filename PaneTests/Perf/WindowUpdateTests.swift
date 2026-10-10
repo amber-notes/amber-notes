@@ -109,6 +109,68 @@ import Testing
         }
     }
 
+    /// Hiding and showing the sidebar works out none of the columns again: not the folders (every
+    /// folder row with them), not the note list. The split view hands its columns over again on
+    /// every toggle, and both were worked out each time, mid-animation. They still follow what
+    /// they show: another folder is another list.
+    @Test(.timeLimit(.minutes(2))) func aSidebarToggleWorksOutNoColumnAgain() async throws {
+        let c = try ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        let ctx = c.mainContext
+        let folders = (0..<12).map { ctx.createFolder(named: "Folder \($0)") }
+        for i in 0..<120 { _ = ctx.createNote(in: .folder(folders[i % 12].id), body: "Note \(i)\n\ntext") }
+        try ctx.save()
+        UserDefaults.standard.removeObject(forKey: "lastScope")
+        // The views count their bodies while the hover probe is on (RenderProbe, in Hover.swift).
+        RenderProbe.counts = [:]
+        HoverProbe.enabled = true
+        defer { HoverProbe.enabled = false; HoverProbe.reset(); RenderProbe.counts = [:] }
+        // Borderless, far off every screen and never shown: nothing appears on anyone's display.
+        let w = NSWindow(contentRect: CGRect(x: -20000, y: -20000, width: 1180, height: 760),
+                         styleMask: [.borderless], backing: .buffered, defer: false)
+        w.isReleasedWhenClosed = false
+        w.contentViewController = NSHostingController(rootView: RootView().modelContainer(c))
+        w.setFrameOrigin(CGPoint(x: -20000, y: -20000))
+        defer { w.orderOut(nil); w.close() }
+        func settle() async {
+            for _ in 0..<4 {
+                w.contentView?.layoutSubtreeIfNeeded()
+                w.displayIfNeeded()
+                try? await Task.sleep(for: .milliseconds(120))
+            }
+        }
+        await settle()
+        func find<T: NSView>(_ type: T.Type, in view: NSView) -> T? {
+            if let v = view as? T { return v }
+            for s in view.subviews { if let v = find(type, in: s) { return v } }
+            return nil
+        }
+        let split = try #require(w.contentView.flatMap { find(NSSplitView.self, in: $0) })
+        let controller = try #require(split.delegate as? NSSplitViewController, "the columns are a split view controller's")
+        let sidebar = try #require(controller.splitViewItems.first)
+        #expect((RenderProbe.counts["SidebarView"] ?? 0) > 0, "the probe counts the folders")
+        #expect((RenderProbe.counts["FolderTree"] ?? 0) >= 12, "and every folder row")
+        #expect((RenderProbe.counts["NoteListView"] ?? 0) > 0, "and the list")
+
+        RenderProbe.counts = [:]
+        for hidden in [true, false, true, false] {
+            controller.toggleSidebar(nil)
+            await settle()
+            #expect(sidebar.isCollapsed == hidden, "the toggle \(hidden ? "hid" : "showed") the sidebar")
+        }
+        print("PERF sidebar toggled 4 times: bodies worked out again \(RenderProbe.counts.sorted { $0.key < $1.key }.map { "\($0.key) \($0.value)" }.joined(separator: ", "))")
+        #expect(RenderProbe.counts["SidebarView"] == nil, "a toggle doesn't work the folders out again")
+        #expect(RenderProbe.counts["FolderTree"] == nil, "nor any folder row")
+        #expect(RenderProbe.counts["NoteListView"] == nil, "nor the note list")
+
+        // What each shows still reaches it: a click on a folder is another list.
+        let table = try #require(split.arrangedSubviews.first.flatMap { find(NSTableView.self, in: $0) })
+        table.selectRowIndexes([3], byExtendingSelection: false)
+        await settle()
+        #expect((RenderProbe.counts["NoteListView"] ?? 0) > 0, "the list follows the folder that was clicked")
+        let list = try #require(split.arrangedSubviews.dropFirst().first.flatMap { find(NSTableView.self, in: $0) })
+        #expect(list.numberOfRows < 60, "and shows that folder's notes, not all 120")
+    }
+
     /// The sidebar counts in the store. Notes made, deleted or recovered count straight away,
     /// before the library is saved.
     @Test func sidebarCountsIncludeUnsavedChanges() throws {

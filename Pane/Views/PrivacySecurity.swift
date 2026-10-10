@@ -46,6 +46,7 @@ enum PrivacyCopy {
     static let removeMessage = "It\u{2019}s signed out and its copy of your notes is erased the next time it\u{2019}s online. Notes on it that haven\u{2019}t synced are erased too. Anything it already showed could have been copied before that."
     static var removedTitle: String { "This \(InstallID.kind) was removed" }
     static let removedMessage = "Another of your devices removed it, so its copy of your notes was erased. To open them here again, sign in and add this device."
+    static var notConfirmed: String { "This \(InstallID.kind) couldn\u{2019}t confirm it\u{2019}s you, so the recovery key stays hidden. Try again." }
     static var notSavedTitle: String { "Your key couldn\u{2019}t be saved on this \(InstallID.kind)" }
     static var notSavedMessage: String {
         "Your notes are open now, but this \(InstallID.kind) will ask for your key again the next time Pinto Notes opens. Save your recovery key first, in Settings \u{203A} Security, or keep another device at hand to add this one."
@@ -280,7 +281,13 @@ struct PrivacySecuritySection: View {
     private func reveal(reason: String, then show: (String) -> Void) async {
         problem = nil
         guard let key = crypto.recoveryKeyText else { return }
-        if await DeviceOwner.authenticate(reason: reason) { show(key) }
+        switch await DeviceOwner.confirm(reason: reason) {
+        case .confirmed: show(key)
+        // You chose Cancel: nothing to say.
+        case .cancelled: break
+        // Anything else used to end in silence, as if the button did nothing.
+        case .failed: problem = PrivacyCopy.notConfirmed
+        }
     }
 
     private func markSaved() async {
@@ -308,6 +315,28 @@ enum DeviceOwner {
             return (error as? LAError)?.code == .passcodeNotSet
         }
         return (try? await context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: reason)) ?? false
+    }
+
+    enum Outcome { case confirmed, cancelled, failed }
+
+    /// The same question, telling a Cancel from a failure, for buttons that should say when
+    /// nothing happened.
+    @MainActor static func confirm(reason: String) async -> Outcome {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-uitest") { return .confirmed }
+        #endif
+        let context = LAContext()
+        var error: NSError?
+        guard context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) else {
+            return (error as? LAError)?.code == .passcodeNotSet ? .confirmed : .failed
+        }
+        do {
+            return try await context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: reason) ? .confirmed : .failed
+        } catch let e as LAError where [.userCancel, .appCancel, .systemCancel].contains(e.code) {
+            return .cancelled
+        } catch {
+            return .failed
+        }
     }
 }
 

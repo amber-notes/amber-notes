@@ -148,6 +148,16 @@ final class EditorCore {
         publish(blocks)
     }
 
+    /// Images of this note arrived (EditorController.imagesArrived): their sizes can be read now,
+    /// so their lines are laid out again.
+    private var imagesTick = 0
+    func setImages(_ tick: Int, storage: NSTextStorage, selection: NSRange?) {
+        guard imagesTick != tick else { return }
+        imagesTick = tick
+        needsFull = true
+        restyle(storage, selection: selection, force: true)
+    }
+
     /// The library's titles changed (or the note moved): wiki links are coloured again.
     func setWiki(_ wiki: WikiScope?, storage: NSTextStorage, selection: NSRange?) {
         guard styler.wiki != wiki else { return }
@@ -474,6 +484,7 @@ private struct PlatformEditor: UIViewRepresentable {
         if followsInitialText { view.syncExternal(initialText) }
         if controller.target !== view { controller.target = view }
         view.setWiki(controller.wiki)
+        view.setImages(controller.imagesArrived)
         // Read here so a change to it lays the text out again.
         _ = controller.bottomReserve
         view.showRemoteCarets(controller.remoteCarets)
@@ -936,6 +947,7 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
     private var editingSelection: NSRange? { isFirstResponder ? selectedRange : nil }
 
     func setWiki(_ wiki: WikiScope?) { core.setWiki(wiki, storage: textStorage, selection: editingSelection) }
+    func setImages(_ tick: Int) { core.setImages(tick, storage: textStorage, selection: editingSelection) }
 
     func textViewDidBeginEditing(_ textView: UITextView) {
         controller?.isEditing = true
@@ -1141,6 +1153,7 @@ private struct PlatformEditor: NSViewRepresentable {
         if followsInitialText { view.syncExternal(initialText) }
         if controller.target !== view { controller.target = view }
         view.setWiki(controller.wiki)
+        view.setImages(controller.imagesArrived)
     }
 }
 
@@ -1532,6 +1545,7 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
     private var editingSelection: NSRange? { window?.firstResponder === self ? selectedRange() : nil }
 
     func setWiki(_ wiki: WikiScope?) { if let storage = textStorage { core.setWiki(wiki, storage: storage, selection: editingSelection) } }
+    func setImages(_ tick: Int) { if let storage = textStorage { core.setImages(tick, storage: storage, selection: editingSelection) } }
 
     override func becomeFirstResponder() -> Bool {
         let ok = super.becomeFirstResponder()

@@ -14,6 +14,42 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # What the change touches, so a job that cannot be affected by it is skipped. A skipped job
+  # counts as passed for a required check; a job that never started would not, so the jobs are
+  # always there and decide by this. A push to main runs everything. Only the app's job is
+  # decided here (it is the long one, on the scarce runners): the server's and the site's tests
+  # read each other's files and the app's, and take a few minutes on plentiful runners.
+  #
+  # The app's job is skipped only when every changed file is in a place the app is not built or
+  # tested from. supabase/ is not such a place: the app's tests read server files (the E2EE and
+  # collaboration vectors, a migration, the MCP server's sources), and web/content/changelog.json
+  # ships inside the app. When in doubt a path is left out of the list, and the job runs.
+  changes:
+    name: What changed
+    runs-on: ubuntu-latest
+    outputs:
+      app: ${{ steps.paths.outputs.app }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: paths
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ -z "$BASE" ]; then
+            echo "Not a pull request: every job runs."
+            echo "app=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # The checkout is the pull request merged into its base: against the base, that is the change.
+          git fetch --quiet --depth=1 origin "$BASE"
+          git diff --name-only "$BASE" HEAD > changed.txt
+          echo "$(wc -l < changed.txt | tr -d ' ') files changed"
+          app=false
+          if grep -qvE '^(web/|docs/|strategy/|brand/|plugins/|cli/|scripts/|[^/]+\.md$|LICENSE$|\.github/)' changed.txt \
+             || grep -qxE 'web/content/changelog\.json|\.github/workflows/ci\.yml' changed.txt; then app=true; fi
+          echo "app tests: $app"
+          echo "app=$app" >> "$GITHUB_OUTPUT"
+
   secrets:
     name: Secret scan
     runs-on: ubuntu-latest
@@ -28,6 +64,8 @@ jobs:
 
   app:
     name: App tests (macOS)
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
     runs-on: macos-26
     timeout-minutes: 45
     env:

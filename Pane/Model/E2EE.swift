@@ -596,6 +596,10 @@ struct KeychainAccountKeyStore: AccountKeyStore {
     nonisolated static func fallsBack(_ slot: KeySlot) -> Bool { slot != .synced }
 
     func save(_ key: StoredKey, account: UUID, slot: KeySlot) -> Bool {
+        #if DEBUG || QA
+        // `-keyFault`: a write refused on purpose, before anything is touched (KeyFault).
+        if KeyFault.active?.refuses(slot) == true { return false }
+        #endif
         guard Self.dataProtectionAvailable else {
             do {
                 try Self.fallback.store(key: Self.fallbackName(account, slot), value: key.encoded)
