@@ -1,6 +1,6 @@
 # Privacy Policy
 
-Last updated: 6 October 2026
+Last updated: 10 October 2026
 
 ## The short version
 
@@ -83,6 +83,13 @@ We count how features are used on our own server to improve the app. We never sh
 - if you answer it, how you heard about Pinto Notes: the choice you tap, and any words you add under Something else. We only look at it added up across accounts;
 - a random identifier for each installation of the app and its platform (iPhone or Mac), to count how many devices an account uses. It isn't linked to your device's hardware or advertising identifiers.
 
+**Emails we send you**
+
+- **Account emails:** the code that confirms your email address, password reset links, and a notice when your password or email address changes.
+- **Onboarding emails:** a welcome email a couple of minutes after you sign up, then at most six short emails from Emil in your first 30 days, each about one next step in the app. Every one has a "Stop these emails" link, and using it stops them all. They go only to a confirmed email address.
+- **How we pick them:** from what your account has done so far, such as how many notes it has, which kinds of device it uses, whether an AI is connected, and which features have been used. Never from what's in a note.
+- **What we record:** which of these emails were sent to you and when, whether you unsubscribed, that you replied to one (the time, not what you wrote), and, if you click a link in one, which email it was in and the page the link leads to.
+
 **Visits to the website**
 
 - **Page views,** with Vercel Web Analytics: which page was viewed, the site you came from, and your country, browser and type of device. It uses no cookies and stores nothing on your device, and it doesn't identify you or follow you to other sites. Vercel tells visits apart for a day with a hash it doesn't store. Shared notes, the connect pages and report pages are never counted, and page addresses are counted without anything after them, such as a code in a link.
@@ -106,10 +113,12 @@ We process personal data under the EU General Data Protection Regulation (GDPR) 
 | Sign-in records, rate limits, hashed network addresses, request logs | To keep the service secure and stop abuse | Legitimate interests |
 | Reports about shared pages | To review and remove content that breaks our Terms | Legitimate interests, and legal obligations where they apply |
 | Feature usage counts | To learn whether the app works for people and improve it | Legitimate interests |
+| Account emails | To confirm your address and keep your account secure | Performance of a contract |
+| Onboarding emails, and the record of which were sent and clicked | To help new users get started, and to not send the same email twice | Legitimate interests; you can stop them at any time |
 | Website page views, clicks and scroll depth, counted without cookies, and daily download totals | To learn how people find the website, which pages help, and how many download the app | Legitimate interests |
 | Recognising your return visits to the website with a PostHog cookie, only if you accept | To see which pages bring people back and lead to a download over several visits | Consent, which you can withdraw at any time with Cookie settings |
 
-We don't use your data for advertising, and we don't make automated decisions about you with legal or similarly significant effects.
+We don't use your data for advertising. The only emails about Pinto Notes we send you are the ones described above. We don't make automated decisions about you with legal or similarly significant effects.
 
 ## End-to-end encryption
 
@@ -164,6 +173,7 @@ Nothing reaches an AI assistant unless you connect one. When you connect ChatGPT
 | Supabase (Supabase Pte. Ltd.) | Database, file storage, sign-in and server functions | Frankfurt, Germany (EU). A request to a server function enters Supabase's network at the location nearest its sender and is passed to Frankfurt, where it is handled | Standard Contractual Clauses, in its [data processing agreement](https://supabase.com/legal/dpa) ([sub-processors](https://supabase.com/legal/customer-resources/subprocessor-list)) |
 | Vercel, Inc. | The website, shared note pages, the addresses AI apps connect to (mcp.pintonotes.com, and mcp.ambernotes.app for earlier connections), Mac app downloads, update checks, website page view counts | Pages are built in Frankfurt, Germany (EU) and delivered through Vercel's global network | EU-U.S. Data Privacy Framework ([privacy policy](https://vercel.com/legal/privacy-policy), [sub-processors](https://vercel.com/legal/sub-processors)) |
 | PostHog, Inc. | Website usage only: page views, clicks, where on a page people click, and scroll depth, and, if you accept cookies, recognising return visits. Never on shared notes or the connect pages, and never in the apps | Frankfurt, Germany (EU) | Standard Contractual Clauses, in its [data processing agreement](https://posthog.com/dpa) ([sub-processors](https://posthog.com/subprocessors)) |
+| Resend (Plus Five Five, Inc.) | Sends our emails: the account emails and the onboarding emails. It receives your email address and the email's text. It also carries the notice we get when a shared page is reported, with the page's link, the reason and any contact details the reporter added | United States | Standard Contractual Clauses, in its [data processing agreement](https://resend.com/legal/dpa) ([sub-processors](https://resend.com/legal/subprocessors)) |
 | Apple | Sign in with Apple and the App Store, if you use them | Under Apple's own privacy policy | Apple's own terms |
 | Google | Sign in with Google, if you use it | Under Google's own privacy policy | Google's own terms |
 | Forward Email and Google (Gmail) | Email you send to hello@pintonotes.com: Forward Email passes it on, and it's read and kept in Gmail | United States | Under each company's own terms |
@@ -193,8 +203,9 @@ Rate limits on sign-in and connection requests count a one-way hash of the IP ad
 - **Notes you delete** stay in Recently Deleted for 30 days, then they're deleted for good, together with their earlier versions and share links. This happens on our server even if you never open the app again.
 - **Earlier versions** of a note: up to 100 per note, thinned out as they get older (all from the last day, one an hour for a week, one a day for 90 days, and every AI change for 90 days).
 - **Files** you add stay until you delete them or your account.
-- **Your account** is kept until you delete it. **Settings → Delete Account** removes your account, notes, files, profile photo, versions, AI connections, share links, notes password settings, usage counts, sign-in records and reports about your shared pages straight away.
+- **Your account** is kept until you delete it. **Settings → Delete Account** removes your account, notes, files, profile photo, versions, AI connections, share links, notes password settings, usage counts, the record of emails we sent you, sign-in records and reports about your shared pages straight away.
 - **Usage counts** (AI changes per day, days of use, tips, app installations): 12 months.
+- **The record of emails we sent you,** of links you clicked in them and of unsubscribing: until you delete your account.
 - **Sign-in records:** 30 days. **Rate-limit hashes:** 2 hours. **Unfinished AI sign-ins and expired access tokens:** a day after they expire.
 - **Reports:** the reporter's hash is blanked after 30 days; a report is deleted 12 months after it was made, once it's been reviewed.
 - **Logs** at our hosting providers: 1 hour to 1 day, as listed under Logs.
