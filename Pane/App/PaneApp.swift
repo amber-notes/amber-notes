@@ -899,6 +899,9 @@ struct AppGate: View {
             sync.schedule()
         }
         await setup.refresh(force: true)
+        // The setup guide's To-do note, now that the account's notes are here to say whether it
+        // has one already (the note list makes it when the guide gets to that step later).
+        if sync.knowsAccount, setup.progress?.needsToDoNote == true, context.makeToDoNoteIfMissing() != nil { SyncSignal.changed() }
         // Tips wait for this: never a tip for something this account has used anywhere.
         await FeatureUse.refresh()
         await shareAsk.refresh()

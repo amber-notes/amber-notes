@@ -312,9 +312,11 @@ struct NoteListView: View {
             withAnimation(.snappy(duration: 0.3)) { settled = true }
         }
         // Only once the account's notes have come down: before that the library is empty on a
-        // new device, and a To-do made then went up as one more beside the account's own.
-        .onChange(of: (setup?.progress?.needsToDoNote ?? false) && (sync?.knowsAccount ?? false), initial: true) { _, needs in
-            if needs { ensureToDoNote() }
+        // new device, and a To-do made then went up as one more beside the account's own. (Asked
+        // in the action, not here: the list has no reason to redraw when a pull finishes.
+        // AppGate.openLibrary makes the note when the pull comes after the guide's progress.)
+        .onChange(of: setup?.progress?.needsToDoNote ?? false, initial: true) { _, needs in
+            if needs, sync?.knowsAccount == true { ensureToDoNote() }
         }
         .overlay {
             if fileDropTargeted {
