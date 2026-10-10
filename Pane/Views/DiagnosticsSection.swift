@@ -18,6 +18,8 @@ struct DiagnosticsSection: View {
         Section {
             Toggle(DiagnosticsCopy.title, isOn: Binding(get: { share }, set: { share = $0; Telemetry.shared.consent = $0 }))
                 .accessibilityIdentifier("settings.diagnostics")
+        } header: {
+            Text("Diagnostics")
         } footer: {
             Text(DiagnosticsCopy.footer)
                 .foregroundStyle(.secondary)
