@@ -39,6 +39,56 @@ import ZIPFoundation
         _ = n
     }
 
+    /// Mac 1.2 left these out: a PDF kept in a folder on its own wasn't in the zip, and neither
+    /// was its folder, since only notes and the files they embed were written.
+    @Test func exportsFilesKeptInFoldersAndFoldersWithNoNotes() async throws {
+        let context = ModelContext(try ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true)))
+        let notes = context.createFolder(named: "Notes")
+        let papers = context.createFolder(named: "Papers")
+        let taxes = context.createFolder(named: "Taxes", parent: papers)
+        context.createFolder(named: "Empty")
+        func file(_ text: String, _ name: String, in folder: Folder? = nil) throws -> Pane.Attachment {
+            let a = try FileStore.importData(Data(text.utf8), filename: name, type: .plainText)
+            a.folderID = folder?.id
+            context.insert(a)
+            return a
+        }
+        let embedded = try file("a picture", "picture.txt")
+        let paper = try file("a paper", "paper.txt", in: papers)
+        let receipt = try file("a receipt", "receipt.txt", in: taxes)
+        let twin = try file("another paper", "paper.txt", in: papers)
+        twin.createdAt = paper.createdAt.addingTimeInterval(1)
+        let both = try file("kept in a folder and shown in a note", "plan.txt", in: papers)
+        let gone = try file("deleted", "old.txt", in: papers)
+        gone.trashedAt = .now
+        let cloud = try file("only on the server", "cloud.txt", in: papers)
+        let all = [embedded, paper, receipt, twin, both, gone, cloud]
+        defer { for a in all { try? FileManager.default.removeItem(at: FileStore.url(for: a.id, filename: a.filename).deletingLastPathComponent()) } }
+        try FileManager.default.removeItem(at: FileStore.url(for: cloud.id, filename: cloud.filename))
+        context.createNote(in: .folder(notes.id), body: "Trip\n\(embedded.markdown)\n\(both.markdown)")
+
+        let vault = NoteVault(keyStore: MemoryKeyStore(), defaults: MemoryDefaults())
+        let result = try await NoteExport.make(context, vault: vault, now: Date(timeIntervalSince1970: 1_790_000_000))
+        defer { try? FileManager.default.removeItem(at: result.zip.deletingLastPathComponent()) }
+        #expect(result.notes == 1 && result.files == 5 && result.missingFiles == 1)
+
+        let out = result.zip.deletingLastPathComponent().appending(path: "unzipped")
+        try FileManager.default.unzipItem(at: result.zip, to: out)
+        let top = try #require(try FileManager.default.contentsOfDirectory(at: out, includingPropertiesForKeys: nil).first)
+        func text(_ path: String) -> String? { try? String(contentsOf: top.appending(path: path), encoding: .utf8) }
+        #expect(text("Papers/paper.txt") == "a paper", "a file kept in a folder is in that folder")
+        #expect(text("Papers/paper 2.txt") == "another paper", "two with one name are both there")
+        #expect(text("Papers/Taxes/receipt.txt") == "a receipt", "in a sub-folder too")
+        #expect(text("Files/picture.txt") == "a picture", "a file only a note embeds stays under Files")
+        #expect(text("Papers/plan.txt") == "kept in a folder and shown in a note")
+        #expect(text("Notes/Trip.md")?.contains("](../Papers/plan.txt)") == true, "and the note's link points at it there")
+        #expect(text("Papers/old.txt") == nil, "Recently Deleted stays out")
+        #expect(text("Papers/cloud.txt") == nil, "a file that couldn't be fetched is counted, not written")
+        var isFolder: ObjCBool = false
+        #expect(FileManager.default.fileExists(atPath: top.appending(path: "Empty").path, isDirectory: &isFolder) && isFolder.boolValue,
+                "a folder with nothing in it is still in the export")
+    }
+
     @Test func sharingListsPeopleLinkSettingsAndTemplates() async throws {
         let context = ModelContext(try ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true)))
         let work = context.createFolder(named: "Work")
