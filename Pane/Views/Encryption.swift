@@ -269,6 +269,9 @@ struct KeyGateView: View {
                               prompt: Text("Recovery key").foregroundStyle(Color(Palette.placeholder)))
                         .textFieldStyle(.plain)
                         .font(.system(size: Row.text, design: .monospaced))
+                        // A whole key with its dashes is wider than the field on an iPhone: the
+                        // text shrinks to fit, so its start doesn't scroll out of view.
+                        .minimumScaleFactor(0.6)
                         .autocorrectionDisabled()
                         #if os(iOS)
                         .textInputAutocapitalization(.characters)
