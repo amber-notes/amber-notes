@@ -1212,6 +1212,17 @@ final class SyncEngine {
             fileRows += page
             if page.count < 1000 { break }
         }
+        // Files an earlier build took from the server and left half applied (see the guard below):
+        // marked as new here, yet with no bytes on this device, which a file added here always has.
+        // Their rows are read again by id (the cursor is long past them) and applied in full.
+        let halfApplied = Set(((try? context.fetch(FetchDescriptor<Attachment>(predicate: #Predicate { $0.dirty && !$0.uploaded }))) ?? [])
+            .filter { $0.deletedAt == nil && !FileStore.exists($0) }.map(\.id))
+        let missing = Array(halfApplied.subtracting(fileRows.map(\.id)))
+        for i in stride(from: 0, to: missing.count, by: 200) {
+            let chunk = missing[i ..< min(i + 200, missing.count)].map { $0.uuidString.lowercased() }
+            let again: [AttachmentDTO] = try await client.from("attachments").select().in("id", values: chunk).execute().value
+            fileRows += again
+        }
         for r in fileRows where !r.unreadable || skipUnreadable(r.id, "A file") {
             let known = context.attachment(r.id)
             let a = known ?? {
@@ -1219,7 +1230,10 @@ final class SyncEngine {
                 context.insert(a)
                 return a
             }()
-            guard !a.dirty || a.uploaded else { continue }
+            // A file added or changed here and not sent yet keeps what this device says. Not a row
+            // first seen just now: a new Attachment starts as "new here" too, and skipping it left
+            // every file from another device without its folder, never marked as on the server.
+            guard known == nil || halfApplied.contains(r.id) || !a.dirty || a.uploaded else { continue }
             // Renamed elsewhere (another device, the AI): this device's copy follows.
             if a.filename != r.filename { FileStore.rename(a.id, from: a.filename, to: r.filename) }
             // Deleted for good elsewhere, or by the server after 30 days in Recently Deleted: the

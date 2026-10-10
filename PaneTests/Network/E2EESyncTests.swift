@@ -162,6 +162,68 @@ extension NetworkFaults {
         await a.engine.stop()
     }
 
+    /// A file put in a folder on one device shows in that folder on another: the row is applied in
+    /// full the first time a device sees it (its folder, that it's on the server), and that device
+    /// never sends it back as its own.
+    @Test func aFileInAFolderShowsOnAnotherDevice() async throws {
+        let a = try device()
+        let folder = a.context.createFolder(named: "Stress folder")
+        let file = try attach("pdf bytes", named: "report.txt", to: a.context)
+        file.folderID = folder.id
+        let inNote = try attach("png bytes", named: "picture.txt", to: a.context)
+        defer { removeLocalCopy(file); removeLocalCopy(inNote) }
+        let n = a.context.createNote(in: .folder(folder.id), body: "Note\n\(inNote.markdown)")
+        n.dirty = true
+        await a.engine.sync()
+        #expect(file.uploaded && inNote.uploaded && StubSupabase.rows("attachments").count == 2)
+        // The other device has none of the bytes.
+        removeLocalCopy(file); removeLocalCopy(inNote)
+
+        let b = try device()
+        await b.engine.sync()
+        let theirs = try #require(b.context.attachment(file.id)), theirsInNote = try #require(b.context.attachment(inNote.id))
+        #expect(theirs.folderID == folder.id, "it's in the folder")
+        #expect(theirs.uploaded && !theirs.dirty && theirsInNote.uploaded && !theirsInNote.dirty, "known to be on the server, nothing to send")
+        #expect(theirsInNote.folderID == nil)
+        // Fetched and opened there, then another sync: the row on the server is as the first device left it.
+        let before = StubSupabase.rows("attachments").first { ($0["id"] as? String)?.lowercased() == file.id.uuidString.lowercased() }
+        #expect(await b.engine.download(theirs))
+        await b.engine.sync()
+        let after = StubSupabase.rows("attachments").first { ($0["id"] as? String)?.lowercased() == file.id.uuidString.lowercased() }
+        #expect(after?["folder_id"] as? String == before?["folder_id"] as? String && after?["folder_id"] != nil)
+        #expect(after?["created_at"] as? String == before?["created_at"] as? String)
+        removeLocalCopy(file)
+        await a.engine.stop(); await b.engine.stop()
+    }
+
+    /// A device that took a file's row with a build that left it half applied (no folder, marked
+    /// as new here, the cursor already past it): the next sync reads the row again and applies it.
+    @Test func aHalfAppliedFileRowIsRepaired() async throws {
+        let a = try device()
+        let folder = a.context.createFolder(named: "Stress folder")
+        let file = try attach("pdf bytes", named: "report.txt", to: a.context)
+        file.folderID = folder.id
+        defer { removeLocalCopy(file) }
+        await a.engine.sync()
+        removeLocalCopy(file)
+
+        let b = try device()
+        await b.engine.sync()
+        let theirs = try #require(b.context.attachment(file.id))
+        // As the earlier build left it.
+        theirs.folderID = nil; theirs.uploaded = false; theirs.dirty = true
+        await b.engine.sync()
+        #expect(theirs.folderID == folder.id && theirs.uploaded && !theirs.dirty)
+        // A file really added on this device and not sent yet is not touched by that.
+        let mine = try attach("new here", named: "mine.txt", to: b.context)
+        defer { removeLocalCopy(mine) }
+        mine.folderID = folder.id
+        #expect(mine.dirty && !mine.uploaded)
+        await b.engine.sync()
+        #expect(mine.uploaded && mine.folderID == folder.id && StubSupabase.rows("attachments").count == 2)
+        await a.engine.stop(); await b.engine.stop()
+    }
+
     @Test func aNewAccountKeySendsEverythingUpAgain() async throws {
         let a = try device()
         let n = a.context.createNote(in: .all, body: "Kept on this device")
