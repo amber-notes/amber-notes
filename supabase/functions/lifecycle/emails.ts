@@ -449,7 +449,6 @@ function htmlOf(d: Draft, c: Context): string {
     .outer { padding: 16px 8px 32px !important; }
     .pad { padding-left: 24px !important; padding-right: 24px !important; }
     .padtop { padding-top: 26px !important; }
-    .dateline { display: none !important; }
     .gap { height: 12px !important; }
     .h1 { font-size: 25px !important; line-height: 1.2 !important; margin-bottom: 16px !important; }
     .body { line-height: 1.62 !important; margin-bottom: 22px !important; }
@@ -517,7 +516,6 @@ ${art}  <tr><td class="window" bgcolor="${L.page}" style="background:${L.page};b
         </tr></table>
       </td></tr>
       <tr><td class="pad padtop" style="padding:22px 32px 6px;font-family:${SANS};overflow-wrap:break-word;word-wrap:break-word;">
-        <p class="sec dateline" style="margin:0 0 14px;text-align:center;font-size:13px;line-height:1.4;color:${L.secondary};">From Emil</p>
         <h1 class="ink h1" style="margin:0 0 14px;font-family:${DISPLAY};font-size:27px;line-height:1.2;font-weight:700;color:${L.text};">${esc(d.title)}</h1>
 ${body}
       </td></tr>
