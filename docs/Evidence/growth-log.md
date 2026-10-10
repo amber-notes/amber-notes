@@ -5,6 +5,67 @@ assistants. Newest first. Research behind it: [seo-aeo-research-2026-09-30.md](s
 
 `docs/` had no README naming a folder for evidence, so this and the research live in `docs/Evidence/`.
 
+## 10 October 2026: Mac 1.2 day, "Move Apple Notes to iCloud" answer first, "A weekly review with ChatGPT or Claude"
+
+### Measured
+
+- **PostHog (EU project 291184), page views and visitors per day, read at 09:00 UTC.** 9 October: 114 views, 61
+  visitors. 10 October so far: 70 views, 41 visitors. All on pintonotes.com; nothing on ambernotes.app or
+  www.pintonotes.com since the move.
+- **Who that was (since 9 October 09:15 UTC).** The home page had 80 views and /download 50. 74 views by 47
+  visitors were opened directly from Windows with no country, one page each, which fits link scanners more than
+  readers, so it isn't counted as demand. Referrers that are real: github.com 14 visitors, claude.ai 5 and google.com 2.
+  The claude.ai visits are new.
+- **Clicks that matter, since yesterday's reading:** `download_mac_clicked` 1 (10 October 04:02 UTC, from a
+  Google landing on the home page, on a Mac: the first download click that started at Google since the move).
+  `use_template_clicked` 2 and `use_template_not_found` 1: one iPhone visitor tried the Meal plan template and
+  got the "Didn't open?" sheet, as expected while the iPhone app isn't in the App Store. `blog_helper_used` 2,
+  both on apple-notes-not-syncing and most likely our own check after yesterday's deploy. Five visitors accepted
+  cookies, two rejected. `blog_cta_clicked` and `blog_copy_clicked` still haven't fired.
+- **Per post:** [blog-roi.md](blog-roi.md). Six post visits since yesterday's reading, none from search.
+- **Google Search Console, read in Chrome.** Google's data still ends on 6 October for ambernotes.app, so the
+  week reads the same as yesterday: 14 clicks, 987 impressions, position 9.9. Per day: 1 October 3 clicks and
+  69 impressions, 2 October 2 and 99, 3 October 1 and 140, 4 October 5 and 151, 5 October 2 and 204, 6 October
+  1 and 313. Nothing from 7 October on has been published by Google yet, so the move can't be read.
+- **pintonotes.com now has a Search Console property** (verified 9 October, Change of Address confirmed). Its
+  sitemap was read on 9 October: Success, 70 pages discovered. Performance and Page indexing both say
+  "Processing data, please check again in a day or so", so: 0 clicks, 0 impressions and no indexed count yet.
+- **Page indexing (ambernotes.app):** 62 indexed, 22 not, unchanged. "Page with redirect" is still 3, so Google
+  has not yet fetched the old addresses again in numbers.
+
+Reading: the new property is in place and Google has the sitemap, which was the gap yesterday. Search numbers
+for the days after the move are still not out on either host. The one thing that moved is where visitors come
+from: GitHub and claude.ai, on the day of the Mac 1.2 release.
+
+### Picked
+
+- **Upgrade: `/blog/move-apple-notes-to-icloud`.** 109 impressions and no clicks in Google's last full week, the
+  most of any post without a click, and it was a wall of text. It was next on yesterday's list.
+- **New: `/blog/weekly-review-with-chatgpt-or-claude`,** for people who already want this ("weekly review
+  template notes" is query 47 in the plan). The upgrade is the Apple Notes how-to, so the new post is the
+  converting kind, and it suits the visitors arriving from claude.ai.
+
+### Changed
+
+- **`/blog/move-apple-notes-to-icloud`** (branch `site/move-to-icloud-answer-first`, PR 405): the short answer
+  first; what can get lost as a table; the iPhone and Mac moves as numbered steps with menu paths per OS
+  version; an after-the-move checklist to copy; the call to action at the end. Same facts as on 2 October, and
+  the address, title and description are unchanged, as the move plan asks.
+- **New post `/blog/weekly-review-with-chatgpt-or-claude`** (branch `site/weekly-review-with-ai`), in Guides:
+  one prompt that works in any AI (five questions one at a time, then a short write-up with a top three), what
+  comes back, three habits that keep it going, a table of where the reviews can live, and how the Weekly review
+  template keeps every week in one note. Checked on main: `append_to_note` with `under_heading` and `at_start`,
+  `set_checklist_item`, `read_table`, the "changed N lines, Undo" bar and version history. New teal ground.
+- **No new captures.** The app's demo library has no Weekly review note, and a capture needs the Mac app on
+  screen, which this Mac is not used for. The new post's cover and figure are the Evening tracker capture,
+  captioned as that. A real capture of a Weekly review note, and of a Meeting notes note, should replace both.
+
+### To measure next
+
+- Search Console: the first clicks and impressions on pintonotes.com, its indexed count, and "Page with
+  redirect" on ambernotes.app growing past 3.
+- PostHog: `blog_copy_clicked` on the two prompts, and whether claude.ai keeps sending visitors after release day.
+
 ## 9 October 2026: the first day on pintonotes.com, "Apple Notes not syncing" answer first, "Meeting notes to action items"
 
 ### Measured

@@ -19,6 +19,40 @@ the daily growth loop; the dated reading of each day is in [growth-log.md](growt
 - Our own checks are in these numbers (most of them from macOS). Numbers this small move a lot from
   one person.
 
+## 2 to 10 October 2026 (to 09:00 UTC on 10 October)
+
+Both hosts together. Every visit since 8 October 15:54 UTC is on pintonotes.com.
+
+| Post | Visits | Google landings | Avg. depth | Read 75% | Actions | Downloads |
+|---|---|---|---|---|---|---|
+| /blog/apple-notes-ios-27 | 10 | 5 | 71% | 3 | 0 | 0 |
+| /blog/apple-notes-api | 7 | 3 | 79% | 4 | 0 | 0 |
+| /blog/forgot-apple-notes-password | 4 | 2 | 50% | 1 | 1 | 0 |
+| /blog/notes-apps-with-mcp | 3 | 0 | 50% | 1 | 0 | 0 |
+| /blog/apple-notes-not-syncing | 3 | 0 | 83% | 2 | 1 | 0 |
+| /blog/connect-chatgpt-to-your-notes | 3 | 0 | 38% | 0 | 0 | 0 |
+| /blog/best-notes-app-for-ai-agents | 2 | 1 | 50% | 1 | 0 | 0 |
+| /blog/move-apple-notes-to-icloud | 1 | 0 | 75% | 1 | 0 | 0 |
+| /blog/apple-notes-tags-smart-folders | 1 | 0 | 75% | 1 | 1 | 0 |
+| /blog/export-apple-notes-to-markdown | 1 | 0 | 25% | 0 | 0 | 0 |
+| /blog/claude-and-apple-notes | 1 | 0 | 25% | 0 | 0 | 0 |
+| /blog/notes-in-claude-code-and-codex | 1 | 0 | | 0 | 0 | 0 |
+| /blog/apple-notes-mcp | 1 | 0 | | 0 | 0 | 0 |
+| /blog/obsidian-mcp-servers-compared | 1 | 0 | | 0 | 0 | 0 |
+| Every other post | 0 | 0 | | | | |
+
+- New since 9 October: six post visits (notes-apps-with-mcp 2, apple-notes-not-syncing, best-notes-app-for-ai-agents,
+  claude-and-apple-notes, notes-in-claude-code-and-codex), all on pintonotes.com, none from search. The MCP and
+  Claude posts fit the visitors who came from claude.ai and GitHub on the Mac 1.2 release day.
+- The action on apple-notes-not-syncing is two chooser answers from a Mac that opened the post directly, 17
+  seconds apart, on the afternoon the upgrade went live. Most likely our own check.
+- /blog/obsidian-mcp-servers-compared is an old address that now redirects to /blog/obsidian-mcp; the one view is
+  from before 9 October.
+- Still no post visit followed by Download for Mac the same day. `blog_cta_clicked` and `blog_copy_clicked`
+  haven't fired.
+- Search Console has published nothing after 6 October for ambernotes.app, and the pintonotes.com property is
+  still "Processing data", so the per-post impressions are the same as in the 9 October reading below.
+
 ## 2 to 9 October 2026 (to 09:15 UTC on 9 October)
 
 Both hosts together. Since 8 October 15:54 UTC every visit is on pintonotes.com.
