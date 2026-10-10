@@ -219,6 +219,15 @@ extension AppPerfTests {
     /// From a folder of 25 notes back to All Notes with 2,000: the list is built new, as it is at
     /// launch. As one list whose rows changed, SwiftUI sized every row that came back, 3 to 4 s on
     /// the main thread. The switch back may cost a few first displays, not twenty of them.
+    ///
+    /// How it is measured: five switches each way, judged by their median. Each sample has to wait
+    /// for the main queue to turn (that is when the list hears of the change), and whatever else
+    /// is queued there runs in that wait and is timed with it. On a loaded runner one sample in
+    /// a run was a second or more while the others were 110 to 320 ms, and judged by the worst
+    /// of three the test failed at least four first attempts in two days (2026-10-09 and -10: worst samples 1,027,
+    /// 1,057, 1,189 and 1,801 ms beside medians of 235, 251, 273 and 320 ms). A list that is slow
+    /// to rebuild is slow every time, so the median still catches it; the limit is unchanged.
+    /// Every sample is printed, with how long it waited, laid out and drew.
     @Test(.timeLimit(.minutes(5))) func switchingBackToAllNotesBuildsTheListNew() async throws {
         let (c, notes) = try library(notes: 2_000, big: false)
         let ctx = c.mainContext
@@ -227,24 +236,31 @@ extension AppPerfTests {
         try ctx.save()
         let box = ScopeBox()
         let clock = ContinuousClock()
+        // What the test before left on the main queue (a library of 20,000 notes going away) is
+        // done before anything is timed.
+        await quietMainQueue()
         let (w, host) = window(ScopedList(box: box).modelContainer(c))
         defer { w.close() }
-        func show() async -> Double {
+        struct Sample { var total = 0.0, wait = 0.0, layout = 0.0, draw = 0.0 }
+        func show() async -> Sample {
             let start = clock.now
             // The list hears of the change once the main queue turns, as in the app.
             try? await Task.sleep(for: .milliseconds(2))
+            let turned = clock.now
             host.layoutSubtreeIfNeeded()
+            let laidOut = clock.now
             w.displayIfNeeded()
-            return ms(clock.now - start)
+            let end = clock.now
+            return Sample(total: ms(end - start), wait: ms(turned - start), layout: ms(laidOut - turned), draw: ms(end - laidOut))
         }
-        let first = await show()
+        let first = await show().total
         try? await Task.sleep(for: .milliseconds(300))
         func table() -> NSTableView? { FileRowClickTests.table(in: host) }
         let allNotes = try #require(table(), "the list is a table")
         #expect(allNotes.numberOfRows > 1_000)
 
-        var toFolder: [Double] = [], back: [Double] = []
-        for _ in 0..<3 {
+        var toFolder: [Sample] = [], back: [Sample] = []
+        for _ in 0..<5 {
             box.scope = .folder(small.id)
             toFolder.append(await show())
             try? await Task.sleep(for: .milliseconds(200))
@@ -256,10 +272,27 @@ extension AppPerfTests {
             try? await Task.sleep(for: .milliseconds(200))
             #expect((table()?.numberOfRows ?? 0) > 1_000)
         }
-        toFolder.sort(); back.sort()
-        print("PERF list of 2000 notes: first display \(String(format: "%.0f", first)) ms, to a folder of 25 \(String(format: "%.0f", toFolder[1])) ms, back to All Notes \(String(format: "%.0f", back[1])) ms (medians of 3)")
-        #expect(back[2] < max(first, 100) * 5, "back to All Notes costs about what showing the list first did")
-        #expect(toFolder[2] < max(first, 100) * 5)
+        func median(_ samples: [Sample]) -> Double { samples.map(\.total).sorted()[samples.count / 2] }
+        func list(_ samples: [Sample]) -> String {
+            samples.map { String(format: "%.0f (wait %.0f, layout %.0f, draw %.0f)", $0.total, $0.wait, $0.layout, $0.draw) }.joined(separator: ", ")
+        }
+        print("PERF list of 2000 notes: first display \(String(format: "%.0f", first)) ms, to a folder of 25 \(String(format: "%.0f", median(toFolder))) ms, back to All Notes \(String(format: "%.0f", median(back))) ms (medians of 5)")
+        print("PERF list of 2000 notes, each switch in order, ms: to the folder \(list(toFolder)); back \(list(back))")
+        #expect(median(back) < max(first, 100) * 5, "back to All Notes costs about what showing the list first did")
+        #expect(median(toFolder) < max(first, 100) * 5)
+    }
+
+    /// Waits until the main queue has nothing of note left to do: five turns in a row that each
+    /// come back within 20 ms, or two seconds at most.
+    func quietMainQueue() async {
+        let clock = ContinuousClock()
+        let deadline = clock.now + .seconds(2)
+        var quiet = 0
+        while quiet < 5, clock.now < deadline {
+            let start = clock.now
+            try? await Task.sleep(for: .milliseconds(2))
+            quiet = ms(clock.now - start) < 20 ? quiet + 1 : 0
+        }
     }
 
     /// Milliseconds before the slack (CI multiplies by its slack of 4). Derived from CI's Debug runs
