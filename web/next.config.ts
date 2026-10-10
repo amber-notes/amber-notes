@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { OLD_DMG_NAMES } from "./lib/downloads";
 import { posthogSettings } from "./lib/posthog";
 
 // Note content is sanitized; this is the second line. Next.js needs its own inline
@@ -72,7 +73,8 @@ const config: NextConfig = {
       // template's page so the page's [slug] never sees the ".json".
       beforeFiles: [{ source: "/templates/:slug.json", destination: "/api/templates/:slug" }],
       afterFiles: [],
-      fallback: [],
+      // The DMG's names from before the rename (lib/downloads.ts), once no file has them.
+      fallback: OLD_DMG_NAMES,
     };
   },
   async headers() {

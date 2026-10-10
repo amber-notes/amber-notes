@@ -143,7 +143,7 @@ targets:
       base: &appSettings
         PRODUCT_BUNDLE_IDENTIFIER: $(PANE_BUNDLE_ID)
         # The app's file name. Dev and test builds are Pane.app; scripts/testflight.sh sets
-        # PANE_PRODUCT_NAME="Amber Notes" so the shipped Mac app installs as Amber Notes.app.
+        # PANE_PRODUCT_NAME="Pinto Notes" so the shipped Mac app installs as Pinto Notes.app.
         PANE_PRODUCT_NAME: Pane
         PRODUCT_NAME: $(PANE_PRODUCT_NAME)
         PRODUCT_MODULE_NAME: Pane
@@ -184,7 +184,7 @@ targets:
     settings:
       base:
         <<: *appSettings
-        PANE_PRODUCT_NAME: Amber Notes
+        PANE_PRODUCT_NAME: Pinto Notes
         PANE_MAC_ENTITLEMENTS: Pane-mac-direct.entitlements
         # SPARKLE: updates; DIRECT: Sign in with Apple through the web (no entitlement in Developer ID).
         SWIFT_ACTIVE_COMPILATION_CONDITIONS: $(inherited) SPARKLE DIRECT

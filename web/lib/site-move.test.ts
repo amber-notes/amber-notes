@@ -17,7 +17,7 @@ describe("the move to pintonotes.com", () => {
   });
 
   it("keeps what installed apps and Apple read on the old address", () => {
-    for (const path of ["/.well-known/apple-app-site-association", "/updates/appcast.xml", "/downloads/Amber-Notes.dmg",
+    for (const path of ["/.well-known/apple-app-site-association", "/updates/appcast.xml", "/downloads/Amber-Notes.dmg", "/downloads/Amber-Notes-1.1.2.dmg", "/downloads/Pinto-Notes.dmg",
       "/api/templates/grocery-list", "/open/connect?request=1", "/open/template/trip-plan", "/open"]) {
       expect(moved(`https://ambernotes.app${path}`), path).toBeNull();
     }

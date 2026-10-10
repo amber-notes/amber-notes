@@ -8,7 +8,7 @@ export default function DownloadLink({ className, children, ...rest }: React.Anc
   const router = useRouter();
   const path = usePathname();
   return (
-    <a {...rest} className={className} href={MAC_DOWNLOAD_PATH} download="Amber-Notes.dmg"
+    <a {...rest} className={className} href={MAC_DOWNLOAD_PATH} download="Pinto-Notes.dmg"
       onClick={() => { if (path !== "/download") window.setTimeout(() => router.push("/download"), 300); }}>
       {children}
     </a>

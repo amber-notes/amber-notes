@@ -46,7 +46,7 @@ describe("what the phone menu holds", () => {
 
   it("ends with the Mac download where that's some use, as the home page does", () => {
     expect(text(part(menu(), "pi-apple pi-not-ios"))).toBe(" Download for MaciPhone · coming soon");
-    expect(part(menu(), "pi-apple pi-not-ios")).toContain('href="/download/mac" download="Amber-Notes.dmg"');
+    expect(part(menu(), "pi-apple pi-not-ios")).toContain('href="/download/mac" download="Pinto-Notes.dmg"');
     expect(text(part(menu(true), "pi-apple pi-not-ios"))).toBe(" Get it for iPhone Download for Mac");
   });
 

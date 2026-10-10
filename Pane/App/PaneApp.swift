@@ -24,6 +24,10 @@ struct PaneApp: App {
     @MainActor static var sharedContainer: ModelContainer?
 
     init() {
+        #if SPARKLE
+        // An update from "Amber Notes.app" renames the bundle and opens again (BundleRename.swift).
+        if !Self.isUnitTestHost, !ProcessInfo.processInfo.arguments.contains("-uitest") { BundleRename.moveAndReopenIfNeeded() }
+        #endif
         #if os(macOS)
         if Self.isUnitTestHost { NSApplication.shared.setActivationPolicy(.accessory) }
         #else

@@ -1,5 +1,5 @@
 #!/bin/zsh
-# Releases Amber Notes for Mac: a notarized DMG on ambernotes.app/download, and a
+# Releases Pinto Notes for Mac: a notarized DMG on pintonotes.com/download, and a
 # Sparkle update that every installed copy picks up within a day.
 #
 #   scripts/release-mac.sh 1.0.1 "What changed, one line per item"
@@ -45,9 +45,9 @@ fi
 VERSION=${1:?usage: scripts/release-mac.sh <version> [release notes]}
 NOTES=${2:-}
 BUILD=$(date -u +%Y%m%d%H%M)   # CFBundleVersion: always increasing, which is what Sparkle compares
-FILE="Amber-Notes-$VERSION.dmg"   # for Sparkle (the appcast points here)
+FILE="Pinto-Notes-$VERSION.dmg"   # for Sparkle (the appcast points here)
 [[ $CHANNEL == beta ]] && FILE="Amber-Notes-Beta-$VERSION.dmg"
-STABLE="Amber-Notes.dmg"          # for people (the download buttons point here)
+STABLE="Pinto-Notes.dmg"          # for people (the download buttons point here)
 MIN_OS=26.0
 
 if [[ -n ${ASC_KEY_PATH:-} ]]; then
@@ -93,7 +93,7 @@ cat > "$DIST/ExportDeveloperID.plist" <<EOF
 EOF
 xcodebuild -exportArchive -archivePath "$DIST/AmberNotes.xcarchive" -exportOptionsPlist "$DIST/ExportDeveloperID.plist" \
   -exportPath "$DIST/export" -allowProvisioningUpdates "${auth[@]}" | grep -E "error|EXPORT" || true
-APP="$DIST/export/Amber Notes.app"
+APP="$DIST/export/Pinto Notes.app"
 [[ $CHANNEL == beta ]] && APP="$DIST/export/Amber Notes Beta.app"
 [[ -d $APP ]] || { echo "Export failed." >&2; exit 1; }
 codesign --verify --deep --strict "$APP"
@@ -144,16 +144,18 @@ if [[ -n $NOTES ]]; then
 fi
 WEB="$CLEAN/web"
 mkdir -p "$WEB/public/downloads" "$WEB/public/updates"
-# Two copies of the same DMG: Amber-Notes.dmg is what people download (a stable name), and the
+# Two copies of the same DMG: Pinto-Notes.dmg is what people download (a stable name), and the
 # versioned one is what Sparkle fetches, so the appcast's signature and length always match it.
-rm -f "$WEB/public/downloads/"Amber-Notes*.dmg(N)   # old versioned and stable copies; (N): none yet is fine
+# The old names (Amber-Notes.dmg, Amber-Notes-<version>.dmg) are answered with these files by the
+# site (web/next.config.ts), so links and appcasts from before the rename keep working.
+rm -f "$WEB/public/downloads/"{Amber,Pinto}-Notes*.dmg(N)   # old versioned and stable copies; (N): none yet is fine
 cp "$DIST/$FILE" "$WEB/public/downloads/$FILE"
 cp "$DIST/$FILE" "$WEB/public/downloads/$STABLE"
 cat > "$WEB/public/updates/appcast.xml" <<EOF
 <?xml version="1.0" encoding="utf-8"?>
 <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
   <channel>
-    <title>Amber Notes</title>
+    <title>Pinto Notes</title>
     <link>https://ambernotes.app/updates/appcast.xml</link>
     <item>
       <title>Version $VERSION</title>
@@ -177,4 +179,4 @@ if [[ ${SKIP_DEPLOY:-0} != 1 ]]; then
 fi
 [[ ${SKIP_TAG:-0} == 1 ]] || git -C "$MAIN" tag -f "mac-v$VERSION" "$COMMIT"
 
-echo "✓ Amber Notes $VERSION ($BUILD) is live: https://ambernotes.app/download"
+echo "✓ Pinto Notes $VERSION ($BUILD) is live: https://pintonotes.com/download"
