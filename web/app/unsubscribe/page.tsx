@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { SUPPORT_EMAIL } from "@/lib/site";
 import { readUnsubscribeLink } from "@/lib/unsubscribe";
 import { ButtonRow, EmptyState, Foot, Shell, Sign, Stage, TopBar, ui } from "@/lib/ui";
 
@@ -28,7 +29,7 @@ export default async function Unsubscribe({ searchParams }: { searchParams: Prom
           </EmptyState>
         ) : !link ? (
           <EmptyState title="This link isn't complete" sign={<Sign kind="gone" />}>
-            Open the link from the email again, or write to hello@ambernotes.app and I&apos;ll stop the emails for you.
+            Open the link from the email again, or write to {SUPPORT_EMAIL} and I&apos;ll stop the emails for you.
           </EmptyState>
         ) : (
           <EmptyState title="Stop these emails?"
@@ -38,7 +39,7 @@ export default async function Unsubscribe({ searchParams }: { searchParams: Prom
               </form>
             }>
             {failed
-              ? <span role="status">That didn&apos;t go through. Try again in a moment, or write to hello@ambernotes.app.</span>
+              ? <span role="status">That didn&apos;t go through. Try again in a moment, or write to {SUPPORT_EMAIL}.</span>
               : "No more tips and check-ins from Emil about getting started with Pinto Notes. Emails about your account, like a password reset, still arrive."}
           </EmptyState>
         )}

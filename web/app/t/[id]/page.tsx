@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { sharedTemplate } from "@/lib/collab-relay";
 import PageFrame from "@/lib/PageFrame";
 import { renderNote } from "@/lib/render";
+import { SUPPORT_EMAIL } from "@/lib/site";
 import { EmptyState, Shell, Stage, TopBar } from "@/lib/ui";
 import s from "@/lib/note-page.module.css";
 
@@ -15,7 +16,6 @@ export const dynamic = "force-dynamic";
 type Props = { params: Promise<{ id: string }> };
 
 const noindex = { index: false, follow: false };
-const REPORT = "hello@ambernotes.app";
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const t = await sharedTemplate((await params).id);
@@ -38,7 +38,7 @@ export default async function Page({ params }: Props) {
   // A template starts empty: the app shows its empty state, the note its headings and columns.
   const example = t.note;
   const maker = shared.maker ?? "someone";
-  const report = `mailto:${REPORT}?subject=${encodeURIComponent(`Report template ${id}`)}&body=${encodeURIComponent(`Template: https://ambernotes.app/t/${id}\n\nWhat's wrong with it:\n`)}`;
+  const report = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(`Report template ${id}`)}&body=${encodeURIComponent(`Template: https://ambernotes.app/t/${id}\n\nWhat's wrong with it:\n`)}`;
   return (
     <Shell className={s.plain}>
       <TopBar href="/" />
