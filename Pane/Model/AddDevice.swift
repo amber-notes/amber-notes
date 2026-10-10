@@ -399,6 +399,15 @@ enum AddDeviceNames {
 }
 
 extension InstallID {
-    /// "iPhone" or "Mac".
-    static var kind: String { platform == "macos" ? "Mac" : "iPhone" }
+    /// "iPhone", "iPad" or "Mac": what the screens call this device.
+    static var kind: String { platform == "macos" ? "Mac" : isPad ? "iPad" : "iPhone" }
+
+    /// From the hardware's model name ("iPad14,3"), so it can be read off the main actor; the
+    /// simulator gives its model in the environment.
+    private static let isPad: Bool = {
+        var system = utsname()
+        uname(&system)
+        let machine = withUnsafeBytes(of: &system.machine) { String(decoding: $0.prefix { $0 != 0 }, as: UTF8.self) }
+        return (ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"] ?? machine).hasPrefix("iPad")
+    }()
 }

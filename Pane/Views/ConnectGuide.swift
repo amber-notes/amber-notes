@@ -56,7 +56,7 @@ struct WebConnectPlan: Equatable {
     #if os(macOS)
     static let allowStep = "Choose Open Pinto Notes on this Mac, or scan the code with your iPhone. Then choose Allow."
     #else
-    static let allowStep = "Scan the code it shows with this iPhone, then choose Allow."
+    static var allowStep: String { "Scan the code it shows with this \(InstallID.kind), then choose Allow." }
     #endif
 
     static let testPrompt = "Search my Pinto Notes and tell me what I wrote most recently."
@@ -232,7 +232,7 @@ struct WebConnectGuide: View {
     }
 
     #if os(iOS)
-    static let allowLine = "Scan the code on your computer with this iPhone, then choose Allow"
+    static var allowLine: String { "Scan the code on your computer with this \(InstallID.kind), then choose Allow" }
     #else
     static let allowLine = "Choose Open Pinto Notes on this Mac, then Allow"
     #endif
@@ -418,9 +418,18 @@ enum IncredibleConnect {
     static let steps = [
         "Open Apps and search for Amber Notes.",
         "Choose Connect. Your browser opens Pinto Notes.",
-        "Scan the code it shows with your iPhone (or open Pinto Notes on this Mac), then choose Allow.",
+        allowStep,
         "Back in Incredible, choose Let's go.",
     ]
+
+    /// The guide is read on the Mac next to Incredible, or on the iPhone that scans the code.
+    static var allowStep: String {
+        #if os(macOS)
+        "Scan the code it shows with your iPhone (or open Pinto Notes on this Mac), then choose Allow."
+        #else
+        "Scan the code it shows with this \(InstallID.kind), then choose Allow."
+        #endif
+    }
 
     /// Versions of Incredible from before Amber Notes was one of its apps.
     static let olderVersion = "If Pinto Notes isn't in Apps, add it as your own MCP server: choose Add it here at the bottom of Apps (or Add another MCP server), paste the address, choose Continue, then Sign in. After you choose Allow, choose Add server."

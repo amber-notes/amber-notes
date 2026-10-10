@@ -301,9 +301,17 @@ struct SidebarView: View {
         )) {
             TextField("Name", text: $nameDraft)
                 .accessibilityIdentifier("folder.name")
+                #if os(iOS)
+                .submitLabel(.done)
+                .onSubmit(commitName)
+                #endif
             Button("Cancel", role: .cancel) {}
             Button(renaming == nil ? "Create" : "Save", action: commitName)
+                // On iPhone the default button of an alert is filled system blue under the app's
+                // amber label, which can't be read: Return on the keyboard saves instead.
+                #if os(macOS)
                 .keyboardShortcut(.defaultAction)
+                #endif
         } message: {
             if renaming == nil { Text("Enter a name for this folder.") }
         }
