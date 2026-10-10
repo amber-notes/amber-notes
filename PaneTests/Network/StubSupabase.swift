@@ -60,6 +60,7 @@ final class StubSupabase: URLProtocol, @unchecked Sendable {
 
     nonisolated(unsafe) private static var _sessionLifetime: TimeInterval = 3600
     nonisolated(unsafe) private static var _refusesRefresh = false
+    nonisolated(unsafe) private static var _endedSessions = 0
     nonisolated(unsafe) private static var _failing: [(method: String, path: String, skip: Int, applied: Bool)] = []
 
     /// How long a session from the auth endpoint lasts; below zero it's expired as it's handed out.
@@ -67,6 +68,9 @@ final class StubSupabase: URLProtocol, @unchecked Sendable {
         get { lock.withLock { _sessionLifetime } }
         set { lock.withLock { _sessionLifetime = newValue } }
     }
+
+    /// Sign-outs the auth server took (sessions it ended).
+    static var endedSessions: Int { lock.withLock { _endedSessions } }
 
     /// The auth server refuses a refresh token (signed out elsewhere, or it expired).
     static var refusesRefresh: Bool {
@@ -84,7 +88,7 @@ final class StubSupabase: URLProtocol, @unchecked Sendable {
     static func reset() {
         lock.withLock {
             tables = [:]; _requests = []; _requestTimes = []; _bodies = []; _objects = [:]; _rpcCalls = []; _rpcAnswers = [:]; _tooFast = false
-            _sessionLifetime = 3600; _refusesRefresh = false; _failing = []; _account = nil
+            _sessionLifetime = 3600; _refusesRefresh = false; _endedSessions = 0; _failing = []; _account = nil
         }
     }
 
@@ -192,6 +196,7 @@ final class StubSupabase: URLProtocol, @unchecked Sendable {
         }
         let path = comps.path
         if path == "/auth/v1/token" { return token(grant: comps.queryItems?.first { $0.name == "grant_type" }?.value) }
+        if path == "/auth/v1/logout" { return logout(request) }
         if path.hasPrefix("/storage/v1/object/") { return storage(method, String(path.dropFirst("/storage/v1/object/".count)), request, body) }
         guard path.hasPrefix("/rest/v1/") else { return (404, Data("{}".utf8)) }
         let name = String(path.dropFirst("/rest/v1/".count))
@@ -267,6 +272,21 @@ final class StubSupabase: URLProtocol, @unchecked Sendable {
                 return (405, Data("{}".utf8))
             }
         }
+    }
+
+    /// Auth: a sign-out is taken only with an access token that hasn't run out, as the real server
+    /// does; an expired one is answered 401 and ends nothing.
+    private static func logout(_ request: URLRequest) -> (Int, Data) {
+        let jwt = (request.value(forHTTPHeaderField: "Authorization") ?? "").replacingOccurrences(of: "Bearer ", with: "")
+        let parts = jwt.split(separator: ".")
+        var payload = parts.count == 3 ? parts[1].replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/") : ""
+        while payload.count % 4 != 0 { payload += "=" }
+        let exp = (Data(base64Encoded: payload).flatMap { try? JSONSerialization.jsonObject(with: $0) } as? [String: Any])?["exp"] as? Double
+        guard let exp, exp > Date.now.timeIntervalSince1970 else {
+            return (401, Data(#"{"code":401,"error_code":"bad_jwt","msg":"invalid JWT: token is expired"}"#.utf8))
+        }
+        lock.withLock { _endedSessions += 1 }
+        return (204, Data())
     }
 
     /// Auth: a password sign-in or a refresh hands out a session for the test's account.

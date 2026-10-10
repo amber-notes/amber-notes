@@ -138,7 +138,14 @@ final class GateProbe: NSObject {
         if !isSignedIn { try await backend.signIn(email: email, password: password) }
         try await until("signed in", seconds: 30) { self.isSignedIn }
         let crypto = AccountCrypto.shared
-        try await until("key check", seconds: 60) { [.waiting, .mismatch, .ready].contains(crypto.phase) }
+        // The key check starts with the notes window. Launched over ssh the app can start inactive and
+        // never show one (as in measure), and then this waited its full minute for nothing.
+        var polls = 0
+        try await until("key check", seconds: 60) {
+            polls += 1
+            if polls == 100 { NSApp.activate() }
+            return [.waiting, .mismatch, .ready].contains(crypto.phase)
+        }
         if crypto.phase != .ready { try await crypto.recover(typed: recovery) }
         try await until("key ready", seconds: 60) { crypto.phase == .ready }
         if crypto.needsWelcome { crypto.welcomeShown() }

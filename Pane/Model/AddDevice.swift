@@ -340,8 +340,9 @@ enum AddDeviceApproval {
         let answer: String
         let bind: Data
 
-        /// "Mac" or "iPhone".
-        var kind: String { platform == "macos" ? "Mac" : "iPhone" }
+        /// "Mac", "iPhone" or "iPad". An iPad asks under the name "iPad" (iOS gives apps the model,
+        /// not the name its owner chose), so "Add this iPad?" names the device being added.
+        var kind: String { platform == "macos" ? "Mac" : name == "iPad" ? "iPad" : "iPhone" }
     }
 
     /// Reads the secret, finds this account's request for it, checks the new device's public
