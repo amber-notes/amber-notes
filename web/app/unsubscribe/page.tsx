@@ -16,6 +16,8 @@ export default async function Unsubscribe({ searchParams }: { searchParams: Prom
   const raw = await searchParams;
   const one = (k: string) => (typeof raw[k] === "string" ? raw[k] as string : undefined);
   const link = readUnsubscribeLink(one("u"), one("t"));
+  // A test send (scripts/lifecycle-test-send.ts) carries u=test&t=test: there is no account behind it.
+  const test = one("u") === "test" && one("t") === "test";
   const done = one("done") === "1";
   const failed = one("failed") === "1";
   return (
@@ -26,6 +28,10 @@ export default async function Unsubscribe({ searchParams }: { searchParams: Prom
           <EmptyState title="You won't get these emails again" sign={<Sign kind="done" />}
             actions={<ButtonRow><Link className={ui.secondary} href="/">Go to the home page</Link></ButtonRow>}>
             <span role="status">Your notes and your account stay as they are. Emails about your account, like a password reset, still arrive.</span>
+          </EmptyState>
+        ) : test ? (
+          <EmptyState title="This is a test email" sign={<Sign kind="gone" />}>
+            So there is nothing to stop. In a real email this link stops the emails with one button.
           </EmptyState>
         ) : !link ? (
           <EmptyState title="This link isn't complete" sign={<Sign kind="gone" />}>
