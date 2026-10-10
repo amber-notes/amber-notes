@@ -14,7 +14,7 @@ const at = (ms: number) => new Date(NOW.getTime() + ms);
 
 const cfg = (o: Partial<Config> = {}): Config => ({
   enabled: true, flags: { apps: false, appStore: false, sharing: false }, subjectTest: false, trackClicks: false, since: at(-60 * D), only: null, resendKey: "re_test", unsubscribeSecret: "u".repeat(40), cronSecret: "c".repeat(40),
-  from: "Emil at Pinto Notes <emil@ambernotes.app>", replyTo: "emil@ambernotes.app", site: "https://pintonotes.com", open: "https://ambernotes.app", subjectPrefix: "", manualRounds: false, ...o,
+  from: "Emil at Pinto Notes <emil@pintonotes.com>", replyTo: "emil@pintonotes.com", site: "https://pintonotes.com", open: "https://ambernotes.app", subjectPrefix: "", manualRounds: false, ...o,
 });
 
 /// A fake Resend that remembers what it was given.
@@ -255,7 +255,7 @@ Deno.test("each email carries an unsubscribe link and the one-click headers", as
   assertEquals(m.headers["List-Unsubscribe-Post"], "List-Unsubscribe=One-Click");
   assert(m.headers["List-Unsubscribe"].startsWith(`<https://pintonotes.com/unsubscribe/confirm?u=${a.id}&t=`));
   assertStringIncludes(m.text, `https://pintonotes.com/unsubscribe?u=${a.id}&t=`);
-  assertEquals(m.reply_to, "emil@ambernotes.app");
+  assertEquals(m.reply_to, "emil@pintonotes.com");
 });
 
 Deno.test("a refused send is kept and never retried; 'too many requests' is retried next round", async () => {

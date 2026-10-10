@@ -55,7 +55,7 @@ Deno.test("what the emails say, as the body for the project: the site, the sende
   assertEquals(Object.keys(setup).filter((k) => !(k in body)).sort(),
     ["mailer_notifications_password_changed_enabled", "mailer_otp_exp", "rate_limit_email_sent", "smtp_admin_email", "smtp_host", "smtp_max_frequency", "smtp_port", "smtp_user"]);
   // The address moves to @pintonotes.com only once that domain can send (supabase/functions/_shared/sender.ts).
-  assertEquals(setup.smtp_admin_email, "hello@ambernotes.app");
+  assertEquals(setup.smtp_admin_email, "hello@pintonotes.com");
   assert(!("smtp_pass" in setup));
 });
 

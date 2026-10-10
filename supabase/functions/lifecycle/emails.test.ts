@@ -28,11 +28,11 @@ Deno.test("every email has a plain-text twin with the same links and a way to st
   }
 });
 
-Deno.test("the name is Pinto Notes, and only the links that open the app and Emil's address stay on ambernotes.app", () => {
+Deno.test("the name is Pinto Notes, and only the links that open the app stay on ambernotes.app", () => {
   for (const e of all) {
     assertEquals(/Amber Notes/i.test(e.subject + e.preview + e.html + e.text), false, e.kind);
     for (const m of (e.html + e.text).matchAll(/[^\s"<>()]*ambernotes\.app[^\s"<>()]*/g)) {
-      assert(m[0].startsWith("https://ambernotes.app/open/") || m[0].startsWith("mailto:emil@ambernotes.app") || m[0] === "emil@ambernotes.app", `${e.kind}: ${m[0]}`);
+      assert(m[0].startsWith("https://ambernotes.app/open/"), `${e.kind}: ${m[0]}`);
     }
   }
 });
@@ -143,7 +143,7 @@ Deno.test("the apps email leads to the templates gallery's Apps filter", () => {
 
 Deno.test("every button goes somewhere specific: into the app, a page section, or a store", () => {
   const want: Record<string, string> = {
-    stuck: "mailto:emil@ambernotes.app", import: "https://ambernotes.app/open/import", connect: "https://ambernotes.app/open/connect-ai",
+    stuck: "mailto:emil@pintonotes.com", import: "https://ambernotes.app/open/import", connect: "https://ambernotes.app/open/connect-ai",
     undo: "https://ambernotes.app/open/history", apps: "https://pintonotes.com/templates?category=apps", templates: "https://pintonotes.com/templates",
     iphone: "https://apps.apple.com/", mac: "https://pintonotes.com/download", share: "https://pintonotes.com/help#share",
   };
@@ -167,7 +167,7 @@ Deno.test("nothing forces a width: pictures shrink with the column, corners are 
 });
 
 Deno.test("replies go to Emil", () => {
-  assertStringIncludes(render("stuck", ctx).html, "mailto:emil@ambernotes.app");
+  assertStringIncludes(render("stuck", ctx).html, "mailto:emil@pintonotes.com");
 });
 
 Deno.test("the welcome: what Pinto Notes is, one step for where the person is, and a reply line", () => {
