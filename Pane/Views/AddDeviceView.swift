@@ -11,8 +11,9 @@ import UIKit
 enum AddDeviceCopy {
     static var gateTitle: String { "Open your notes on this \(InstallID.kind)" }
     static let gateMessage = "On a device where Pinto Notes already works, go to Settings \u{203A} Security \u{203A} Add a device and scan this code."
-    /// Why the screen is there, before what to do: the notes exist, this device isn't linked yet.
-    static var gateWhy: String { "This account already has notes on another device. Link this \(InstallID.kind) to open them here." }
+    /// Why the screen is there, before what to do. Only what's known: the key isn't on this device.
+    /// (Not "on another device": a Mac that lost its key may be the account's only one.)
+    static var gateWhy: String { "This \(InstallID.kind) doesn\u{2019}t have the key to this account\u{2019}s notes. Link it to open them here." }
     static let codeLead = "Can\u{2019}t scan? Type this code there:"
     static let copyCode = "Copy code"
     static let copiedCode = "Copied"

@@ -13,6 +13,7 @@
     "items": [
       "Amber Notes is now Pinto Notes. It's the same app with the same notes, and your AI connections keep working",
       "On a Mac, the update renames the app to Pinto Notes. If you kept it in your Dock, drag Pinto Notes there again",
+      "If you downloaded the Mac app from our site, it asks for your key once after this update. Link the Mac from another device or type your recovery key, and Pinto Notes keeps the key on that Mac from then on. If you have neither, choose No device left? and Start fresh: the notes on your Mac are kept and uploaded again",
       "Work offline: keep writing without a connection, and everything syncs when you're back",
       "Files live in folders next to your notes, with 2 GB of storage and a Storage page in Settings",
       "PDFs open in a viewer with zoom, drag-out and Export, and pictures open in a viewer of their own",
