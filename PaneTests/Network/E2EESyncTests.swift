@@ -179,6 +179,38 @@ extension NetworkFaults {
         await a.engine.stop()
     }
 
+    /// Start fresh on this device, which remembers no key id (it never finished a sync with its
+    /// key, or lost the memory): its notes, Recently Deleted too, still go up under the new key.
+    @Test func startingFreshHereSendsEverythingUpEvenWithNoKeyRemembered() async throws {
+        let a = try device()
+        let n = a.context.createNote(in: .all, body: "Kept on this device")
+        let trashed = a.context.createNote(in: .all, body: "In Recently Deleted")
+        n.dirty = true
+        trashed.dirty = true
+        await a.engine.sync()
+        trashed.trashedAt = .now
+        trashed.dirty = true
+        await a.engine.sync()
+        #expect(!n.dirty && n.serverVersion > 0 && !trashed.dirty)
+        // No key id remembered, the server emptied by Start fresh here, a new key.
+        a.defaults.removeObject(forKey: SyncEngine.keyIDKey(user))
+        a.defaults.set(true, forKey: SyncEngine.uploadAgainKey(user))
+        StubSupabase.reset()
+        let fresh = Sealer(key: SymmetricKey(size: .bits256), user: user)
+        await Wire.$testSealer.withValue(fresh) { await a.engine.sync() }
+        #expect(StubSupabase.rows("notes").count == 2, "both notes go up again")
+        let box = StubSupabase.rows("notes").first { ($0["id"] as? String)?.lowercased() == n.id.uuidString.lowercased() }?["body_ct"] as? String
+        #expect(box.flatMap { fresh.open($0, context: E2EE.body(n.id)) } == "Kept on this device", "sealed with the new key")
+        #expect(a.context.note(n.id) != nil && a.context.note(trashed.id) != nil, "and stay on this device")
+        #expect(!a.defaults.bool(forKey: SyncEngine.uploadAgainKey(user)), "once")
+        // Without the mark and without a remembered key id, nothing is sent again.
+        a.defaults.removeObject(forKey: SyncEngine.keyIDKey(user))
+        StubSupabase.reset()
+        await Wire.$testSealer.withValue(fresh) { await a.engine.sync() }
+        #expect(StubSupabase.rows("notes").isEmpty)
+        await a.engine.stop()
+    }
+
     @Test func aNoteDeletedForGoodKeepsNoBoxes() async throws {
         let a = try device()
         let n = a.context.createNote(in: .all, body: "Short-lived")
