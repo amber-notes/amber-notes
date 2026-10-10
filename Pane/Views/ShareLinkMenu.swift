@@ -108,9 +108,14 @@ struct SupabaseShareLinks: ShareLinkService {
     /// The note's live link, only when this account's key made it (its tag verifies): a share row
     /// planted or changed without the key reads as not shared.
     func current(note: UUID) async throws -> (slug: String, includesSubNotes: Bool)? {
-        guard let user,
-              let live = try await SharePublisher.liveShare(note: note, client: client),
-              SharePublisher.verifies(live, note: note, sealer: Wire.sealer, account: user) else { return nil }
+        guard let user else { ShareLinkStore.log.notice("share lookup: no account"); return nil }
+        guard let live = try await SharePublisher.liveShare(note: note, client: client) else { return nil }
+        guard SharePublisher.verifies(live, note: note, sealer: Wire.sealer, account: user) else {
+            // Why, without the slug or the tag: no key here, a link this account stopped, or a tag that isn't this key's.
+            let why = Wire.sealer == nil ? "no key" : RevokedShares.contains(live.slug, account: user) ? "stopped before" : "tag"
+            ShareLinkStore.log.notice("share lookup: a live row that doesn't verify (\(why, privacy: .public))")
+            return nil
+        }
         return (live.slug, live.include_subnotes)
     }
 
@@ -485,9 +490,13 @@ final class ShareLinkStore {
         self.service = service
         if !same { state = ShareLinkState(); answered = false }
         guard let service else { return }
+        Self.log.notice("share lookup: asking")
         do {
             let found = try await service.current(note: note)
-            guard noteID == note, !state.isWorking else { return }
+            guard noteID == note, !state.isWorking else {
+                Self.log.notice("share lookup: answer dropped (another note, or sharing under way)")
+                return
+            }
             state.phase = found.map { .shared(slug: $0.slug, includesSubNotes: $0.includesSubNotes) } ?? .notShared
             answered = true
             Self.log.notice("share lookup: \(found == nil ? "no live link" : "live link", privacy: .public)")
@@ -499,7 +508,7 @@ final class ShareLinkStore {
         }
     }
 
-    private static let log = Logger(subsystem: "dev.emilwagman.pane", category: "share")
+    nonisolated static let log = Logger(subsystem: "dev.emilwagman.pane", category: "share")
 
     /// The account's live links, as every sync reads and checks them (SyncEngine.liveSlugs), say
     /// this note has one: the note shows it at once, with no request of its own. So a link made on
@@ -507,7 +516,7 @@ final class ShareLinkStore {
     func follow(note: UUID, listed: (slug: String, includesSubNotes: Bool)?) {
         guard let listed, noteID == note, !state.isWorking else { return }
         let phase = ShareLinkState.Phase.shared(slug: listed.slug, includesSubNotes: listed.includesSubNotes)
-        if state.phase != phase { state.phase = phase }
+        if state.phase != phase { state.phase = phase; Self.log.notice("share state: taken from the account's live links") }
         answered = true
     }
 
