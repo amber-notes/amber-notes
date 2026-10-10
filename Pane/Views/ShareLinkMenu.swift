@@ -617,7 +617,15 @@ struct ShareLinkMenuSection: View {
     var body: some View {
         if store.isAvailable {
             Section {
-                if store.state.slug == nil {
+                if note.trashedAt != nil {
+                    // In Recently Deleted: the page is down while the note is here (the server
+                    // takes its copy away) and comes back if the note is restored. Nothing to
+                    // share or copy; the link can be stopped for good.
+                    if store.state.slug != nil {
+                        Button("Stop Sharing", systemImage: "xmark.circle", role: .destructive) { Task { await store.stopSharing() } }
+                            .accessibilityIdentifier("share.stop")
+                    }
+                } else if store.state.slug == nil {
                     Button("Share Link…", systemImage: "link") { store.requestShare() }
                         .disabled(store.state.isWorking)
                         .accessibilityIdentifier("share.create")
@@ -680,7 +688,7 @@ private struct ShareLinkChrome: ViewModifier {
                 .animation(.snappy(duration: 0.22), value: store.state.feedback)
             }
             .overlay(alignment: .topTrailing) {
-                if store.state.slug != nil, store.state.feedback == nil, !note.isLocked {
+                if store.state.slug != nil, store.state.feedback == nil, !note.isLocked, note.trashedAt == nil {
                     Button { Task { await store.shareAndCopy() } } label: {
                         Label("Shared", systemImage: "link")
                             .font(.caption.weight(.medium))
