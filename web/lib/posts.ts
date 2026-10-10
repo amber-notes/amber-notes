@@ -29,7 +29,7 @@ export type Post = {
 
 /// The ground a cover (and the post's first picture) sits on: the site's palette, the help page's
 /// leaf brown, the app's dark look, or the home page's dunes.
-export type Ground = "paper" | "soft" | "tint" | "amber" | "leaf" | "dark" | "dunes" | "ink" | "peach" | "cream" | "sand" | "clay" | "mist" | "honey" | "sage" | "heather" | "blush" | "wheat" | "fog" | "dusk" | "pearl" | "linen" | "night" | "rose" | "mint" | "sky" | "lemon" | "coral" | "lagoon" | "denim" | "slate" | "olive" | "plum";
+export type Ground = "paper" | "soft" | "tint" | "amber" | "leaf" | "dark" | "dunes" | "ink" | "peach" | "cream" | "sand" | "clay" | "mist" | "honey" | "sage" | "heather" | "blush" | "wheat" | "fog" | "dusk" | "pearl" | "linen" | "night" | "rose" | "mint" | "sky" | "lemon" | "coral" | "lagoon" | "denim" | "slate" | "olive" | "plum" | "teal";
 
 /// A card's picture: one real capture of the element the post is about, on the post's ground. The
 /// capture is cropped at 2x (3x from iPhone) to about the card's width, so it shows at full size.
@@ -65,6 +65,18 @@ export const SHOTS = {
 } satisfies Record<string, Shot>;
 
 export const posts: Post[] = [
+  {
+    slug: "weekly-review-with-chatgpt-or-claude",
+    title: "A weekly review with ChatGPT or Claude: the prompt and five questions",
+    description: "A prompt that makes ChatGPT or Claude run your weekly review: five questions, one at a time, then a short write-up with next week's top three.",
+    excerpt: "The AI asks five questions, you answer, and the week comes back as a few bullets and a top three. One prompt for any AI, and a way to keep every week in one note.",
+    category: "Guides",
+    date: "2026-10-10",
+    updated: "2026-10-10",
+    image: SHOTS.tracker,
+    thumb: thumb("teal", "thumb-tracker-week", 700, 462, "A tracker table in Pinto Notes with mood scores and ticked habits for six days"),
+    draft: false,
+  },
   {
     slug: "meeting-notes-to-action-items",
     title: "Turn meeting notes into action items with ChatGPT or Claude",
