@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import os
 import UniformTypeIdentifiers
 
 /// Lets toolbars and menus drive whichever editor is on screen.
@@ -67,7 +68,9 @@ final class EditorController {
             guard !Task.isCancelled else { return }
             imagesTried.insert(a.id)
             // Each shows as it arrives.
-            if await download(a) {
+            let ok = await download(a)
+            Self.log.notice("note image: \(ok ? "fetched" : Task.isCancelled ? "left before it arrived" : "fetch failed", privacy: .public)")
+            if ok {
                 imagesArrived += 1
             } else if Task.isCancelled {
                 // The note was left mid-request: not a try that failed.
@@ -77,16 +80,20 @@ final class EditorController {
     }
 
     func openAttachment(_ id: UUID) {
-        guard let a = resolveAttachment(id) else { return }
+        guard let a = resolveAttachment(id) else { Self.log.notice("open file: this device has no row for it"); return }
         let url = FileStore.url(for: a.id, filename: a.filename)
-        if FileStore.exists(a) { previewURL = url; return }
+        if FileStore.exists(a) { Self.log.notice("open file: here already"); previewURL = url; return }
+        Self.log.notice("open file: fetching (\(a.isImage ? "image" : "file", privacy: .public))")
         downloading.insert(id)
         Task {
             let ok = await download(a)
             downloading.remove(id)
+            Self.log.notice("open file: \(ok ? "fetched" : "fetch failed", privacy: .public)")
             if ok { previewURL = url; if a.isImage { imagesArrived += 1 } }
         }
     }
+
+    private nonisolated static let log = Logger(subsystem: "dev.emilwagman.pane", category: "files")
 
     /// Inserts embed lines for files at the caret, each on its own line.
     func insertFiles(_ files: [Attachment]) {
