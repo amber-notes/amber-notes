@@ -119,6 +119,10 @@ struct KeyGateView: View {
             if crypto.phase == .ready { screen = .auto }
             error = nil
         }
+        // Reports: which screen someone is on between signing in and their notes (Telemetry).
+        .onChange(of: Self.shown(crypto.phase, screen), initial: true) { _, shown in
+            Telemetry.shared.record(.gateShown(GateScreen(shown)))
+        }
     }
 
     @ViewBuilder private var content: some View {

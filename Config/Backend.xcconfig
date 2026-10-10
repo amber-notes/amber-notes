@@ -9,4 +9,10 @@ PANE_SHARE_URL = http:/$()/localhost:5210
 // The MCP server's public address, shown in Connect an AI (https://mcp.ambernotes.app for release
 // builds). Empty: the app shows the Supabase function's own address.
 PANE_MCP_URL =
+// Error reports and usage counts (docs/Technical/app-telemetry.md): the PostHog project key
+// (phc_…, the public write-only key the website's pages carry as NEXT_PUBLIC_POSTHOG_KEY) and the
+// EU host. Empty here, so a build sends nothing; release builds get the key from
+// Config/Backend.local.xcconfig. Debug builds and the Simulator never send, key or not.
+PANE_POSTHOG_KEY =
+PANE_POSTHOG_HOST = https:/$()/eu.i.posthog.com
 #include? "Backend.local.xcconfig"

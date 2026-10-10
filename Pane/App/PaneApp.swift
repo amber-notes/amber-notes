@@ -33,13 +33,24 @@ struct PaneApp: App {
         #else
         Self.styleLargeTitles()
         #endif
+        // Error reports and usage counts (Telemetry): the released app only, and first, so a failure
+        // further down this launch can be reported.
+        TelemetryGate.startIfAllowed()
         let args = ProcessInfo.processInfo.arguments
         let inMemory = args.contains("-uitest") || args.contains("-synctest") || ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
         if inMemory { UserDefaults.standard.removeObject(forKey: "lastScope") }
         // Performance runs can keep their library on disk, as the app does: `-uitest -perfStore /tmp/probe.store`.
         let perfStore = args.contains("-uitest") ? Capture.argument("-perfStore") : nil
         let config = perfStore.map { ModelConfiguration(url: URL(fileURLWithPath: $0)) } ?? ModelConfiguration("Pane", isStoredInMemoryOnly: inMemory)
-        container = try! ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: config)
+        do {
+            container = try ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: config)
+        } catch {
+            // The app can't run without its library and stops here, as it always has. The report
+            // is written to disk first and goes out at the next launch.
+            let (domain, code) = ErrorDomain.of(error)
+            Telemetry.shared.record(.storeOpenFailed(domain, code: code))
+            fatalError("The library couldn't be opened: \(error)")
+        }
         Self.sharedContainer = container
         if !inMemory {
             LocalUpkeep.keepServerAnswersOffDisk()
@@ -58,8 +69,16 @@ struct PaneApp: App {
         // Launching signed in with the key here: the session and the key this device kept, read
         // once before anything is drawn, so the first frame is the notes (not the card, then the
         // key check, then the notes). Both are checked with the server quietly afterwards.
+        var opensNotes = false
         if !args.contains("-signout"), let account = backend.restoreHeldSession() {
-            AccountCrypto.shared.openHeld(account: account)
+            opensNotes = AccountCrypto.shared.openHeld(account: account)
+        }
+        // Reports: the time from here to the notes, crashes and hangs from earlier runs (MetricKit),
+        // and "app opened".
+        Telemetry.shared.launched(opensNotes: opensNotes)
+        if Telemetry.shared.sends {
+            DiagnosticReports.shared.start()
+            TelemetryLifecycle.start { backend.userID != nil }
         }
         // Which device this is, for the list of devices that hold the key: in a Keychain item that stays on it.
         DeviceIdentity.shared = DeviceIdentity(store: inMemory ? MemoryDeviceIdentityStore() : KeychainDeviceIdentityStore())

@@ -109,6 +109,8 @@ targets:
         PaneURLScheme: $(PANE_URL_SCHEME)
         PaneBundleID: $(PANE_BUNDLE_ID)
         PaneAppGroup: $(PANE_APP_GROUP)
+        PanePostHogKey: $(PANE_POSTHOG_KEY)
+        PanePostHogHost: $(PANE_POSTHOG_HOST)
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
         NSAppleEventsUsageDescription: Pinto Notes reads the Apple Notes you choose to import. It never changes them.
@@ -255,6 +257,9 @@ targets:
       - path: supabase/functions/_shared/collab-vectors.json
         buildPhase: resources
       - path: supabase/migrations/20260929230000_tip_events.sql
+        buildPhase: resources
+      # The page that lists what the app reports, checked against the code (TelemetryTests).
+      - path: docs/Technical/app-telemetry.md
         buildPhase: resources
       # Collaboration's Automerge parts, built here against the real Automerge: the app doesn't
       # link it (see Pane/Collab/CollabText.swift).

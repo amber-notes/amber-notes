@@ -83,6 +83,9 @@ final class SyncEngine {
     private var refused: [UUID: Date] = [:]
     /// The last refusal's message, shown as the sync status.
     private(set) var problem: String?
+    /// Syncs that failed one after another, for reports: a failure is said once it has lasted
+    /// (FailureStreak), not for a tunnel or one slow answer.
+    private var failures = FailureStreak()
     /// The account the local library belongs to.
 
     private var cursorKey: String { "syncCursor.\(backend.userID?.uuidString ?? "none")" }
@@ -191,6 +194,7 @@ final class SyncEngine {
         resetOldLibraryIfNeeded()
         adoptKeyIfChanged(sealer.keyID)
         if pulling { status = .syncing }
+        let began = Date.now
         do {
             let slowedDown = try await push(client, sealer: sealer)
             await pushPages(client, sealer: sealer)
@@ -201,13 +205,16 @@ final class SyncEngine {
                 // settings weren't): everything comes down again, not just what changed since.
                 if cursor != .distantPast, Self.holdsNothing(context) { defaults.removeObject(forKey: cursorKey) }
                 let fromTheStart = cursor == .distantPast
+                let first = !hasSynced
                 try await pull(client)
                 hasSynced = true
                 if !knowsAccount {
                     accountIsNew = fromTheStart && Self.holdsNothing(context)
                     knowsAccount = true
                 }
+                reportSynced(seconds: Date.now.timeIntervalSince(began), first: first)
             }
+            failures.succeeded()
             // Only when it changes: views read it, and every write would redraw them.
             if lastReach != .online { lastReach = .online }
             if pulling { downloadKeptFiles() }
@@ -224,7 +231,27 @@ final class SyncEngine {
             log.error("sync failed: \(String(describing: error), privacy: .public)")
             status = .offline(Self.describe(error))
             if let r = Self.reach(after: error), r != lastReach { lastReach = r }
+            reportFailed(error, pulling: pulling)
         }
+    }
+
+    // MARK: Reports (Telemetry): how long syncs take, and failures that last. Kinds and codes only.
+
+    private func reportSynced(seconds: TimeInterval, first: Bool) {
+        Telemetry.shared.syncFinished(seconds: seconds, ok: true)
+        guard first, Telemetry.shared.isOn else { return }
+        // The first sync of this launch: how big the library is, as a range.
+        let notes = (try? context.fetchCount(FetchDescriptor<Note>(predicate: #Predicate { $0.deletedAt == nil }))) ?? 0
+        Telemetry.shared.record(.librarySize(LibrarySize(notes: notes)))
+        Telemetry.shared.record(.firstSync(milliseconds: Int(seconds * 1000)))
+    }
+
+    private func reportFailed(_ error: Error, pulling: Bool) {
+        let failure = FailureSummary(error)
+        // A request the app gave up itself isn't a failure.
+        guard failure.kind != .cancelled else { return }
+        if pulling { Telemetry.shared.syncFinished(seconds: 0, ok: false) }
+        if failures.failed() { Telemetry.shared.record(.syncFailed(failure, runs: failures.runs)) }
     }
 
     /// What a failed sync says about the connection; nil when it's about something else.
@@ -350,7 +377,7 @@ final class SyncEngine {
             if merge(r, folders: &folders) { changed.append(r.id) }
         }
         guard !changed.isEmpty else { return }
-        try? context.save()
+        context.saveOrReport()
         // Only devices publish shared pages: an AI's edit of a shared note reaches its page from here.
         republishShares(for: changed)
     }
@@ -395,7 +422,7 @@ final class SyncEngine {
         synced = [:]
         refused = [:]
         problem = nil
-        try? context.save()
+        context.saveOrReport()
         log.notice("the account has a new key: \(n) notes go up again")
     }
 
@@ -481,7 +508,11 @@ final class SyncEngine {
                 removed += 1
             }
         }
-        do { try context.save() } catch { log.error("local reset: save failed: \(String(describing: error), privacy: .public)") }
+        do { try context.save() } catch {
+            log.error("local reset: save failed: \(String(describing: error), privacy: .public)")
+            let (domain, code) = ErrorDomain.of(error)
+            Telemetry.shared.record(.storeSaveFailed(domain, code: code))
+        }
         return (removed, keptNotes.count)
     }
 
@@ -609,8 +640,10 @@ final class SyncEngine {
                     continue
                 }
                 switch Self.refusal(error) {
-                case .tooFast?: try? context.save(); return true
-                case .refused(let why)?: refuse(f.id, f.updatedAt, "A folder couldn't sync: \(why)")
+                case .tooFast?: context.saveOrReport(); return true
+                case .refused(let why)?:
+                    refuse(f.id, f.updatedAt, "A folder couldn't sync: \(why)")
+                    Telemetry.shared.record(.uploadRefused(.folder, FailureSummary(error)))
                 case .waits?: continue
                 case nil: throw error
                 }
@@ -642,9 +675,10 @@ final class SyncEngine {
                 }
             } catch {
                 switch Self.refusal(error) {
-                case .tooFast?: try? context.save(); return true
+                case .tooFast?: context.saveOrReport(); return true
                 case .refused(let why)?:
                     refuse(n.id, n.updatedAt, "“\(n.title)” couldn't sync: \(why)")
+                    Telemetry.shared.record(.uploadRefused(.note, FailureSummary(error)))
                     continue
                 case .waits?: continue
                 case nil: throw error
@@ -658,7 +692,7 @@ final class SyncEngine {
                 pushedNotes.append(n.id)
             }
         }
-        try? context.save()
+        context.saveOrReport()
         republishShares(for: pushedNotes)
         return false
     }
@@ -759,12 +793,14 @@ final class SyncEngine {
     /// so. Always false, so it reads as a filter.
     private func skipUnreadable(_ id: UUID, _ what: String) -> Bool {
         log.error("can't open \(id, privacy: .public): not sealed with this device's key")
+        Telemetry.shared.record(.rowUnreadable(what == "A folder" ? .folder : what == "A file" ? .file : .note))
         problem = "\(what) couldn't be opened on this device, so it was left as it is."
         return false
     }
 
     private func refuse(_ id: UUID, _ edited: Date, _ message: String) {
-        log.error("server refused \(id, privacy: .public): \(message, privacy: .public)")
+        // The message names the note or the file: never readable in the system log.
+        log.error("server refused \(id, privacy: .public): \(message, privacy: .private)")
         refused[id] = edited
         problem = message
     }
@@ -828,7 +864,7 @@ final class SyncEngine {
             for c in all where c.parent?.id == f.id && !ids.contains(c.id) { c.parent = nil }
         }
         for f in all where ids.contains(f.id) { context.erase(f) }
-        try? context.save()
+        context.saveOrReport()
         log.notice("removed \(ids.count) folders left by another account")
     }
 
@@ -922,7 +958,9 @@ final class SyncEngine {
             } catch {
                 switch Self.refusal(error) {
                 case .tooFast?: return true
-                case .refused(let why)?: refuse(a.id, a.createdAt, "“\(a.filename)” couldn't sync: \(why)")
+                case .refused(let why)?:
+                    refuse(a.id, a.createdAt, "“\(a.filename)” couldn't sync: \(why)")
+                    Telemetry.shared.record(.uploadRefused(.file, FailureSummary(error)))
                 case .waits?: continue
                 case nil: throw error
                 }
@@ -1016,6 +1054,7 @@ final class SyncEngine {
             return true
         } catch {
             log.error("download failed: \(String(describing: error), privacy: .public)")
+            Telemetry.shared.record(.fileDownloadFailed(FailureSummary(error)))
             return false
         }
     }
@@ -1312,7 +1351,7 @@ final class SyncEngine {
             if rows.count < 500 { break }
             offset += 500
         }
-        if changed { try? context.save() }
+        if changed { context.saveOrReport() }
         // Note pages (prototype): a backend without the table leaves this out; it never stops a sync.
         if let pages: [NotePageDTO] = try? await client.from("note_pages").select("note_id,page_ct,data_ct,client,updated_at,server_updated_at,draft_problems")
             .gt("server_updated_at", value: stamp).order("server_updated_at").execute().value {
@@ -1363,7 +1402,7 @@ final class SyncEngine {
         guard let n = context.note(r.id) else { return }
         if n.body != r.body { remoteChangeTick += 1 }
         apply(r, to: n)
-        try? context.save()
+        context.saveOrReport()
         // The server wrote it, so no push follows: a shared page is published from here.
         republishShares(for: [r.id])
     }

@@ -53,6 +53,8 @@ struct DeleteAccountButton: View {
             context.wipeLocalLibrary()
             // The server removed this device's push token with the account; stop registering here.
             PushRegistration.shared.accountDeleted()
+            // Reports that were waiting to be sent under the account's identifier are dropped.
+            Telemetry.shared.accountDeleted()
             await backend.signOut()
             dismiss()
         } catch FunctionsError.httpError(_, let data) where Backend.deletePausedMessage(data) != nil {

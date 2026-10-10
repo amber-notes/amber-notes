@@ -62,7 +62,11 @@ struct KeychainDeviceIdentityStore: DeviceIdentityStore {
         q[kSecReturnData as String] = true
         q[kSecMatchLimit as String] = kSecMatchLimitOne
         var out: CFTypeRef?
-        return Self.result(SecItemCopyMatching(q as CFDictionary, &out), out as? Data)
+        let status = SecItemCopyMatching(q as CFDictionary, &out)
+        if status != errSecSuccess, status != errSecItemNotFound {
+            Telemetry.shared.record(.keychainFailed(item: .deviceIdentity, operation: .read, status: Int(status)))
+        }
+        return Self.result(status, out as? Data)
     }
 
     /// Only "no such item" means there is none. Anything else (not yet unlocked since boot, a
@@ -84,8 +88,9 @@ struct KeychainDeviceIdentityStore: DeviceIdentityStore {
         // Change the item in place when it's there, so a failed write never leaves none.
         let changed = SecItemUpdate(query as CFDictionary, [kSecValueData as String: data] as CFDictionary)
         if changed == errSecSuccess { return true }
-        guard changed == errSecItemNotFound else { return false }
-        return SecItemAdd(update as CFDictionary, nil) == errSecSuccess
+        let status = changed == errSecItemNotFound ? SecItemAdd(update as CFDictionary, nil) : changed
+        if status != errSecSuccess { Telemetry.shared.record(.keychainFailed(item: .deviceIdentity, operation: .save, status: Int(status))) }
+        return status == errSecSuccess
     }
 }
 
