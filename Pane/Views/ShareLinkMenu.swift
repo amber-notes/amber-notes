@@ -565,6 +565,7 @@ final class ShareLinkStore {
 struct ShareLinkMenuSection: View {
     let store: ShareLinkStore
     let note: Note
+    @Environment(\.openURL) private var openURL
 
     var body: some View {
         if store.isAvailable {
@@ -576,8 +577,12 @@ struct ShareLinkMenuSection: View {
                 } else {
                     Button("Copy Link", systemImage: "link") { Task { await store.shareAndCopy() } }
                         .accessibilityIdentifier("share.copy")
+                    // A button like the rows around it, not a Link: on iPhone a Link in this menu
+                    // came several seconds after the link was made, so someone who opened Share
+                    // right after "Link created and copied" didn't find it.
                     if let url = store.url {
-                        Link(destination: url) { Label("Open Shared Page", systemImage: "safari") }
+                        Button("Open Shared Page", systemImage: "safari") { openURL(url) }
+                            .accessibilityIdentifier("share.open")
                     }
                     Toggle(isOn: Binding(get: { store.state.includesSubNotes },
                                          set: { v in

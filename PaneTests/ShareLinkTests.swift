@@ -57,6 +57,11 @@ private actor FakeShareLinks: ShareLinkService {
         #expect(store.state.slug == "AAAAAAAAAAAAAAAAAAAAAAAA")
         #expect(copied.count == 1)
         #expect(copied.first??.absoluteString.hasSuffix("/n/AAAAAAAAAAAAAAAAAAAAAAAA") == true)
+        // The page's address is there the moment the link is made, while "Link created and copied"
+        // still shows: Open Shared Page needs nothing more (no sync, no second lookup).
+        #expect(store.state.feedback == .done("Link created and copied"))
+        #expect(store.url == copied.first ?? nil && store.url != nil)
+        #expect(await fake.calls == ["current", "share false"])
 
         await store.setIncludesSubNotes(true)
         #expect(store.state.includesSubNotes)
