@@ -88,7 +88,7 @@ We count how features are used on our own server to improve the app. We never sh
 - **Account emails:** the code that confirms your email address, password reset links, and a notice when your password or email address changes.
 - **Onboarding emails:** a welcome email a couple of minutes after you sign up, then at most six short emails from Emil in your first 30 days, each about one next step in the app. Every one has a "Stop these emails" link, and using it stops them all. They go only to a confirmed email address.
 - **How we pick them:** from what your account has done so far, such as how many notes it has, which kinds of device it uses, whether an AI is connected, and which features have been used. Never from what's in a note.
-- **What we record:** which of these emails were sent to you and when, whether you unsubscribed, and, if you click a link in one, which email it was in and the page the link leads to.
+- **What we record:** which of these emails were sent to you and when, whether you unsubscribed, that you replied to one (the time, not what you wrote), and, if you click a link in one, which email it was in and the page the link leads to.
 
 **Visits to the website**
 
