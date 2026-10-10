@@ -1,4 +1,5 @@
 import Foundation
+import SwiftData
 import SwiftUI
 import Observation
 import Supabase
@@ -181,4 +182,24 @@ enum InstallID {
     static func report(_ client: SupabaseClient) async {
         _ = try? await client.rpc("pane_seen_device", params: ["device": value.uuidString.lowercased(), "platform": platform]).execute()
     }
+}
+
+extension ModelContext {
+    /// The setup guide's "To-do" note, made only when the account has none anywhere: in any folder,
+    /// not just the one on screen. Call it only once the account's notes have come down
+    /// (`SyncEngine.knowsAccount`). Nil when there is one already.
+    @MainActor @discardableResult
+    func makeToDoNoteIfMissing() -> Note? {
+        let notes = (try? fetch(FetchDescriptor<Note>())) ?? []
+        let exists = notes.contains { $0.deletedAt == nil && $0.trashedAt == nil && $0.title.caseInsensitiveCompare(SetupProgress.toDoTitle) == .orderedSame }
+        guard !exists else { return nil }
+        let home = allFolders().first { $0.name == "Notes" && $0.parent == nil }
+        return createNote(in: home.map { .folder($0.id) } ?? .all, body: SetupProgress.toDoBody)
+    }
+}
+
+extension SetupProgress {
+    static let toDoTitle = "To-do"
+    /// The note exactly as the app makes it: a title and nothing else.
+    static let toDoBody = "To-do\n\n"
 }

@@ -357,6 +357,7 @@
 		99F02185BA07B1CE0C09D5F2 /* EmailSignInFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8960C267A4A73E8377D155D6 /* EmailSignInFlow.swift */; };
 		9A4C902422F875CEC5697BA5 /* Push.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B20F92D2A50287948FFA111 /* Push.swift */; };
 		9A931A983A0828FAF1A3E667 /* TableGrid.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1C50C228D538B5E390EF49D /* TableGrid.swift */; };
+		9AC61EA2CCEC618177AB5F99 /* SeedOnceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22BCBAB1EBC8999FBAD18CAC /* SeedOnceTests.swift */; };
 		9B78E28CE0BEF3893B5DD7E0 /* NotePageMacShots.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB7BCC25070DF499252B44F3 /* NotePageMacShots.swift */; };
 		9B7A13572B7D217C65DB502C /* E2EE.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE72D528EBDE663B26CDC39D /* E2EE.swift */; };
 		9B888A54169E0DEEA7664EF2 /* ShareLinks.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AD2A5599581D39A27243D0F /* ShareLinks.swift */; };
@@ -649,6 +650,7 @@
 		205EB78628F64ADE88A5BF62 /* Info-Direct.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "Info-Direct.plist"; sourceTree = "<group>"; };
 		20BEF7BDF0FB91CAF7F007D5 /* NetFault.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetFault.swift; sourceTree = "<group>"; };
 		212906CC78A0D33147DA9115 /* AIEditTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIEditTests.swift; sourceTree = "<group>"; };
+		22BCBAB1EBC8999FBAD18CAC /* SeedOnceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeedOnceTests.swift; sourceTree = "<group>"; };
 		23048764AEDD0924DCD67868 /* WikiLinksTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WikiLinksTests.swift; sourceTree = "<group>"; };
 		233EDFD11A3301976CFE967B /* sunset.webp */ = {isa = PBXFileReference; path = sunset.webp; sourceTree = "<group>"; };
 		24D8355994666F6DBB272BC0 /* amber-ui.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "amber-ui.json"; sourceTree = "<group>"; };
@@ -1413,6 +1415,7 @@
 				3F30A429F7F8E70DCBAAD7C3 /* ImportSyncTests.swift */,
 				527730BB3E3E09A863D6895A /* NetFaultTests.swift */,
 				B2F4669A5302E1C0A8EC6874 /* OfflineTests.swift */,
+				22BCBAB1EBC8999FBAD18CAC /* SeedOnceTests.swift */,
 				52A05065D6AC46E02DC096AF /* StubSupabase.swift */,
 				7DE5145EFFCEE51D61F16FCD /* SyncFaultTests.swift */,
 				4D2F57DF5286D7F9C5F954F1 /* TwoDeviceLiveSyncTests.swift */,
@@ -2042,6 +2045,7 @@
 				2E4EF9FAFC33E26233CC539F /* SaveTests.swift in Sources */,
 				20F4E1295A4016791245DD8A /* ScanPerfTests.swift in Sources */,
 				8C0B6E76641724BE0382A626 /* ScopeTests.swift in Sources */,
+				9AC61EA2CCEC618177AB5F99 /* SeedOnceTests.swift in Sources */,
 				B88F52D6647598EBCF2A195B /* SessionStorageTests.swift in Sources */,
 				8DECEC26D23538850E24676A /* SetupTests.swift in Sources */,
 				810C645C26D79F76CCEE9B91 /* ShareAskSnapshots.swift in Sources */,

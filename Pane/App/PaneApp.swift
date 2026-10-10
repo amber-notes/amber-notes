@@ -890,13 +890,18 @@ struct AppGate: View {
             Task { await n.start() }
         }
         await sync.start()
-        // Seed only when the server really has nothing, never after a failed sync. A real
-        // account starts with an empty Notes folder: the setup card is its welcome.
-        if sync.hasSynced {
+        // A first folder only for an account that has never held anything, which only its first
+        // pull can say: never after a failed sync, and never for an account that already has a
+        // library (a second device, a reinstall). A real account starts with an empty Notes
+        // folder: the setup card is its welcome.
+        if sync.claimNewAccount() {
             Seed.ensureLibrary(context, demo: false, welcome: false)
             sync.schedule()
         }
         await setup.refresh(force: true)
+        // The setup guide's To-do note, now that the account's notes are here to say whether it
+        // has one already (the note list makes it when the guide gets to that step later).
+        if sync.knowsAccount, setup.progress?.needsToDoNote == true, context.makeToDoNoteIfMissing() != nil { SyncSignal.changed() }
         // Tips wait for this: never a tip for something this account has used anywhere.
         await FeatureUse.refresh()
         await shareAsk.refresh()
