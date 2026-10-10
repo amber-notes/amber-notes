@@ -65,17 +65,38 @@ struct NoteListView: View {
     }
 
     private func scoped(from all: [NoteEntry]) -> [NoteEntry] {
-        all.filter { e in
+        let nested = Self.nested(in: all, context: context)
+        return all.filter { e in
             guard !e.deleted else { return false }
-            // Sub-notes live inside their parent, not in the list. (Few notes have a
-            // parent, so looking each one up is cheaper than indexing every note.)
-            if e.parentID != nil, context.isNested(e.note) { return false }
+            // Sub-notes live inside their parent, not in the list.
+            if nested.contains(e.id) { return false }
             switch scope {
             case .all: return !e.trashed
             case .trash: return e.trashed
             case .folder(let id): return !e.trashed && e.folderID == id
             }
         }
+    }
+
+    /// The sub-notes still linked from their parent (`ModelContext.isNested`), for the whole
+    /// list at once. Each parent is found among the entries the list already holds: asked of
+    /// the store one sub-note at a time, a library with a few hundred sub-notes spent a fetch
+    /// on each of them whenever the list was worked out, which is every time a note is opened.
+    /// Without sub-notes nothing is looked up at all.
+    static func nested(in all: [NoteEntry], context: ModelContext) -> Set<UUID> {
+        var parents: [UUID: Note]?
+        var out: Set<UUID> = []
+        for e in all {
+            guard let pid = e.parentID else { continue }
+            if parents == nil { parents = Dictionary(all.map { ($0.id, $0.note) }, uniquingKeysWith: { first, _ in first }) }
+            // A parent the list doesn't hold yet (made a moment ago, not saved) is asked of the store.
+            guard let parent = parents?[pid] else {
+                if context.isNested(e.note) { out.insert(e.id) }
+                continue
+            }
+            if parent.deletedAt == nil, parent.body.contains("pane-note:\(e.id.uuidString.lowercased())") { out.insert(e.id) }
+        }
+        return out
     }
 
     private var filtered: [NoteEntry] {
@@ -141,14 +162,23 @@ struct NoteListView: View {
         let visible = filtered(from: scopedNotes, all: all)
         let files = scopedFiles
         let visibleFiles = filteredFiles(from: files)
-        let folders = context.allFolders().sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
-        return list(scopedNotes, visible, files, visibleFiles, folders)
+        return list(scopedNotes, visible, files, visibleFiles)
             #if os(iOS)
             .task { await watchListTip() }
             #endif
     }
 
-    private func list(_ scopedNotes: [NoteEntry], _ visible: [NoteEntry], _ scopedFiles: [Attachment], _ visibleFiles: [Attachment], _ folders: [Folder]) -> some View {
+    /// The folders by name, for the menus that move things. Asked for when a menu is, not
+    /// each time the list is worked out: fetching and sorting every folder was part of every
+    /// update of the list (every note opened), for menus nobody had asked for.
+    private var foldersByName: [Folder] {
+        #if DEBUG
+        RenderProbe.count("NoteListView.foldersByName")
+        #endif
+        return context.allFolders().sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+    }
+
+    private func list(_ scopedNotes: [NoteEntry], _ visible: [NoteEntry], _ scopedFiles: [Attachment], _ visibleFiles: [Attachment]) -> some View {
         List(selection: $selection) {
             // An ask to connect an AI whose sheet was closed without an answer: always a way back.
             if scope != .trash, search.isEmpty, let ask = connectCenter.waiting().first {
@@ -257,7 +287,7 @@ struct NoteListView: View {
         }
         // Right-click acts on the whole selection when the row is part of it, like Notes.
         .contextMenu(forSelectionType: UUID.self) { ids in
-            menu(for: ids, folders: folders)
+            menu(for: ids, folders: foldersByName)
         }
         #if os(macOS)
         // Another folder or another library is another list, built new. Kept as one list,
@@ -396,7 +426,7 @@ struct NoteListView: View {
             if editMode.isEditing {
                 ToolbarItem(placement: .bottomBar) {
                     Menu("Move") {
-                        ForEach(folders) { f in
+                        ForEach(foldersByName) { f in
                             Button(f.name) { moveSelection(to: f) }
                         }
                     }
