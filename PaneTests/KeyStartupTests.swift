@@ -967,12 +967,15 @@ import Testing
         #expect(KeychainAccountKeyStore.usable(read: errSecItemNotFound, write: errSecSuccess))
     }
 
-    /// The sandboxed Developer ID beta: the read passes, the synced write is refused.
+    /// The Mac download (Developer ID, no provisioning profile), sandboxed like the beta or not:
+    /// the read passes (errSecItemNotFound) and every write is refused. Measured on macOS 26.5 with
+    /// a binary signed like the download, and in the system log of a Mac running 1.1.2, which
+    /// judged by the read alone, never saved the key and asked for it again at every launch.
     @Test func aReadThatPassesIsNotEnoughWhenTheWriteIsRefused() {
         #expect(!KeychainAccountKeyStore.usable(read: errSecItemNotFound, write: errSecMissingEntitlement))
     }
 
-    /// The unsandboxed download (Developer ID, no profile) and ad-hoc builds.
+    /// A build whose read is refused too.
     @Test func noEntitlementForTheReadMeansTheFallback() {
         #expect(!KeychainAccountKeyStore.usable(read: errSecMissingEntitlement, write: errSecMissingEntitlement))
     }
