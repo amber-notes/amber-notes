@@ -91,27 +91,36 @@ import Testing
 
     /// Settings: a click on a tab shows its page at once, the first visit included. Storage's
     /// numbers come from the server off the main thread; drawing the page only formats them.
+    ///
+    /// A first visit can only be timed once per window, so it is timed in three windows built
+    /// new, and each page is judged by the median of its three first visits (see PerfTiming): one
+    /// stalled sample on a loaded runner failed this test with every other number as usual.
     @Test func switchingSettingsTabs() async throws {
-        let view = try await AppSnapshotTests.settingsFixture()
-        let (w, host) = window(view.frame(width: 520, height: 700), width: 520)
-        defer { w.close(); ProfileStore.shared.showForPreview(name: nil, photo: nil) }
-        host.layoutSubtreeIfNeeded(); w.displayIfNeeded()
         let clock = ContinuousClock()
-        func show(_ tab: SettingsTab) -> Double {
-            let start = clock.now
-            view.route.tab = tab
-            host.layoutSubtreeIfNeeded()
-            w.displayIfNeeded()
-            return ms(clock.now - start)
-        }
-        var first: [SettingsTab: Double] = [:]
-        for tab in SettingsTab.allCases { first[tab] = show(tab) }
+        var firsts: [SettingsTab: [Double]] = [:]
         var again: [Double] = []
-        for _ in 0..<4 { for tab in SettingsTab.allCases { again.append(show(tab)) } }
+        for _ in 0..<3 {
+            let view = try await AppSnapshotTests.settingsFixture()
+            let (w, host) = window(view.frame(width: 520, height: 700), width: 520)
+            defer { w.close() }
+            host.layoutSubtreeIfNeeded(); w.displayIfNeeded()
+            await PerfTiming.quietMainQueue()
+            func show(_ tab: SettingsTab) -> Double {
+                let start = clock.now
+                view.route.tab = tab
+                host.layoutSubtreeIfNeeded()
+                w.displayIfNeeded()
+                return ms(clock.now - start)
+            }
+            for tab in SettingsTab.allCases { firsts[tab, default: []].append(show(tab)) }
+            for _ in 0..<4 { for tab in SettingsTab.allCases { again.append(show(tab)) } }
+        }
+        ProfileStore.shared.showForPreview(name: nil, photo: nil)
         again.sort()
+        let first = firsts.mapValues { PerfTiming.median($0) }
         let slowestFirst = first.values.max() ?? 0
         print("PERF settings tabs: first visit " + SettingsTab.allCases.map { "\($0.rawValue) \(String(format: "%.1f", first[$0] ?? 0))" }.joined(separator: ", ")
-              + " ms; switching back, median \(String(format: "%.1f", again[again.count / 2])) ms, slowest \(String(format: "%.1f", again.last ?? 0)) ms")
+              + " ms (medians of 3 windows; slowest single first visit \(String(format: "%.1f", firsts.values.joined().max() ?? 0)) ms); switching back, median \(String(format: "%.1f", again[again.count / 2])) ms, slowest \(String(format: "%.1f", again.last ?? 0)) ms")
         // A frame is 16 ms; a first visit builds the page, so it gets a little more.
         #expect(again[again.count / 2] < 16 * PerfBudget.slack, "switching to a page already shown")
         #expect(slowestFirst < 50 * PerfBudget.slack, "the first visit to a page")
@@ -226,8 +235,11 @@ extension AppPerfTests {
     /// a run was a second or more while the others were 110 to 320 ms, and judged by the worst
     /// of three the test failed at least four first attempts in two days (2026-10-09 and -10: worst samples 1,027,
     /// 1,057, 1,189 and 1,801 ms beside medians of 235, 251, 273 and 320 ms). A list that is slow
-    /// to rebuild is slow every time, so the median still catches it; the limit is unchanged.
-    /// Every sample is printed, with how long it waited, laid out and drew.
+    /// to rebuild is slow every time, so the median still catches it; the limit is unchanged
+    /// (see PerfTiming). The limit is five first displays; a switch back is usually about 1.4 of
+    /// them, so the 3 to 4 s case (twenty) fails and a 2x slowdown (about 2.8) shows in the
+    /// PERF line without failing, as before. Every sample is printed, with how long it waited,
+    /// laid out and drew.
     @Test(.timeLimit(.minutes(5))) func switchingBackToAllNotesBuildsTheListNew() async throws {
         let (c, notes) = try library(notes: 2_000, big: false)
         let ctx = c.mainContext
@@ -238,7 +250,7 @@ extension AppPerfTests {
         let clock = ContinuousClock()
         // What the test before left on the main queue (a library of 20,000 notes going away) is
         // done before anything is timed.
-        await quietMainQueue()
+        await PerfTiming.quietMainQueue()
         let (w, host) = window(ScopedList(box: box).modelContainer(c))
         defer { w.close() }
         struct Sample { var total = 0.0, wait = 0.0, layout = 0.0, draw = 0.0 }
@@ -272,7 +284,7 @@ extension AppPerfTests {
             try? await Task.sleep(for: .milliseconds(200))
             #expect((table()?.numberOfRows ?? 0) > 1_000)
         }
-        func median(_ samples: [Sample]) -> Double { samples.map(\.total).sorted()[samples.count / 2] }
+        func median(_ samples: [Sample]) -> Double { PerfTiming.median(samples.map(\.total)) }
         func list(_ samples: [Sample]) -> String {
             samples.map { String(format: "%.0f (wait %.0f, layout %.0f, draw %.0f)", $0.total, $0.wait, $0.layout, $0.draw) }.joined(separator: ", ")
         }
@@ -280,19 +292,6 @@ extension AppPerfTests {
         print("PERF list of 2000 notes, each switch in order, ms: to the folder \(list(toFolder)); back \(list(back))")
         #expect(median(back) < max(first, 100) * 5, "back to All Notes costs about what showing the list first did")
         #expect(median(toFolder) < max(first, 100) * 5)
-    }
-
-    /// Waits until the main queue has nothing of note left to do: five turns in a row that each
-    /// come back within 20 ms, or two seconds at most.
-    func quietMainQueue() async {
-        let clock = ContinuousClock()
-        let deadline = clock.now + .seconds(2)
-        var quiet = 0
-        while quiet < 5, clock.now < deadline {
-            let start = clock.now
-            try? await Task.sleep(for: .milliseconds(2))
-            quiet = ms(clock.now - start) < 20 ? quiet + 1 : 0
-        }
     }
 
     /// Milliseconds before the slack (CI multiplies by its slack of 4). Derived from CI's Debug runs
