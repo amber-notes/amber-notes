@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 import Security
 import Supabase
+import os
 #if os(iOS)
 import UIKit
 #else
@@ -107,16 +108,21 @@ struct SupabaseShareLinks: ShareLinkService {
     /// The note's live link, only when this account's key made it (its tag verifies): a share row
     /// planted or changed without the key reads as not shared.
     func current(note: UUID) async throws -> (slug: String, includesSubNotes: Bool)? {
-        guard let user,
-              let live = try await SharePublisher.liveShare(note: note, client: client),
-              SharePublisher.verifies(live, note: note, sealer: Wire.sealer, account: user) else { return nil }
+        guard let user else { ShareLinkStore.log.notice("share lookup: no account"); return nil }
+        guard let live = try await SharePublisher.liveShare(note: note, client: client) else { return nil }
+        guard SharePublisher.verifies(live, note: note, sealer: Wire.sealer, account: user) else {
+            // Why, without the slug or the tag: no key here, a link this account stopped, or a tag that isn't this key's.
+            let why = Wire.sealer == nil ? "no key" : RevokedShares.contains(live.slug, account: user) ? "stopped before" : "tag"
+            ShareLinkStore.log.notice("share lookup: a live row that doesn't verify (\(why, privacy: .public))")
+            return nil
+        }
         return (live.slug, live.include_subnotes)
     }
 
     func share(note: UUID, includeSubNotes: Bool) async throws -> String {
         guard let container, let user else { throw SharePublisher.Failure() }
         let slug = try await SharePublisher.share(note: note, includeSubNotes: includeSubNotes, client: client, container: container, user: user)
-        await MainActor.run { sync?.shareChanged(note, includesSubNotes: includeSubNotes) }
+        await MainActor.run { sync?.shareChanged(note, includesSubNotes: includeSubNotes, slug: slug) }
         return slug
     }
 
@@ -467,22 +473,57 @@ final class ShareLinkStore {
         await shareAndCopy()
     }
 
-    /// Called when the note on screen changes.
-    func load(note: UUID, service: ShareLinkService?) async {
-        // Same note, same account situation: keep what's shown.
-        if noteID == note, (service == nil) == (self.service == nil) { return }
+    /// Whether the server answered for this note: only an answer is kept. A lookup that failed
+    /// or was cancelled (the note's view going away mid-request) is asked again, so a note that
+    /// is shared never stays "not shared" for as long as it's open.
+    private var answered = false
+
+    /// Called when the note on screen changes, and (`again`) when the list of this account's live
+    /// links says something else than this note shows: a link made or stopped on another device.
+    func load(note: UUID, service: ShareLinkService?, again: Bool = false) async {
+        let same = noteID == note && (service == nil) == (self.service == nil)
+        // Same note, same account situation, and the server's answer is here: keep what's shown.
+        if same, answered, !again { return }
+        // Not while something is under way here (Share Link, Stop Sharing): that sets the state itself.
+        if same, state.isWorking { return }
         noteID = note
         self.service = service
-        state = ShareLinkState()
+        if !same { state = ShareLinkState(); answered = false }
         guard let service else { return }
+        Self.log.notice("share lookup: asking")
         do {
             let found = try await service.current(note: note)
-            guard noteID == note else { return }
+            guard noteID == note, !state.isWorking else {
+                Self.log.notice("share lookup: answer dropped (another note, or sharing under way)")
+                return
+            }
             state.phase = found.map { .shared(slug: $0.slug, includesSubNotes: $0.includesSubNotes) } ?? .notShared
+            answered = true
+            Self.log.notice("share lookup: \(found == nil ? "no live link" : "live link", privacy: .public)")
         } catch {
             // Offline or signed out: the menu still offers Share Link and reports what goes wrong.
-            if noteID == note { state.phase = .notShared }
+            // Not an answer: the next call asks again.
+            if noteID == note, !answered { state.phase = .notShared }
+            Self.log.notice("share lookup failed: \(String(describing: error), privacy: .public)")
         }
+    }
+
+    nonisolated static let log = Logger(subsystem: "dev.emilwagman.pane", category: "share")
+
+    /// The account's live links, as every sync reads and checks them (SyncEngine.liveSlugs), say
+    /// this note has one: the note shows it at once, with no request of its own. So a link made on
+    /// another device shows Shared, Copy Link and Stop Sharing wherever the list shows its mark.
+    func follow(note: UUID, listed: (slug: String, includesSubNotes: Bool)?) {
+        guard let listed, noteID == note, !state.isWorking else { return }
+        let phase = ShareLinkState.Phase.shared(slug: listed.slug, includesSubNotes: listed.includesSubNotes)
+        if state.phase != phase { state.phase = phase; Self.log.notice("share state: taken from the account's live links") }
+        answered = true
+    }
+
+    /// Whether the account's list of live links says something else than the note shows, while
+    /// nothing is under way here.
+    nonisolated static func disagrees(listed: Bool, state: ShareLinkState) -> Bool {
+        !state.isWorking && listed != (state.slug != nil)
     }
 
     /// The note was locked: the server stops its link when that syncs.
@@ -576,7 +617,15 @@ struct ShareLinkMenuSection: View {
     var body: some View {
         if store.isAvailable {
             Section {
-                if store.state.slug == nil {
+                if note.trashedAt != nil {
+                    // In Recently Deleted: the page is down while the note is here (the server
+                    // takes its copy away) and comes back if the note is restored. Nothing to
+                    // share or copy; the link can be stopped for good.
+                    if store.state.slug != nil {
+                        Button("Stop Sharing", systemImage: "xmark.circle", role: .destructive) { Task { await store.stopSharing() } }
+                            .accessibilityIdentifier("share.stop")
+                    }
+                } else if store.state.slug == nil {
                     Button("Share Link…", systemImage: "link") { store.requestShare() }
                         .disabled(store.state.isWorking)
                         .accessibilityIdentifier("share.create")
@@ -639,7 +688,7 @@ private struct ShareLinkChrome: ViewModifier {
                 .animation(.snappy(duration: 0.22), value: store.state.feedback)
             }
             .overlay(alignment: .topTrailing) {
-                if store.state.slug != nil, store.state.feedback == nil, !note.isLocked {
+                if store.state.slug != nil, store.state.feedback == nil, !note.isLocked, note.trashedAt == nil {
                     Button { Task { await store.shareAndCopy() } } label: {
                         Label("Shared", systemImage: "link")
                             .font(.caption.weight(.medium))
@@ -694,8 +743,29 @@ private struct ShareLinkChrome: ViewModifier {
             }
             #endif
             .task(id: note.id) {
-                await store.load(note: note.id, service: backend?.client.map { SupabaseShareLinks(client: $0, container: context.container, sync: sync) })
+                let id = note.id, service = self.service
+                // In a task of its own: the lookup isn't cancelled with this view's task (a note
+                // pushed from the list), and what the list already knows is taken either way.
+                await Task { await store.load(note: id, service: service) }.value
+                followList()
             }
+            // The account's live links changed (a sync): a link made on another device shows here
+            // at once; one stopped elsewhere is looked up again.
+            .onChange(of: sync?.liveSlugs[note.id]) { _, listed in
+                followList()
+                guard listed == nil, ShareLinkStore.disagrees(listed: false, state: store.state), store.noteID == note.id else { return }
+                let id = note.id, service = self.service
+                Task { await store.load(note: id, service: service, again: true) }
+            }
+    }
+
+    private var service: ShareLinkService? {
+        backend?.client.map { SupabaseShareLinks(client: $0, container: context.container, sync: sync) }
+    }
+
+    private func followList() {
+        guard let sync, let slug = sync.liveSlugs[note.id], let subs = sync.liveShares[note.id] else { return }
+        store.follow(note: note.id, listed: (slug, subs))
     }
 
     private var alertTitle: String {

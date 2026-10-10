@@ -531,6 +531,7 @@ extension NetworkFaults {
         StubSupabase.answer("publish_share") { _ in ["slug": slug, "missing_files": [String]()] }
         await a.engine.sync()
         #expect(a.engine.liveShares[root.id] == true)
+        #expect(a.engine.liveSlugs[root.id] == slug, "with its slug, for the open note")
         try await waitForPublishes(a.engine)
         var before = publishes().count
 
