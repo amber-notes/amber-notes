@@ -41,6 +41,14 @@ final class SyncEngine {
     var reach: Reach { path.isUp ? lastReach : .offline }
     /// True once a sync has completed since launch.
     private(set) var hasSynced = false
+    /// The signed-in account's library has come down: a pull finished since this sign-in. Until
+    /// then an empty library says nothing about the account, and nothing may be made for it (a
+    /// first folder, the setup guide's To-do note): on a second device, or after a reinstall,
+    /// each of those went up as a duplicate.
+    private(set) var knowsAccount = false
+    /// That first pull started from nothing and brought nothing: an account that has never held
+    /// anything. Asked once (`claimNewAccount`).
+    private var accountIsNew = false
     /// Bumps when a pull changed a note, so an open editor can refresh.
     private(set) var remoteChangeTick = 0 { didSet { lastChange = .now } }
 
@@ -188,7 +196,18 @@ final class SyncEngine {
             await pushPages(client, sealer: sealer)
             await pushPageData(client, sealer: sealer)
             await pushAPIKeyNames(client, sealer: sealer)
-            if pulling { try await pull(client); hasSynced = true }
+            if pulling {
+                // An empty library that remembers where sync was (the library was removed and the
+                // settings weren't): everything comes down again, not just what changed since.
+                if cursor != .distantPast, Self.holdsNothing(context) { defaults.removeObject(forKey: cursorKey) }
+                let fromTheStart = cursor == .distantPast
+                try await pull(client)
+                hasSynced = true
+                if !knowsAccount {
+                    accountIsNew = fromTheStart && Self.holdsNothing(context)
+                    knowsAccount = true
+                }
+            }
             // Only when it changes: views read it, and every write would redraw them.
             if lastReach != .online { lastReach = .online }
             if pulling { downloadKeptFiles() }
@@ -516,9 +535,25 @@ final class SyncEngine {
         }
     }
 
+    /// True once, for an account whose first pull showed it has never held anything: the moment
+    /// to give it its first folder. Never for an account that already has a library somewhere.
+    func claimNewAccount() -> Bool {
+        defer { accountIsNew = false }
+        return accountIsNew
+    }
+
+    /// No folder, note or file at all, not even a deleted one.
+    static func holdsNothing(_ context: ModelContext) -> Bool {
+        func none<T: PersistentModel>(_: T.Type) -> Bool { ((try? context.fetchCount(FetchDescriptor<T>())) ?? 1) == 0 }
+        return none(Folder.self) && none(Note.self) && none(Attachment.self)
+    }
+
     func stop() async {
         // Signed out: nothing already scheduled may still go up.
         started = false
+        // The next sign-in may be another account: what's known about this one goes.
+        knowsAccount = false
+        accountIsNew = false
         realtimeUp = false
         fallback?.cancel()
         fallback = nil

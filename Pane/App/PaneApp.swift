@@ -890,9 +890,11 @@ struct AppGate: View {
             Task { await n.start() }
         }
         await sync.start()
-        // Seed only when the server really has nothing, never after a failed sync. A real
-        // account starts with an empty Notes folder: the setup card is its welcome.
-        if sync.hasSynced {
+        // A first folder only for an account that has never held anything, which only its first
+        // pull can say: never after a failed sync, and never for an account that already has a
+        // library (a second device, a reinstall). A real account starts with an empty Notes
+        // folder: the setup card is its welcome.
+        if sync.claimNewAccount() {
             Seed.ensureLibrary(context, demo: false, welcome: false)
             sync.schedule()
         }
