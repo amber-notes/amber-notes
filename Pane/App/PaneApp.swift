@@ -1123,6 +1123,12 @@ private struct NoticeAlerts: ViewModifier {
             } message: {
                 Text(PrivacyCopy.recoveryChangedAlert)
             }
+            .alert(PrivacyCopy.notSavedTitle, isPresented: Binding(get: { notice == nil && disconnecting == nil && !crypto.recoveryKeyChangeNeedsSaying && crypto.keyNotSaved },
+                                                                   set: { if !$0 { crypto.keyNotSavedShown() } })) {
+                Button("OK", role: .cancel) { crypto.keyNotSavedShown() }
+            } message: {
+                Text(PrivacyCopy.notSavedMessage)
+            }
             .alert("Couldn't disconnect", isPresented: Binding(get: { problem != nil && notice == nil }, set: { if !$0 { problem = nil } })) {
                 Button("OK", role: .cancel) { problem = nil }
             } message: {

@@ -52,7 +52,12 @@ final class SessionStorage: AuthLocalStorage, @unchecked Sendable {
             Telemetry.shared.record(.keychainFailed(item: Self.item(key), operation: .save, status: Int(status)))
         }
         #if os(iOS)
-        try value.write(to: fileURL(for: key), options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+        var file = fileURL(for: key)
+        try value.write(to: file, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+        // Like the Keychain item it stands in for, it stays on this device: never in a backup.
+        var values = URLResourceValues()
+        values.isExcludedFromBackup = true
+        try? file.setResourceValues(values)
         #else
         // Owner-only from the moment the file exists, then swapped into place.
         let target = fileURL(for: key)

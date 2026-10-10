@@ -416,8 +416,9 @@ import Testing
         #expect(median < (Self.typingBudgets[count] ?? 120) * PerfBudget.slack, "a save while typing with \(count) notes")
     }
 
-    /// Milliseconds on a developer's Mac (CI multiplies by its slack of 4). CI's Debug runs on
-    /// 2026-10-08 measured 62 to 80 ms at 2,000 notes and 297 to 371 ms at 20,000.
+    /// Milliseconds before the slack (CI multiplies by its slack of 4). Derived from CI's Debug runs
+    /// on 2026-10-08, which measured 62 to 80 ms at 2,000 notes and 297 to 371 ms at 20,000. Not
+    /// measured on a developer's Mac yet. Never loosened to pass a run (docs/Technical/release-gate.md, Budgets).
     static let typingBudgets: [Int: Double] = [2_000: 120, 20_000: 300]
 }
 #endif
