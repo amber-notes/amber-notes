@@ -793,6 +793,13 @@ struct NoteListView: View {
     }
 }
 
+/// The list is the same list while it shows the same folder: the selection reaches it through its
+/// binding, and the action is the same action. Hiding or showing the sidebar hands the split
+/// view's columns over again, and without this the list was worked out again on every toggle.
+extension NoteListView: @MainActor Equatable {
+    static func == (a: NoteListView, b: NoteListView) -> Bool { a.scope == b.scope }
+}
+
 /// What the list needs to know about a note to place it: plain values, read from the note once
 /// and again only when the note changes.
 struct NoteEntry: Identifiable, DatedListItem {
