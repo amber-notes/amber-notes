@@ -167,7 +167,10 @@ private struct HoverHighlight<S: InsettableShape>: ViewModifier {
             .contentShape(shape)
             .modifier(HoverTracking(hovering: $hovering))
         #else
-        content
+        // No pointer highlight here, but the whole shape still takes the tap: without it only the
+        // drawn parts of a label do, and the empty middle of a wide row (a file card in a note on
+        // an iPad) took none.
+        content.contentShape(shape)
         #endif
     }
 }
