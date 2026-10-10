@@ -35,6 +35,8 @@ final class Telemetry: @unchecked Sendable {
     private var saidThisLaunch = Set<String>()
     private var timings = SyncTimings()
     private var flushing = false
+    /// Sends on its own a little after an event is recorded. Tests send by hand.
+    private var timed = true
     private var pending: Task<Void, Never>?
     private var pendingAt = Date.distantFuture
     private var launchedAt: Date?
@@ -42,10 +44,11 @@ final class Telemetry: @unchecked Sendable {
 
     init() {}
 
-    /// Tests: one that sends through `transport`.
+    /// Tests: one that sends through `transport`, and only when `flush` is called.
     convenience init(config: TelemetryConfig, transport: TelemetryTransport, store: TelemetryQueueStore = MemoryTelemetryQueue(),
                      defaults: UserDefaults, now: @escaping @Sendable () -> Date = { .now }) {
         self.init()
+        timed = false
         start(config, transport: transport, store: store, defaults: defaults, now: now)
     }
 
@@ -207,7 +210,7 @@ final class Telemetry: @unchecked Sendable {
     /// Lock held. Keeps the earliest of the sends asked for.
     private func schedule(after seconds: TimeInterval) {
         let at = now().addingTimeInterval(seconds)
-        guard pending == nil || at < pendingAt else { return }
+        guard timed, pending == nil || at < pendingAt else { return }
         pending?.cancel()
         pendingAt = at
         pending = Task { [weak self] in
