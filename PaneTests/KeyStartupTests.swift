@@ -255,6 +255,22 @@ import Testing
         #expect(second.phase == .ready && keychain.synced[user] == made && keychain.pending[user] == nil)
     }
 
+    /// `-keyFault`, for walking those paths on a device: development builds only.
+    @Test func theKeyFaultSwitchIsForDevelopmentBuildsOnly() {
+        #expect(KeyFault.from(["Pane", "-keyFault", "synced"], development: true) == .synced)
+        #expect(KeyFault.from(["Pane", "-keyFault", "all"], development: true) == .all)
+        // The released app and Pinto Notes Beta: never, whatever the arguments say.
+        #expect(KeyFault.from(["Pane", "-keyFault", "synced"], development: false) == nil)
+        #expect(KeyFault.from(["Pane", "-keyFault", "all"], development: false) == nil)
+        #expect(KeyFault.from(["Pane"], development: true) == nil)
+        #expect(KeyFault.from(["Pane", "-keyFault"], development: true) == nil)
+        #expect(KeyFault.from(["Pane", "-keyFault", "everything"], development: true) == nil)
+        #expect(KeyFault.synced.refuses(.synced) && !KeyFault.synced.refuses(.local) && !KeyFault.synced.refuses(.pending))
+        #expect(KeySlot.allCases.allSatisfy { KeyFault.all.refuses($0) })
+        // This test run asked for none.
+        #expect(KeyFault.active == nil)
+    }
+
     // MARK: Startup
 
     @Test func foundInTheKeychain() async throws {
