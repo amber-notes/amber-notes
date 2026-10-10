@@ -29,7 +29,7 @@ enum ShareAsk {
     /// No ask this soon after a keystroke.
     static let typingQuiet: TimeInterval = 10
 
-    static let site = "https://ambernotes.app"
+    static let site = "https://pintonotes.com"
     static let postText = "I\u{2019}ve been using Pinto Notes: a simple notes app for iPhone and Mac that ChatGPT and Claude can actually read and edit. Free."
 
     enum Choice: String, Sendable { case sharedX = "shared_x", sharedLinkedIn = "shared_linkedin", starredGitHub = "starred_github", dismissed }

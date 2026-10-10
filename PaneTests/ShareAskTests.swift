@@ -415,11 +415,11 @@ import Testing
     @Test func theLinksCarryThePost() throws {
         let x = ShareAsk.xURL.absoluteString
         #expect(x.hasPrefix("https://x.com/intent/post?text=I%E2%80%99ve%20been%20using%20Pinto%20Notes%3A%20a%20simple%20notes%20app"))
-        #expect(x.hasSuffix("&url=https%3A%2F%2Fambernotes.app"))
+        #expect(x.hasSuffix("&url=https%3A%2F%2Fpintonotes.com"))
         let text = try #require(URLComponents(url: ShareAsk.xURL, resolvingAgainstBaseURL: false)?.queryItems?.first { $0.name == "text" }?.value)
         #expect(text == ShareAsk.postText)
         #expect(text.hasSuffix("ChatGPT and Claude can actually read and edit. Free."))
-        #expect(ShareAsk.linkedInURL.absoluteString == "https://www.linkedin.com/sharing/share-offsite/?url=https%3A%2F%2Fambernotes.app")
+        #expect(ShareAsk.linkedInURL.absoluteString == "https://www.linkedin.com/sharing/share-offsite/?url=https%3A%2F%2Fpintonotes.com")
     }
 
     @Test func theOpenSourceLinksGoToGitHub() {

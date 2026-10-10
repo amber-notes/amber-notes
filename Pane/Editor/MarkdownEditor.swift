@@ -707,6 +707,22 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
     var currentSelection: NSRange { selectedRange }
 
     func apply(_ edit: TextEdit) {
+        // The keyboard is somewhere else, in a table cell say. Through the text-input call
+        // below, iOS then ran the new text past that keyboard's smart punctuation a moment
+        // later: a table's `---` came out as `—` and it was a table no more. Straight into
+        // the storage, as a change from elsewhere goes in, the text stays as given.
+        guard isFirstResponder else {
+            guard NSMaxRange(edit.range) <= textStorage.length else { return }
+            let keep = selectedRange
+            textStorage.replaceCharacters(in: edit.range, with: edit.replacement)
+            // Undo steps recorded against the old text would land in the wrong place now.
+            undoManager?.removeAllActions()
+            let caret = min(edit.caret, textStorage.length)
+            selectedRange = caret >= 0 ? NSRange(location: caret, length: 0)
+                : TextDiff.map(keep, through: TextDiff.Edit(range: edit.range, replacement: edit.replacement))
+            textDidChange()
+            return
+        }
         guard let start = position(from: beginningOfDocument, offset: edit.range.location),
               let end = position(from: start, offset: edit.range.length),
               let range = textRange(from: start, to: end) else { return }

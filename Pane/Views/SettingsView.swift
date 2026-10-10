@@ -506,8 +506,14 @@ private struct AppleIDRow: View {
                 .accessibilityIdentifier("settings.connectApple")
             } label: {
                 Text("Sign in with Apple")
+                // On iPhone the second line of a row's label is already drawn in the secondary
+                // colour: asking for it again made it fainter than the Sync line above.
                 Text(error ?? "Sign in on every device without a password.")
+                    #if os(iOS)
+                    .foregroundStyle(error == nil ? AnyShapeStyle(.primary) : AnyShapeStyle(.red))
+                    #else
                     .foregroundStyle(error == nil ? AnyShapeStyle(.secondary) : AnyShapeStyle(.red))
+                    #endif
             }
         }
     }
