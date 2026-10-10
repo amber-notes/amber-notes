@@ -385,6 +385,8 @@ final class SyncEngine {
     // MARK: A new key for the account
 
     nonisolated static func keyIDKey(_ user: UUID) -> String { "e2ee.keyID.\(user.uuidString.lowercased())" }
+    /// Set when this device starts fresh (AccountCrypto.startFresh), until its notes are marked to go up again.
+    nonisolated static func uploadAgainKey(_ user: UUID) -> String { "e2ee.uploadAgain.\(user.uuidString.lowercased())" }
 
     /// The account's key changed since this device last synced: someone chose Start fresh, and the
     /// server's notes went with the old key. What this device still has goes up again, sealed with
@@ -393,7 +395,11 @@ final class SyncEngine {
         guard let uid = backend.userID else { return }
         let known = defaults.string(forKey: Self.keyIDKey(uid))
         defaults.set(keyID, forKey: Self.keyIDKey(uid))
-        guard let known, known != keyID else { return }
+        // Start fresh was done on this device: the server is empty whatever key id this device
+        // remembers (or doesn't: one that never finished a sync with its key remembers none).
+        let startedFreshHere = defaults.bool(forKey: Self.uploadAgainKey(uid))
+        defaults.removeObject(forKey: Self.uploadAgainKey(uid))
+        guard startedFreshHere || (known != nil && known != keyID) else { return }
         DebouncedSave.flushAll()
         let n = Self.markAllForUpload(context)
         defaults.removeObject(forKey: cursorKey)

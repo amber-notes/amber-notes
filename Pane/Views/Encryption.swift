@@ -1,3 +1,4 @@
+import SwiftData
 import SwiftUI
 
 /// After sign-in, before the notes, while this device doesn't have the account's key: a code for
@@ -46,9 +47,19 @@ struct KeyGateView: View {
     /// The code this device shows while it waits to be added.
     @State private var session: NewDeviceSession
 
-    init(crypto: AccountCrypto, backend: Backend, screen: Screen = .auto, session: NewDeviceSession? = nil) {
+    /// How many notes this device holds (Recently Deleted too): they stay through Start fresh and
+    /// go up again under the new key (SyncEngine.adoptKeyIfChanged), and the screen says so.
+    let notesHere: Int
+
+    /// The notes Start fresh keeps on this device, counted as `SyncEngine.markAllForUpload` picks them.
+    static func countNotes(_ context: ModelContext) -> Int {
+        (try? context.fetchCount(FetchDescriptor<Note>(predicate: #Predicate { $0.deletedAt == nil }))) ?? 0
+    }
+
+    init(crypto: AccountCrypto, backend: Backend, screen: Screen = .auto, session: NewDeviceSession? = nil, notesHere: Int = 0) {
         self.crypto = crypto
         self.backend = backend
+        self.notesHere = notesHere
         _screen = State(initialValue: screen)
         _session = State(initialValue: session ?? NewDeviceSession(crypto: crypto, server: backend.client.map { SupabaseAddDevice(client: $0) }))
     }
@@ -302,7 +313,7 @@ struct KeyGateView: View {
         VStack(spacing: 18) {
             heading("Start fresh?", nil)
             VStack(alignment: .leading, spacing: 10) {
-                ForEach(Copy.startFreshMessage, id: \.self) { line in
+                ForEach(Copy.startFreshMessage(notesHere: notesHere), id: \.self) { line in
                     Text(line)
                         .font(.subheadline)
                         .foregroundStyle(Color.ink)
@@ -535,10 +546,17 @@ enum KeyCopy {
     static let recoveryHint = "If another device still opens your notes, it shows the key in Settings › Security."
     static let mismatch = "The key on this device isn't your account's current key."
     static let unreachable = "Connect to the internet. This device checks your key with Pinto Notes before opening your notes."
-    static let startFreshMessage = [
-        "Without a device that has your key, or a recovery key you saved, the notes stored with Pinto Notes can't be opened by anyone, including us. AI connections you approved can still open them until they're disconnected.",
-        "Starting fresh deletes them from our server and disconnects every AI. This device gets a new key and a new recovery key, and your account starts empty.",
-    ]
+    private static let startFreshWhy = "Without a device that has your key, or a recovery key you saved, the notes stored with Pinto Notes can't be opened by anyone, including us. AI connections you approved can still open them until they're disconnected."
+    /// What Start fresh does, by whether this device holds notes: they stay and go up again under
+    /// the new key (`notesHere`, KeyGateView.countNotes); with none here, the account starts empty.
+    static func startFreshMessage(notesHere: Int) -> [String] {
+        guard notesHere > 0 else {
+            return [startFreshWhy,
+                    "Starting fresh deletes them from our server and disconnects every AI. This device gets a new key and a new recovery key, and your account starts empty."]
+        }
+        return [startFreshWhy,
+                "Starting fresh deletes them from our server. The notes on this \(InstallID.kind) are kept and uploaded again under a new key, with a new recovery key. You lose version history, shared links, AI connections, and files that aren't on this \(InstallID.kind)."]
+    }
     static let signInAgain = "To delete your notes, sign in again first."
 
 }

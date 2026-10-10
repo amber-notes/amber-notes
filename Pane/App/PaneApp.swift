@@ -697,11 +697,11 @@ struct AppGate: View {
                 #if os(macOS)
                 // The welcome's window, picture and all, until the notes open: nothing moves or
                 // changes size between signing in and adding this Mac.
-                CardLayout { KeyGateView(crypto: crypto, backend: backend) }
+                CardLayout { KeyGateView(crypto: crypto, backend: backend, notesHere: KeyGateView.countNotes(context)) }
                     .cardWindow()
                     .transition(.opacity)
                 #else
-                KeyGateView(crypto: crypto, backend: backend)
+                KeyGateView(crypto: crypto, backend: backend, notesHere: KeyGateView.countNotes(context))
                     .transition(.opacity)
                 #endif
             case .disabled, .signedIn:

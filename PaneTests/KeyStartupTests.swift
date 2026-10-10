@@ -405,7 +405,20 @@ import Testing
         let row = try #require(server.row)
         #expect(new != old && new.matches(row, user: user))
         #expect(new.generation == 1 && server.generation == 1, "made in the new generation")
+        #expect(defaults.bool(forKey: SyncEngine.uploadAgainKey(user)), "what this device holds is to go up again")
         crypto.signedOut()
+    }
+
+    /// The key screens say only what's known. A Mac that lost its key may be the account's only
+    /// device, with all its notes still on it: Start fresh there keeps them and says so.
+    @Test func theKeyScreensSayWhatIsTrue() {
+        #expect(!AddDeviceCopy.gateWhy.contains("another device") && AddDeviceCopy.gateWhy.contains("doesn\u{2019}t have the key"))
+        let empty = KeyCopy.startFreshMessage(notesHere: 0), holding = KeyCopy.startFreshMessage(notesHere: 113)
+        #expect(empty.count == 2 && empty[1].contains("your account starts empty"))
+        #expect(holding.count == 2 && holding[0] == empty[0])
+        #expect(holding[1].contains("are kept and uploaded again under a new key") && !holding[1].contains("starts empty"))
+        #expect(holding[1].contains("You lose version history, shared links, AI connections, and files that aren't on this"))
+        for line in empty + holding + [AddDeviceCopy.gateWhy] { #expect(!line.contains("\u{2014}") && !line.contains("\u{2013}")) }
     }
 
     @Test func startFreshAfterAnotherDeviceAlreadyDid() async throws {

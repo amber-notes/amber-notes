@@ -30,16 +30,18 @@ import Testing
         let crypto = try await waiting()
         let session = NewDeviceSession(crypto: crypto, server: nil,
                                        preview: .showing(qr: E2EE.addDeviceQR(secret: Data((0x80 ..< 0x90).map { UInt8($0) })), code: "J699-754N-JTBS"))
-        let screens: [(String, KeyGateView.Screen)] = [("add-device", .auto), ("no-device", .noDevice), ("recovery", .recovery), ("start-fresh", .startFresh)]
+        // Start fresh twice: with no notes on this Mac, and with notes it keeps (a longer message).
+        let screens: [(String, KeyGateView.Screen, Int)] = [("add-device", .auto, 0), ("no-device", .noDevice, 0), ("recovery", .recovery, 0),
+                                                            ("start-fresh", .startFresh, 0), ("start-fresh-notes", .startFresh, 113)]
         let card = CGSize(width: WelcomeFlow.size.width, height: WelcomeFlow.size.height + 32)
-        for (name, screen) in screens {
-            let gate = KeyGateView(crypto: crypto, backend: Backend(), screen: screen, session: session)
+        for (name, screen, notesHere) in screens {
+            let gate = KeyGateView(crypto: crypto, backend: Backend(), screen: screen, session: session, notesHere: notesHere)
             // The step on its own, at its half's width: its natural height has to fit the card.
             let side = NSHostingView(rootView: gate.frame(width: card.width / 2).fixedSize(horizontal: false, vertical: true))
             #expect(side.fittingSize.height <= card.height, "\(name) fits the card (\(side.fittingSize.height) pt)")
             guard let dir = ProcessInfo.processInfo.environment["PANE_SNAPSHOT_DIR"] else { continue }
             for dark in [false, true] {
-                let host = NSHostingView(rootView: CardLayout { KeyGateView(crypto: crypto, backend: Backend(), screen: screen, session: session) }
+                let host = NSHostingView(rootView: CardLayout { KeyGateView(crypto: crypto, backend: Backend(), screen: screen, session: session, notesHere: notesHere) }
                     .frame(width: card.width, height: card.height))
                 host.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
                 host.frame = CGRect(origin: .zero, size: card)

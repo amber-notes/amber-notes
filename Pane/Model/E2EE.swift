@@ -1138,6 +1138,8 @@ final class AccountCrypto {
             if deleted {
                 // Every device hears of it (account_notices); this one did it, so it doesn't say so.
                 defaults.set(true, forKey: Self.startedFreshHereKey(account))
+                // What this device holds goes up again under the new key (SyncEngine.adoptKeyIfChanged).
+                defaults.set(true, forKey: SyncEngine.uploadAgainKey(account))
                 await removeAccountFiles?(account)
             }
         }
@@ -1201,7 +1203,7 @@ final class AccountCrypto {
     func forgetKey(account: UUID) {
         for slot in KeySlot.allCases { store.remove(account: account, slot: slot) }
         for key in [welcomedKey(account), Self.recoveryChangedKey(account), Self.recoveryChangeSaidKey(account), Self.startedFreshHereKey(account),
-                    Self.recoveryProvenKey(account), Self.hadKeyKey(account)] {
+                    Self.recoveryProvenKey(account), SyncEngine.uploadAgainKey(account), Self.hadKeyKey(account)] {
             defaults.removeObject(forKey: key)
         }
         if account == self.account { signedOut() }

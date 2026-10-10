@@ -25,7 +25,7 @@ Deno.env.delete("MCP_ALIAS_URLS");
 Deno.env.delete("CONNECT_PAGE_URL");
 Deno.env.set("MCP_PROXY_SECRET", "proxy-secret");
 
-const { handleOAuth, setPushSender, publicBase, resolveAccessToken, subpath, clientIP, cleanName, claimsATrustedName, displayName, claimedName, sha256Hex } = await import("./oauth.ts");
+const { handleOAuth, setPushSender, publicBase, resolveAccessToken, subpath, clientIP, cleanName, claimsATrustedName, hostClaimsATrustedName, KNOWN_CALLBACKS, displayName, claimedName, sha256Hex } = await import("./oauth.ts");
 const { handleRequest } = await import("./server.ts");
 
 // MARK: Database: every migration, on PGlite
@@ -503,6 +503,36 @@ Deno.test("F1: DCR refuses a known AI's name for a client whose redirect isn't t
   const { sql } = await db();
   const r = await registerAs(sql, "ChatGPT", [EVIL]);
   assert(r.status === 400 || r.body.client_name !== "ChatGPT", `registered as ${JSON.stringify(r.body.client_name)}`);
+});
+
+Deno.test("a return address may not borrow ChatGPT's, Claude's or Pinto Notes' name on another domain", async () => {
+  for (const u of ["https://claude.ai.attacker.example/cb", "https://chatgpt.com.attacker.example/connector/oauth/a", "https://c1aude-ai.example/cb",
+    "https://login-0penai.example/cb", "https://anthropic.example.net/cb", "https://pinto-notes.example/cb", "https://ambernotes.app.example/cb",
+    "https://xclaude.ai/cb"]) {
+    assert(hostClaimsATrustedName(u), u);
+  }
+  // Their own domains, loopback, and names that only share a few letters stay as they were.
+  for (const u of [...Object.keys(KNOWN_CALLBACKS), "https://chatgpt.com/connector/oauth/abc_123", "https://chat.openai.com/aip/x/oauth/callback",
+    "https://console.anthropic.com/cb", "https://CLAUDE.AI./cb", "https://pintonotes.com/cb", "http://localhost:53682/callback", "http://127.0.0.1/cb",
+    "https://example.com/claude/cb", "https://example.com/cb?from=chatgpt", "https://cursor.example/cb", "https://amber.example/cb", "https://pinto.example/cb"]) {
+    assert(!hostClaimsATrustedName(u), u);
+  }
+
+  const { sql } = await db();
+  const refused = await registerAs(sql, "Notes Helper", ["https://example.com/cb", "https://claude.ai.attacker.example/cb"]);
+  assertEquals(refused.status, 400);
+  assertEquals(refused.body.error, "invalid_redirect_uri");
+  assertStringIncludes(refused.body.error_description, "https://claude.ai.attacker.example/cb");
+  const [{ n }] = await sql<{ n: number }[]>`select count(*)::int n from public.oauth_clients`;
+  assertEquals(n, 0);
+
+  // ChatGPT and Claude register as before, under their own names, and so does a local client.
+  const claude = await registerAs(sql, "Claude", ["https://claude.ai/api/mcp/auth_callback", "https://claude.com/api/mcp/auth_callback"]);
+  assertEquals([claude.status, claude.body.client_name], [201, "Claude"]);
+  const chatgpt = await registerAs(sql, "ChatGPT", [CHATGPT, "https://chatgpt.com/connector/oauth/abc_123", "https://platform.openai.com/apps-manage/oauth"]);
+  assertEquals([chatgpt.status, chatgpt.body.client_name], [201, "ChatGPT"]);
+  const local = await registerAs(sql, "Claude Code", ["http://localhost:53682/callback"]);
+  assertEquals(local.status, 201);
 });
 
 Deno.test("F1b: client_name has no bidi or control characters", async () => {
