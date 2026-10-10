@@ -556,17 +556,26 @@ struct KeychainAccountKeyStore: AccountKeyStore {
     private static func fallbackName(_ account: UUID, _ slot: KeySlot) -> String { "data-key-\(slot.rawValue)-\(account.uuidString.lowercased())" }
 
     func load(account: UUID, slot: KeySlot) -> StoredKey? {
-        guard Self.dataProtectionAvailable else {
-            guard let data = try? Self.fallback.retrieve(key: Self.fallbackName(account, slot)) else { return nil }
-            return StoredKey(encoded: data)
-        }
+        guard Self.dataProtectionAvailable else { return fallbackKey(account, slot) }
         var q = Self.query(account, slot: slot)
         q[kSecReturnData as String] = true
         q[kSecMatchLimit as String] = kSecMatchLimitOne
         var out: CFTypeRef?
-        guard SecItemCopyMatching(q as CFDictionary, &out) == errSecSuccess, let data = out as? Data else { return nil }
+        guard SecItemCopyMatching(q as CFDictionary, &out) == errSecSuccess, let data = out as? Data else {
+            // A key the Keychain refused to take was kept in the fallback (see `save`).
+            return Self.fallsBack(slot) ? fallbackKey(account, slot) : nil
+        }
         return StoredKey(encoded: data)
     }
+
+    private func fallbackKey(_ account: UUID, _ slot: KeySlot) -> StoredKey? {
+        guard let data = try? Self.fallback.retrieve(key: Self.fallbackName(account, slot)) else { return nil }
+        return StoredKey(encoded: data)
+    }
+
+    /// The slots that live on this device only can also live where the session does, when the
+    /// Keychain refuses a write. Never the synced one: what's there counts as in iCloud Keychain.
+    nonisolated static func fallsBack(_ slot: KeySlot) -> Bool { slot != .synced }
 
     func save(_ key: StoredKey, account: UUID, slot: KeySlot) -> Bool {
         guard Self.dataProtectionAvailable else {
@@ -579,12 +588,18 @@ struct KeychainAccountKeyStore: AccountKeyStore {
         q[kSecAttrLabel as String] = slot == .previous ? "Pinto Notes encryption key (before starting fresh)"
             : slot == .local ? "Pinto Notes encryption key (this device)" : "Pinto Notes encryption key"
         q[kSecValueData as String] = key.encoded
-        return SecItemAdd(q as CFDictionary, nil) == errSecSuccess
+        if SecItemAdd(q as CFDictionary, nil) == errSecSuccess { return true }
+        // The Keychain was there when the app started and refused this write all the same. A key
+        // that stays on this device anyway is kept where the session is instead; without that, the
+        // notes would open now and ask for the recovery key at the next launch.
+        guard Self.fallsBack(slot) else { return false }
+        return (try? Self.fallback.store(key: Self.fallbackName(account, slot), value: key.encoded)) != nil
     }
 
     func remove(account: UUID, slot: KeySlot) {
         if Self.dataProtectionAvailable {
             SecItemDelete(Self.query(account, slot: slot) as CFDictionary)
+            if Self.fallsBack(slot) { try? Self.fallback.remove(key: Self.fallbackName(account, slot)) }
         } else {
             try? Self.fallback.remove(key: Self.fallbackName(account, slot))
         }
@@ -734,6 +749,9 @@ final class AccountCrypto {
     /// The open key is kept as an iCloud Keychain item (which reaches the person's other iPhone
     /// and Mac when iCloud Keychain is on), not on this device only.
     private(set) var backedUp = false
+    /// The key is open but couldn't be saved anywhere on this device, so the next launch will ask
+    /// for it again: said once, plainly, so nobody finds out by being locked out.
+    private(set) var keyNotSaved = false
     /// The account's reset generation, as last seen.
     private var serverGeneration = 0
     private var startingFresh = false
@@ -859,8 +877,10 @@ final class AccountCrypto {
         guard let account else { return }
         switch decision {
         case .ready(let k, let verified, let promote):
-            if promote { store.save(k, account: account, slot: .synced) }
-            if verified { store.remove(account: account, slot: .pending) }
+            // A pending key that couldn't be kept anywhere else stays where it is, and the next
+            // launch tries again.
+            let kept = promote ? keep(k, account: account) : true
+            if verified, kept { store.remove(account: account, slot: .pending) }
             open(k, verified: verified)
         case .create(let g):
             await create(generation: g)
@@ -888,6 +908,18 @@ final class AccountCrypto {
         }
     }
 
+    /// Saves the account's key on this device: in the synced slot, or, when the Keychain refuses
+    /// that write, on this device only (the slot a handed-over key uses, which startup accepts
+    /// wherever the synced one is missing). The result of a save used to be ignored: the notes
+    /// opened, and the next launch had no key and asked for the recovery key. False when it
+    /// couldn't be kept in either.
+    private func keep(_ k: StoredKey, account: UUID) -> Bool {
+        store.save(k, account: account, slot: .synced) || store.save(k, account: account, slot: .local)
+    }
+
+    /// "Your key couldn't be saved" was shown.
+    func keyNotSavedShown() { keyNotSaved = false }
+
     /// The account's first launch. The new key stays on this device only until the server has
     /// taken it: a device that loses the race never overwrites the synced key, and one that goes
     /// offline or quits mid-way still has the key if the server took it after all.
@@ -896,15 +928,18 @@ final class AccountCrypto {
         let gen = generation
         let k = StoredKey.generate(generation: g)
         guard let row = try? k.serverRow(user: account) else { phase = .unreachable; return }
-        store.save(k, account: account, slot: .pending)
+        let pendingKept = store.save(k, account: account, slot: .pending)
         do {
             let (winner, created) = try await server.create(row, generation: g)
             guard gen == generation else { return }
             serverKey = winner
             if created, k.matches(winner, user: account) {
-                store.save(k, account: account, slot: .synced)
-                store.remove(account: account, slot: .pending)
+                // The pending copy goes only once the key is kept somewhere else on this device;
+                // while it stays, the next launch finds it and tries again.
+                let kept = keep(k, account: account)
+                if kept { store.remove(account: account, slot: .pending) }
                 open(k, verified: true, how: .made)
+                keyNotSaved = !kept && !pendingKept
             } else {
                 // Another device made the account's key first: that one it is.
                 store.remove(account: account, slot: .pending)
@@ -1064,9 +1099,10 @@ final class AccountCrypto {
         guard let dk = try? E2EE.unwrap(current.recovery_wrap, with: E2EE.recoveryKEK(bytes, user: account), purpose: "recovery", user: account),
               let k = StoredKey(dataKey: E2EE.bytes(dk), recovery: bytes, generation: serverGeneration),
               k.matches(current, user: account) else { throw KeyError.wrongKey }
-        store.save(k, account: account, slot: .synced)
+        let kept = keep(k, account: account)
         store.remove(account: account, slot: .pending)
         open(k, verified: true, how: .recovery)
+        keyNotSaved = !kept
         // Typing the recovery key proves it's saved somewhere: Settings › Security says so, here
         // and on the account's other devices. Offline, this device remembers and tells the server later.
         if current.recovery_saved_at == nil || recoveryKeyChanged {
@@ -1209,6 +1245,7 @@ final class AccountCrypto {
         backedUp = false
         unverified = false
         polls = 0
+        keyNotSaved = false
         showsKeychainHelp = false
         needsWelcome = false
         recoveryKeyChanged = false

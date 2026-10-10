@@ -46,6 +46,10 @@ enum PrivacyCopy {
     static let removeMessage = "It\u{2019}s signed out and its copy of your notes is erased the next time it\u{2019}s online. Notes on it that haven\u{2019}t synced are erased too. Anything it already showed could have been copied before that."
     static var removedTitle: String { "This \(InstallID.kind) was removed" }
     static let removedMessage = "Another of your devices removed it, so its copy of your notes was erased. To open them here again, sign in and add this device."
+    static var notSavedTitle: String { "Your key couldn\u{2019}t be saved on this \(InstallID.kind)" }
+    static var notSavedMessage: String {
+        "Your notes are open now, but this \(InstallID.kind) will ask for your key again the next time Pinto Notes opens. Save your recovery key first, in Settings \u{203A} Security, or keep another device at hand to add this one."
+    }
     static let showReason = "Show your recovery key"
     static let saveReason = "Save your recovery key"
     static let fileName = "Pinto Notes Recovery Key"

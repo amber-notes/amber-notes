@@ -26,6 +26,9 @@ import Testing
         /// The key another device handed over (Add a device): on this device only.
         var local: [UUID: StoredKey] = [:]
         private(set) var syncedWrites = 0
+        /// The Keychain refuses writes of the synced item (the Mac download's -34018), or all of them.
+        var refusesSynced = false
+        var refusesAll = false
 
         init(cloud: Cloud, autoReceive: Bool = true) {
             self.cloud = cloud
@@ -44,6 +47,7 @@ import Testing
         }
 
         func save(_ key: StoredKey, account: UUID, slot: KeySlot) -> Bool {
+            if refusesAll || (refusesSynced && slot == .synced) { return false }
             if slot == .pending { pending[account] = key; return true }
             if slot == .previous { previous[account] = key; return true }
             if slot == .local { local[account] = key; return true }
@@ -169,6 +173,86 @@ import Testing
         #expect(KeyStartup.decide(user: user, synced: later, pending: nil, server: .none(generation: 3)) == .replace(previous: later, generation: 3))
         #expect(KeyStartup.decide(user: user, synced: k, pending: nil, server: .unreachable) == .ready(k, verified: false, promote: false))
         #expect(KeyStartup.decide(user: user, synced: nil, pending: k, server: .unreachable) == .unreachable)
+    }
+
+    // MARK: A Keychain that refuses the key
+
+    /// What the 1.1.2 Mac download did: the synced write failed, nobody looked, the notes opened,
+    /// and the next launch had no key. Now the key is kept on this device instead.
+    @Test func aKeyTheKeychainRefusesToSyncIsKeptOnThisDevice() async throws {
+        let keychain = FakeKeychain(cloud: cloud, autoReceive: false)
+        keychain.refusesSynced = true
+        let (first, _) = device(keychain)
+        await first.attach(account: user, server: server)
+        #expect(first.phase == .ready && !first.keyNotSaved)
+        #expect(keychain.synced[user] == nil && keychain.local[user] != nil && keychain.pending[user] == nil)
+        #expect(!first.backedUp, "it isn't in iCloud Keychain, and Settings says so")
+        let made = try #require(keychain.local[user])
+
+        // The next launch opens the notes with it, at once and after asking the server.
+        let (second, _) = device(keychain)
+        #expect(second.openHeld(account: user))
+        await second.attach(account: user, server: server)
+        #expect(second.phase == .ready && !second.keyNotSaved)
+        let row = try #require(server.row)
+        #expect(made.matches(row, user: user), "the same key, never a new one")
+        #expect(server.creates == 1)
+    }
+
+    @Test func theRecoveryKeyOpensAndStaysWhenTheKeychainRefusesToSync() async throws {
+        let k = try existingKey()
+        let keychain = FakeKeychain(cloud: cloud, autoReceive: false)
+        keychain.refusesSynced = true
+        let (first, _) = device(keychain)
+        await first.attach(account: user, server: server)
+        #expect(first.phase == .waiting)
+        try await first.recover(typed: k.recoveryText)
+        #expect(first.phase == .ready && !first.keyNotSaved && keychain.local[user] == k)
+
+        let (second, _) = device(keychain)
+        await second.attach(account: user, server: server)
+        #expect(second.phase == .ready, "not asked for the recovery key again")
+    }
+
+    /// Nothing on the device takes the key: the notes open, and the app says plainly that the
+    /// next launch will ask again. Once.
+    @Test func aKeyThatCouldNotBeSavedAnywhereIsSaid() async throws {
+        let k = try existingKey()
+        let keychain = FakeKeychain(cloud: cloud, autoReceive: false)
+        keychain.refusesAll = true
+        let (crypto, _) = device(keychain)
+        await crypto.attach(account: user, server: server)
+        #expect(!crypto.keyNotSaved, "nothing to say while there's no key")
+        try await crypto.recover(typed: k.recoveryText)
+        #expect(crypto.phase == .ready && crypto.keyNotSaved)
+        crypto.keyNotSavedShown()
+        #expect(!crypto.keyNotSaved)
+
+        // The same for a key made here.
+        server.row = nil
+        let (maker, _) = device(keychain)
+        await maker.attach(account: user, server: server)
+        #expect(maker.phase == .ready && maker.keyNotSaved)
+        maker.signedOut()
+        #expect(!maker.keyNotSaved)
+    }
+
+    /// The synced write fails but the pending copy is there: nothing is lost, the pending copy
+    /// stays, and the next launch (with a Keychain that works again) moves it over.
+    @Test func aPendingKeyStaysUntilItIsKeptSomewhereElse() async throws {
+        let keychain = FakeKeychain(cloud: cloud, autoReceive: false)
+        let (first, _) = device(keychain)
+        let made = StoredKey.generate()
+        keychain.pending[user] = made
+        server.row = try made.serverRow(user: user)
+        keychain.refusesAll = true
+        await first.attach(account: user, server: server)
+        #expect(first.phase == .ready && !first.keyNotSaved && keychain.pending[user] == made)
+
+        keychain.refusesAll = false
+        let (second, _) = device(keychain)
+        await second.attach(account: user, server: server)
+        #expect(second.phase == .ready && keychain.synced[user] == made && keychain.pending[user] == nil)
     }
 
     // MARK: Startup
