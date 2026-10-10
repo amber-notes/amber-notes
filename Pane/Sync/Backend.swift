@@ -449,6 +449,14 @@ final class Backend {
         // No more pushes for this account here: this device's token row goes while the session
         // can still delete it, then the device stops registering.
         await PushRegistration.shared.signingOut()
-        try? await client?.auth.signOut()
+        guard let client else { return }
+        // The server ends a session only for an access token that's still good: an expired one is
+        // answered 401, which the client takes as "signed out already", and the session lives on
+        // there for whoever holds its refresh token (a copy in a backup, or a Keychain item that
+        // couldn't be deleted). So the session is refreshed first when it has run out. Offline,
+        // this device still signs out; the server isn't told.
+        _ = try? await client.auth.session
+        // This session only: the account's other devices stay signed in.
+        try? await client.auth.signOut(scope: .local)
     }
 }
