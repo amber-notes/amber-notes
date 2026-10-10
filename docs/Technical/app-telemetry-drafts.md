@@ -47,7 +47,8 @@ with
 >
 > With each: the app's version, iPhone, iPad or Mac, the system version, and your account's
 > identifier, so we can tell that one account keeps hitting the same problem. Before you sign in,
-> a random identifier made for the installation is used instead.
+> a random identifier is used instead, made new each time the app starts and never stored on
+> your device.
 >
 > They never send your notes, titles, folder or file names, what you search for, anything an AI
 > wrote, your email address, your recovery key or any other key, or your device's name. The app
@@ -107,7 +108,8 @@ Replacement text for `docs/app-privacy-answers.md`. The data types in step 3 bec
 >    - **User Content → Other User Content** (as today)
 >    - **Identifiers → User ID** (the account identifier). Purposes: **App Functionality** and
 >      **Analytics** (it's sent with diagnostics and usage reports).
->    - **Identifiers → Device ID** (a random identifier for the installation). Purposes: **App
+>    - **Identifiers → Device ID** (the installation identifier the app already keeps on our own
+>      server, as today; the diagnostics reports store no device identifier). Purposes: **App
 >      Functionality** and **Analytics**.
 >    - **Usage Data → Product Interaction** (feature counts on our own server, and the app's
 >      product events: app opened, signed in, first note, first sync, AI connected). Purposes:
@@ -147,7 +149,7 @@ Each of these is true today and stops being true with the release. Suggested wor
 | `docs/appstore/metadata.md` line 51 | • No ads, no tracking, no analytics | • No ads, no tracking |
 | `docs/appstore/metadata.md` line 135 (review notes) | The app has no in-app purchases, ads or tracking. | Can stay. Consider adding to the review notes: "The app sends error reports and usage counts to PostHog (EU); the switch is in Settings, General." |
 | `docs/appstore/metadata-mac.md` line 108 (external services) | Supabase, Sign in with Apple, Apple Push Notification service … | Add: PostHog (EU), for error reports and usage counts from the app. |
-| `docs/gdpr/records-of-processing.md` | PostHog: website only | Add an activity row: "App diagnostics and usage. Data subjects: app users. Data: account id or installation id, error codes, crash summaries, product events, performance numbers, app and OS version, device class. Purpose: finding and fixing errors, product improvement. Basis: legitimate interests, with an opt-out. Recipient: PostHog (EU). Retention: per PostHog's plan." And in the processor table, PostHog's row: "website and app". |
+| `docs/gdpr/records-of-processing.md` | PostHog: website only | Add an activity row: "App diagnostics and usage. Data subjects: app users. Data: account id (before sign-in, a random id made new at each launch and not stored), error codes, crash summaries, product events, performance numbers, app and OS version, device class. Purpose: finding and fixing errors, product improvement. Basis: legitimate interests, with an opt-out. Recipient: PostHog (EU). Retention: per PostHog's plan." And in the processor table, PostHog's row: "website and app". |
 
 ## 4. Words in the app
 

@@ -21,8 +21,10 @@ in the app reported it, and it went unnoticed for more than a week.
 - **The switch:** Settings › General › Share diagnostics and usage, on by default. Off, nothing is
   kept or sent, and what was waiting is dropped.
 - **Who an event is from:** the account's id once signed in, so "this account is stuck on the key
-  screen" can be answered. Before sign-in, a random id made for the install. Signing out replaces
-  the install id with a new one. Delete Account does too, and drops what was waiting unsent.
+  screen" can be answered. Before sign-in, a random id made when the app starts and kept in
+  memory only: no identifier is stored on the device, so two launches before sign-in can't be
+  linked. Signing out starts a new random id. Delete Account does too, and drops what was
+  waiting unsent.
 - **No profile:** every event says `$process_person_profile: false`, so PostHog keeps no person
   profile, and `$geoip_disable: true`, so it works out no location from the request.
 - **The queue:** events wait in `Application Support/Pane/telemetry-queue.jsonl`, at most 200;

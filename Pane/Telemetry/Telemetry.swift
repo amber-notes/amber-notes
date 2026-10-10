@@ -14,7 +14,6 @@ final class Telemetry: @unchecked Sendable {
 
     /// Settings › Share diagnostics and usage. On unless it was turned off.
     static let consentKey = "shareDiagnostics"
-    static let installKey = "telemetry.installID"
     static let onceKey = "telemetry.once"
     static let cap = 200
     static let batch = 50
@@ -32,6 +31,10 @@ final class Telemetry: @unchecked Sendable {
     /// doesn't remove what came after.
     private var epoch = 0
     private var account: UUID?
+    /// Who events are from before sign-in: a random identifier made when the app starts, kept in
+    /// memory only. Nothing that identifies the device is stored on it, so two launches before
+    /// sign-in can't be told to be the same device.
+    private var launchID = UUID().uuidString.lowercased()
     private var saidThisLaunch = Set<String>()
     private var timings = SyncTimings()
     private var flushing = false
@@ -90,7 +93,7 @@ final class Telemetry: @unchecked Sendable {
     // MARK: Who
 
     /// The account, once signed in: its events say which account, so "this account is stuck on the
-    /// key screen" can be answered. Before that, a random identifier made for this install.
+    /// key screen" can be answered. Before that, a random identifier made for this launch (`launchID`).
     func identify(_ account: UUID) {
         lock.withLock { self.account = account }
     }
@@ -101,7 +104,7 @@ final class Telemetry: @unchecked Sendable {
         lock.withLock {
             guard account != nil else { return }
             account = nil
-            forgetInstall()
+            startOver()
         }
     }
 
@@ -109,21 +112,14 @@ final class Telemetry: @unchecked Sendable {
     func accountDeleted() {
         lock.withLock {
             account = nil
-            forgetInstall()
+            startOver()
             empty()
         }
     }
 
-    private func forgetInstall() {
-        defaults.removeObject(forKey: Self.installKey)
+    private func startOver() {
+        launchID = UUID().uuidString.lowercased()
         defaults.removeObject(forKey: Self.onceKey)
-    }
-
-    private var installID: String {
-        if let id = defaults.string(forKey: Self.installKey), UUID(uuidString: id) != nil { return id }
-        let id = UUID().uuidString.lowercased()
-        defaults.set(id, forKey: Self.installKey)
-        return id
     }
 
     private func empty() {
@@ -147,7 +143,7 @@ final class Telemetry: @unchecked Sendable {
             }
             // Full: the newest is dropped, so a failure that floods never pushes out what led to it.
             guard queue.count < Self.cap else { return }
-            queue.append(TelemetryBody.event(event, id: account?.uuidString.lowercased() ?? installID, at: now(), context: config.context))
+            queue.append(TelemetryBody.event(event, id: account?.uuidString.lowercased() ?? launchID, at: now(), context: config.context))
             store?.save(queue)
             schedule(after: event.isError || queue.count >= Self.batch ? 2 : 60)
         }

@@ -322,7 +322,7 @@ private final class TelemetryDocToken {}
         #expect(again.waiting.isEmpty)
     }
 
-    @Test func eventsAreFromTheInstallUntilSignedInThenFromTheAccount() throws {
+    @Test func eventsAreFromTheLaunchUntilSignedInThenFromTheAccount() throws {
         let defaults = TestDefaults()
         let (telemetry, _) = makeTelemetry(defaults: defaults)
         func lastID() -> String? { telemetry.waiting.last?["distinct_id"] as? String }
@@ -330,7 +330,13 @@ private final class TelemetryDocToken {}
         let install = try #require(lastID())
         #expect(UUID(uuidString: install) != nil)
         telemetry.record(.signInFailed(.email, .network, status: nil))
-        #expect(lastID() == install, "the same install id until sign-in")
+        #expect(lastID() == install, "the same id until sign-in")
+        // Nothing that identifies the device is stored: the id isn't in the settings, and the
+        // next launch has another.
+        #expect(!defaults.dictionaryRepresentation().values.contains { ($0 as? String) == install })
+        let (next, _) = makeTelemetry(defaults: defaults)
+        next.record(.appOpened(launch: true, signedIn: false))
+        #expect(next.waiting.last?["distinct_id"] as? String != install, "a new id each launch before sign-in")
         let account = UUID()
         telemetry.identify(account)
         telemetry.record(.signedIn(.email))

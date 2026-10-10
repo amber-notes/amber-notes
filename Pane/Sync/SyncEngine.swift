@@ -767,7 +767,8 @@ final class SyncEngine {
     }
 
     private func refuse(_ id: UUID, _ edited: Date, _ message: String) {
-        log.error("server refused \(id, privacy: .public): \(message, privacy: .public)")
+        // The message names the note or the file: never readable in the system log.
+        log.error("server refused \(id, privacy: .public): \(message, privacy: .private)")
         refused[id] = edited
         problem = message
     }
