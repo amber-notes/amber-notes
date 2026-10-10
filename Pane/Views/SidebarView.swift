@@ -109,18 +109,17 @@ struct SidebarView: View {
     let onNewNote: () -> Void
 
     @Query(filter: #Predicate<Folder> { $0.deletedAt == nil }, sort: \Folder.sortIndex) private var folders: [Folder]
-    /// At most one note: this query is here so the sidebar updates whenever any note changes, as a
-    /// query of every note did. The counts come from the store (`counts`). A query of every note
-    /// fetched and sorted all of them again on every save while you type.
-    @Query(SidebarView.anyNote) private var noteChanges: [Note]
-    /// The same for files kept in folders.
+    /// At most one file: this query is here so the sidebar updates whenever a file kept in a
+    /// folder changes. The counts come from the store (`fileCounts`). What follows every note
+    /// is in the two rows that count notes (`CountedRow`), not here: here it worked out every
+    /// folder row five times for each save while you type (now once).
     @Query(SidebarView.anyFile) private var fileChanges: [Attachment]
     private static var anyFile: FetchDescriptor<Attachment> {
         var d = FetchDescriptor<Attachment>()
         d.fetchLimit = 1
         return d
     }
-    private static var anyNote: FetchDescriptor<Note> {
+    fileprivate static var anyNote: FetchDescriptor<Note> {
         var d = FetchDescriptor<Note>()
         d.fetchLimit = 1
         return d
@@ -135,11 +134,6 @@ struct SidebarView: View {
     @Environment(\.importActions) private var imports
     @Environment(Backend.self) private var backend: Backend?
     @Environment(SyncEngine.self) private var sync: SyncEngine?
-
-    private var counts: (live: Int, trashed: Int) {
-        _ = noteChanges
-        return Self.counts(in: context)
-    }
 
     /// All Notes and Recently Deleted, counted by the store (unsaved changes included).
     static func counts(in context: ModelContext) -> (live: Int, trashed: Int) {
@@ -175,13 +169,12 @@ struct SidebarView: View {
         #if DEBUG
         RenderProbe.count("SidebarView")
         #endif
-        let counts = self.counts
         let files = self.files
         return List(selection: $scope) {
             Section {
                 // "All Notes" only earns its row once there's more than one folder.
                 if folders.count > 1 {
-                    row("All Notes", icon: "tray.full", count: counts.live, files: files.live)
+                    CountedRow(title: "All Notes", icon: "tray.full", trash: false, files: files.live)
                         .tag(Scope.all)
                         .accessibilityIdentifier("sidebar.all")
                 }
@@ -189,7 +182,7 @@ struct SidebarView: View {
                     FolderTree(folder: folder, files: files.byFolder, dropTarget: dropTarget, targeted: folderTargeted, rename: startRename, newSub: startNewFolder, delete: deleteFolder)
                 }
                 // Last in the same list, like Notes.
-                row("Recently Deleted", icon: "trash", count: counts.trashed, files: files.trashed)
+                CountedRow(title: "Recently Deleted", icon: "trash", trash: true, files: files.trashed)
                     .tag(Scope.trash)
                     .accessibilityIdentifier("sidebar.trash")
             } header: {
@@ -317,22 +310,6 @@ struct SidebarView: View {
         }
     }
 
-    private func row(_ title: String, icon: String, count: Int, files: Int = 0) -> some View {
-        Label {
-            HStack {
-                Text(title)
-                Spacer()
-                Text(count + files, format: .number)
-                    .monospacedDigit()
-                    .foregroundStyle(.secondary)
-            }
-        } icon: {
-            SidebarIcon(name: icon)
-        }
-        .rowAccessibility(title, count: count, files: files)
-        .hoverRow(title, reach: Hover.sidebarReach())
-    }
-
     /// Keeps the selection on something that exists (see `Scope.settled`).
     private func settleScope() {
         let settled = Scope.settled(scope, liveFolders: folders.map(\.id))
@@ -369,6 +346,42 @@ struct SidebarView: View {
     private func performDelete(_ f: Folder) {
         if scope == .folder(f.id) { scope = .all }
         withAnimation(.snappy) { context.trash(f) }
+    }
+}
+
+/// "All Notes" or "Recently Deleted" with its count. The row follows every note itself: a query
+/// of at most one note, here so the row updates whenever any note changes, with the count taken
+/// from the store (unsaved changes included). In SidebarView that query worked out every folder
+/// row five times for each save while you type.
+private struct CountedRow: View {
+    @Environment(\.modelContext) private var context
+    @Query(SidebarView.anyNote) private var noteChanges: [Note]
+    let title: String
+    let icon: String
+    /// Recently Deleted's count, not All Notes'.
+    let trash: Bool
+    let files: Int
+
+    var body: some View {
+        #if DEBUG
+        let _ = RenderProbe.count("CountedRow")
+        #endif
+        let _ = noteChanges
+        let counts = SidebarView.counts(in: context)
+        let count = trash ? counts.trashed : counts.live
+        Label {
+            HStack {
+                Text(title)
+                Spacer()
+                Text(count + files, format: .number)
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+            }
+        } icon: {
+            SidebarIcon(name: icon)
+        }
+        .rowAccessibility(title, count: count, files: files)
+        .hoverRow(title, reach: Hover.sidebarReach())
     }
 }
 
