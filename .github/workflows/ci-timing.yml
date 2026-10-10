@@ -1,0 +1,24 @@
+name: ci timing
+
+# Every Monday: how long CI took, job by job and step by step, in this run's summary. It fails
+# when the week's runs that built the app took more than 15 minutes (median, created to done),
+# so a slow creep is seen. Run it by hand any time (Actions > ci timing > Run workflow).
+on:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  timing:
+    name: CI timing
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: The last 60 runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/ci/timing.py 60 --limit 15
