@@ -30,6 +30,14 @@ describe("the unsubscribe page", () => {
     }
   });
 
+  it("says a test email's link is a test, not a broken link", async () => {
+    const html = await page({ u: "test", t: "test" });
+    expect(html).toContain("This is a test email</h1>");
+    expect(html).toContain("nothing to stop");
+    expect(html).not.toContain("isn&#x27;t complete");
+    expect(html).not.toContain("<form");
+  });
+
   it("says a failed try and keeps the button", async () => {
     const html = await page({ u: U, t: T, failed: "1" });
     expect(html).toContain("didn&#x27;t go through");
