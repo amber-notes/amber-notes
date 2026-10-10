@@ -3,7 +3,8 @@ import SwiftData
 import ZIPFoundation
 
 /// Export your notes: everything in the library as markdown files in your folders, with the files
-/// they hold, in one zip.
+/// they hold and the files kept in folders on their own, in one zip. Every folder is there, also
+/// one with nothing in it.
 ///
 /// It's made on the device, from the local library: the notes are end-to-end encrypted, so the
 /// server can't read them to export them for you. Links between notes and to files point at the
@@ -71,21 +72,36 @@ enum NoteExport {
             texts[n.id] = text
         }
 
-        // Files the exported notes embed, under Files/.
+        // Every folder, so one that holds only files, or nothing, is in the export too.
+        for f in context.allFolders() {
+            try FileManager.default.createDirectory(at: top.appending(path: folderPath(f).joined(separator: "/")), withIntermediateDirectories: true)
+        }
+
+        // Files: one kept in a folder goes in that folder, beside its notes; one that only notes
+        // embed goes under Files/.
         var filePaths: [UUID: String] = [:]
+        var missing: Set<UUID> = []
+        func place(_ a: Attachment) async throws {
+            guard filePaths[a.id] == nil, !missing.contains(a.id) else { return }
+            if !FileStore.exists(a), !(await fetch(a)) { missing.insert(a.id); result.missingFiles += 1; return }
+            let home = a.folderID.flatMap { context.folder($0) }.map { folderPath($0) } ?? ["Files"]
+            let path = unique(home + [safeName(a.filename)], in: &used)
+            let dest = top.appending(path: path)
+            try FileManager.default.createDirectory(at: dest.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try FileManager.default.copyItem(at: FileStore.url(for: a.id, filename: a.filename), to: dest)
+            filePaths[a.id] = path
+            result.files += 1
+        }
         for n in notes {
             guard let text = texts[n.id] else { continue }
             for m in text.matches(of: /pane-file:([0-9a-fA-F-]{36})/) {
-                guard let id = UUID(uuidString: String(m.1)), filePaths[id] == nil,
-                      let a = context.attachment(id), a.deletedAt == nil else { continue }
-                if !FileStore.exists(a), !(await fetch(a)) { result.missingFiles += 1; continue }
-                let path = unique(["Files", safeName(a.filename)], in: &used)
-                let dest = top.appending(path: path)
-                try FileManager.default.createDirectory(at: dest.deletingLastPathComponent(), withIntermediateDirectories: true)
-                try FileManager.default.copyItem(at: FileStore.url(for: a.id, filename: a.filename), to: dest)
-                filePaths[id] = path
-                result.files += 1
+                guard let id = UUID(uuidString: String(m.1)), let a = context.attachment(id), a.deletedAt == nil else { continue }
+                try await place(a)
             }
+        }
+        // Files kept in a folder on their own, which no note has to mention. Recently Deleted stays out.
+        for a in context.folderFiles().filter({ $0.trashedAt == nil }).sorted(by: { $0.createdAt < $1.createdAt }) {
+            try await place(a)
         }
 
         for n in notes {
