@@ -161,6 +161,6 @@ jobs:
         run: |
           TAG="v$VERSION"
           git rev-parse "$TAG" >/dev/null 2>&1 || { git tag "$TAG" && git push origin "$TAG"; }
-          DMG="build/dist/Amber-Notes-$VERSION.dmg"
-          gh release create "$TAG" "$DMG" --title "Amber Notes $VERSION" --notes "${NOTES:-Amber Notes $VERSION}" \
+          DMG="build/dist/Pinto-Notes-$VERSION.dmg"
+          gh release create "$TAG" "$DMG" --title "Pinto Notes $VERSION" --notes "${NOTES:-Pinto Notes $VERSION}" \
             || gh release upload "$TAG" "$DMG" --clobber

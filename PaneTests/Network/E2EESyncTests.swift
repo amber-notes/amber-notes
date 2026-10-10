@@ -179,6 +179,47 @@ extension NetworkFaults {
         await a.engine.stop()
     }
 
+    /// Start fresh on this device, which remembers no key id (it never finished a sync with its
+    /// key, or lost the memory): its notes (Recently Deleted too), folders and files still go up
+    /// under the new key.
+    @Test func startingFreshHereSendsEverythingUpEvenWithNoKeyRemembered() async throws {
+        let a = try device()
+        let folder = a.context.createFolder(named: "Trips")
+        let file = try attach("file bytes", named: "plan.txt", to: a.context)
+        defer { removeLocalCopy(file) }
+        let n = a.context.createNote(in: .folder(folder.id), body: "Kept on this device\n\(file.markdown)")
+        let trashed = a.context.createNote(in: .all, body: "In Recently Deleted")
+        n.dirty = true
+        trashed.dirty = true
+        await a.engine.sync()
+        trashed.trashedAt = .now
+        trashed.dirty = true
+        await a.engine.sync()
+        #expect(!n.dirty && n.serverVersion > 0 && !trashed.dirty && !folder.dirty && file.uploaded)
+        // No key id remembered, the server emptied by Start fresh here, a new key.
+        a.defaults.removeObject(forKey: SyncEngine.keyIDKey(user))
+        a.defaults.set(true, forKey: SyncEngine.uploadAgainKey(user))
+        StubSupabase.reset()
+        let fresh = Sealer(key: SymmetricKey(size: .bits256), user: user)
+        await Wire.$testSealer.withValue(fresh) { await a.engine.sync() }
+        #expect(StubSupabase.rows("notes").count == 2, "both notes go up again")
+        let box = StubSupabase.rows("notes").first { ($0["id"] as? String)?.lowercased() == n.id.uuidString.lowercased() }?["body_ct"] as? String
+        #expect(box.flatMap { fresh.open($0, context: E2EE.body(n.id)) } == n.body, "sealed with the new key")
+        // The folder and the file with them: its row, and its bytes in Storage again.
+        #expect(StubSupabase.rows("folders").count == 1 && StubSupabase.rows("attachments").count == 1)
+        let stored = StubSupabase.objects["\(user.uuidString.lowercased())/\(file.id.uuidString.lowercased())"]
+        #expect(stored.map(E2EE.isSealedFile) == true && file.uploaded && !file.dirty && !folder.dirty)
+        #expect(a.context.note(n.id) != nil && a.context.note(trashed.id) != nil && a.context.note(n.id)?.folder?.id == folder.id, "and stay on this device")
+        #expect(FileStore.exists(file), "the file too")
+        #expect(!a.defaults.bool(forKey: SyncEngine.uploadAgainKey(user)), "once")
+        // Without the mark and without a remembered key id, nothing is sent again.
+        a.defaults.removeObject(forKey: SyncEngine.keyIDKey(user))
+        StubSupabase.reset()
+        await Wire.$testSealer.withValue(fresh) { await a.engine.sync() }
+        #expect(StubSupabase.rows("notes").isEmpty)
+        await a.engine.stop()
+    }
+
     @Test func aNoteDeletedForGoodKeepsNoBoxes() async throws {
         let a = try device()
         let n = a.context.createNote(in: .all, body: "Short-lived")
@@ -743,7 +784,7 @@ extension NetworkFaults {
         #expect(center.queue == [late])
         let text = ConnectNotifier.content(ask, who: "ChatGPT")
         #expect(text.title == "Allow ChatGPT to use your notes?")
-        #expect(text.body == "Requested from Chrome on a Mac. Open Amber Notes to allow it.")
+        #expect(text.body == "Requested from Chrome on a Mac. Open Pinto Notes to allow it.")
         // An expired one never opens or notifies.
         let stale = ConnectAsk(request_id: UUID(), browser_key: "", started_from: "Chrome on a Mac", created_at: now.addingTimeInterval(-700), expires_at: now.addingTimeInterval(-1))
         await asks.take(stale)

@@ -12,6 +12,18 @@ import Testing
 @MainActor @Suite(.serialized) struct AppSnapshotTests {
     static var dir: URL? { ProcessInfo.processInfo.environment["AMBER_HIG_SHOTS"].map { URL(fileURLWithPath: $0) } }
 
+    /// Shots that need a real window on screen (a toolbar, a key window, a capture by window id)
+    /// run only where nobody is using the screen: with AMBER_DEMO_FRAMES set, which only CI's
+    /// snapshots workflow sets (WarmGreySnapshots.dir). Everywhere else every test window is
+    /// borderless, at -20000,-20000, and never ordered front or made key.
+    static var onScreenAllowed: Bool { WarmGreySnapshots.dir != nil }
+
+    /// `variable`'s path, for a shot that needs an on-screen window: nil unless on-screen shots run.
+    static func onScreenDir(_ variable: String) -> URL? {
+        guard onScreenAllowed else { return nil }
+        return ProcessInfo.processInfo.environment[variable].map { URL(fileURLWithPath: $0) }
+    }
+
     /// A demo library in memory.
     static func container() throws -> ModelContainer {
         let c = try ModelContainer(for: Folder.self, Note.self, Attachment.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
@@ -20,24 +32,26 @@ import Testing
         return c
     }
 
-    /// Draws `view` in a real titled window (toolbar included) and writes `name`.png.
-    static func shoot(_ view: some View, name: String, size: CGSize, dark: Bool, toolbar: Bool = true, wait: Double = 0.8) async throws {
+    /// Draws `view` at `size` and writes `name`.png. The window is borderless, far off every
+    /// screen (-20000, -20000) and never ordered front or made key: a titled window placed off
+    /// screen gets pulled back onto the display, where it showed up on a developer's Mac.
+    /// No window chrome is drawn. `card`: edge to edge, as the signed-out window shows it.
+    /// `toolbar` is kept for the callers; nothing draws a toolbar any more.
+    static func shoot(_ view: some View, name: String, size: CGSize, dark: Bool, toolbar: Bool = true, card: Bool = false, wait: Double = 0.8) async throws {
         guard let dir else { return }
-        let window = NSWindow(contentRect: CGRect(x: -30000, y: -30000, width: size.width, height: size.height),
-                              styleMask: toolbar ? [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView] : [.titled, .closable, .fullSizeContentView],
-                              backing: .buffered, defer: false)
+        let window = NSWindow(contentRect: CGRect(x: -20000, y: -20000, width: size.width, height: size.height),
+                              styleMask: [.borderless], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         window.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
-        window.contentViewController = NSHostingController(rootView: view)
-        window.setContentSize(size)
-        window.setFrameOrigin(CGPoint(x: -30000, y: -30000))
-        window.orderFrontRegardless()
+        let host = NSHostingView(rootView: AnyView(card ? AnyView(view.ignoresSafeArea()) : AnyView(view)))
+        host.appearance = window.appearance
+        host.frame = CGRect(origin: .zero, size: size)
+        window.contentView = host
         try? await Task.sleep(for: .seconds(wait))
-        defer { window.orderOut(nil); window.close() }
-        guard let frame = window.contentView?.superview else { return }
-        let rect = frame.bounds
-        let rep = try #require(frame.bitmapImageRepForCachingDisplay(in: rect))
-        frame.cacheDisplay(in: rect, to: rep)
+        defer { window.close() }
+        host.layoutSubtreeIfNeeded()
+        let rep = try #require(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+        host.cacheDisplay(in: host.bounds, to: rep)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         try #require(rep.representation(using: .png, properties: [:])).write(to: dir.appending(path: "\(name).png"))
     }
@@ -47,7 +61,7 @@ import Testing
         guard let dir else { return }
         let host = NSHostingView(rootView: view.background(Color(nsColor: .windowBackgroundColor)))
         host.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
-        let window = NSWindow(contentRect: CGRect(x: -30000, y: -30000, width: 600, height: 900), styleMask: [.borderless], backing: .buffered, defer: false)
+        let window = NSWindow(contentRect: CGRect(x: -20000, y: -20000, width: 600, height: 900), styleMask: [.borderless], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         window.contentView = host
         host.frame = CGRect(origin: .zero, size: host.fittingSize)
@@ -79,12 +93,12 @@ import Testing
     func root(dark: Bool) async throws {
         guard Self.dir != nil else { return }
         let c = try Self.container()
-        for (title, slug) in [("Welcome to Amber Notes", "welcome"), ("Evening tracker", "tracker"), ("Lisbon", "lisbon"), ("Trip documents", "files")] {
+        for (title, slug) in [("Welcome to Pinto Notes", "welcome"), ("Evening tracker", "tracker"), ("Lisbon", "lisbon"), ("Trip documents", "files")] {
             try await Self.withLastNote(c, title) {
                 try await Self.shoot(RootView().modelContainer(c), name: "mac-root-\(slug)-\(dark ? "dark" : "light")", size: CGSize(width: 1180, height: 760), dark: dark)
             }
         }
-        try await Self.withLastNote(c, "Welcome to Amber Notes") {
+        try await Self.withLastNote(c, "Welcome to Pinto Notes") {
             try await Self.shoot(RootView().modelContainer(c), name: "mac-root-narrow-\(dark ? "dark" : "light")", size: CGSize(width: 780, height: 600), dark: dark)
         }
     }
@@ -105,6 +119,30 @@ import Testing
             let flow = EmailSignInFlow(step: step, email: "you@example.com", password: step == .create ? "correct horse battery" : "")
             try await Self.shoot(SignInView(backend: backend, flow: flow).fixedSize().containerBackground(for: .window) { Backdrop() }, name: "mac-signin-\(name)-\(mode)", size: CGSize(width: 380, height: 520), dark: dark, toolbar: false)
         }
+        // The code boxes part typed and full, and after a wrong code.
+        for (name, code) in [("confirm-typed", "704"), ("confirm-full", "704494")] {
+            try await Self.shoot(WelcomeFlow(backend: backend, stage: .signIn(returning: false), flow: EmailSignInFlow(step: .confirm, email: "sara@example.com", code: code)),
+                                 name: "mac-welcome-\(name)-\(mode)", size: WelcomeFlow.size, dark: dark, toolbar: false, card: true)
+        }
+        try await Self.shoot(WelcomeFlow(backend: backend, stage: .signIn(returning: false), flow: EmailSignInFlow(step: .confirm, email: "sara@example.com"),
+                                         error: "That code didn't work. Check the newest email from Pinto Notes, or press Resend code."),
+                             name: "mac-welcome-confirm-wrong-\(mode)", size: WelcomeFlow.size, dark: dark, toolbar: false, card: true)
+        // Email confirmation: Check your email, fresh and just after a code went out.
+        for (name, sent) in [("confirm", nil), ("confirm-wait", Date.now)] as [(String, Date?)] {
+            try await Self.shoot(WelcomeFlow(backend: backend, stage: .signIn(returning: false), flow: EmailSignInFlow(step: .confirm, email: "sara@example.com", codeSentAt: sent)),
+                                 name: "mac-welcome-\(name)-\(mode)", size: WelcomeFlow.size, dark: dark, toolbar: false, card: true)
+        }
+        try await Self.shoot(WelcomeFlow(backend: backend, stage: .signIn(returning: false), flow: EmailSignInFlow(step: .create, email: "sara@example.com", password: "correct horse battery")),
+                             name: "mac-welcome-signin-new-\(mode)", size: WelcomeFlow.size, dark: dark, toolbar: false, card: true)
+        // Before the email is checked: neutral words.
+        try await Self.shoot(WelcomeFlow(backend: backend, stage: .signIn(returning: false)),
+                             name: "mac-welcome-signin-start-\(mode)", size: WelcomeFlow.size, dark: dark, toolbar: false, card: true)
+        // The heading once the email is known: an existing account.
+        try await Self.shoot(WelcomeFlow(backend: backend, stage: .signIn(returning: false), flow: EmailSignInFlow(step: .signIn(fallback: false), email: "sara@example.com", password: "secret")),
+                             name: "mac-welcome-signin-existing-\(mode)", size: WelcomeFlow.size, dark: dark, toolbar: false, card: true)
+        // Open your notes on this Mac: why, the QR code and the code to type.
+        try await Self.shoot(AddDeviceCapture(name: "new-device").frame(width: 520, height: 760).containerBackground(for: .window) { Backdrop() },
+                             name: "mac-new-device-\(mode)", size: CGSize(width: 520, height: 760), dark: dark, toolbar: false, card: true, wait: 2.0)
         try await Self.render(SettingsView(backend: backend, sync: nil), name: "mac-settings-\(mode)", dark: dark)
         backend.showSignedInForPreview(email: "you@example.com")
         try await Self.render(SettingsView(backend: backend, sync: nil), name: "mac-settings-signedin-\(mode)", dark: dark)
@@ -134,6 +172,85 @@ extension AppSnapshotTests {
         host.cacheDisplay(in: host.bounds, to: rep)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         try #require(rep.representation(using: .png, properties: [:])).write(to: dir.appending(path: "mac-sidebar-header-\(dark ? "dark" : "light").png"))
+    }
+}
+#endif
+
+#if os(macOS)
+extension AppSnapshotTests {
+    /// Settings as a signed-in account with everything filled in: a name, two AIs connected, a
+    /// key kept on two other devices, and 1.15 GB used.
+    static func settingsFixture() async throws -> SettingsView {
+        let backend = Backend(testClient: CaptureScreen.client, email: "sara@example.com")
+        ProfileStore.shared.showForPreview(name: "Sara Lind", photo: nil)
+        StorageStore.shared.usage = StorageUsage(used: 1_240_000_000, limit: 2_147_483_648, notes: 41_000_000, files: 900_000_000, apps: 12_000_000,
+                                                 deleted: 230_000_000, versions: 64_000_000)
+        let crypto = try await AddDeviceSnapshots.ready(backedUp: true, recoverySaved: true)
+        let route = SettingsRoute(defaults: UserDefaults(suiteName: "settings-shots-\(UUID())")!)
+        return SettingsView(backend: backend, sync: nil, crypto: crypto, devices: AddDeviceSnapshots.devices([AddDeviceSnapshots.added, AddDeviceSnapshots.stale]),
+                            connections: CaptureScreen.connections, route: route)
+    }
+
+    /// The Settings window at `tab`, drawn the way the Settings scene draws it: toolbar tabs with
+    /// a symbol and a title, the window as tall as the page.
+    static func settingsWindow(_ view: SettingsView, tab: SettingsTab, dark: Bool) -> NSWindow {
+        let tabs = NSTabViewController()
+        tabs.tabStyle = .toolbar
+        for t in view.tabs {
+            let page = NSHostingController(rootView: view.page(t).tint(Color(PColor.paneAccent)))
+            page.sizingOptions = .preferredContentSize
+            page.title = t.title
+            let item = NSTabViewItem(viewController: page)
+            item.label = t.title
+            item.image = NSImage(systemSymbolName: t.symbol, accessibilityDescription: nil)
+            tabs.addTabViewItem(item)
+        }
+        tabs.selectedTabViewItemIndex = view.tabs.firstIndex(of: tab) ?? 0
+        let window = NSWindow(contentViewController: tabs)
+        window.styleMask = [.titled, .closable]
+        window.toolbarStyle = .preference
+        window.isReleasedWhenClosed = false
+        window.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
+        window.setFrameOrigin(CGPoint(x: -30000, y: -30000))
+        return window
+    }
+
+    static func glassViews(in view: NSView) -> [NSView] {
+        (String(describing: type(of: view)).contains("Glass") ? [view] : []) + view.subviews.flatMap { glassViews(in: $0) }
+    }
+
+    @Test(arguments: [false, true])
+    func settingsTabs(dark: Bool) async throws {
+        // A titled window ordered in, for the toolbar: CI only (PANE_SNAPSHOTS, set in ci.yml),
+        // never on a developer's Mac. The pictures are attached to the results (the "snapshots" artifact).
+        guard ProcessInfo.processInfo.environment["PANE_SNAPSHOTS"] == "1" else { return }
+        let view = try await Self.settingsFixture()
+        #expect(view.tabs == SettingsTab.allCases)
+        for tab in view.tabs {
+            let window = Self.settingsWindow(view, tab: tab, dark: dark)
+            window.orderFrontRegardless()
+            try? await Task.sleep(for: .seconds(1.2))
+            defer { window.orderOut(nil); window.close() }
+            let frame = try #require(window.contentView?.superview)
+            // The selected tab's glass capsule samples the screen behind it, which an offscreen
+            // drawing doesn't have (it comes out as a white block); the selected tab still shows
+            // by its label.
+            for glass in Self.glassViews(in: frame) where glass.frame.width < frame.bounds.width {
+                glass.alphaValue = 0
+                glass.layer?.opacity = 0
+            }
+            frame.layoutSubtreeIfNeeded()
+            frame.display()
+            let rep = try #require(frame.bitmapImageRepForCachingDisplay(in: frame.bounds))
+            frame.cacheDisplay(in: frame.bounds, to: rep)
+            let png = try #require(rep.representation(using: .png, properties: [:]))
+            Testing.Attachment.record(png, named: "mac-settings-\(tab.rawValue)-\(dark ? "dark" : "light").png")
+            if let dir = Self.dir {
+                try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+                try png.write(to: dir.appending(path: "mac-settings-\(tab.rawValue)-\(dark ? "dark" : "light").png"))
+            }
+        }
+        ProfileStore.shared.showForPreview(name: nil, photo: nil)
     }
 }
 #endif

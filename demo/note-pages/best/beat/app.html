@@ -1,0 +1,610 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="app-settings" content='{"settings":[{"key":"tempo","label":"Tempo (BPM)","type":"number","default":100},{"key":"swing","label":"Swing","type":"choice","options":["None","Light","Heavy"],"default":"None"},{"key":"kit","label":"Kit","type":"choice","options":["Warm","Bright","Lo-fi"],"default":"Warm"},{"key":"chain","label":"After the last bar","type":"choice","options":["Loop this pattern","Play the next pattern"],"default":"Loop this pattern"}]}'>
+<title>Beat</title>
+<style>
+/* The shared look of the best-apps set: Amber Notes' variables, iOS-like grouped lists, sheets. */
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+body { font-size: 1rem; line-height: 1.35; }
+:root {
+  --c1: #D96A06; --c2: #2F8577; --c3: #3D6DB5; --c4: #9A4E8E; --c5: #7C8A24; --c6: #C4455B; --c7: #8A6A4A;
+  --good: #2E7D4F; --ease-out: cubic-bezier(.2, .8, .2, 1); --ease-pop: cubic-bezier(.3, 1.4, .5, 1);
+  --shadow: 0 1px 2px rgba(60, 30, 0, .06), 0 6px 24px rgba(60, 30, 0, .07);
+}
+@media (prefers-color-scheme: dark) {
+  :root { --c1: #F4AD33; --c2: #4FC1AE; --c3: #7DA6F0; --c4: #D58ACB; --c5: #B9C95A; --c6: #F07D90; --c7: #C9A57F; --good: #5BD08A; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 28px rgba(0,0,0,.35); }
+}
+main.wrap { max-width: var(--amber-content-max); margin: 0 auto; padding: .5rem var(--amber-gutter) 6rem; }
+h1, h2, h3, p { margin: 0; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2.5px solid var(--amber-accent); outline-offset: 2px; border-radius: 6px; }
+.num { font-variant-numeric: tabular-nums; }
+.muted { color: var(--amber-text-secondary); }
+.small { font-size: .82rem; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Header: large title, a line under it, round buttons on the right. */
+.top { display: flex; align-items: flex-end; gap: .75rem; padding: .35rem 0 1rem; }
+.top .titles { flex: 1; min-width: 0; }
+.top h1 { font-size: 2rem; font-weight: 700; letter-spacing: -.025em; line-height: 1.1; overflow-wrap: anywhere; }
+.top .sub { color: var(--amber-text-secondary); margin-top: .2rem; font-size: .94rem; }
+.round { width: 2.6rem; height: 2.6rem; border-radius: 50%; border: 0; background: var(--amber-fill); color: var(--amber-text); display: inline-grid; place-items: center; flex: none; transition: transform .15s var(--ease-out), background .2s; }
+.round svg { width: 1.2rem; height: 1.2rem; }
+.round:active { transform: scale(.92); }
+.round.accent { background: var(--amber-accent); color: var(--amber-on-accent); }
+
+/* Section labels and cards. */
+.label { font-size: .8rem; font-weight: 600; letter-spacing: .02em; text-transform: uppercase; color: var(--amber-text-secondary); margin: 1.4rem .25rem .5rem; display: flex; align-items: baseline; gap: .5rem; }
+.label .grow { flex: 1; }
+.label button { text-transform: none; letter-spacing: 0; font-size: .88rem; font-weight: 600; color: var(--amber-accent-text); background: none; border: 0; padding: .3rem .2rem; }
+.card { background: var(--amber-surface); border-radius: var(--amber-radius); overflow: hidden; }
+.card.pad { padding: 1rem; }
+.list > .row, .list > li { display: flex; align-items: center; gap: .75rem; min-height: 2.9rem; padding: .6rem 1rem; position: relative; }
+.list > .row + .row::before, .list > li + li::before { content: ""; position: absolute; top: 0; left: 1rem; right: 0; border-top: 1px solid var(--amber-separator); }
+.list.inset > .row + .row::before { left: 3.6rem; }
+ul.list { list-style: none; margin: 0; padding: 0; }
+button.row { width: 100%; text-align: left; border: 0; background: none; color: inherit; font: inherit; transition: background .2s; }
+button.row:active { background: var(--amber-fill); }
+.grow { flex: 1; min-width: 0; }
+.ellipsis { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chev { color: var(--amber-text-secondary); opacity: .6; width: .7rem; flex: none; }
+
+/* Buttons. */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; min-height: 2.75rem; padding: 0 1.1rem; border: 0; border-radius: 999px; font-weight: 600; background: var(--amber-fill); color: var(--amber-text); transition: transform .15s var(--ease-out), opacity .2s, background .2s; white-space: nowrap; }
+.btn svg { width: 1.1rem; height: 1.1rem; }
+.btn:active { transform: scale(.96); }
+.btn.primary { background: var(--amber-accent); color: var(--amber-on-accent); }
+.btn.tint { background: var(--amber-accent-soft); color: var(--amber-accent-text); }
+.btn.plain { background: none; color: var(--amber-accent-text); padding: 0 .6rem; }
+.btn.danger { background: none; color: var(--amber-danger); }
+.btn.block { width: 100%; }
+.btn[disabled] { opacity: .45; pointer-events: none; }
+
+/* Segmented control. */
+.seg { display: inline-flex; background: var(--amber-fill); border-radius: 999px; padding: 3px; gap: 2px; position: relative; }
+.seg button { border: 0; background: none; border-radius: 999px; padding: .42rem .9rem; font-size: .88rem; font-weight: 600; color: var(--amber-text-secondary); min-height: 2.2rem; transition: color .2s, background .25s var(--ease-out), box-shadow .25s; }
+.seg button[aria-pressed="true"] { background: var(--amber-bg); color: var(--amber-text); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+
+/* Forms. */
+.field { display: flex; flex-direction: column; gap: .3rem; font-size: .8rem; font-weight: 600; color: var(--amber-text-secondary); }
+.field input, .field select, .field textarea, input.in, select.in, textarea.in { font-size: 1rem; font-weight: 400; color: var(--amber-text); background: var(--amber-fill); border: 0; border-radius: var(--amber-radius-small); padding: .65rem .8rem; min-height: 2.75rem; width: 100%; outline-offset: 0; }
+textarea { resize: vertical; line-height: 1.4; }
+.fields { display: grid; gap: .8rem; }
+.fields.two { grid-template-columns: 1fr 1fr; }
+.err { color: var(--amber-danger); font-size: .88rem; min-height: 1.2em; }
+.switch { appearance: none; -webkit-appearance: none; width: 3.1rem; height: 1.9rem; border-radius: 999px; background: var(--amber-fill); position: relative; flex: none; transition: background .25s; margin: 0; }
+.switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: calc(1.9rem - 4px); height: calc(1.9rem - 4px); border-radius: 50%; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,.2); transition: transform .3s var(--ease-pop); }
+.switch:checked { background: var(--good); }
+.switch:checked::after { transform: translateX(1.2rem); }
+
+/* Sheet: a bottom sheet on the phone (above the keyboard), a centred panel from 700 px. */
+.scrim { position: fixed; inset: 0; background: rgba(20, 10, 0, .34); opacity: 0; transition: opacity .28s; z-index: 50; }
+.sheet { position: fixed; left: 0; right: 0; bottom: var(--kb, 0px); max-height: calc(var(--vvh, 100vh) - 3.5rem); display: flex; flex-direction: column; background: var(--amber-bg); border-radius: 1.25rem 1.25rem 0 0; z-index: 51; transform: translateY(105%); transition: transform .38s var(--ease-out), bottom .25s var(--ease-out); box-shadow: 0 -8px 40px rgba(0,0,0,.18); }
+.sheet header { position: relative; display: flex; align-items: center; gap: .5rem; padding: 1.1rem 1.1rem .7rem; flex: none; }
+.sheet .grab { position: absolute; top: .45rem; left: 50%; transform: translateX(-50%); width: 2.4rem; height: .3rem; border-radius: 99px; background: var(--amber-separator); }
+.sheet header h2 { flex: 1; min-width: 0; font-size: 1.15rem; font-weight: 700; overflow-wrap: anywhere; }
+.sheet header .round { width: 2.2rem; height: 2.2rem; }
+.sheet-body { overflow: auto; overscroll-behavior: contain; padding: .2rem 1.1rem calc(1.4rem + env(safe-area-inset-bottom) + var(--amber-inset-bottom, 0px)); min-width: 0; }
+.open .scrim { opacity: 1; }
+.open .sheet { transform: none; }
+html.sheet-open, html.sheet-open body { overflow: hidden; }
+/* A sheet's main action stays in reach at the bottom while its content scrolls. */
+.sheet-foot { --pb: calc(1.4rem + env(safe-area-inset-bottom) + var(--amber-inset-bottom, 0px)); position: sticky; bottom: calc(-1 * var(--pb)); margin: .6rem -1.1rem calc(-1 * var(--pb)); padding: .7rem 1.1rem var(--pb); background: linear-gradient(to bottom, transparent, var(--amber-bg) .7rem); display: grid; gap: .5rem; z-index: 1; }
+@media (min-width: 700px) { .sheet-foot { --pb: 1.4rem; margin: .6rem -1.4rem calc(-1 * var(--pb)); padding: .7rem 1.4rem var(--pb); } }
+@media (prefers-color-scheme: dark) { .sheet-foot { background: linear-gradient(to bottom, transparent, var(--amber-surface) .7rem); } }
+@media (min-width: 700px) {
+  .sheet { left: 50%; right: auto; bottom: auto; top: 50%; width: min(34rem, calc(100vw - 3rem)); max-height: min(44rem, calc(100vh - 4rem)); border-radius: 1.2rem; transform: translate(-50%, -46%) scale(.97); opacity: 0; transition: transform .3s var(--ease-out), opacity .2s; }
+  .sheet.wide { width: min(46rem, calc(100vw - 3rem)); }
+  .open .sheet { transform: translate(-50%, -50%); opacity: 1; }
+  .sheet .grab { display: none; }
+  .sheet header { padding: 1.2rem 1.4rem .7rem; }
+  .sheet-body { padding: .2rem 1.4rem 1.4rem; }
+}
+@media (prefers-color-scheme: dark) { .sheet { background: var(--amber-surface); } .sheet .card { background: var(--amber-fill); } .sheet .field input, .sheet .field select, .sheet .field textarea, .sheet .in { background: color-mix(in srgb, var(--amber-text) 9%, var(--amber-surface)); } }
+.fields.two { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.field input, .field select, .field textarea, input.in, select.in, textarea.in { min-width: 0; max-width: 100%; }
+
+/* The app's frame: tabs at the bottom on the phone, a sidebar from 900 px; pushed screens slide. */
+.shell-root { max-width: none !important; padding: 0 !important; }
+.shell { min-height: 100vh; }
+.screen { max-width: var(--amber-content-max); margin: 0 auto; padding: .5rem var(--amber-gutter) calc(6.2rem + env(safe-area-inset-bottom) + var(--amber-inset-bottom, 0px)); min-width: 0; }
+.screen.in { animation: pushin .32s var(--ease-out); }
+.screen.out { animation: popin .32s var(--ease-out); }
+.screen.fade { animation: rise .25s var(--ease-out); }
+@keyframes pushin { from { transform: translateX(14%); opacity: 0; } }
+@keyframes popin { from { transform: translateX(-10%); opacity: 0; } }
+.sidebar { display: none; }
+.shell.immersive .tabbar { display: none !important; }
+.shell.immersive .screen { padding-bottom: calc(2rem + env(safe-area-inset-bottom) + var(--amber-inset-bottom, 0px)); }
+.tabbar { position: fixed; left: 0; right: 0; bottom: var(--amber-inset-bottom, 0px); z-index: 40; display: flex; justify-content: space-around; padding: .35rem .4rem calc(.35rem + env(safe-area-inset-bottom)); background: color-mix(in srgb, var(--amber-bg) 86%, transparent); -webkit-backdrop-filter: blur(20px) saturate(1.4); backdrop-filter: blur(20px) saturate(1.4); border-top: 1px solid var(--amber-separator); }
+.tb-item { position: relative; flex: 1; max-width: 7rem; border: 0; background: none; color: var(--amber-text-secondary); display: flex; flex-direction: column; align-items: center; gap: .15rem; padding: .3rem 0; font-size: .68rem; font-weight: 600; min-height: 2.9rem; border-radius: .8rem; }
+.tb-item svg { width: 1.45rem; height: 1.45rem; }
+.tb-item[aria-current="page"] { color: var(--amber-accent-text); }
+.badge { position: absolute; font-style: normal; font-size: .62rem; font-weight: 800; min-width: 1.1rem; height: 1.1rem; padding: 0 .3rem; border-radius: 99px; background: var(--amber-danger); color: #fff; display: grid; place-items: center; }
+.tb-item .badge { top: .05rem; left: calc(50% + .4rem); }
+.push-h { display: flex; align-items: center; min-height: 2.6rem; margin: 0 -.4rem .2rem; }
+.backb { display: inline-flex; align-items: center; gap: .15rem; border: 0; background: none; color: var(--amber-accent-text); font-weight: 600; padding: .4rem .4rem; min-height: 2.6rem; border-radius: .6rem; }
+.backb svg { width: 1.25rem; height: 1.25rem; }
+@media (min-width: 900px) {
+  .shell { display: grid; grid-template-columns: 15.5rem minmax(0, 1fr); }
+  .tabbar { display: none; }
+  .sidebar { display: flex; flex-direction: column; gap: .15rem; position: sticky; top: 0; align-self: start; height: 100vh; padding: 1.4rem .9rem; border-right: 1px solid var(--amber-separator); }
+  .sb-title { font-size: 1.25rem; font-weight: 800; letter-spacing: -.01em; padding: .2rem .6rem 1rem; overflow-wrap: anywhere; }
+  .sb-item { position: relative; display: flex; align-items: center; gap: .65rem; border: 0; background: none; color: var(--amber-text); font-weight: 600; text-align: left; padding: .55rem .7rem; border-radius: .6rem; min-height: 2.5rem; }
+  .sb-item svg { width: 1.15rem; height: 1.15rem; color: var(--amber-accent-text); }
+  .sb-item[aria-current="page"] { background: var(--amber-accent-soft); }
+  .sb-item .badge { position: static; margin-left: auto; }
+  .screen { padding: 1.6rem 2.4rem 4rem; margin: 0; max-width: 64rem; }
+  .shell.immersive { grid-template-columns: minmax(0, 1fr); }
+  .shell.immersive .sidebar { display: none; }
+  .shell.immersive .screen { margin: 0 auto; width: 100%; }
+}
+
+/* Empty states. */
+.empty { text-align: center; padding: 2.2rem 1.2rem; color: var(--amber-text-secondary); }
+.empty svg { width: 2.6rem; height: 2.6rem; color: var(--amber-accent); opacity: .85; margin-bottom: .6rem; }
+.empty h3 { color: var(--amber-text); font-size: 1.05rem; margin-bottom: .3rem; }
+.empty p { max-width: 22rem; margin: 0 auto 1rem; font-size: .94rem; }
+
+/* A quiet confirmation under the header, for things that don't change the note. */
+.note-line { font-size: .85rem; color: var(--amber-text-secondary); min-height: 1.2em; transition: opacity .3s; }
+
+/* Motion: things that arrive rise in; nothing moves when asked not to. */
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes pop { 0% { transform: scale(1); } 40% { transform: scale(1.18); } 100% { transform: scale(1); } }
+.rise { animation: rise .35s var(--ease-out) both; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+
+/* Wide: two columns where the app asks for them. */
+.cols { display: grid; gap: 0 1.6rem; grid-template-columns: minmax(0, 1fr); }
+.cols > * { min-width: 0; }
+@media (min-width: 900px) {
+  .cols { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+  .cols.side { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); }
+  .top h1 { font-size: 2.2rem; }
+}
+
+/* Settings, inside the app. */
+.settings-list .setrow { flex-wrap: wrap; }
+.settings-list label.setrow { cursor: pointer; }
+.settings-list .setrow > label.grow { flex: 1 1 8rem; }
+.settings-list .set-input { flex: 0 1 11rem; min-width: 0; overflow: hidden; border-radius: var(--amber-radius-small); }
+.settings-list .set-input .in { display: block; width: 100%; min-width: 0; max-width: 100%; min-height: 2.5rem; }
+
+:root { --pad: color-mix(in srgb, var(--amber-text) 7%, var(--amber-bg)); --kick: #E0762B; --snare: #D9475E; --clap: #B24FB0; --hat: #2F9C8C; --ohat: #3C8DD8; --bass: #7A5BD6; --deck: #1C1714; --deck-ink: #F6EFE7; }
+@media (prefers-color-scheme: dark) { :root { --pad: #24201D; --kick: #FF9A4D; --snare: #FF6F86; --clap: #E07BDE; --hat: #4FD1BC; --ohat: #6FB6FF; --bass: #A58BFF; --deck: #0E0C0B; } }
+.deck { background: var(--deck); color: var(--deck-ink); border-radius: calc(var(--amber-radius) + 8px); padding: 1rem 1rem 1.1rem; box-shadow: var(--shadow); position: relative; overflow: hidden; }
+.transport { display: flex; align-items: center; gap: .7rem; }
+.transport .lcd { min-width: 0; overflow: hidden; }
+.play { width: 3.6rem; height: 3.6rem; border-radius: 50%; border: 0; background: var(--amber-accent); color: var(--amber-on-accent); display: grid; place-items: center; flex: none; box-shadow: 0 6px 18px color-mix(in srgb, var(--amber-accent) 45%, transparent); transition: transform .12s; }
+.play:active { transform: scale(.93); }
+.play svg { width: 1.5rem; height: 1.5rem; fill: currentColor; }
+.lcd { font-family: var(--amber-font-mono); background: #000; color: #FFB547; border-radius: .7rem; padding: .45rem .7rem; display: flex; gap: .9rem; align-items: baseline; box-shadow: inset 0 0 0 1px rgba(255,255,255,.08); }
+.lcd b { font-size: 1.35rem; letter-spacing: .02em; }
+.lcd span { font-size: .7rem; opacity: .65; text-transform: uppercase; letter-spacing: .08em; }
+.tempo { display: flex; align-items: center; gap: .3rem; flex: none; }
+.tempo button { width: 2.2rem; height: 2.2rem; border-radius: 50%; border: 0; background: rgba(255,255,255,.1); color: var(--deck-ink); font-size: 1.1rem; font-weight: 700; }
+.deck .grow { flex: 1; }
+.snd { width: 2.6rem; height: 2.6rem; border-radius: 50%; border: 0; background: rgba(255,255,255,.1); color: var(--deck-ink); display: grid; place-items: center; }
+.snd svg { width: 1.2rem; height: 1.2rem; }
+canvas.scope { display: block; width: 100%; height: 3.2rem; margin-top: .8rem; border-radius: .6rem; background: rgba(255,255,255,.04); }
+.patterns { display: flex; gap: .4rem; margin: 1rem 0 .7rem; flex-wrap: wrap; align-items: center; }
+.patterns button { border: 0; border-radius: 999px; padding: .4rem .95rem; min-height: 2.3rem; font-weight: 700; background: var(--amber-fill); color: var(--amber-text-secondary); }
+.patterns button[aria-current="true"] { background: var(--amber-text); color: var(--amber-bg); }
+.patterns .pages { margin-left: auto; display: none; }
+.grid { display: grid; grid-template-columns: 4.6rem repeat(var(--steps), minmax(0, 1fr)); gap: .35rem .3rem; align-items: center; user-select: none; -webkit-user-select: none; }
+.grid .name { font-size: .8rem; font-weight: 700; display: flex; align-items: center; gap: .35rem; border: 0; background: none; color: var(--amber-text); padding: 0; text-align: left; min-height: 2.75rem; }
+.grid .name i { width: .6rem; height: .6rem; border-radius: 50%; background: var(--c); flex: none; }
+.grid .name.muted { opacity: .35; text-decoration: line-through; }
+.pad { height: 2.75rem; border: 0; border-radius: .55rem; background: var(--pad); position: relative; padding: 0; font: 700 .62rem var(--amber-font-mono); color: #fff; transition: background .12s, transform .08s; touch-action: manipulation; }
+.pad.beat { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--amber-text) 10%, transparent); }
+.pad.on { background: var(--c); box-shadow: 0 0 14px color-mix(in srgb, var(--c) 45%, transparent); }
+.pad.now { outline: 2px solid color-mix(in srgb, var(--amber-text) 55%, transparent); outline-offset: 1px; }
+.pad.hit { animation: hit .22s var(--ease-out); }
+@keyframes hit { 0% { transform: scale(1.14); filter: brightness(1.4); } 100% { transform: none; } }
+.pad.cur { box-shadow: 0 0 0 2px var(--amber-accent) !important; }
+.steps { display: grid; grid-template-columns: 4.6rem repeat(var(--steps), minmax(0, 1fr)); gap: .3rem; margin-top: .35rem; }
+.steps span { text-align: center; font: 600 .62rem var(--amber-font-mono); color: var(--amber-text-secondary); }
+.steps span.now { color: var(--amber-accent-text); }
+.hint { margin-top: .9rem; font-size: .82rem; color: var(--amber-text-secondary); }
+.kbd { font-family: var(--amber-font-mono); font-size: .75rem; padding: .05rem .35rem; border-radius: .3rem; background: var(--amber-fill); }
+@media (max-width: 699px) { .patterns .pages { display: inline-flex; } }
+.pages button { position: relative; }
+.pages button.playing::after { content: ""; position: absolute; top: .3rem; right: .45rem; width: .4rem; height: .4rem; border-radius: 50%; background: var(--amber-accent); }
+@media (max-width: 360px) { .lcd > div:nth-child(2) { display: none; } }
+@media (max-width: 520px) { .lcd { gap: .6rem; padding: .4rem .55rem; } .lcd b { font-size: 1.05rem; } .lcd .pname { display: none; } .play { width: 3.2rem; height: 3.2rem; } .grid, .steps { grid-template-columns: 3.9rem repeat(var(--steps), minmax(0, 1fr)); } }
+</style>
+</head>
+<body>
+<main class="wrap" id="app" aria-live="off"></main>
+<script>
+// The shared helpers of the best-apps set. Everything here reads the note through amber.note and
+// changes it only through amber.update; the app's own state goes through amber.store.
+const Kit = (() => {
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+
+  // Icons: inline SVG, drawn on a 24 grid with a 2 px stroke, like SF Symbols' regular weight.
+  const paths = {
+    gear: '<circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.6 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+    close: '<path d="M6 6l12 12M18 6L6 18"/>',
+    bell: '<path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/>',
+    flame: '<path d="M12 2c1 3.5 5 6 5 11a5 5 0 0 1-10 0c0-2.5 1.2-4 2.5-5.5C10 10 11 11 11.5 12c.5-3 .5-6.5.5-10z"/>',
+    chevron: '<path d="M9 5l7 7-7 7"/>',
+    back: '<path d="M15 5l-7 7 7 7"/>',
+    trash: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
+    search: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>',
+    calendar: '<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+    cart: '<path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.5L21 8H6"/><circle cx="10" cy="20.5" r="1.3"/><circle cx="17" cy="20.5" r="1.3"/>',
+    timer: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9.5 2h5"/>',
+    play: '<path d="M7 4.5v15l12.5-7.5z"/>',
+    pause: '<path d="M8 5v14M16 5v14"/>',
+    book: '<path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v16H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/>',
+    quote: '<path d="M7 11h4v6H5v-4a6 6 0 0 1 4-5.7M17 11h4v6h-6v-4a6 6 0 0 1 4-5.7"/>',
+    pin: '<path d="M12 22s7-6.2 7-12a7 7 0 1 0-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/>',
+    person: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+    gift: '<rect x="3" y="8" width="18" height="5" rx="1"/><path d="M5 13v8h14v-8M12 8v13M12 8S10.5 3 8 3.5 7 8 12 8zm0 0s1.5-5 4-4.5S17 8 12 8z"/>',
+    chat: '<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/>',
+    upload: '<path d="M12 16V4M7 9l5-5 5 5M4 17v3h16v-3"/>',
+    list: '<path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"/>',
+    sparkle: '<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/>',
+    repeat: '<path d="M17 2l3 3-3 3"/><path d="M4 11V9a4 4 0 0 1 4-4h12M7 22l-3-3 3-3"/><path d="M20 13v2a4 4 0 0 1-4 4H4"/>',
+    trophy: '<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3"/>',
+    sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+    cloud: '<path d="M7 18a4.5 4.5 0 1 1 .9-8.9A6 6 0 0 1 19.5 11 3.5 3.5 0 0 1 18 18z"/>',
+    rain: '<path d="M7 15a4.5 4.5 0 1 1 .9-8.9A6 6 0 0 1 19.5 8 3.5 3.5 0 0 1 18 15z"/><path d="M8 18l-1 3M12 18l-1 3M16 18l-1 3"/>',
+    suitcase: '<rect x="3" y="7" width="18" height="13" rx="2.5"/><path d="M9 7V4.5h6V7M3 12h18"/>',
+    coins: '<ellipse cx="9" cy="7" rx="6" ry="3"/><path d="M3 7v5c0 1.7 2.7 3 6 3s6-1.3 6-3V7"/><path d="M9 15v2c0 1.7 2.7 3 6 3s6-1.3 6-3v-5c0-1.7-2.7-3-6-3"/>',
+    knife: '<path d="M4 20L18 6a2.8 2.8 0 0 1 2 4L9 21z"/>',
+    pot: '<path d="M4 10h16v6a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4zM2 10h20M9 6c0-1.5 1-2 1-3M14 6c0-1.5 1-2 1-3"/>',
+    cards: '<rect x="3" y="6" width="14" height="15" rx="2.5"/><path d="M7 3h11.5A2.5 2.5 0 0 1 21 5.5V18"/>',
+    dumbbell: '<path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11"/>',
+    map: '<path d="M9 4L3 6.5v14L9 18l6 2.5 6-2.5V4l-6 2.5zM9 4v14M15 6.5v14"/>',
+    edit: '<path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4"/>',
+    chart: '<path d="M4 20V11M10 20V5M16 20v-6M21 20H3"/>',
+    home: '<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
+    grid: '<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>',
+    wallet: '<rect x="3" y="6" width="18" height="14" rx="2.5"/><path d="M16 13h2M3 10h18M6 6l9-3 2 3"/>',
+    people: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M18 14.5a5 5 0 0 1 3.5 5.5"/>',
+    receipt: '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6M9 16h4"/>',
+    up: '<path d="M6 15l6-6 6 6"/>', down: '<path d="M6 9l6 6 6-6"/>',
+    more: '<circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/>',
+    note: '<path d="M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h5"/>',
+  };
+  const ico = (n, extra = "") => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ${extra}>${paths[n] || ""}</svg>`;
+
+  // Dates are "yyyy-mm-dd" strings from the note; the clock is amber.note.today.
+  const D = {
+    parse: (s) => { const m = /^(\d{4})-(\d\d)-(\d\d)/.exec(String(s || "").trim()); return m ? new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])) : null; },
+    iso: (d) => d.toISOString().slice(0, 10),
+    add: (s, n) => { const d = D.parse(s); d.setUTCDate(d.getUTCDate() + n); return D.iso(d); },
+    diff: (a, b) => Math.round((D.parse(a) - D.parse(b)) / 86400000),
+    wd: (s) => (D.parse(s).getUTCDay() + 6) % 7, // 0 = Monday
+    weekStart: (s) => D.add(s, -D.wd(s)),
+    fmt: (s, o = { weekday: "short", day: "numeric", month: "short" }) => { const d = D.parse(s); return d ? d.toLocaleDateString("en-GB", { timeZone: "UTC", ...o }) : ""; },
+    month: (s) => D.fmt(s, { month: "long" }),
+    rel: (s, today) => { const n = D.diff(s, today); return n === 0 ? "Today" : n === 1 ? "Tomorrow" : n === -1 ? "Yesterday" : n > 1 && n < 7 ? D.fmt(s, { weekday: "long" }) : n > 0 ? `In ${n} days` : `${-n} days ago`; },
+  };
+
+  const num = (s) => { const n = parseFloat(String(s ?? "").replace(/\s| /g, "").replace(/kr|sek|€|\$/gi, "").replace(",", ".")); return Number.isFinite(n) ? n : NaN; };
+  const kr = (n, o = {}) => new Intl.NumberFormat("sv-SE", { maximumFractionDigits: o.dec ?? 0, minimumFractionDigits: o.dec ?? 0 }).format(Math.round(n * 10 ** (o.dec ?? 0)) / 10 ** (o.dec ?? 0)) + (o.unit === false ? "" : " " + (o.unit || "kr"));
+  const fmtN = (n, dec = 0) => new Intl.NumberFormat("sv-SE", { maximumFractionDigits: dec }).format(n);
+  const done = (s) => /^(✓|✔|x|yes|done|1|true)$/i.test(String(s ?? "").trim());
+  const col = (t, re) => t ? t.columns.findIndex((c) => re.test(c.name.trim())) : -1;
+  const table = (note, ...res) => note.tables.find((t) => res.every((re) => col(t, re) >= 0));
+
+  /** Adds rows to table `index` as one change (one Undo). */
+  function addRows(index, rows) {
+    return amber.update(rows.map((values) => ({ op: "append_row", table: index, values })));
+  }
+
+  // A sheet: one at a time, Escape or the scrim closes it, focus goes in and comes back. On the
+  // phone it rises from the bottom and stays above the keyboard; from 700 px it's a centred panel.
+  let current = null;
+  function sheet(title, html, { mount, wide, actions = "" } = {}) {
+    close(true);
+    const back = document.activeElement;
+    const host = document.createElement("div");
+    host.className = "sheet-host";
+    host.innerHTML = `<div class="scrim" data-close></div><section class="sheet ${wide ? "wide" : ""}" role="dialog" aria-modal="true" aria-label="${esc(title)}">
+      <header><div class="grab" aria-hidden="true"></div><h2>${esc(title)}</h2>${actions}<button class="round" data-close aria-label="Close">${ico("close")}</button></header><div class="sheet-body">${html}</div></section>`;
+    document.body.appendChild(host);
+    document.documentElement.classList.add("sheet-open");
+    const onKey = (e) => { if (e.key === "Escape") close(); };
+    host.addEventListener("click", (e) => { if (e.target.closest("[data-close]")) close(); });
+    addEventListener("keydown", onKey);
+    const vv = window.visualViewport;
+    const fitKeyboard = () => { if (!vv) return; const kb = Math.max(0, innerHeight - vv.height - vv.offsetTop); host.style.setProperty("--kb", kb + "px"); host.style.setProperty("--vvh", vv.height + "px"); };
+    fitKeyboard(); vv && vv.addEventListener("resize", fitKeyboard); vv && vv.addEventListener("scroll", fitKeyboard);
+    // A focused field scrolls into the part of the sheet you can see.
+    host.addEventListener("focusin", (e) => { if (e.target.matches("input, textarea, select")) setTimeout(() => e.target.scrollIntoView({ block: "nearest", behavior: "smooth" }), 320); });
+    current = { host, back, onKey, fitKeyboard };
+    requestAnimationFrame(() => requestAnimationFrame(() => host.classList.add("open")));
+    mount && mount(host.querySelector(".sheet-body"), close);
+    setTimeout(() => (host.querySelector("[autofocus]") || host.querySelector(".sheet header .round")).focus({ preventScroll: true }), 60);
+    return close;
+  }
+  function close(instant) {
+    if (!current) return;
+    const { host, back, onKey, fitKeyboard } = current;
+    current = null;
+    removeEventListener("keydown", onKey);
+    window.visualViewport && visualViewport.removeEventListener("resize", fitKeyboard);
+    host.classList.remove("open");
+    document.documentElement.classList.remove("sheet-open");
+    setTimeout(() => host.remove(), instant === true ? 0 : 380);
+    back && back.isConnected && back.focus && back.focus({ preventScroll: true });
+  }
+
+  // The app's frame: a bottom tab bar on the phone and a sidebar from 900 px, with screens pushed
+  // on top (a back button, a slide). screen(tab, note) returns a screen's HTML; after(tab) wires it.
+  function app({ tabs, screen, after, header }) {
+    if (schema.length && !tabs.some((t) => t.id === "settings")) tabs = [...tabs, { id: "settings", label: "Settings", icon: "gear" }];
+    const st = { tab: tabs[0].id, stack: [], scroll: {}, dir: "" };
+    const root = document.getElementById("app");
+    root.classList.add("shell-root");
+    function draw(note = amber.note) {
+      const top = st.stack[st.stack.length - 1];
+      const t = tabs.find((x) => x.id === st.tab);
+      const content = top ? top.render(note) : st.tab === "settings" ? `<header class="top"><div class="titles"><h1>Settings</h1></div></header>${settingsHTML()}` : screen(st.tab, note);
+      const titleHTML = top ? `<header class="push-h"><button class="backb" data-pop aria-label="Back to ${esc(top.backLabel || t.label)}">${ico("back")}<span>${esc(top.backLabel || t.label)}</span></button></header>` : "";
+      root.innerHTML = `<div class="shell ${top && top.immersive ? "immersive" : ""}">
+        <nav class="sidebar" aria-label="Sections"><div class="sb-title">${esc(note.title)}</div>${header ? header(note) : ""}${tabs.map((x) => `<button class="sb-item" data-tab="${x.id}" aria-current="${x.id === st.tab ? "page" : "false"}">${ico(x.icon)}<span>${esc(x.label)}</span>${x.badge && x.badge(note) ? `<i class="badge num">${x.badge(note)}</i>` : ""}</button>`).join("")}</nav>
+        <div class="screen ${st.dir}" id="screen">${titleHTML}${content}</div>
+        <nav class="tabbar" aria-label="Sections">${tabs.map((x) => `<button class="tb-item" data-tab="${x.id}" aria-current="${x.id === st.tab ? "page" : "false"}">${ico(x.icon)}<span>${esc(x.label)}</span>${x.badge && x.badge(note) ? `<i class="badge num">${x.badge(note)}</i>` : ""}</button>`).join("")}</nav>
+      </div>`;
+      st.dir = "";
+      if (top && top.after) top.after(document.getElementById("screen")); else if (!top && after && st.tab !== "settings") after(st.tab, document.getElementById("screen"));
+    }
+    root.addEventListener("click", (e) => {
+      const tb = e.target.closest("[data-tab]");
+      if (tb) {
+        st.scroll[st.tab] = scrollY;
+        const same = tb.dataset.tab === st.tab;
+        st.tab = tb.dataset.tab; st.stack = []; st.dir = same ? "" : "fade";
+        draw(); scrollTo(0, same ? 0 : st.scroll[st.tab] || 0); return;
+      }
+      if (e.target.closest("[data-pop]")) pop();
+    });
+    addEventListener("keydown", (e) => { if (e.key === "Escape" && st.stack.length && !current) pop(); });
+    function push(scr) { st.scroll["push" + st.stack.length] = scrollY; st.stack.push(scr); st.dir = "in"; draw(); scrollTo(0, 0); }
+    function pop() { if (!st.stack.length) return; st.stack.pop(); st.dir = "out"; draw(); scrollTo(0, st.scroll["push" + st.stack.length] || 0); }
+    return { draw, push, pop, get tab() { return st.tab; }, set tab(v) { st.tab = v; st.stack = []; draw(); }, get depth() { return st.stack.length; } };
+  }
+
+  // App settings: declared once in <meta name="app-settings"> (types: number, text, time, toggle,
+  // choice with options as strings or {value, label}, list, currency), shown inside the app as its
+  // own Settings screen, and kept in the app's own data under values.settings.
+  const schema = (() => { const m = document.querySelector('meta[name="app-settings"]'); try { return m ? JSON.parse(m.content).settings : []; } catch (e) { console.error("app-settings:", e.message); return []; } })();
+  const settings = () => Object.assign({}, ...schema.map((f) => ({ [f.key]: f.default })), (amber.data.values && amber.data.values.settings) || {});
+  const optVal = (o) => (o && typeof o === "object" ? o.value : o), optLabel = (o) => (o && typeof o === "object" ? o.label : o);
+  const CURRENCIES = ["SEK", "NOK", "DKK", "EUR", "USD", "GBP", "CHF", "JPY"];
+  function settingsHTML() {
+    const s = settings();
+    const row = (f) => {
+      const id = "set-" + f.key, v = s[f.key];
+      const help = f.help ? `<div class="muted small">${esc(f.help)}</div>` : "";
+      if (f.type === "toggle") return `<label class="row setrow" for="${id}"><span class="grow">${esc(f.label)}${help}</span><input class="switch" type="checkbox" role="switch" id="${id}" data-set="${f.key}" ${v ? "checked" : ""}></label>`;
+      let input;
+      if (f.type === "choice" || f.type === "currency") input = `<select class="in" id="${id}" data-set="${f.key}">${(f.type === "currency" ? CURRENCIES : f.options).map((o) => `<option value="${esc(optVal(o))}" ${String(optVal(o)) === String(v) ? "selected" : ""}>${esc(optLabel(o))}</option>`).join("")}</select>`;
+      else if (f.type === "list") input = `<input class="in" id="${id}" data-set="${f.key}" value="${esc((Array.isArray(v) ? v : []).join(", "))}">`;
+      else input = `<input class="in ${f.type === "number" ? "num" : ""}" id="${id}" data-set="${f.key}" type="${f.type === "number" ? "number" : f.type === "time" ? "time" : "text"}" ${f.type === "number" ? 'inputmode="decimal"' : ""} value="${esc(v ?? "")}">`;
+      return `<div class="row setrow"><label class="grow" for="${id}">${esc(f.label)}${help}</label><div class="set-input">${input}</div></div>`;
+    };
+    return `<section class="card list settings-list">${schema.map(row).join("")}</section><p class="muted small" style="margin:.7rem .3rem 0">Kept with this note's app, on all your devices.</p>`;
+  }
+  function saveSetting(el) {
+    const f = schema.find((x) => x.key === el.dataset.set); if (!f) return;
+    let v;
+    if (f.type === "toggle") v = el.checked;
+    else if (f.type === "number") { v = parseFloat(String(el.value).replace(",", ".")); if (!Number.isFinite(v)) v = f.default; }
+    else if (f.type === "list") v = el.value.split(",").map((x) => x.trim()).filter(Boolean);
+    else if (f.type === "choice") { const o = f.options.find((x) => String(optVal(x)) === el.value); v = o != null ? optVal(o) : el.value; }
+    else v = el.value;
+    return amber.setData({ values: { settings: { [f.key]: v } } });
+  }
+  document.addEventListener("change", (e) => { const el = e.target.closest && e.target.closest("[data-set]"); if (el) saveSetting(el); });
+  const openSettings = () => sheet("Settings", settingsHTML());
+  document.addEventListener("click", (e) => { if (e.target.closest && e.target.closest("[data-settings]")) openSettings(); });
+
+  const on = (v) => v === true || v === "On" || v === "on" || v === "Yes";
+
+  // Charts drawn at their real width (so 10 px labels stay 10 px): width(key) is the last measured
+  // inner width of the element with data-w="key"; fit(render) re-renders once when a width changed.
+  const widths = {};
+  const width = (key, fallback) => widths[key] || fallback;
+  function fit(render) {
+    let changed = false;
+    for (const el of document.querySelectorAll("[data-w]")) {
+      const cs = getComputedStyle(el);
+      const w = Math.round(el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight));
+      if (w && Math.abs((widths[el.dataset.w] || 0) - w) > 4) { widths[el.dataset.w] = w; changed = true; }
+    }
+    if (changed) render();
+  }
+  let resizeT;
+  const onResize = (render) => addEventListener("resize", () => { clearTimeout(resizeT); resizeT = setTimeout(() => { for (const k in widths) delete widths[k]; render(); fit(render); }, 120); });
+
+  const once = (fn) => { let p; return () => p || (p = fn()); };
+  const hash = (s) => { let h = 2166136261; for (const c of String(s)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); };
+  const announce = (() => { let el; return (msg) => { if (!el) { el = document.createElement("div"); el.className = "sr"; el.setAttribute("aria-live", "polite"); document.body.appendChild(el); } el.textContent = ""; setTimeout(() => (el.textContent = msg), 30); }; })();
+
+  return { schema, settingsHTML, openSettings, app, width, fit, onResize, esc, $, $$, ico, D, num, kr, fmtN, done, col, table, addRows, sheet, close, settings, on, once, hash, announce };
+})();
+
+const { esc, ico, announce } = Kit;
+const COLORS = { kick: "--kick", snare: "--snare", clap: "--clap", hat: "--hat", "open hat": "--ohat", bass: "--bass" };
+const BASS = ["C2", "D#2", "F2", "G2", "A#2", "C3", "G1", "A#1"];
+let kbd = false, pat = 0, page = 0, playing = false, step = -1, muted = new Set(), soundOn = false, cursor = { r: 0, c: 0 };
+let ac, master, analyser, timer, nextTime = 0, nextStep = 0, queue = [];
+
+// The patterns: every table in the note with a Sound column, named by the heading above it.
+function patterns(note) {
+  const lines = note.markdown.split("\n"), names = [];
+  let heading = "";
+  for (let i = 0; i < lines.length; i++) {
+    const h = /^#{1,6}\s+(.*)/.exec(lines[i]); if (h) heading = h[1].trim();
+    if (lines[i].trim().startsWith("|") && /^\s*\|[\s|:-]+\|?\s*$/.test(lines[i + 1] || "") && (lines[i + 1] || "").includes("-")) {
+      names.push(heading || `Pattern ${names.length + 1}`);
+      while (i + 1 < lines.length && lines[i + 1].trim().startsWith("|")) i++;
+    }
+  }
+  return note.tables.map((t, k) => ({ t, name: names[k] || `Pattern ${k + 1}` }))
+    .filter((p) => /^(sound|instrument|track)$/i.test(p.t.columns[0].name.trim()) && p.t.columns.length > 2)
+    .map((p) => ({ ...p, steps: p.t.columns.length - 1, rows: p.t.rows.map((r, i) => ({ i, name: r[0].trim(), key: r[0].trim().toLowerCase(), cells: r.slice(1).map((c) => c.trim()) })) }));
+}
+const S = () => { const s = Kit.settings(); return { tempo: Math.min(220, Math.max(50, Number(s.tempo) || 100)), swing: { None: 0, Light: .12, Heavy: .24 }[s.swing] || 0, kit: s.kit || "Warm", chain: /next/i.test(s.chain || "") }; };
+const active = (v) => v && v !== "." && v !== "-" && v !== "0";
+const freq = (n) => { const m = /^([A-G])(#|b)?(-?\d)$/.exec(n || ""); if (!m) return 65.4; const semis = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }[m[1]] + (m[2] === "#" ? 1 : m[2] === "b" ? -1 : 0) + (+m[3] + 1) * 12; return 440 * Math.pow(2, (semis - 69) / 12); };
+
+// The synth: everything drawn with Web Audio, no samples.
+function audio() {
+  if (!ac) {
+    ac = new (window.AudioContext || window.webkitAudioContext)();
+    master = ac.createGain(); master.gain.value = .8;
+    const comp = ac.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 4;
+    analyser = ac.createAnalyser(); analyser.fftSize = 1024;
+    master.connect(comp).connect(analyser).connect(ac.destination);
+  }
+  if (ac.state === "suspended") ac.resume();
+  return ac;
+}
+let noiseBuf;
+const noise = () => { if (noiseBuf) return noiseBuf; noiseBuf = ac.createBuffer(1, ac.sampleRate * .5, ac.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; return noiseBuf; };
+function env(node, t, peak, decay) { const g = ac.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(peak, t + .002); g.gain.exponentialRampToValueAtTime(.0001, t + decay); node.connect(g); g.connect(master); return g; }
+function burst(t, type, f, q, peak, decay) { const s = ac.createBufferSource(); s.buffer = noise(); const fl = ac.createBiquadFilter(); fl.type = type; fl.frequency.value = f; fl.Q.value = q; s.connect(fl); env(fl, t, peak, decay); s.start(t); s.stop(t + decay + .05); }
+function voice(key, t, cell) {
+  const kit = S().kit, bright = kit === "Bright" ? 1.5 : kit === "Lo-fi" ? .6 : 1;
+  if (key === "kick") { const o = ac.createOscillator(); o.frequency.setValueAtTime(150 * (kit === "Lo-fi" ? .85 : 1), t); o.frequency.exponentialRampToValueAtTime(42, t + .13); env(o, t, .95, .42); o.start(t); o.stop(t + .5); }
+  else if (key === "snare") { burst(t, "bandpass", 1900 * bright, .8, .55, .2); const o = ac.createOscillator(); o.type = "triangle"; o.frequency.setValueAtTime(190, t); env(o, t, .3, .1); o.start(t); o.stop(t + .15); }
+  else if (key === "clap") { for (const d of [0, .011, .023]) burst(t + d, "bandpass", 1300 * bright, 1.2, .45, d === .023 ? .18 : .03); }
+  else if (key === "hat") burst(t, "highpass", 7600 * bright, .7, .22, .045);
+  else if (key === "open hat") burst(t, "highpass", 6800 * bright, .7, .2, .32);
+  else if (key === "bass") {
+    const o = ac.createOscillator(); o.type = kit === "Lo-fi" ? "square" : "sawtooth"; o.frequency.value = freq(cell);
+    const f = ac.createBiquadFilter(); f.type = "lowpass"; f.Q.value = 6; f.frequency.setValueAtTime(1400 * bright, t); f.frequency.exponentialRampToValueAtTime(180, t + .22);
+    o.connect(f); env(f, t, .42, .3); o.start(t); o.stop(t + .35);
+  }
+}
+
+// A look-ahead scheduler: steps are queued against the audio clock, the screen follows.
+function schedule() {
+  const ps = patterns(amber.note); const p = ps[pat]; if (!p) return;
+  const s = S(), sixteenth = 60 / s.tempo / 4;
+  while (nextTime < ac.currentTime + .12) {
+    const k = nextStep % p.steps;
+    const t = nextTime + (k % 2 ? s.swing * sixteenth : 0);
+    if (soundOn) for (const r of p.rows) if (!muted.has(r.key) && active(r.cells[k])) voice(r.key, t, r.cells[k]);
+    queue.push({ k, t });
+    nextTime += sixteenth; nextStep++;
+    if (nextStep % p.steps === 0 && s.chain && ps.length > 1) { pat = (pat + 1) % ps.length; render(); }
+  }
+}
+function start() {
+  audio(); soundOn = true; playing = true; nextTime = ac.currentTime + .05; nextStep = 0; queue = [];
+  clearInterval(timer); timer = setInterval(schedule, 25); schedule(); requestAnimationFrame(draw); render(); announce("Playing.");
+}
+function stop() { playing = false; clearInterval(timer); step = -1; queue = []; render(); }
+document.addEventListener("visibilitychange", () => { if (document.hidden && playing) stop(); });
+
+// The playhead and the scope, drawn every frame from what the audio is playing now.
+function draw() {
+  if (!playing) return;
+  while (queue.length && queue[0].t <= ac.currentTime) { const q = queue.shift(); setStep(q.k); }
+  const c = document.getElementById("scope");
+  if (c && analyser) {
+    const w = c.width = c.clientWidth * devicePixelRatio, h = c.height = c.clientHeight * devicePixelRatio, g = c.getContext("2d");
+    const d = new Uint8Array(analyser.fftSize); analyser.getByteTimeDomainData(d);
+    g.lineWidth = 2 * devicePixelRatio; g.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--amber-accent"); g.beginPath();
+    for (let i = 0; i < d.length; i++) { const x = (i / d.length) * w, y = (d[i] / 255) * h; i ? g.lineTo(x, y) : g.moveTo(x, y); }
+    g.stroke();
+  }
+  requestAnimationFrame(draw);
+}
+function setStep(k) {
+  step = k;
+  const p = patterns(amber.note)[pat]; if (!p) return;
+  const per = perPage(p);
+  // On the phone the grid shows half the bar; the half that's playing is marked on its button.
+  document.querySelectorAll("[data-page]").forEach((b) => b.classList.toggle("playing", Math.floor(k / per) === +b.dataset.page));
+  document.querySelectorAll(".pad.now, .steps .now").forEach((e) => e.classList.remove("now"));
+  document.querySelectorAll(`[data-c="${k}"]`).forEach((e) => { e.classList.add("now"); if (e.classList.contains("on")) { e.classList.remove("hit"); void e.offsetWidth; e.classList.add("hit"); } });
+  const lc = document.getElementById("pos"); if (lc) lc.textContent = `${Math.floor(k / 4) + 1}.${(k % 4) + 1}`;
+}
+const perPage = (p) => (innerWidth < 700 ? Math.min(8, p.steps) : p.steps);
+
+function render(note = amber.note) {
+  const app = document.getElementById("app");
+  const ps = patterns(note);
+  if (!ps.length) {
+    app.innerHTML = `<header class="top"><div class="titles"><h1>${esc(note.title)}</h1></div></header><div class="card empty">${ico("play")}<h3>No pattern yet</h3><p>Add a table whose first column is Sound, with a row per sound (Kick, Snare, Hat, Bass) and a column per step (1 to 16). An x plays the step.</p></div>`;
+    return;
+  }
+  if (pat >= ps.length) pat = 0;
+  const p = ps[pat], s = S(), per = perPage(p), pages = Math.ceil(p.steps / per);
+  if (page >= pages) page = 0;
+  const from = page * per, cols = [...Array(per)].map((_, j) => from + j);
+  app.innerHTML = `
+  <header class="top"><div class="titles"><h1>${esc(note.title)}</h1><div class="sub">${ps.length} ${ps.length === 1 ? "pattern" : "patterns"} · ${p.rows.length} sounds · ${p.steps} steps</div></div><button class="round" data-settings aria-label="Settings">${ico("gear")}</button></header>
+  <section class="deck" aria-label="Transport">
+    <div class="transport">
+      <button class="play" id="play" aria-label="${playing ? "Stop" : "Play"}">${playing ? `<svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>` : `<svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg>`}</button>
+      <div class="lcd" aria-hidden="true"><div><b id="pos">${step >= 0 ? `${Math.floor(step / 4) + 1}.${(step % 4) + 1}` : "1.1"}</b> <span>bar</span></div><div><b>${s.tempo}</b> <span>bpm</span></div><div class="pname"><b>${esc(p.name.slice(0, 8))}</b></div></div>
+      <div class="tempo"><button id="slower" aria-label="Slower">−</button><button id="faster" aria-label="Faster">+</button></div>
+      <span class="grow"></span>
+    </div>
+    <canvas class="scope" id="scope" aria-hidden="true"></canvas>
+  </section>
+  <div class="patterns" role="group" aria-label="Patterns">${ps.map((x, k) => `<button data-pat="${k}" aria-current="${k === pat}">${esc(x.name)}</button>`).join("")}
+    ${pages > 1 ? `<span class="pages seg" role="group" aria-label="Steps">${[...Array(pages)].map((_, k) => `<button data-page="${k}" aria-pressed="${k === page}">${k * per + 1}–${Math.min(p.steps, (k + 1) * per)}</button>`).join("")}</span>` : ""}</div>
+  <div class="grid" style="--steps:${per}" role="group" aria-label="${esc(p.name)} pattern">
+    ${p.rows.map((r, ri) => `<button class="name ${muted.has(r.key) ? "muted" : ""}" data-mute="${esc(r.key)}" style="--c:var(${COLORS[r.key] || "--c1"})" aria-pressed="${!muted.has(r.key)}" aria-label="${esc(r.name)}, ${muted.has(r.key) ? "muted" : "on"}"><i></i>${esc(r.name)}</button>
+      ${cols.map((c) => { const v = r.cells[c], on = active(v); return `<button class="pad ${on ? "on" : ""} ${c % 4 === 0 ? "beat" : ""} ${c === step ? "now" : ""} ${kbd && cursor.r === ri && cursor.c === c ? "cur" : ""}" data-r="${ri}" data-c="${c}" style="--c:var(${COLORS[r.key] || "--c1"})" aria-label="${esc(r.name)} step ${c + 1}${on ? `, ${r.key === "bass" ? esc(v) : "on"}` : ""}">${r.key === "bass" && on ? esc(v) : ""}</button>`; }).join("")}`).join("")}
+  </div>
+  <div class="steps" style="--steps:${per}"><span></span>${cols.map((c) => `<span data-c="${c}" class="${c === step ? "now" : ""}">${c + 1}</span>`).join("")}</div>
+  <p class="hint">Tap a pad to change the note's pattern. Tap a name to mute it. On the Mac: <span class="kbd">Space</span> plays, arrows move, <span class="kbd">Return</span> toggles.</p>`;
+}
+
+// A tap writes the step into the note's table: an x, or the next bass note.
+async function toggle(ri, c) {
+  const p = patterns(amber.note)[pat]; const r = p.rows[ri]; const v = r.cells[c];
+  let next = active(v) ? "" : "x";
+  if (r.key === "bass") { const k = BASS.indexOf(v); next = !active(v) ? BASS[0] : k >= 0 && k < BASS.length - 1 ? BASS[k + 1] : ""; }
+  const pad = document.querySelector(`.pad[data-r="${ri}"][data-c="${c}"]`); if (pad) pad.classList.toggle("on", !!next);
+  if (playing && next && soundOn) voice(r.key, ac.currentTime, next);
+  const res = await amber.update({ op: "set_cell", table: p.t.index, row: r.i, col: c + 1, value: next });
+  if (!res.ok) { announce(res.error); render(); }
+}
+async function tempo(d) { await amber.setData({ values: { settings: { tempo: S().tempo + d } } }); }
+
+document.addEventListener("click", (e) => {
+  const t = e.target.closest("#play,#slower,#faster,[data-pat],[data-page],[data-mute],.pad"); if (!t) return;
+  if (t.id === "play") playing ? stop() : start();
+  else if (t.id === "slower") tempo(-4);
+  else if (t.id === "faster") tempo(4);
+  else if (t.dataset.pat) { pat = +t.dataset.pat; page = 0; nextStep = 0; render(); }
+  else if (t.dataset.page) { page = +t.dataset.page; render(); }
+  else if (t.dataset.mute) { const k = t.dataset.mute; muted.has(k) ? muted.delete(k) : muted.add(k); render(); }
+  else { cursor = { r: +t.dataset.r, c: +t.dataset.c }; toggle(+t.dataset.r, +t.dataset.c); }
+});
+document.addEventListener("keydown", (e) => {
+  if (e.metaKey || e.ctrlKey || e.target.closest("input, textarea")) return;
+  const p = patterns(amber.note)[pat]; if (!p) return;
+  const mv = { ArrowLeft: [0, -1], ArrowRight: [0, 1], ArrowUp: [-1, 0], ArrowDown: [1, 0] }[e.key];
+  if (e.key === " ") { e.preventDefault(); playing ? stop() : start(); }
+  else if (mv) { e.preventDefault(); kbd = true; cursor = { r: (cursor.r + mv[0] + p.rows.length) % p.rows.length, c: (cursor.c + mv[1] + p.steps) % p.steps }; const per = perPage(p); page = Math.floor(cursor.c / per); render(); }
+  else if (e.key === "Enter") { e.preventDefault(); toggle(cursor.r, cursor.c); }
+  else if (e.key === "[" || e.key === "]") tempo(e.key === "]" ? 4 : -4);
+});
+Kit.onResize(() => render());
+amber.onChange((note) => render(note));
+</script>
+</body>
+</html>

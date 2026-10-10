@@ -17,7 +17,7 @@ final class SignInLayoutUITests: XCTestCase {
         app.launch()
         let apple = app.descendants(matching: .any)["signin.apple"].firstMatch
         XCTAssertTrue(apple.waitForExistence(timeout: 5))
-        let title = app.staticTexts["Sign in to Amber Notes"]
+        let title = app.staticTexts["Sign in to Pinto Notes"]
         let top = title.frame.minY
         let email = app.textFields["signin.email"]
         email.tap()

@@ -24,7 +24,7 @@ struct HeardFromView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: Metrics.gap) {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("How did you hear about Amber Notes?")
+                        Text("How did you hear about Pinto Notes?")
                             .font(Metrics.title)
                             .tracking(-0.4)
                             .foregroundStyle(Color.ink)
@@ -105,6 +105,7 @@ struct HeardFromView: View {
                 .frame(minHeight: Metrics.chipHeight)
                 .background(tapped ? Color(AmberProminentButtonStyle.fill) : typing ? Color.amberSoft : Color(Palette.field), in: shape)
                 .overlay(shape.strokeBorder(tapped ? .clear : typing ? Color(Palette.amber) : Color(Palette.fieldHairline), lineWidth: typing ? 1.5 : 1))
+                .hoverOverlay(shape, Color.primary.opacity(0.05))
                 .contentShape(shape)
         }
         .buttonStyle(PressScale())
@@ -120,7 +121,7 @@ struct HeardFromView: View {
         Button { store.skip() } label: {
             Text("Skip").frame(maxWidth: .infinity, minHeight: Metrics.skipHeight).contentShape(.rect)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.hoverText)
         .font(Metrics.skipFont)
         .foregroundStyle(Color.muted)
         .keyboardShortcut(.cancelAction)

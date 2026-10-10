@@ -2,7 +2,7 @@
 // Makes two throwaway users; exports one, then deletes it; the other is untouched.
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import postgres from "npm:postgres@3.4.5";
-import { strFromU8, unzipSync } from "npm:fflate@0.8.2";
+import { strFromU8, unzipSync } from "npm:fflate@0.8.3";
 
 const API = Deno.env.get("PANE_API")!, ANON = Deno.env.get("PANE_ANON")!, SERVICE = Deno.env.get("PANE_SERVICE")!;
 

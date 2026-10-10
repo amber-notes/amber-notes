@@ -30,7 +30,7 @@ enum ShareAsk {
     static let typingQuiet: TimeInterval = 10
 
     static let site = "https://ambernotes.app"
-    static let postText = "I\u{2019}ve been using Amber Notes: a simple notes app for iPhone and Mac that ChatGPT and Claude can actually read and edit. Free."
+    static let postText = "I\u{2019}ve been using Pinto Notes: a simple notes app for iPhone and Mac that ChatGPT and Claude can actually read and edit. Free."
 
     enum Choice: String, Sendable { case sharedX = "shared_x", sharedLinkedIn = "shared_linkedin", starredGitHub = "starred_github", dismissed }
 
@@ -50,8 +50,8 @@ enum ShareAsk {
 
     static func content(developer: Bool) -> Content {
         developer
-            ? Content(title: "Enjoying Amber Notes?", line: "It\u{2019}s open source.", choices: [.starredGitHub, .sharedX])
-            : Content(title: "Enjoying Amber Notes?",
+            ? Content(title: "Enjoying Pinto Notes?", line: "It\u{2019}s open source.", choices: [.starredGitHub, .sharedX])
+            : Content(title: "Enjoying Pinto Notes?",
                       line: "I\u{2019}m building it on my own, and word of mouth is how people find it. If it\u{2019}s been useful, a post would mean a lot.",
                       choices: [.sharedX, .sharedLinkedIn])
     }

@@ -224,17 +224,19 @@ struct MenuBarPanel: View {
 
     private var footer: some View {
         HStack(spacing: 4) {
-            Button("Open Amber Notes") { showWindow() }
+            Button("Open Pinto Notes") { showWindow() }
+                .buttonStyle(.hoverText)
+                .foregroundStyle(.tint)
                 .accessibilityIdentifier("menubar.open")
             Spacer()
-            SettingsLink { Image(systemName: "gearshape") }
+            SettingsLink { Image(systemName: "gearshape").frame(width: 24, height: 24) }
                 .help("Settings…")
                 .accessibilityLabel("Settings")
-            Button { NSApp.terminate(nil) } label: { Image(systemName: "power") }
-                .help("Quit Amber Notes")
-                .accessibilityLabel("Quit Amber Notes")
+            Button { NSApp.terminate(nil) } label: { Image(systemName: "power").frame(width: 24, height: 24) }
+                .help("Quit Pinto Notes")
+                .accessibilityLabel("Quit Pinto Notes")
         }
-        .buttonStyle(.borderless)
+        .buttonStyle(.hoverIcon)
         .padding(.horizontal, 10)
         .frame(height: 36)
     }

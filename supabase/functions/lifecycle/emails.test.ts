@@ -169,3 +169,15 @@ Deno.test("nothing forces a width: pictures shrink with the column, corners are 
 Deno.test("replies go to Emil", () => {
   assertStringIncludes(render("stuck", ctx).html, "mailto:emil@ambernotes.app");
 });
+
+Deno.test("the welcome: what Pinto Notes is, one step for where the person is, and a reply line", () => {
+  const steps = { connect: "https://ambernotes.app/open/connect-ai", app: "https://pintonotes.com/download", try: "https://chatgpt.com/?q=" } as const;
+  for (const [step, href] of Object.entries(steps)) {
+    const e = render("welcome", { ...ctx, step: step as keyof typeof steps });
+    assertStringIncludes(e.html, href);
+    for (const s of ["iPhone and Mac", "ChatGPT and Claude", "end-to-end encrypted", "free", "Just reply, I read every email."]) assertStringIncludes(e.text, s);
+    // One step only: one button, or one ask with its two places to send it.
+    assertEquals((e.html.match(/class="btn"/g) ?? []).length, step === "try" ? 0 : 1, step);
+  }
+  assert(!render("welcome", { ...ctx, plain: true }).html.includes("/email/hero-"));
+});

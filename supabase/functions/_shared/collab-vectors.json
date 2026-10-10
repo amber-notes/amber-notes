@@ -1,0 +1,18 @@
+{
+  "note": "6f1c1b0e-2a7d-4c55-9a43-1d2e3f405162",
+  "epoch": 3,
+  "from": "1a2b3c4d-0000-4000-8000-000000000001",
+  "to": "1a2b3c4d-0000-4000-8000-000000000002",
+  "sender_d": "/19yhClG98QInNDptHF/vbX0eGhqumy5OOwgFScaIbk=",
+  "sender_public": "BOa93ATIUV0WFij+6AhIgSE6M5evGWV589r+VyJO1890PVpwgqM6ihyc+3yGf2Sx+ovlevTUPhj8VdJHmvQ3RZU=",
+  "recipient_d": "ZkJIfvddzQN+xMCr7ceF0V4/5yJpERoHPpnl0YeHAvE=",
+  "recipient_public": "BP/YGXErTHWBO6tUvBEhPG89eRXVJtttc+Epc18MSWRRvlEvoratGK9tFwKJ6YepWsctA8D/SDxrgiPAma7AaQc=",
+  "note_key": "TMal95eW/zRgf0GwWglMQUi89B9wTkOYDePHGpGNqkg=",
+  "wrap": "amb3k.BHqR+V/YDXW3vSa5nb3UNiDNCoU+nyiWX22TzPJhmlB2dtmYIs9O9QZ7IH1MM7Z1M0h/u47txjOx7CUsxJJrD6yR5YQIrPVoztNtL8J8dbxfs02ZwhOPBijofgLyGKsoSY6/+d+f+9NXto5prPgW5Ud2f/4EG08SLI47P7M=",
+  "update": "amb3u.3.4DRFHylKChaAOzBLOoYLHdPcrTreHnpi273LPQNTRUfxJ7o4KwjTuiUPqQ==",
+  "update_plain": "hello from deno",
+  "safety_code": "0474 7632 9919",
+  "link_id": "UPy5hh7SfDFx7SwmyveMlg",
+  "link_secret": "3d3e9aMzhgNkMMGGjGRvKw",
+  "link_sealed": "amb3r./IcqvYYB7BNK6rWUg8hUbvYavw6EpwLl5bpSeQXVIREtRA3ufzS2kT1Kmj4X0zCIwBFDEfXynlDT0Lsl/J/cCluWSVKj3O24nzWCRQh3myPytDpKdTjdYQibROgSCFVEFIFbegWda6DyHR6obNVnE2tFbIkR6I6OBLy/dm7npukAwW9QS99lKm8wVtEZS6gMd88It5SKFyOc5RpiJ+2sJLCgnH1imsDyEtOfkUynhTD6W3DCPZ2DZrQ="
+}

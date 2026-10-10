@@ -7,11 +7,12 @@
     "build": "next build",
     "start": "next start",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "e2ee:copy": "cp ../supabase/functions/_shared/e2ee.ts lib/e2ee.ts"
   },
   "dependencies": {
     "@vercel/analytics": "^2.0.1",
-    "next": "^15.5.0",
+    "next": "^15.5.27",
     "posthog-js": "^1.435.6",
     "qrcode-generator": "^2",
     "react": "^19.1.0",
@@ -34,5 +35,11 @@
     "jsqr": "^1.4.0",
     "typescript": "^5.9.0",
     "vitest": "^3.2.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "postcss": "^8.5.23",
+      "source-map-js": "^1.2.2"
+    }
   }
 }

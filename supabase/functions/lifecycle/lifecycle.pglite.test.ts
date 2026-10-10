@@ -6,7 +6,7 @@ import type { PGlite } from "npm:@electric-sql/pglite@0.2.17";
 import { schemaDB, sqlFor } from "../mcp/pglite.ts";
 import { account, note } from "../mcp/sealed.ts";
 import { type Config, variantOf } from "./logic.ts";
-import { type Message, recordClick, run, type SendResult, stats } from "./run.ts";
+import { type Message, recordClick, run, type SendResult, stats, welcome } from "./run.ts";
 
 const H = 3_600_000, D = 24 * H;
 const NOW = new Date();
@@ -14,7 +14,7 @@ const at = (ms: number) => new Date(NOW.getTime() + ms);
 
 const cfg = (o: Partial<Config> = {}): Config => ({
   enabled: true, flags: { apps: false, appStore: false, sharing: false }, subjectTest: false, trackClicks: false, since: at(-60 * D), only: null, resendKey: "re_test", unsubscribeSecret: "u".repeat(40), cronSecret: "c".repeat(40),
-  from: "Emil at Pinto Notes <emil@ambernotes.app>", replyTo: "emil@ambernotes.app", site: "https://pintonotes.com", open: "https://ambernotes.app", ...o,
+  from: "Emil at Pinto Notes <emil@ambernotes.app>", replyTo: "emil@ambernotes.app", site: "https://pintonotes.com", open: "https://ambernotes.app", subjectPrefix: "", manualRounds: false, ...o,
 });
 
 /// A fake Resend that remembers what it was given.
@@ -23,12 +23,13 @@ function outbox(answer: (m: Message) => SendResult = () => ({ ok: true, id: cryp
   return { sent, send: async (m: Message) => { sent.push(m); return answer(m); } };
 }
 
-type Person = { age: number; notes?: number; mac?: boolean; iphone?: boolean; imported?: boolean; ai?: number; aiEdit?: boolean; history?: boolean; template?: boolean };
+type Person = { age: number; /** ms ago the email was confirmed; null: not confirmed (the default: at sign-up) */ confirmed?: number | null; notes?: number; mac?: boolean; iphone?: boolean; imported?: boolean; ai?: number; aiEdit?: boolean; history?: boolean; template?: boolean };
 
 /// An account `age` ms old, with what it has done. `ai` is how long ago an AI was connected.
 async function person(pg: PGlite, o: Person) {
   const a = await account(pg);
-  await pg.query(`update auth.users set created_at = $2 where id = $1`, [a.id, at(-o.age)]);
+  await pg.query(`update auth.users set created_at = $2, email_confirmed_at = $3 where id = $1`,
+    [a.id, at(-o.age), o.confirmed === null ? null : at(-(o.confirmed ?? o.age))]);
   for (let i = 0; i < (o.notes ?? 0); i++) await note(pg, a, `Note ${i}\n\nSomething private.`);
   if (o.mac) await pg.query(`insert into public.pane_devices (user_id, device_id, platform) values ($1, gen_random_uuid(), 'macos')`, [a.id]);
   if (o.iphone) await pg.query(`insert into public.pane_devices (user_id, device_id, platform) values ($1, gen_random_uuid(), 'ios')`, [a.id]);
@@ -312,4 +313,113 @@ Deno.test("clients can't read or write the email tables", async () => {
 Deno.test("lifecycle_tick does nothing without pg_net and the vault", async () => {
   const pg = await schemaDB();
   await pg.query(`select public.lifecycle_tick()`);
+});
+
+Deno.test("staging: subjects carry the prefix and links open the staging site", async () => {
+  const pg = await schemaDB();
+  await person(pg, { age: 2 * D, notes: 1, mac: true });
+  const box = outbox();
+  await run({ sql: sqlFor(pg), send: box.send, cfg: cfg({ site: "https://amber-notes-staging.vercel.app", open: "https://amber-notes-staging.vercel.app", subjectPrefix: "[Staging] " }), ...quick });
+  assertEquals(kinds(box), [`[Staging] ${S.import}`]);
+  assert(box.sent[0].html.includes("https://amber-notes-staging.vercel.app/open/import"));
+  assert(!box.sent[0].html.includes("https://ambernotes.app/open/"));
+  assert(box.sent[0].headers["List-Unsubscribe"].startsWith("<https://amber-notes-staging.vercel.app/unsubscribe/confirm?"));
+});
+
+const MIN = 60_000;
+
+Deno.test("welcome: once, a couple of minutes after sign-up, by any sign-up, never after an unsubscribe", async () => {
+  const pg = await schemaDB();
+  const sara = await person(pg, { age: 5 * MIN, iphone: true });
+  const early = await person(pg, { age: 1 * MIN });
+  const late = await person(pg, { age: 2 * H });
+  const gone = await person(pg, { age: 5 * MIN });
+  await pg.query(`insert into public.email_unsubscribes (user_id, source) values ($1, 'link')`, [gone.id]);
+  const box = outbox();
+  await welcome({ sql: sqlFor(pg), send: box.send, cfg: cfg(), pause: async () => {} });
+  await welcome({ sql: sqlFor(pg), send: box.send, cfg: cfg(), pause: async () => {} });
+  await Promise.all([1, 2, 3].map(() => welcome({ sql: sqlFor(pg), send: box.send, cfg: cfg(), pause: async () => {} })));
+  assertEquals(box.sent.map((m) => m.to), [sara.email]);
+  assertEquals(box.sent[0].subject, "Welcome to Pinto Notes");
+  assertEquals(box.sent[0].idempotencyKey, `lifecycle-welcome-${sara.id}`);
+  assertStringIncludes(box.sent[0].html, "https://ambernotes.app/open/connect-ai");
+  assert(box.sent[0].headers["List-Unsubscribe"]);
+  assertEquals((await rows(pg)).map((r) => [r.user_id, r.kind, r.status]), [[sara.id, "welcome", "sent"]]);
+  assert(![early.id, late.id, gone.id].some((id) => box.sent.some((m) => m.idempotencyKey.endsWith(id))));
+});
+
+Deno.test("welcome: an account that connected its AI while signing up is told to get the app", async () => {
+  const pg = await schemaDB();
+  await person(pg, { age: 4 * MIN, ai: 2 * MIN });
+  const box = outbox();
+  await welcome({ sql: sqlFor(pg), send: box.send, cfg: cfg(), pause: async () => {} });
+  assertStringIncludes(box.sent[0].html, "https://pintonotes.com/download");
+});
+
+Deno.test("welcome: off with the kill switch, and only for LIFECYCLE_ONLY accounts when it's set", async () => {
+  const pg = await schemaDB();
+  const a = await person(pg, { age: 5 * MIN });
+  const b = await person(pg, { age: 5 * MIN });
+  const box = outbox();
+  const report = await welcome({ sql: sqlFor(pg), send: box.send, cfg: cfg({ enabled: false }), pause: async () => {} });
+  assertEquals([box.sent.length, report.due.welcome], [0, 2]);
+  await welcome({ sql: sqlFor(pg), send: box.send, cfg: cfg({ only: new Set([b.id]) }), pause: async () => {} });
+  assertEquals(box.sent.map((m) => m.to), [b.email]);
+  assert(a.id !== b.id);
+});
+
+Deno.test("welcome and the ladder: an unanswered welcome isn't part of the silence, and the ladder starts on day 3", async () => {
+  const pg = await schemaDB();
+  const sara = await person(pg, { age: 5 * MIN });
+  const box = outbox();
+  await welcome({ sql: sqlFor(pg), send: box.send, cfg: cfg(), pause: async () => {} });
+  const facts = async () => (await pg.query<{ sent_since_active: number; sent: string[] }>(
+    `select sent_since_active, sent from public.lifecycle_facts($1) where user_id = $2`, [at(-60 * D), sara.id])).rows[0];
+  assertEquals((await facts()).sent_since_active, 0);
+  assertEquals((await facts()).sent, ["welcome"]);
+  // A day later: the stuck rung is ready, but the gap after the welcome holds it.
+  await pg.query(`update auth.users set created_at = $2, email_confirmed_at = $2 where id = $1`, [sara.id, at(-1 * D - H)]);
+  await age(pg, 1);
+  await run({ sql: sqlFor(pg), send: box.send, cfg: cfg(), ...quick });
+  assertEquals(box.sent.length, 1);
+  // Day 3: the ladder's first email.
+  await pg.query(`update auth.users set created_at = $2, email_confirmed_at = $2 where id = $1`, [sara.id, at(-3 * D - H)]);
+  await age(pg, 2);
+  await run({ sql: sqlFor(pg), send: box.send, cfg: cfg(), ...quick });
+  assertEquals(box.sent.map((m) => m.subject), ["Welcome to Pinto Notes", S.stuck]);
+});
+
+Deno.test("lifecycle_welcome_tick does nothing without a waiting account, pg_net or the vault", async () => {
+  const pg = await schemaDB();
+  await pg.query(`select public.lifecycle_welcome_tick()`);
+  await person(pg, { age: 5 * MIN });
+  await pg.query(`select public.lifecycle_welcome_tick()`);
+});
+
+Deno.test("email confirmation: no welcome or ladder email before the code is typed; the welcome follows the code", async () => {
+  const pg = await schemaDB();
+  const waiting = await person(pg, { age: 5 * MIN, confirmed: null });
+  const stale = await person(pg, { age: 2 * D, notes: 1, mac: true, confirmed: null });
+  const box = outbox();
+  const welcomed = await welcome({ sql: sqlFor(pg), send: box.send, cfg: cfg(), pause: async () => {} });
+  const laddered = await run({ sql: sqlFor(pg), send: box.send, cfg: cfg(), ...quick });
+  assertEquals([box.sent.length, welcomed.accounts, laddered.accounts], [0, 0, 0]);
+  assertEquals(await rows(pg), []);
+
+  // Confirmed 3 minutes ago, 2 hours after signing up: the welcome counts from the confirmation.
+  await pg.query(`update auth.users set created_at = $2, email_confirmed_at = $3 where id = $1`, [waiting.id, at(-2 * H), at(-3 * MIN)]);
+  await welcome({ sql: sqlFor(pg), send: box.send, cfg: cfg(), pause: async () => {} });
+  assertEquals(box.sent.map((m) => m.to), [waiting.email]);
+  assert(!box.sent.some((m) => m.to === stale.email));
+});
+
+Deno.test("email confirmation: lifecycle_welcome_tick ignores an account waiting for its code", async () => {
+  const pg = await schemaDB();
+  await person(pg, { age: 5 * MIN, confirmed: null });
+  const due = `select exists (select 1 from auth.users u where u.email_confirmed_at is not null
+    and greatest(u.created_at, u.email_confirmed_at) between now() - interval '60 minutes' and now() - interval '2 minutes') as due`;
+  assertEquals((await pg.query<{ due: boolean }>(due)).rows[0].due, false);
+  await pg.query(`select public.lifecycle_welcome_tick()`);
+  const src = (await pg.query<{ src: string }>(`select prosrc as src from pg_proc where proname = 'lifecycle_welcome_tick'`)).rows[0].src;
+  assertStringIncludes(src, "u.email_confirmed_at is not null");
 });

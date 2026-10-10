@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="amber-libs" content="npm:qrcode-generator@1.4.4/qrcode.js#sha384-8FWZA6BGMXhsfO+BLtrJK0We6gg5o1JyO8xQm6peWDEUs17ACA5ziE/NIAkl9z2k">
+<title>Wi-Fi at home</title>
+<style>
+  main { max-width: 520px; margin: 0 auto; padding: 22px var(--amber-gutter) 32px; display: grid; gap: 16px; justify-items: center; text-align: center; }
+  h1 { font-size: 1.6rem; margin: 0; letter-spacing: -0.02em; }
+  .card { background: #FFFFFF; border: 1px solid var(--amber-separator); border-radius: var(--amber-radius); padding: 18px; width: min(300px, 100%); box-sizing: border-box; }
+  .card svg { display: block; width: 100%; height: auto; }
+  .muted { color: var(--amber-text-secondary); font-size: 0.95rem; }
+  dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0; text-align: left; font-size: 1.05rem; }
+  dt { color: var(--amber-text-secondary); } dd { margin: 0; font-weight: 600; word-break: break-all; }
+</style></head>
+<body><main>
+  <h1>Join the Wi-Fi</h1>
+  <div class="muted">Point a phone camera at the code.</div>
+  <div class="card" id="qr"></div>
+  <dl id="info"></dl>
+</main>
+<script>
+  const field = (body, name) => (body.match(new RegExp("^" + name + ":\\s*(.+)$", "im")) || [])[1]?.trim() || "";
+  const esc = (s) => s.replace(/([\;,:"])/g, "\\$1");
+  amber.onChange((note) => {
+    const ssid = field(note.markdown, "Network"), pass = field(note.markdown, "Password");
+    const security = field(note.markdown, "Security") || "WPA";
+    const info = document.getElementById("info");
+    info.innerHTML = "";
+    for (const [k, v] of [["Network", ssid], ["Password", pass]]) {
+      const dt = document.createElement("dt"); dt.textContent = k;
+      const dd = document.createElement("dd"); dd.textContent = v || "Add a line: " + k + ": …";
+      info.append(dt, dd);
+    }
+    if (!ssid) { document.getElementById("qr").textContent = "Add a line: Network: name"; return; }
+    const qr = qrcode(0, "M");
+    qr.addData(`WIFI:T:${security};S:${esc(ssid)};P:${esc(pass)};;`);
+    qr.make();
+    document.getElementById("qr").innerHTML = qr.createSvgTag({ cellSize: 6, margin: 0, scalable: true });
+  });
+</script></body></html>

@@ -120,6 +120,8 @@ final class ConnectAsks {
             while true {
                 do { try await sleep(Self.tick) } catch { return }
                 guard let self, !Task.isCancelled, !self.stopped else { return }
+                // No network: nothing to look at. Coming back looks at once (the app's onChange).
+                guard NetworkPath.shared.isUp else { continue }
                 ticks += 1
                 guard Self.looks(expecting: self.center.expecting > 0, ticksSinceLook: ticks) else { continue }
                 ticks = 0
@@ -258,7 +260,7 @@ struct ConnectNotifier {
     /// "Allow ChatGPT to use your notes?" / "Requested from Chrome on a Mac. Open Amber Notes to allow it."
     static func content(_ ask: ConnectAsk, who: String?) -> (title: String, body: String) {
         let from = ask.started_from.isEmpty ? "a web browser" : ask.started_from
-        return ("Allow \(who ?? "an AI") to use your notes?", "Requested from \(from). Open Amber Notes to allow it.")
+        return ("Allow \(who ?? "an AI") to use your notes?", "Requested from \(from). Open Pinto Notes to allow it.")
     }
 
     static let system = ConnectNotifier(

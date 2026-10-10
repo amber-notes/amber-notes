@@ -9,6 +9,9 @@ struct AppPlaceTests {
             ("https://ambernotes.app/open/connect-ai", .connectAI),
             ("https://www.ambernotes.app/open/import/", .importNotes),
             ("https://ambernotes.app/open/history", .history),
+            // The new name's address, alongside the old one.
+            ("https://pintonotes.com/open/history", .history),
+            ("https://www.pintonotes.com/open/connect-ai", .connectAI),
             ("ambernotes://connect-ai", .connectAI),
             ("ambernotes://history", .history),
             ("ambernotes://import", .importNotes),
@@ -41,5 +44,42 @@ struct AppPlaceTests {
         #expect(center.receive(URL(string: "https://ambernotes.app/open/history")!))
         #expect(center.pending == .history)
         #expect(!center.receive(URL(string: "https://ambernotes.app/open/template/trip-plan")!))
+    }
+}
+
+/// Settings' pages: the Mac remembers its last tab, links open theirs, and signed out there are
+/// only General and Account.
+@MainActor struct SettingsTabTests {
+    func defaults() -> UserDefaults { UserDefaults(suiteName: "SettingsTabTests.\(UUID().uuidString)")! }
+
+    @Test func remembersTheLastTab() {
+        let d = defaults()
+        #expect(SettingsRoute(defaults: d).tab == .general, "General the first time")
+        let route = SettingsRoute(defaults: d)
+        route.tab = .storage
+        #expect(SettingsRoute(defaults: d).tab == .storage, "the next launch opens where you left it")
+    }
+
+    @Test func linksOpenTheirTab() {
+        let route = SettingsRoute(defaults: defaults())
+        route.open(.ai)
+        #expect(route.tab == .ai)
+        #if os(iOS)
+        #expect(route.target == .ai, "iPhone pushes the page once Settings shows")
+        #else
+        #expect(route.target == nil, "the Mac's window just switches tab")
+        #endif
+    }
+
+    @Test func signedOutShowsGeneralAndAccount() {
+        let view = SettingsView(backend: Backend(), sync: nil, route: SettingsRoute(defaults: defaults()))
+        #expect(view.tabs.prefix(2) == [.general, .account])
+        #expect(!view.tabs.contains(.ai) && !view.tabs.contains(.storage))
+    }
+
+    @Test func signedInShowsAccountAIAndStorage() {
+        let backend = Backend(testClient: CaptureScreen.client, email: "sara@example.com")
+        let view = SettingsView(backend: backend, sync: nil, route: SettingsRoute(defaults: defaults()))
+        #expect(Array(view.tabs.filter { $0 != .security }) == [.general, .account, .ai, .storage])
     }
 }

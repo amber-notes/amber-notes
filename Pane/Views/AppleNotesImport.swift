@@ -27,7 +27,7 @@ enum AppleNotesBridge {
         if let error {
             let code = error[NSAppleScript.errorNumber] as? Int
             if code == -1743 {
-                throw Failure.script("Amber Notes isn't allowed to read Apple Notes. Turn it on in System Settings → Privacy & Security → Automation.")
+                throw Failure.script("Pinto Notes isn't allowed to read Apple Notes. Turn it on in System Settings → Privacy & Security → Automation.")
             }
             throw Failure.script(error[NSAppleScript.errorMessage] as? String ?? "Apple Notes didn't answer.")
         }
@@ -223,7 +223,7 @@ struct AppleNotesImportView: View {
                                     let ids = items.map(\.id)
                                     if items.allSatisfy({ picked.contains($0.id) }) { picked.subtract(ids) } else { picked.formUnion(ids) }
                                 }
-                                .buttonStyle(.plain)
+                                .buttonStyle(.hoverLink)
                                 .font(.system(size: 12))
                                 .foregroundStyle(.tint)
                             }
@@ -266,6 +266,7 @@ struct AppleNotesImportView: View {
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 7)
+            .hoverHighlight(Rectangle())
             .background(on ? Color.accentColor.opacity(0.10) : .clear)
             .contentShape(.rect)
         }

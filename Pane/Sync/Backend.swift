@@ -92,13 +92,20 @@ final class Backend {
         var email: String?
     }
 
+    /// Where the client keeps its session, for reading it once at launch (restoreHeldSession).
+    @ObservationIgnored private var sessionStore: AuthLocalStorage?
+    @ObservationIgnored private var sessionKey: String?
+
     init() {
         if BackendConfig.isEnabled, let url = BackendConfig.url, let key = BackendConfig.key {
+            let storage = SessionStorage()
+            sessionStore = storage
+            sessionKey = Self.sessionKey(url)
             client = SupabaseClient(
                 supabaseURL: url,
                 supabaseKey: key,
                 options: SupabaseClientOptions(
-                    auth: .init(storage: SessionStorage(), emitLocalSessionAsInitialSession: true),
+                    auth: .init(storage: storage, emitLocalSessionAsInitialSession: true),
                     // Which device wrote each version, for version history ("You on iPhone"); and that
                     // this app keeps locked notes sealed and reads end-to-end encrypted accounts (the
                     // server refuses builds that don't say so, for accounts that need it).
@@ -119,15 +126,49 @@ final class Backend {
         }
     }
 
+    /// The key the Supabase client stores its session under (its default for the project).
+    static func sessionKey(_ url: URL) -> String {
+        "sb-\(url.host()?.split(separator: ".").first.map(String.init) ?? "")-auth-token"
+    }
+
+    /// Launching: the session this device kept, read once, before anything is drawn, so a signed-in
+    /// launch is signed in from its first frame. The client still checks and refreshes it
+    /// (watchAuth) and signs out only if it has really ended. Nil when there's no session here
+    /// (or it can't be read), and the launch goes on as before.
+    @discardableResult
+    func restoreHeldSession() -> UUID? {
+        guard state == .signedOut, let sessionStore, let sessionKey else { return nil }
+        return restore(from: sessionStore, key: sessionKey)
+    }
+
+    /// Tests: `restoreHeldSession` from a given store.
+    func restore(from store: AuthLocalStorage, key: String) -> UUID? {
+        guard let data = try? store.retrieve(key: key), let session = try? JSONDecoder().decode(Session.self, from: data) else { return nil }
+        apple = Self.appleIdentity(of: session.user)
+        google = Self.hasGoogle(session.user)
+        signedIn(session)
+        return session.user.id
+    }
+
     /// Tests: a client (on a stubbed network) that counts as signed in, as `userID` when given.
     init(testClient: SupabaseClient, email: String, userID: UUID? = nil) {
         client = testClient
         state = .signedIn(email: email)
-        testUserID = userID
+        self.userID = userID
     }
 
-    private var testUserID: UUID?
-    var userID: UUID? { testUserID ?? client?.auth.currentUser?.id }
+    /// Tests: a client (on a stubbed network) whose stored session decides the state, as at launch.
+    init(watching testClient: SupabaseClient) {
+        client = testClient
+        state = .signedOut
+        Task { await watchAuth() }
+    }
+
+    /// The signed-in account, kept as sign-in, refreshes and sign-out arrive. Asking the client for
+    /// its current user reads the session from the Keychain (and runs its storage migrations) each
+    /// time, and views read this in their bodies: every update of the window waited on the
+    /// Keychain, enough to freeze the app on a slow Keychain.
+    private(set) var userID: UUID?
 
     /// What this build can do, for the server: seal locked notes, and read and write encrypted accounts.
     static let clientTag = "lock-aware/1 e2ee/1"
@@ -147,6 +188,7 @@ final class Backend {
 
     private func signedIn(_ session: Session) {
         willSignIn(session.user.id)
+        userID = session.user.id
         state = .signedIn(email: session.user.email ?? "")
     }
 
@@ -161,16 +203,36 @@ final class Backend {
             if let session, !session.isExpired {
                 signedIn(session)
             } else if let session, session.isExpired {
-                // Let the SDK refresh; stay signed in if it can.
-                if (try? await client.auth.refreshSession()) != nil {
+                // Let the SDK refresh; stay signed in if it can, and while offline (an hour after
+                // the last refresh, on a plane): the notes are on this device, and the refresh
+                // happens with the next request that gets through. A refresh token the server
+                // refuses signs out (the SDK removes the session and sends signedOut).
+                do {
+                    _ = try await client.auth.refreshSession()
                     signedIn(session)
-                } else {
-                    state = .signedOut
+                } catch {
+                    if Self.keepsSession(afterRefreshError: error) {
+                        signedIn(session)
+                    } else {
+                        userID = nil
+                        state = .signedOut
+                    }
                 }
             } else {
+                userID = nil
                 state = .signedOut
             }
         }
+    }
+
+    /// A refresh that failed because the server couldn't be reached (offline, a dead connection, a
+    /// server that's down, a plane's Wi-Fi answering with its own page) keeps the session; one the
+    /// auth server answered and refused doesn't.
+    nonisolated static func keepsSession(afterRefreshError error: Error) -> Bool {
+        guard let auth = error as? AuthError else { return true }
+        // 5xx: the server is there but failing; the token may well be fine.
+        if case .api(_, _, _, let response) = auth { return response.statusCode >= 500 }
+        return false
     }
 
     /// The email to show for you: Apple's, unless Apple hides it behind a relay address.
@@ -205,7 +267,7 @@ final class Backend {
 
     /// Where a web sign-in (Google, and Apple in the Mac download) returns to: the app's own URL
     /// scheme, caught by the ASWebAuthenticationSession (it never reaches the app's URL handler).
-    nonisolated static let webCallback = URL(string: "ambernotes://auth-callback")!
+    nonisolated static let webCallback = URL(string: "\(AppIdentity.scheme)://auth-callback")!
 
     /// Sign in with Google: Google's page in the system's secure browser sheet, through Supabase
     /// (PKCE: the app keeps the verifier, Supabase checks Google's state and nonce), then the
@@ -217,7 +279,7 @@ final class Backend {
     func signInWithGoogle(hint: String? = nil) async throws -> UUID? {
         guard let client else { return nil }
         let session = try await client.auth.signInWithOAuth(provider: .google, redirectTo: Self.webCallback, queryParams: Self.googleQuery(hint: hint)) { url in
-            try await WebAuthSession.run(url, callbackScheme: "ambernotes")
+            try await WebAuthSession.run(url, callbackScheme: AppIdentity.scheme)
         }
         return session.user.id
     }
@@ -268,7 +330,7 @@ final class Backend {
     func linkAppleOnTheWeb() async throws {
         guard let client else { return }
         let link = try await client.auth.getLinkIdentityURL(provider: .apple, scopes: "name email", redirectTo: Self.webCallback)
-        let result = try await WebAuthSession.run(link.url, callbackScheme: "ambernotes")
+        let result = try await WebAuthSession.run(link.url, callbackScheme: AppIdentity.scheme)
         let session = try await client.auth.session(from: result)
         apple = Self.appleIdentity(of: session.user) ?? AppleIdentity(email: nil)
     }
@@ -283,7 +345,7 @@ final class Backend {
             return "That Apple ID already belongs to another account."
         }
         if !linking, lower.contains("private") || lower.contains("not allowed") || lower.contains("hook") {
-            return "This Apple ID isn't connected to an Amber Notes account yet. Sign in the old way once, then choose Connect Apple ID in Settings."
+            return "This Apple ID isn't connected to a Pinto Notes account yet. Sign in the old way once, then choose Connect Apple ID in Settings."
         }
         return raw
     }
@@ -306,11 +368,47 @@ final class Backend {
         return r.password ? .password : .appleOnly
     }
 
-    /// A new account with email and password (at least 12 characters). Email isn't confirmed,
-    /// so the new session starts at once.
-    func signUp(email: String, password: String) async throws {
+    /// A new account with email and password (at least 12 characters). Returns true when the
+    /// server wants the email confirmed first: no session yet, and a 6-digit code is on its way
+    /// (docs/Technical/email-confirmation.md). With confirmation off, the session starts at once.
+    func signUp(email: String, password: String) async throws -> Bool {
+        guard let client else { return false }
+        let response = try await client.auth.signUp(email: email.trimmingCharacters(in: .whitespaces), password: password)
+        return response.session == nil
+    }
+
+    /// The code from the confirmation email: confirms the address and signs in, so the normal
+    /// first run follows from the session.
+    func confirmSignUp(email: String, code: String) async throws {
         guard let client else { return }
-        try await client.auth.signUp(email: email.trimmingCharacters(in: .whitespaces), password: password)
+        try await client.auth.verifyOTP(email: email.trimmingCharacters(in: .whitespaces), token: code, type: .signup)
+    }
+
+    /// A new confirmation code. Supabase sends at most one a minute to an address.
+    func resendSignUpCode(email: String) async throws {
+        guard let client else { return }
+        try await client.auth.resend(email: email.trimmingCharacters(in: .whitespaces), type: .signup)
+    }
+
+    /// Signing in to an account whose email isn't confirmed yet.
+    nonisolated static func isEmailNotConfirmed(_ error: Error) -> Bool {
+        guard let auth = error as? AuthError else { return false }
+        return auth.errorCode == .emailNotConfirmed || auth.message.lowercased().contains("email not confirmed")
+    }
+
+    /// Words for the code screen: a code that didn't work, or a resend too soon.
+    nonisolated static func confirmMessage(for error: Error) -> String {
+        if error is URLError { return "Can't reach the server. Check your connection and try again." }
+        let code = (error as? AuthError)?.errorCode.rawValue
+        let lower = ((error as? AuthError)?.message ?? error.localizedDescription).lowercased()
+        if lower.contains("error sending") { return "Couldn't send the email with your code. Try again in a minute." }
+        if code == "over_email_send_rate_limit" || code == "over_request_rate_limit" || lower.contains("rate limit") || lower.contains("only request this after") {
+            return "We just sent a code. Wait a minute, then press Resend code."
+        }
+        if code == "otp_expired" || lower.contains("expired") || lower.contains("invalid") {
+            return "That code didn't work. Check the newest email from Pinto Notes, or press Resend code."
+        }
+        return "Couldn't confirm your email. Try again in a moment."
     }
 
     /// "Forgot password?": Supabase emails a link to ambernotes.app/reset-password, where the new
@@ -335,10 +433,11 @@ final class Backend {
     }
 
     /// Words a person can act on, instead of raw server errors.
-    static func message(for error: Error, signingUp: Bool) -> String {
+    nonisolated static func message(for error: Error, signingUp: Bool) -> String {
         if error is URLError { return "Can't reach the server. Check your connection." }
         let raw = (error as? AuthError)?.message ?? error.localizedDescription
         let lower = raw.lowercased()
+        if lower.contains("error sending") { return "Couldn't send the email with your code. Try again in a minute." }
         if lower.contains("already") { return "That email already has an account. Sign in instead." }
         if lower.contains("invalid login") || lower.contains("invalid credentials") { return "That email and password didn't match." }
         if lower.contains("password") && signingUp { return "Pick a longer password: at least 12 characters." }

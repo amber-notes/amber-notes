@@ -38,15 +38,15 @@ import Testing
         // Drawn as the key window's sheet would be: its default button in the accent colour.
         let host = NSHostingView(rootView: view.environment(\.controlActiveState, .key))
         host.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
-        let window = NSWindow(contentRect: CGRect(x: -30000, y: -30000, width: size.width, height: size.height),
+        let window = NSWindow(contentRect: CGRect(x: -20000, y: -20000, width: size.width, height: size.height),
                               styleMask: [.borderless], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         window.appearance = host.appearance
         window.contentView = host
         host.frame = CGRect(origin: .zero, size: size)
-        window.orderFrontRegardless()
+        // Never ordered front: drawn offscreen with cacheDisplay (AppSnapshotTests.onScreenAllowed).
         try? await Task.sleep(for: .seconds(0.8))
-        defer { window.orderOut(nil); window.close() }
+        defer { window.close() }
         host.layoutSubtreeIfNeeded()
         let bounds = host.bounds
         let rep = try #require(NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: Int(bounds.width * 2), pixelsHigh: Int(bounds.height * 2),

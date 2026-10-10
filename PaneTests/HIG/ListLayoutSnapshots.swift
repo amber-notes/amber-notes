@@ -7,7 +7,7 @@ import UIKit
 #endif
 
 /// iPhone pictures of the screens fixed after the 1.1.1 TestFlight review: note previews, the
-/// Running log table, Settings scrolled under its title, and the sign-in card at the password
+/// Running log table, Settings and each of its pages, and the sign-in card at the password
 /// step, light and dark. On a simulator (no Simulator window needed):
 /// `TEST_RUNNER_AMBER_HIG_SHOTS=/path xcodebuild test -scheme Pane -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
 /// -only-testing:PaneTests/ListLayoutSnapshots CODE_SIGNING_ALLOWED=NO`.
@@ -82,10 +82,28 @@ import UIKit
         try await Self.shoot(detail, "running-log", dark: dark, wait: 1.5)
     }
 
-    @Test(arguments: [false, true]) func settingsScrolled(dark: Bool) async throws {
+    /// Settings: the first screen (you, then a row per page) and each page, opened the way a
+    /// link opens it.
+    @Test(arguments: [false, true]) func settingsPages(dark: Bool) async throws {
         guard Self.dir != nil else { return }
-        let backend = Backend(testClient: CaptureScreen.client, email: "appreview@norditech.se")
-        try await Self.shoot(SettingsView(backend: backend, sync: nil), "settings-scrolled", dark: dark, scroll: 520)
+        let backend = Backend(testClient: CaptureScreen.client, email: "sara@example.com")
+        ProfileStore.shared.showForPreview(name: "Sara Lind", photo: nil)
+        defer { ProfileStore.shared.showForPreview(name: nil, photo: nil) }
+        StorageStore.shared.usage = StorageUsage(used: 1_240_000_000, limit: 2_147_483_648, notes: 41_000_000, files: 900_000_000, apps: 12_000_000,
+                                                 deleted: 230_000_000, versions: 64_000_000)
+        let crypto = try await AddDeviceSnapshots.ready(backedUp: true, recoverySaved: true)
+        defer { crypto.signedOut() }
+        let devices = AddDeviceSnapshots.devices([AddDeviceSnapshots.added, AddDeviceSnapshots.stale])
+        func settings(at tab: SettingsTab?) -> SettingsView {
+            let route = SettingsRoute(defaults: UserDefaults(suiteName: "settings-shots-\(UUID())")!)
+            if let tab { route.open(tab) }
+            return SettingsView(backend: backend, sync: nil, crypto: crypto, devices: devices, connections: CaptureScreen.connections, route: route)
+        }
+        #expect(settings(at: nil).tabs == SettingsTab.allCases)
+        try await Self.shoot(settings(at: nil), "settings", dark: dark)
+        for tab in SettingsTab.allCases {
+            try await Self.shoot(settings(at: tab), "settings-\(tab.rawValue)", dark: dark, wait: 1.5)
+        }
     }
 
     @Test(arguments: [false, true]) func signInPassword(dark: Bool) async throws {

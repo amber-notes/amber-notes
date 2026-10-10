@@ -2,7 +2,7 @@
 // the unsubscribe links, and the settings. docs/Technical/lifecycle-emails.md explains the whole.
 import { EMIL, SENDER_NAME } from "../_shared/sender.ts";
 
-export type Kind = "stuck" | "import" | "connect" | "try" | "undo" | "apps" | "templates" | "iphone" | "mac" | "share";
+export type Kind = "welcome" | "stuck" | "import" | "connect" | "try" | "undo" | "apps" | "templates" | "iphone" | "mac" | "share";
 
 /// What lifecycle_facts() says about one account. Activity only, never what a note says.
 export type Facts = {
@@ -34,10 +34,10 @@ export type Facts = {
   shared: boolean;
   unsubscribed: boolean;
   last_sent_at: Date | null;
-  /// Every email row the account has, sent or failed.
+  /// Every email row the account has, sent or failed (the welcome included).
   sent: string[];
-  /// Emails sent since the account's last sign of life (the app opened or synced, an AI connected,
-  /// used or editing, a click on one of these emails, or a reply).
+  /// Ladder emails sent since the account's last sign of life (the app opened or synced, an AI
+  /// connected, used or editing, a click on one of these emails, or a reply). The welcome isn't one.
   sent_since_active: number;
 };
 
@@ -62,9 +62,34 @@ export function gapFor(f: Pick<Facts, "signed_up_at" | "sent_since_active">, now
   return f.sent_since_active >= 1 ? 7 * DAY : gapAfter(now.getTime() - f.signed_up_at.getTime());
 }
 
-/// Nothing automatic after the first 30 days, and at most 6 emails in them.
+/// Nothing automatic after the first 30 days, and at most 6 ladder emails in them (the welcome
+/// isn't counted).
 export const LAST_DAY_MS = 30 * DAY;
 export const MAX_EMAILS = 6;
+
+/// The ladder's emails, as counted against MAX_EMAILS.
+export const ladderSent = (f: Pick<Facts, "sent">) => f.sent.filter((k) => k !== "welcome").length;
+
+// ---- The welcome ----------------------------------------------------------------------------------
+
+/// The welcome goes a couple of minutes after sign-up, once: long enough for the app to report its
+/// device and for an AI connection made during sign-up to land, so its one step fits. An account
+/// that didn't get it within the hour (the function was off or down) never does; the ladder carries on.
+export const WELCOME_AFTER_MS = 2 * 60_000;
+export const WELCOME_WITHIN_MS = HOUR;
+
+export function welcomeDue(f: Pick<Facts, "email" | "unsubscribed" | "sent" | "signed_up_at">, now: Date): boolean {
+  const age = now.getTime() - f.signed_up_at.getTime();
+  return !!f.email && !f.unsubscribed && !f.sent.includes("welcome") && age >= WELCOME_AFTER_MS && age <= WELCOME_WITHIN_MS;
+}
+
+/// The welcome's one next step, from where the person is: no AI yet, connect one; an AI but no app
+/// (signed up through ChatGPT or Claude), get the app; both, try a first ask.
+export type WelcomeStep = "connect" | "app" | "try";
+export function welcomeStep(f: Pick<Facts, "ai_connected_at" | "on_mac" | "on_iphone">): WelcomeStep {
+  if (f.ai_connected_at === null) return "connect";
+  return f.on_mac || f.on_iphone ? "try" : "app";
+}
 
 type Rung = {
   kind: Kind;
@@ -132,7 +157,7 @@ export function variantOf(userId: string): 0 | 1 {
 export function decide(f: Facts, now: Date, flags: Flags = NO_FLAGS): Kind | null {
   if (f.unsubscribed || !f.email) return null;
   const age = now.getTime() - f.signed_up_at.getTime();
-  if (age > LAST_DAY_MS || f.sent.length >= MAX_EMAILS) return null;
+  if (age > LAST_DAY_MS || ladderSent(f) >= MAX_EMAILS) return null;
   if (f.sent_since_active >= SILENT_STOP) return null;
   if (f.last_sent_at && now.getTime() - f.last_sent_at.getTime() < gapFor(f, now)) return null;
   for (const rung of LADDER) {
@@ -243,6 +268,11 @@ export type Config = {
   site: string;
   /// Where the links under /open/ live (APP_LINKS, or the staging site).
   open: string;
+  /// Staging (docs/Technical/staging.md): the site its links open (LIFECYCLE_SITE, https only), a
+  /// prefix on every subject (LIFECYCLE_SUBJECT_PREFIX, "[Staging] "), and manual rounds that may send
+  /// outside the 9 o'clock hour (LIFECYCLE_MANUAL_ROUNDS, for scripts/staging.sh lifecycle-next).
+  subjectPrefix: string;
+  manualRounds: boolean;
 };
 
 export const FROM = `Emil at ${SENDER_NAME} <${EMIL}>`;
@@ -266,6 +296,7 @@ export function config(env: Env): { ok: true; config: Config } | { ok: false; re
   if (!resendKey) return { ok: false, reason: "key_missing" };
   if (unsubscribeSecret.length < 32) return { ok: false, reason: "unsubscribe_secret_missing" };
   if (cronSecret.length < 32) return { ok: false, reason: "cron_secret_missing" };
+  const staging = (env.get("LIFECYCLE_SITE") ?? "").trim().startsWith("https://") ? env.get("LIFECYCLE_SITE")!.trim().replace(/\/+$/, "") : null;
   const onlyRaw = (env.get("LIFECYCLE_ONLY") ?? "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
   return {
     ok: true,
@@ -277,8 +308,10 @@ export function config(env: Env): { ok: true; config: Config } | { ok: false; re
       only: onlyRaw.length ? new Set(onlyRaw) : null,
       from: env.get("LIFECYCLE_FROM")?.trim() || FROM,
       replyTo: REPLY_TO,
-      site: SITE,
-      open: APP_LINKS,
+      site: staging ?? SITE,
+      open: staging ?? APP_LINKS,
+      subjectPrefix: env.get("LIFECYCLE_SUBJECT_PREFIX") ?? "",
+      manualRounds: on("LIFECYCLE_MANUAL_ROUNDS"),
     },
   };
 }

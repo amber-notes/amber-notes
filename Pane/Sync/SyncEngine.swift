@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import Observation
 import Supabase
@@ -29,8 +30,15 @@ private let log = Logger(subsystem: "dev.emilwagman.pane", category: "sync")
 @Observable
 final class SyncEngine {
     enum Status: Equatable { case idle, syncing, offline(String), synced(Date) }
+    /// Whether the server can be reached, as far as this device knows: `offline` with no network
+    /// (NetworkPath, or a sync that failed as not connected), `unreachable` when there's a network
+    /// but the server didn't answer (a plane's Wi-Fi before you pay, a server that's down).
+    enum Reach: Equatable { case online, offline, unreachable }
 
     private(set) var status: Status = .idle
+    /// What the last sync found (see `Reach`); `reach` adds what the network path says.
+    private var lastReach = Reach.online
+    var reach: Reach { path.isUp ? lastReach : .offline }
     /// True once a sync has completed since launch.
     private(set) var hasSynced = false
     /// Bumps when a pull changed a note, so an open editor can refresh.
@@ -79,13 +87,19 @@ final class SyncEngine {
 
     /// Seals conflicted copies of locked notes; the app's vault unless a test gives its own.
     private let lockVault: NoteVault?
+    /// Whether there's a network at all: nothing polls while there isn't, and a sync runs the
+    /// moment it's back. Tests give each engine its own.
+    let path: NetworkPath
 
-    init(backend: Backend, context: ModelContext, defaults: UserDefaults = .standard, vault: NoteVault? = nil, crypto: AccountCrypto? = nil) {
+    init(backend: Backend, context: ModelContext, defaults: UserDefaults = .standard, vault: NoteVault? = nil, crypto: AccountCrypto? = nil,
+         path: NetworkPath = .shared) {
         self.backend = backend
         self.context = context
         self.defaults = defaults
         self.lockVault = vault
+        self.path = path
         SyncSignal.onChange = { [weak self] in self?.localChanged() }
+        path.watch { [weak self] up in self?.networkChanged(up: up) }
         // Start fresh removes the account's files from Storage through here. It happens when this
         // device doesn't have the key, long before sync starts, so it's set up front.
         (crypto ?? AccountCrypto.shared).removeAccountFiles = { [weak self] user in
@@ -160,12 +174,24 @@ final class SyncEngine {
     private func run(_ client: SupabaseClient, pulling: Bool) async {
         // The key can go (signed out, Start fresh) between runs.
         guard let sealer = Wire.sealer else { return }
+        // No network: nothing is tried (each read would be retried for seconds first). What's
+        // waiting goes up when it's back (networkChanged).
+        guard path.isUp else {
+            status = .offline(Self.describe(URLError(.notConnectedToInternet)))
+            return
+        }
         resetOldLibraryIfNeeded()
         adoptKeyIfChanged(sealer.keyID)
         if pulling { status = .syncing }
         do {
             let slowedDown = try await push(client, sealer: sealer)
+            await pushPages(client, sealer: sealer)
+            await pushPageData(client, sealer: sealer)
+            await pushAPIKeyNames(client, sealer: sealer)
             if pulling { try await pull(client); hasSynced = true }
+            // Only when it changes: views read it, and every write would redraw them.
+            if lastReach != .online { lastReach = .online }
+            if pulling { downloadKeptFiles() }
             if slowedDown {
                 // The server asked us to slow down: the rest goes up in a little while.
                 status = .offline("Syncing a lot of changes, continuing shortly")
@@ -178,7 +204,25 @@ final class SyncEngine {
         } catch {
             log.error("sync failed: \(String(describing: error), privacy: .public)")
             status = .offline(Self.describe(error))
+            if let r = Self.reach(after: error), r != lastReach { lastReach = r }
         }
+    }
+
+    /// What a failed sync says about the connection; nil when it's about something else.
+    nonisolated static func reach(after error: Error) -> Reach? {
+        guard let u = error as? URLError else { return nil }
+        switch u.code {
+        case .notConnectedToInternet, .networkConnectionLost, .dataNotAllowed, .internationalRoamingOff, .callIsActive: return .offline
+        case .cancelled: return nil
+        default: return .unreachable
+        }
+    }
+
+    /// The network went (nothing polls) or came back (everything that waited goes up now, and
+    /// whatever changed elsewhere comes down, without waiting for the next poll).
+    private func networkChanged(up: Bool) {
+        updateFallback()
+        if up, started { schedule(after: 0) }
     }
 
     /// Starts realtime and a first sync after sign-in.
@@ -199,6 +243,8 @@ final class SyncEngine {
         let notes = ch.postgresChange(AnyAction.self, schema: "public", table: "notes")
         let folders = ch.postgresChange(AnyAction.self, schema: "public", table: "folders")
         let files = ch.postgresChange(AnyAction.self, schema: "public", table: "attachments")
+        // Note apps (prototype): an app or its data changed elsewhere (an AI's update_page_data).
+        let pages = ch.postgresChange(AnyAction.self, schema: "public", table: "note_pages")
         let joins = ch.statusChange
         try? await ch.subscribeWithError()
         channel = ch
@@ -207,7 +253,7 @@ final class SyncEngine {
         realtimeTasks.append(Task { [weak self] in
             for await action in notes { await self?.received(action) }
         })
-        for stream in [folders, files] {
+        for stream in [folders, files, pages] {
             realtimeTasks.append(Task { [weak self] in
                 for await _ in stream { self?.schedule(after: 0.25) }
             })
@@ -223,13 +269,31 @@ final class SyncEngine {
                 joined = true
             }
         })
-        // A safety net for anything realtime missed.
+        // A safety net for anything realtime missed. Not while there's no network: coming back
+        // syncs at once (networkChanged).
         realtimeTasks.append(Task { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(60))
-                self?.schedule(after: 0)
+                if self?.path.isUp == true { self?.schedule(after: 0) }
             }
         })
+    }
+
+    /// The live version didn't open on this device and an earlier one runs: tell the server, so the
+    /// AI's next look at the app reports it. The error message only.
+    func reportLoadFailure(note id: UUID, message: String) {
+        guard let client = backend.client, case .signedIn = backend.state else { return }
+        struct Row: Encodable { var note_id: UUID; var message: String; var device: String }
+        let row = Row(note_id: id, message: String(message.prefix(1000)), device: Backend.device)
+        Task { _ = try? await client.from("app_load_failures").insert(row).execute().status }
+    }
+
+    /// Who wrote a note app's row, for its receipt: an AI's name (the MCP tools set pane.client), or
+    /// nil for one of your devices (they send x-pane-device: iPhone, iPad or Mac).
+    nonisolated static func writer(_ client: String?) -> String? {
+        guard let c = client?.trimmingCharacters(in: .whitespaces), !c.isEmpty else { return nil }
+        if ["iPhone", "iPad", "Mac"].contains(c) || UUID(uuidString: c) != nil { return nil }
+        return c
     }
 
     /// Another device (or an AI) changed a note: apply the row it carries, or fetch it.
@@ -291,6 +355,8 @@ final class SyncEngine {
     // MARK: A new key for the account
 
     nonisolated static func keyIDKey(_ user: UUID) -> String { "e2ee.keyID.\(user.uuidString.lowercased())" }
+    /// Set when this device starts fresh (AccountCrypto.startFresh), until its notes are marked to go up again.
+    nonisolated static func uploadAgainKey(_ user: UUID) -> String { "e2ee.uploadAgain.\(user.uuidString.lowercased())" }
 
     /// The account's key changed since this device last synced: someone chose Start fresh, and the
     /// server's notes went with the old key. What this device still has goes up again, sealed with
@@ -299,7 +365,11 @@ final class SyncEngine {
         guard let uid = backend.userID else { return }
         let known = defaults.string(forKey: Self.keyIDKey(uid))
         defaults.set(keyID, forKey: Self.keyIDKey(uid))
-        guard let known, known != keyID else { return }
+        // Start fresh was done on this device: the server is empty whatever key id this device
+        // remembers (or doesn't: one that never finished a sync with its key remembers none).
+        let startedFreshHere = defaults.bool(forKey: Self.uploadAgainKey(uid))
+        defaults.removeObject(forKey: Self.uploadAgainKey(uid))
+        guard startedFreshHere || (known != nil && known != keyID) else { return }
         DebouncedSave.flushAll()
         let n = Self.markAllForUpload(context)
         defaults.removeObject(forKey: cursorKey)
@@ -387,7 +457,7 @@ final class SyncEngine {
                 f.dirty = true
             } else if !f.isDeleted {
                 // A kept folder keeps its parents, so whatever goes here holds nothing kept. Gone
-                // for good: Library's delete(folder) would move it to Recently Deleted instead.
+                // for good: Library's trash(folder) would move it to Recently Deleted instead.
                 erase(f)
                 removed += 1
             }
@@ -417,7 +487,7 @@ final class SyncEngine {
 
     /// Realtime joined or dropped. While it's down, edits from other devices come in by a
     /// poll every 8 s (30 s once nothing has changed for 5 minutes) instead of only the
-    /// minute pull; joining again stops it.
+    /// minute pull; joining again stops it, and so does losing the network.
     func realtimeChanged(up: Bool) {
         realtimeUp = up
         updateFallback()
@@ -431,7 +501,7 @@ final class SyncEngine {
 
     private func updateFallback() {
         var signedIn: Bool { if case .signedIn = backend.state { true } else { false } }
-        let wanted = started && active && !realtimeUp && backend.client != nil && signedIn
+        let wanted = started && active && !realtimeUp && path.isUp && backend.client != nil && signedIn
         if !wanted { fallback?.cancel(); fallback = nil; return }
         guard fallback == nil else { return }
         fallback = Task { [weak self] in
@@ -453,6 +523,8 @@ final class SyncEngine {
         fallback?.cancel()
         fallback = nil
         pending?.cancel()
+        keeping?.cancel()
+        keeping = nil
         pushLoop?.cancel()
         pushLoop = nil
         pushWanted = false
@@ -468,9 +540,24 @@ final class SyncEngine {
     /// wait; rows it refuses outright are set aside instead of failing the whole sync.
     private func push(_ client: SupabaseClient, sealer: Sealer) async throws -> Bool {
         problem = nil
-        if try await pushFiles(client, sealer: sealer) { return true }
-        let folders = ((try? context.fetch(FetchDescriptor<Folder>(predicate: #Predicate { $0.dirty }))) ?? [])
+        // Folders first: a file or note made offline in a new folder points at it, and the server
+        // refuses a row whose folder it doesn't have yet.
+        var folders = ((try? context.fetch(FetchDescriptor<Folder>(predicate: #Predicate { $0.dirty }))) ?? [])
             .sorted { Self.depth($0) < Self.depth($1) } // parents first, for the foreign key
+        // What an account switch before 2026-10-08 left behind: never pushed as deletions.
+        let leftovers = Self.switchLeftovers(folders)
+        if !leftovers.isEmpty {
+            folders.removeAll { leftovers.contains($0.id) }
+            dropForeignFolders(leftovers)
+            // They may be this account's own folders: everything comes down again, as on the server.
+            defaults.removeObject(forKey: cursorKey)
+            log.notice("removed \(leftovers.count) folders an account switch had marked deleted; pulling everything again")
+        }
+        let foreign = try await foreignFolders(client, among: folders)
+        if !foreign.isEmpty {
+            folders.removeAll { foreign.contains($0.id) }
+            dropForeignFolders(foreign)
+        }
         for f in folders where !isRefused(f.id, f.updatedAt) {
             let row = FolderDTO(f)
             do {
@@ -480,15 +567,24 @@ final class SyncEngine {
                     f.dirty = false
                 }
             } catch {
+                // A deletion the server says isn't this account's to make: never this account's
+                // folder, so it goes from here instead of being tried again on every launch.
+                if f.deletedAt != nil, Self.notThisAccounts(error) {
+                    dropForeignFolders([f.id])
+                    continue
+                }
                 switch Self.refusal(error) {
                 case .tooFast?: try? context.save(); return true
                 case .refused(let why)?: refuse(f.id, f.updatedAt, "A folder couldn't sync: \(why)")
+                case .waits?: continue
                 case nil: throw error
                 }
             }
         }
+        if try await pushFiles(client, sealer: sealer) { return true }
 
-        let notes = (try? context.fetch(FetchDescriptor<Note>(predicate: #Predicate { $0.dirty }))) ?? []
+        // A sub-note made offline under a note made offline goes up after it.
+        let notes = Self.parentsFirst((try? context.fetch(FetchDescriptor<Note>(predicate: #Predicate { $0.dirty }))) ?? [])
         var pushedNotes: [UUID] = []
         for n in notes where !isRefused(n.id, n.updatedAt) {
             let sentAt = n.updatedAt
@@ -515,6 +611,7 @@ final class SyncEngine {
                 case .refused(let why)?:
                     refuse(n.id, n.updatedAt, "“\(n.title)” couldn't sync: \(why)")
                     continue
+                case .waits?: continue
                 case nil: throw error
                 }
             }
@@ -631,7 +728,84 @@ final class SyncEngine {
         problem = message
     }
 
-    enum Refusal: Equatable, Sendable { case tooFast, refused(String) }
+    // MARK: Another account's folders
+
+    /// Deleted folders waiting to go up that say they were on the server, and that the server
+    /// doesn't have for this account (it shows each account only its own rows). Before 2026-10-08 a
+    /// switch to another account left the previous account's folders here, deleted and marked to go
+    /// up (AccountLibrary's delete was Library's soft delete); every sync then pushed them into the new account
+    /// and the server refused each one. Asked once per sync while there are any; normally none.
+    private func foreignFolders(_ client: SupabaseClient, among dirty: [Folder]) async throws -> Set<UUID> {
+        let suspects = dirty.filter { $0.deletedAt != nil && $0.serverVersion > 0 }.map(\.id)
+        guard !suspects.isEmpty else { return [] }
+        struct Row: Decodable { var id: UUID }
+        var found = Set<UUID>()
+        for i in stride(from: 0, to: suspects.count, by: 200) {
+            let chunk = suspects[i ..< min(i + 200, suspects.count)].map { $0.uuidString.lowercased() }
+            let rows: [Row] = try await client.from("folders").select("id").in("id", values: chunk).execute().value
+            found.formUnion(rows.map(\.id))
+        }
+        return Set(suspects).subtracting(found)
+    }
+
+    /// Folders the old account switch marked deleted (AccountLibrary before 2026-10-08 soft-deleted the
+    /// whole library in one go), whichever account they belong to. Its mark: deletions waiting to go
+    /// up, of folders that were on the server, made in one burst (each within a second of the
+    /// previous) that takes two or more top-level folders. Nothing a person does makes that: a
+    /// folder is deleted one at a time, after a question, and only its own sub-folders go with it.
+    /// Such a deletion must never reach the server: back in its own account it deleted the account's
+    /// whole folder tree there.
+    nonisolated static func switchLeftovers(_ dirty: [Folder]) -> Set<UUID> {
+        let deleted = dirty.filter { $0.deletedAt != nil && $0.serverVersion > 0 }.sorted { $0.deletedAt! < $1.deletedAt! }
+        var out = Set<UUID>()
+        var burst: [Folder] = []
+        func close() {
+            if burst.filter({ $0.parent == nil }).count >= 2 { out.formUnion(burst.map(\.id)) }
+            burst = []
+        }
+        for f in deleted {
+            if let last = burst.last?.deletedAt, f.deletedAt!.timeIntervalSince(last) > 1 { close() }
+            burst.append(f)
+        }
+        close()
+        return out
+    }
+
+    /// The server refused a row as another account's: row-level security, or a folder or parent
+    /// that isn't this account's (`not_yours`). Not the key checks (`wrong_key`, `no_key`).
+    nonisolated static func notThisAccounts(_ error: Error) -> Bool {
+        guard let p = error as? PostgrestError else { return false }
+        if p.code == "PT413" { return p.hint == "not_yours" }
+        return p.code == "42501" && p.hint != "wrong_key" && p.hint != "no_key"
+    }
+
+    /// Removes them for good: they're tombstones of folders that were never this account's.
+    private func dropForeignFolders(_ ids: Set<UUID>) {
+        let all = context.allFoldersIncludingDeleted()
+        for f in all where ids.contains(f.id) {
+            // Children that are this account's (none, normally) move to the top level first.
+            for c in all where c.parent?.id == f.id && !ids.contains(c.id) { c.parent = nil }
+        }
+        for f in all where ids.contains(f.id) { context.erase(f) }
+        try? context.save()
+        log.notice("removed \(ids.count) folders left by another account")
+    }
+
+    /// `waits`: the row points at a folder or note the server doesn't have yet (made offline too,
+    /// and not up yet): tried again on the next sync, never set aside.
+    enum Refusal: Equatable, Sendable { case tooFast, refused(String), waits }
+
+    /// Dirty notes with each one after the dirty notes above it, so a parent made offline is on
+    /// the server before its sub-notes. Otherwise in the order given.
+    nonisolated static func parentsFirst(_ notes: [Note]) -> [Note] {
+        let byID = Dictionary(notes.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        func depth(_ n: Note) -> Int {
+            var d = 0, p = n.parentID
+            while let id = p, let parent = byID[id], d < 64 { d += 1; p = parent.parentID }
+            return d
+        }
+        return notes.enumerated().sorted { (depth($0.element), $0.offset) < (depth($1.element), $1.offset) }.map(\.element)
+    }
 
     /// Sorts a failed write: "too fast" (try again later), "refused" (this row as it stands
     /// can never go up: too big, over a limit, bad data), or nil (network and the like).
@@ -643,6 +817,7 @@ final class SyncEngine {
         if let p = error as? PostgrestError {
             switch p.code {
             case "PT429": return .tooFast
+            case "PT413" where p.hint == "not_yours": return .waits
             case "42501" where p.hint == "wrong_key" || p.hint == "no_key":
                 // The account's key changed on another device (Start fresh): this device gets the
                 // new one, and what it has goes up again (adoptKeyIfChanged).
@@ -674,7 +849,17 @@ final class SyncEngine {
         let files = (try? context.fetch(FetchDescriptor<Attachment>(predicate: #Predicate { $0.dirty || !$0.uploaded }))) ?? []
         for a in files where !isRefused(a.id, a.createdAt) {
             let path = Self.storagePath(user: uid, id: a.id)
+            // Deleted for good before it ever went up: nothing to tell the server.
+            if a.deletedAt != nil, !a.uploaded {
+                FileStore.remove(a)
+                context.delete(a)
+                continue
+            }
             do {
+                // Edited here, before the new bytes go over the old: the server's version is kept.
+                if a.bytesEdited, !a.uploaded, a.deletedAt == nil, FileStore.exists(a) {
+                    try await keepServerVersion(client, a, path: path)
+                }
                 if !a.uploaded, a.deletedAt == nil {
                     guard FileStore.exists(a) else { continue }
                     let data = try Data(contentsOf: FileStore.url(for: a.id, filename: a.filename))
@@ -685,10 +870,19 @@ final class SyncEngine {
                 }
                 try await client.from("attachments").upsert(AttachmentDTO(a, path: path)).execute()
                 a.dirty = false
+                a.bytesEdited = false
+                // Deleted for good here: the sealed bytes leave Storage too, with its earlier versions
+                // (the row stays as a tombstone).
+                if a.deletedAt != nil {
+                    struct Version: Decodable { var storage_path: String }
+                    let versions: [Version] = (try? await client.from("attachment_versions").select("storage_path").eq("attachment_id", value: a.id).execute().value) ?? []
+                    _ = try? await client.storage.from("files").remove(paths: [path] + versions.map(\.storage_path))
+                }
             } catch {
                 switch Self.refusal(error) {
                 case .tooFast?: return true
                 case .refused(let why)?: refuse(a.id, a.createdAt, "“\(a.filename)” couldn't sync: \(why)")
+                case .waits?: continue
                 case nil: throw error
                 }
             }
@@ -696,11 +890,79 @@ final class SyncEngine {
         return false
     }
 
+    /// A file edited here is about to replace what the server has. That version is kept first, as
+    /// the AI's replacements keep theirs (folder_files.ts writeFile): its sealed bytes copied to
+    /// <path>.v<n>, a row in attachment_versions, the newest 10 kept. The edit's content version
+    /// goes past the server's, even if the AI replaced the file meanwhile.
+    private func keepServerVersion(_ client: SupabaseClient, _ a: Attachment, path: String) async throws {
+        struct Row: Decodable { var meta_ct: String; var size: Int64; var content_version: Int; var updated_at: Date }
+        let rows: [Row] = try await client.from("attachments").select("meta_ct,size,content_version,updated_at").eq("id", value: a.id).execute().value
+        // Never went up: there's nothing to keep.
+        guard let row = rows.first else { return }
+        if row.content_version >= a.contentVersion { a.contentVersion = row.content_version + 1 }
+        struct Kept: Decodable { var id: Int64; var storage_path: String }
+        let kept: [Kept] = try await client.from("attachment_versions").select("id,storage_path").eq("attachment_id", value: a.id)
+            .order("id", ascending: false).execute().value
+        let versionPath = FileVersions.nextPath(path, kept: kept.map(\.storage_path))
+        _ = try await client.storage.from("files").copy(from: path, to: versionPath)
+        struct Version: Encodable { var attachment_id: UUID; var meta_ct: String; var size: Int64; var storage_path: String; var client: String; var made_at: Date }
+        try await client.from("attachment_versions").insert(Version(attachment_id: a.id, meta_ct: row.meta_ct, size: row.size, storage_path: versionPath,
+                                                                    client: FileVersions.madeBy, made_at: row.updated_at)).execute()
+        let gone = kept.dropFirst(FileVersions.kept - 1)
+        if !gone.isEmpty {
+            try await client.from("attachment_versions").delete().in("id", values: gone.map { String($0.id) }).execute()
+            _ = try? await client.storage.from("files").remove(paths: gone.map(\.storage_path))
+        }
+    }
+
     /// A file's bytes from Storage, opened with the account's key.
     nonisolated static func fetchFile(client: SupabaseClient, user: UUID, id: UUID, sealer: Sealer) async throws -> Data {
         let data = try await client.storage.from("files").download(path: storagePath(user: user, id: id))
         return try sealer.openFile(data, id: id)
     }
+
+    // MARK: Files kept downloaded
+
+    /// Folders whose files are fetched to this device as they arrive, so they open on a plane
+    /// (a folder's ⋯ menu: Keep Files Downloaded). Only on this device.
+    nonisolated static let keptFoldersKey = "files.keepDownloaded"
+
+    func keepsDownloaded(_ folder: UUID) -> Bool { keptFolders.contains(folder) }
+
+    func setKeepsDownloaded(_ folder: UUID, _ keep: Bool) {
+        var kept = keptFolders
+        if keep { kept.insert(folder) } else { kept.remove(folder) }
+        defaults.set(kept.map(\.uuidString), forKey: Self.keptFoldersKey)
+        keptChanged += 1
+        if keep { downloadKeptFiles() }
+    }
+
+    private var keptFolders: Set<UUID> {
+        Set((defaults.stringArray(forKey: Self.keptFoldersKey) ?? []).compactMap(UUID.init(uuidString:)))
+    }
+    /// Bumps when the kept folders change, for menus that show the choice.
+    private(set) var keptChanged = 0
+    private var keeping: Task<Void, Never>?
+
+    /// The files in kept folders that are on the server and not here yet, fetched one at a time.
+    /// Stops when the network goes; the next sync carries on.
+    private func downloadKeptFiles() {
+        let kept = keptFolders
+        guard keeping == nil, path.isUp, !kept.isEmpty else { return }
+        let missing = ((try? context.fetch(FetchDescriptor<Attachment>(predicate: #Predicate { $0.uploaded && $0.deletedAt == nil }))) ?? [])
+            .filter { a in a.trashedAt == nil && a.folderID.map(kept.contains) == true && !FileStore.exists(a) }
+        guard !missing.isEmpty else { return }
+        keeping = Task { [weak self] in
+            for a in missing {
+                guard let self, self.path.isUp, !Task.isCancelled else { break }
+                _ = await self.download(a)
+            }
+            self?.keeping = nil
+        }
+    }
+
+    /// Tests: waits for the kept files being fetched.
+    func keptFilesSettled() async { await keeping?.value }
 
     /// Fetches a file's bytes from Storage to this device.
     func download(_ a: Attachment) async -> Bool {
@@ -755,22 +1017,37 @@ final class SyncEngine {
             return saved
         }
         if sealed { return try await resolveSealedConflict(client, local: n, server: s) }
+        let copyID = Self.conflictCopyID(of: n.id, server: s.version)
         if s.updated_at > n.updatedAt {
             // Theirs is newer: keep it, and keep ours as a conflicted copy.
-            let copy = Note(body: Self.conflictCopy(of: n.body), folder: n.folder)
-            copy.createdAt = n.updatedAt
-            copy.updatedAt = n.updatedAt
-            context.insert(copy)
+            insertConflictCopy(copyID, body: Self.conflictCopy(of: n.body), folder: n.folder, at: n.updatedAt)
             apply(s, to: n)
             return server
         }
         // Ours is newer: it goes up, and theirs is kept here as a conflicted copy (the server
         // keeps it in note_revisions too), so neither edit is lost.
-        let copy = Note(body: Self.conflictCopy(of: s.body), folder: n.folder)
-        copy.createdAt = s.updated_at
-        copy.updatedAt = s.updated_at
-        context.insert(copy)
+        insertConflictCopy(copyID, body: Self.conflictCopy(of: s.body), folder: n.folder, at: s.updated_at)
         return try await client.from("notes").update(NoteDTO(n).patch).eq("id", value: n.id).select().execute().value
+    }
+
+    /// The conflicted copy made for a note against one server version always has the same id: when
+    /// the connection drops after the copy is made (the write that follows never answers), the next
+    /// push meets the same conflict and finds the copy instead of making a second one.
+    nonisolated static func conflictCopyID(of note: UUID, server version: Int64?) -> UUID {
+        var bytes = Array(SHA256.hash(data: Data("conflicted-copy|\(note.uuidString.lowercased())|\(version ?? -1)".utf8)).prefix(16))
+        bytes[6] = (bytes[6] & 0x0F) | 0x40
+        bytes[8] = (bytes[8] & 0x3F) | 0x80
+        return UUID(uuid: (bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
+                           bytes[8], bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15]))
+    }
+
+    private func insertConflictCopy(_ id: UUID, body: String, folder: Folder?, at date: Date) {
+        guard context.note(id) == nil else { return }
+        let copy = Note(body: body, folder: folder)
+        copy.id = id
+        copy.createdAt = date
+        copy.updatedAt = date
+        context.insert(copy)
     }
 
     /// A conflict where either side is locked. The loser is kept as a conflicted copy, and that
@@ -788,8 +1065,10 @@ final class SyncEngine {
             problem = "“\(n.title)” was changed on another device while it was locked here. Enter your notes password to sync it."
             return []
         }
-        let copy = try vault.sealedCopy(of: Self.conflictCopy(of: loser), in: n.folder, at: theirsWins ? n.updatedAt : s.updated_at)
-        context.insert(copy)
+        let copyID = Self.conflictCopyID(of: n.id, server: s.version)
+        if context.note(copyID) == nil {
+            context.insert(try vault.sealedCopy(of: Self.conflictCopy(of: loser), in: n.folder, at: theirsWins ? n.updatedAt : s.updated_at, id: copyID))
+        }
         if theirsWins {
             apply(s, to: n)
             return [s]
@@ -803,6 +1082,84 @@ final class SyncEngine {
             lines[i] += " (conflicted copy)"
         }
         return lines.joined(separator: "\n")
+    }
+
+    // MARK: Page data (prototype)
+
+    /// Pushes the apps changed here (Remove App, Previous App, a fallback), so the other devices
+    /// follow. The server keeps the one replaced among the last 10.
+    private func pushPages(_ client: SupabaseClient, sealer: Sealer) async {
+        struct Upsert: Encodable { var note_id: UUID; var page_ct: String? }
+        let store = NotePageStore.shared
+        for (id, at) in store.unpushed {
+            let box = store[id].flatMap { sealer.seal($0.html, context: E2EE.page(id)) }
+            if store[id] != nil, box == nil { continue }
+            do {
+                try await client.from("note_pages").upsert(Upsert(note_id: id, page_ct: box), onConflict: "note_id").execute()
+                store.pushed(id, at: at)
+            } catch {
+                log.error("page push failed: \(String(describing: error), privacy: .public)")
+            }
+        }
+    }
+
+    /// Pushes each app's own data that changed here. The server's copy is read first and merged
+    /// with this device's changes (NotePageData.merge), and the write only lands if nothing else
+    /// wrote in between; otherwise it merges again on the next run. A backend without the column
+    /// leaves the data here, unchanged.
+    private func pushPageData(_ client: SupabaseClient, sealer: Sealer) async {
+        struct Row: Decodable { var data_ct: String?; var server_updated_at: Date? }
+        struct Upsert: Encodable { var note_id: UUID; var data_ct: String }
+        let store = NotePageDataStore.shared
+        for id in store.dirty {
+            do {
+                let rows: [Row] = try await client.from("note_pages").select("data_ct,server_updated_at").eq("note_id", value: id).execute().value
+                let server = rows.first?.data_ct.flatMap { sealer.open($0, context: E2EE.pageData(id)) }.map { Data($0.utf8) }
+                if rows.first?.data_ct != nil, server == nil { continue }   // sealed with another key: leave it
+                store.take(id, server: server)
+                guard store.dirty.contains(id), let doc = store.docs[id], let json = String(data: doc, encoding: .utf8),
+                      let box = sealer.seal(json, context: E2EE.pageData(id)) else { continue }
+                if let stamp = rows.first?.server_updated_at {
+                    let at = stamp.formatted(Date.ISO8601FormatStyle(includingFractionalSeconds: true))
+                    let done: [Row] = try await client.from("note_pages").update(["data_ct": box]).eq("note_id", value: id)
+                        .eq("server_updated_at", value: at).select("data_ct,server_updated_at").execute().value
+                    if !done.isEmpty { store.pushed(id, doc) }
+                } else {
+                    try await client.from("note_pages").upsert(Upsert(note_id: id, data_ct: box), onConflict: "note_id").execute()
+                    store.pushed(id, doc)
+                }
+            } catch {
+                log.error("page data push failed: \(String(describing: error), privacy: .public)")
+            }
+        }
+    }
+
+    /// The names of the API keys set up here (never their values), so an AI can say which key an
+    /// app needs. Sent when they change; the values stay in the Keychain.
+    private func pushAPIKeyNames(_ client: SupabaseClient, sealer: Sealer) async {
+        struct Row: Encodable { var id: UUID; var meta_ct: String }
+        let keys = APIKeyStore.shared.keys
+        let stamp = keys.map { "\($0.name)|\($0.hosts.joined(separator: ","))" }.joined(separator: ";")
+        guard stamp != lastKeyNames else { return }
+        // Nothing set up here, and nothing sent yet: nothing to say.
+        if keys.isEmpty, lastKeyNames == nil { lastKeyNames = stamp; return }
+        do {
+            let rows: [Row] = keys.compactMap { k in
+                let id = APIKeyStore.rowID(k.name)
+                let meta = (try? JSONSerialization.data(withJSONObject: ["name": k.name, "hosts": k.hosts, "set": true])).flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
+                return sealer.seal(meta, context: "api-key:" + id.uuidString.lowercased()).map { Row(id: id, meta_ct: $0) }
+            }
+            if !rows.isEmpty { try await client.from("api_key_names").upsert(rows).execute() }
+            let keep = rows.map { $0.id.uuidString.lowercased() }
+            if keep.isEmpty {
+                try await client.from("api_key_names").delete().neq("id", value: UUID().uuidString).execute()
+            } else {
+                try await client.from("api_key_names").delete().not("id", operator: .in, value: "(\(keep.joined(separator: ",")))").execute()
+            }
+            lastKeyNames = stamp
+        } catch {
+            log.error("api key names push failed: \(String(describing: error), privacy: .public)")
+        }
     }
 
     // MARK: Pull
@@ -841,6 +1198,8 @@ final class SyncEngine {
         for r in folderRows { byID[r.id]?.parent = r.parent_id.flatMap { byID[$0] } }
 
         var fileRows: [AttachmentDTO] = []
+        var goneFromStorage: [String] = []
+        defer { if !goneFromStorage.isEmpty { Task { [goneFromStorage] in _ = try? await client.storage.from("files").remove(paths: goneFromStorage) } } }
         while true {
             let page: [AttachmentDTO] = try await client.from("attachments").select().gt("server_updated_at", value: stamp)
                 .order("server_updated_at").order("id").range(from: fileRows.count, to: fileRows.count + 999).execute().value
@@ -848,17 +1207,34 @@ final class SyncEngine {
             if page.count < 1000 { break }
         }
         for r in fileRows where !r.unreadable || skipUnreadable(r.id, "A file") {
-            let a = context.attachment(r.id) ?? {
+            let known = context.attachment(r.id)
+            let a = known ?? {
                 let a = Attachment(id: r.id, filename: r.filename, contentType: r.content_type, size: r.size)
                 context.insert(a)
                 return a
             }()
             guard !a.dirty || a.uploaded else { continue }
+            // Renamed elsewhere (another device, the AI): this device's copy follows.
+            if a.filename != r.filename { FileStore.rename(a.id, from: a.filename, to: r.filename) }
+            // Deleted for good elsewhere, or by the server after 30 days in Recently Deleted: the
+            // bytes go here, and from Storage if nobody removed them yet (a device that had the file).
+            if r.deleted_at != nil, known != nil, a.deletedAt == nil {
+                FileStore.remove(a)
+                if let uid = backend.userID { goneFromStorage.append(Self.storagePath(user: uid, id: a.id)) }
+            }
             a.filename = r.filename
             a.contentType = r.content_type
             a.size = r.size
             a.createdAt = r.created_at
             a.deletedAt = r.deleted_at
+            a.folderID = r.folder_id
+            a.trashedAt = r.trashed_at
+            // New bytes elsewhere (the AI changed the file): this copy is stale, fetched again when opened.
+            if r.content_version != a.contentVersion {
+                if known != nil { FileStore.remove(a) }
+                a.contentVersion = r.content_version
+            }
+            a.modifiedAt = r.updated_at
             a.uploaded = true
             a.dirty = false
             if let s = r.server_updated_at, s > newest { newest = s }
@@ -882,6 +1258,20 @@ final class SyncEngine {
             offset += 500
         }
         if changed { try? context.save() }
+        // Note pages (prototype): a backend without the table leaves this out; it never stops a sync.
+        if let pages: [NotePageDTO] = try? await client.from("note_pages").select("note_id,page_ct,data_ct,client,updated_at,server_updated_at,draft_problems")
+            .gt("server_updated_at", value: stamp).order("server_updated_at").execute().value {
+            for r in pages {
+                NotePageStore.shared.take(r)
+                NotePageStore.shared.setDraft(r.note_id, problems: r.draft_problems, by: Self.writer(r.client))
+                if let box = r.data_ct, let json = Wire.sealer?.open(box, context: E2EE.pageData(r.note_id)) {
+                    NotePageDataStore.shared.take(r.note_id, server: Data(json.utf8), by: Self.writer(r.client))
+                } else if r.data_ct == nil {
+                    NotePageDataStore.shared.take(r.note_id, server: nil, by: Self.writer(r.client))
+                }
+                if let s = r.server_updated_at, s > newest { newest = s }
+            }
+        }
         cursor = newest
         await refreshShares(client)
         // Only devices publish shared pages (the server can't read them): a note that changed
@@ -947,6 +1337,8 @@ final class SyncEngine {
     /// The text of each note at the server version this device last had: the common starting
     /// point when both sides typed at once. Kept for this run of the app only.
     private var synced: [UUID: (version: Int64, body: String)] = [:]
+    /// What was last sent of the API key names (pushAPIKeyNames).
+    private var lastKeyNames: String?
 
     private func remember(_ r: NoteDTO) {
         if let v = r.version { synced[r.id] = (v, r.body) }
@@ -1069,6 +1461,19 @@ struct FolderDTO: Codable {
         try c.encode(updated_at, forKey: .updated_at)
         try c.encode(deleted_at, forKey: .deleted_at)
     }
+}
+
+/// A note's page as the server keeps it (prototype, NotePage): sealed, or nil once removed.
+struct NotePageDTO: Decodable {
+    var note_id: UUID
+    var page_ct: String?
+    var data_ct: String?
+    var client: String?
+    var updated_at: Date
+    var server_updated_at: Date?
+    /// What failed in an AI's newer version, kept as a draft (it never runs here). Test and check
+    /// names only.
+    var draft_problems: String? = nil
 }
 
 struct NoteDTO: Codable {
@@ -1216,23 +1621,37 @@ struct AttachmentDTO: Codable {
     var updated_at: Date
     var deleted_at: Date?
     var server_updated_at: Date?
+    /// The folder a file sits in on its own (nil: only notes embed it), and whether it's in
+    /// Recently Deleted. Older builds neither send nor read these; an upsert keeps what it doesn't send.
+    var folder_id: UUID?
+    var trashed_at: Date?
+    /// Read, never sent: the server counts replacements of the bytes.
+    var content_version: Int = 0
     /// Doesn't open with this device's key: never applied.
     var unreadable = false
 
-    enum CodingKeys: String, CodingKey { case id, meta_ct, size, storage_path, created_at, updated_at, deleted_at, server_updated_at }
+    enum CodingKeys: String, CodingKey { case id, meta_ct, size, storage_path, created_at, updated_at, deleted_at, server_updated_at, folder_id, trashed_at, content_version }
 
     /// Sealing adds the header, the nonce and the tag to the file's bytes.
     static let sealOverhead: Int64 = 5 + 16 + 12 + 16
 
-    init(id: UUID, filename: String, content_type: String, size: Int64, storage_path: String, created_at: Date, updated_at: Date, deleted_at: Date?) {
+    init(id: UUID, filename: String, content_type: String, size: Int64, storage_path: String, created_at: Date, updated_at: Date, deleted_at: Date?,
+         folder_id: UUID? = nil, trashed_at: Date? = nil) {
         self.id = id; self.filename = filename; self.content_type = content_type; self.size = size
         self.storage_path = storage_path; self.created_at = created_at; self.updated_at = updated_at; self.deleted_at = deleted_at
+        self.folder_id = folder_id; self.trashed_at = trashed_at
     }
 
     init(_ a: Attachment, path: String) {
         self.init(id: a.id, filename: String(a.filename.prefix(255)), content_type: a.contentType, size: a.size,
-                  storage_path: path, created_at: a.createdAt, updated_at: .now, deleted_at: a.deletedAt)
+                  storage_path: path, created_at: a.createdAt, updated_at: .now, deleted_at: a.deletedAt,
+                  folder_id: a.folderID, trashed_at: a.trashedAt)
+        // New bytes from this device (a text file edited here): other devices fetch them again.
+        if a.bytesEdited { sendsContentVersion = a.contentVersion }
     }
+
+    /// Sent only with bytes edited here; otherwise the server's count stays as it is.
+    var sendsContentVersion: Int?
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -1243,6 +1662,9 @@ struct AttachmentDTO: Codable {
         updated_at = try c.decode(Date.self, forKey: .updated_at)
         deleted_at = try c.decodeIfPresent(Date.self, forKey: .deleted_at)
         server_updated_at = try c.decodeIfPresent(Date.self, forKey: .server_updated_at)
+        folder_id = try c.decodeIfPresent(UUID.self, forKey: .folder_id)
+        trashed_at = try c.decodeIfPresent(Date.self, forKey: .trashed_at)
+        content_version = try c.decodeIfPresent(Int.self, forKey: .content_version) ?? 0
         if let box = try c.decodeIfPresent(String.self, forKey: .meta_ct), let json = Wire.sealer?.open(box, context: E2EE.fileMeta(id)),
            let m = try? JSONDecoder().decode(FileMeta.self, from: Data(json.utf8)) {
             filename = m.name
@@ -1266,6 +1688,9 @@ struct AttachmentDTO: Codable {
         try c.encode(created_at, forKey: .created_at)
         try c.encode(updated_at, forKey: .updated_at)
         try c.encode(deleted_at, forKey: .deleted_at)
+        try c.encode(folder_id, forKey: .folder_id)
+        try c.encode(trashed_at, forKey: .trashed_at)
+        if let v = sendsContentVersion { try c.encode(v, forKey: .content_version) }
     }
 }
 

@@ -74,7 +74,7 @@ import Testing
             try? await Task.sleep(for: .seconds(1.6))
             try AIEditSnapshots.snap(w, to: dir.appending(path: "\(name).png"))
         }
-        try await shoot(try note("Welcome to Amber Notes"), "card-welcome")
+        try await shoot(try note("Welcome to Pinto Notes"), "card-welcome")
         try await shoot(ctx.createNote(in: .all, body: try from("## Food", in: lisbon)), "card-lisbon-food")
         try await shoot(ctx.createNote(in: .all, body: try from("## Places", in: lisbon, until: "## Food")), "card-lisbon-places")
     }

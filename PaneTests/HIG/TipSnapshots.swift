@@ -104,8 +104,10 @@ import TipKit
         }
     }
 
+    /// Needs the real toolbar, so a titled window on screen: CI only (AppSnapshotTests.onScreenAllowed).
     static func shoot(_ view: some View, control: String?, anchor: Anchor, to url: URL, size: CGSize, dark: Bool) async throws {
-        let window = NSWindow(contentRect: CGRect(x: -30000, y: -30000, width: size.width, height: size.height),
+        guard AppSnapshotTests.onScreenAllowed else { return }
+        let window = NSWindow(contentRect: CGRect(x: -20000, y: -20000, width: size.width, height: size.height),
                               styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         window.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
@@ -114,7 +116,7 @@ import TipKit
         host.sizingOptions = []
         window.contentViewController = host
         window.setContentSize(size)
-        window.setFrameOrigin(CGPoint(x: -30000, y: -30000))
+        window.setFrameOrigin(CGPoint(x: -20000, y: -20000))
         window.orderFrontRegardless()
         try? await Task.sleep(for: .seconds(1.2))
         defer { window.orderOut(nil); window.close() }

@@ -1,0 +1,185 @@
+import SwiftUI
+
+/// Collaboration (prototype): the presence avatars and the Share sheet with sample people, for
+/// checking them on iPhone and Mac, light and dark (`-collabGallery`, and CollabMacShots).
+struct CollabGallery: View {
+    static let sara = UUID(uuidString: "5A4A0000-0000-4000-8000-000000000001")!
+    static let jonas = UUID(uuidString: "1B4A0000-0000-4000-8000-000000000002")!
+    static let emma = UUID(uuidString: "3E4A0000-0000-4000-8000-000000000003")!
+    static let li = UUID(uuidString: "7C4A0000-0000-4000-8000-000000000004")!
+
+    static let emil = UUID(uuidString: "E3110000-0000-4000-8000-000000000005")!
+    /// Emil's real profile photo when the gallery is given one (`-collabPhoto <path>`).
+    static var emilPhoto: PImage? {
+        (Capture.argument("-collabPhoto") ?? ProcessInfo.processInfo.environment["AMBER_COLLAB_PHOTO"])
+            .flatMap { FileManager.default.contents(atPath: $0) }.flatMap { PImage(data: $0) }
+    }
+    /// Someone with a photo, then people without.
+    static var withPhoto: [PresenceAvatars.Person] {
+        [.init(id: emil, name: "Emil Wagman", photo: emilPhoto), .init(id: sara, name: "Sara Lind"), .init(id: emma, name: "Emma Holm")]
+    }
+
+    static let people: [PresenceAvatars.Person] = [
+        .init(id: sara, name: "Sara Lind"), .init(id: jonas, name: "Jonas Berg"),
+        .init(id: emma, name: "Emma Holm"), .init(id: li, name: "Li Wei"),
+    ]
+
+    static let share = ShareState(
+        link: URL(string: "https://ambernotes.app/s/sEbHaDgYXLDfpSMmrziRgA#gIfSqgKHVsQcWBm2RTA0aw"), access: .edit,
+        people: [
+            .init(id: emil, name: "Emil Wagman", isMe: true, role: "owner"),
+            .init(id: sara, name: "Sara Lind", role: "editor", safetyCode: "4821 0937 5512"),
+            .init(id: jonas, name: "Jonas Berg", role: "viewer", safetyCode: "0712 8461 3495"),
+        ])
+
+    /// Share as Template with a habit tracker and its app, for screenshots (`-collabGallery -template`).
+    static func templateSheet() -> some View {
+        let store = CollabStore(name: "Emil Wagman", email: "emil@example.com", relay: URL(string: "http://127.0.0.1:1")!)
+        let note = Note(body: CollabDemo.habitNote())
+        store.pages[note.id] = "<!doctype html><title>Habit tracker</title>"
+        return NavigationStack { TemplateForm(note: note, store: store) }
+    }
+
+    /// The Share sheet's sample state, with your photo when there is one.
+    static var shareWithPhoto: ShareState {
+        var s = share
+        s.people[0].photo = emilPhoto
+        return s
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    Text("On the note's toolbar").font(.headline)
+                    row("One person", Array(Self.people.prefix(1)))
+                    row("Two", Array(Self.people.prefix(2)))
+                    row("Three", Array(Self.people.prefix(3)))
+                    row("Four (+1)", Self.people)
+                    row("With a photo", Self.withPhoto)
+                    Text("Sizes").font(.headline).padding(.top, 8)
+                    HStack(spacing: 18) {
+                        ForEach([24, 28, 32, 48], id: \.self) { s in
+                            PersonAvatar(name: "Sara Lind", color: CollabSession.color(for: Self.sara), size: CGFloat(s), ring: .clear)
+                        }
+                    }
+                    Text("Palette").font(.headline).padding(.top, 8)
+                    HStack(spacing: 10) {
+                        ForEach(Array(["Clay A", "Sage B", "Dusk C", "Plum D", "Teal E", "Olive F"].enumerated()), id: \.offset) { i, n in
+                            PersonAvatar(name: n, color: CollabSession.color(at: i), size: 32, ring: .clear)
+                        }
+                        PersonAvatar(name: "Emil Wagman", color: Color(PColor.paneAccent), size: 32, ring: .clear, ink: .avatarOnAmber)
+                    }
+                }
+                .padding(20)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .background(Color.notePage)
+            .navigationTitle("Team offsite")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    PresenceAvatars(people: Self.withPhoto).padding(.horizontal, 2)
+                }
+                ToolbarItem(placement: .primaryAction) { Button("More", systemImage: "ellipsis") {} }
+            }
+        }
+    }
+
+    private func row(_ label: String, _ people: [PresenceAvatars.Person]) -> some View {
+        HStack {
+            Text(label)
+            Spacer()
+            // The toolbar's capsule, to see the badge against it.
+            PresenceAvatars(people: people)
+                .padding(.horizontal, 8).padding(.vertical, 5)
+                .glassEffect(.regular, in: .capsule)
+        }
+    }
+}
+
+/// The toolbar badge options in place, for comparing them (`-collabGallery -badges -badgeOption A
+/// -badgeState lone-idle|lone-typing|three`): a note with its real toolbar and the avatars in it.
+struct BadgeGallery: View {
+    enum State: String, CaseIterable { case loneIdle = "lone-idle", loneTyping = "lone-typing", three }
+    let option: BadgeOption
+    let state: State
+    var style: PencilStyle = .current
+
+    static func fromArguments() -> BadgeGallery {
+        BadgeGallery(option: .current, state: Capture.argument("-badgeState").flatMap(State.init(rawValue:)) ?? .loneIdle)
+    }
+
+    var people: [PresenceAvatars.Person] {
+        switch state {
+        case .loneIdle: [.init(id: CollabGallery.emil, name: "Emil Wagman", photo: CollabGallery.emilPhoto)]
+        case .loneTyping: [.init(id: CollabGallery.emil, name: "Emil Wagman", photo: CollabGallery.emilPhoto, typing: true)]
+        case .three: [.init(id: CollabGallery.emil, name: "Emil Wagman", photo: CollabGallery.emilPhoto, typing: true),
+                      .init(id: CollabGallery.sara, name: "Sara Lind"), .init(id: CollabGallery.emma, name: "Emma Holm")]
+        }
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Team offsite, 14 November").font(.system(size: 28, weight: .heavy))
+                    Text("Agenda").font(.title3.bold()).padding(.top, 8)
+                    ForEach(["09:00 Coffee and goals for Q1", "10:30 Roadmap review", "12:30 Lunch at Tranan"], id: \.self) { Text("–  " + $0) }
+                    Text("Option \(option.rawValue) · \(style.rawValue) · \(state.rawValue)").font(.caption).foregroundStyle(.secondary).padding(.top, 24)
+                }
+                .padding(20)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .background(Color.notePage)
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) { PresenceAvatars(people: people, option: option, pencilStyle: style).padding(.horizontal, 2) }
+                ToolbarItem(placement: .primaryAction) { Button("More", systemImage: "ellipsis") {} }
+            }
+        }
+    }
+}
+
+/// The still for the onboarding share email (`-collabGallery -emailStill`): the shared "Team
+/// offsite" note on iPhone, as the note screen draws it, with two co-editors in the toolbar (the
+/// final pencil badge, one with Emil's real photo) and Sara's caret in the middle of a line.
+struct EmailStill: View {
+    @State private var controller = EditorController()
+    @State private var path = [1]
+
+    var body: some View {
+        NavigationStack(path: $path) {
+            Color.notePage
+                .navigationDestination(for: Int.self) { _ in note }
+        }
+    }
+
+    private var note: some View {
+        MarkdownEditor(initialText: CollabDemo.offsite, header: DateBucket.header(.now), controller: controller, onChange: { _ in })
+            .background(Color.notePage.ignoresSafeArea())
+            .navigationTitle("")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    PresenceAvatars(people: [.init(id: CollabGallery.emil, name: "Emil Wagman", photo: CollabGallery.emilPhoto),
+                                             .init(id: CollabGallery.sara, name: "Sara Lind")], option: .b, pencilStyle: .colour)
+                        .padding(.horizontal, 2)
+                }
+                ToolbarItem(placement: .primaryAction) { Button("More", systemImage: "ellipsis") {} }
+            }
+            .task {
+                // Sara's caret inside the lunch line, after "Lunch": its flag falls in the blank line below.
+                try? await Task.sleep(for: .seconds(0.6))
+                let at = (CollabDemo.offsite as NSString).range(of: "12:30 Lunch").upperBound
+                controller.remoteCarets = [RemoteCaret(id: CollabGallery.sara, name: "Sara", color: CollabSession.color(for: CollabGallery.sara),
+                                                       range: NSRange(location: at, length: 0))]
+            }
+    }
+}

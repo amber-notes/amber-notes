@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Habit tracker</title>
+<style>.card { background: var(--amber-surface); border-radius: var(--amber-radius); padding: 16px; margin: 16px; }</style></head>
+<body>
+<main id="app"></main>
+<script>
+  // A rewrite that reads a column the note doesn't have: it throws as it loads.
+  amber.onChange((note) => {
+    const t = note.tables[0];
+    const sleep = t.columns.findIndex((c) => c.name === "Sleep");
+    document.getElementById("app").innerHTML = t.rows.map((r) => `<div class="card">${r[sleep].toFixed(1)} h</div>`).join("");
+  });
+</script>
+</body>
+</html>

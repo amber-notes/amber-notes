@@ -1,5 +1,5 @@
 #!/bin/zsh
-# Releases Amber Notes for Mac: a notarized DMG on ambernotes.app/download, and a
+# Releases Pinto Notes for Mac: a notarized DMG on pintonotes.com/download, and a
 # Sparkle update that every installed copy picks up within a day.
 #
 #   scripts/release-mac.sh 1.0.1 "What changed, one line per item"
@@ -21,6 +21,10 @@
 #   ASC_KEY_PATH, ASC_KEY_ID, ASC_ISSUER_ID   the notarization key
 #   SPARKLE_KEY_FILE           the Sparkle private key as a file (instead of the Keychain)
 #   SKIP_DEPLOY=1, SKIP_TAG=1  the workflow deploys the site and tags the release itself
+#
+# CHANNEL=beta builds Amber Notes Beta instead (Config/Beta.xcconfig: its own bundle id, name, URL
+# scheme and sandbox, on the staging backend; docs/Technical/staging.md): from the current checkout,
+# notarized, as build/dist-beta/Amber-Notes-Beta-<version>.dmg. No appcast, site deploy or tag.
 set -euo pipefail
 MAIN="$(cd "$(dirname "$0")/.." && pwd)"
 CLEAN="$MAIN/../AmberNotes-install"
@@ -28,13 +32,22 @@ DIST="$MAIN/build/dist"
 DD="$MAIN/build/dddirect"
 [[ -n ${DEVELOPER_DIR:-} ]] || export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 IN_PLACE=${IN_PLACE:-0}
+CHANNEL=${CHANNEL:-release}
+beta=()
+if [[ $CHANNEL == beta ]]; then
+  IN_PLACE=1; SKIP_DEPLOY=1; SKIP_TAG=1
+  DIST="$MAIN/build/dist-beta"; DD="$MAIN/build/dddirect-beta"
+  [[ -f $MAIN/Config/Backend.staging.local.xcconfig ]] || { echo "No Config/Backend.staging.local.xcconfig: run scripts/staging.sh app-config first." >&2; exit 1; }
+  beta=(-xcconfig "$MAIN/Config/Beta.xcconfig")
+fi
 [[ $IN_PLACE == 1 ]] && CLEAN="$MAIN"
 
 VERSION=${1:?usage: scripts/release-mac.sh <version> [release notes]}
 NOTES=${2:-}
 BUILD=$(date -u +%Y%m%d%H%M)   # CFBundleVersion: always increasing, which is what Sparkle compares
-FILE="Amber-Notes-$VERSION.dmg"   # for Sparkle (the appcast points here)
-STABLE="Amber-Notes.dmg"          # for people (the download buttons point here)
+FILE="Pinto-Notes-$VERSION.dmg"   # for Sparkle (the appcast points here)
+[[ $CHANNEL == beta ]] && FILE="Amber-Notes-Beta-$VERSION.dmg"
+STABLE="Pinto-Notes.dmg"          # for people (the download buttons point here)
 MIN_OS=26.0
 
 if [[ -n ${ASC_KEY_PATH:-} ]]; then
@@ -63,7 +76,7 @@ echo "→ Archive $VERSION ($BUILD) from $COMMIT"
 rm -rf "$DIST" && mkdir -p "$DIST"
 xcodebuild -project "$CLEAN/Pane.xcodeproj" -scheme AmberNotesDirect -configuration Release \
   -destination 'generic/platform=macOS' -derivedDataPath "$DD" -archivePath "$DIST/AmberNotes.xcarchive" \
-  -allowProvisioningUpdates "${auth[@]}" DEVELOPMENT_TEAM=4UM3XVUN9Y CODE_SIGN_STYLE=Automatic CODE_SIGN_IDENTITY="Apple Development" \
+  -allowProvisioningUpdates "${auth[@]}" "${beta[@]}" DEVELOPMENT_TEAM=4UM3XVUN9Y CODE_SIGN_STYLE=Automatic CODE_SIGN_IDENTITY="Apple Development" \
   MARKETING_VERSION="$VERSION" CURRENT_PROJECT_VERSION="$BUILD" archive | grep -E ": error: |\*\* ARCHIVE" || true
 [[ -d $DIST/AmberNotes.xcarchive ]] || { echo "Archive failed." >&2; exit 1; }
 
@@ -80,7 +93,8 @@ cat > "$DIST/ExportDeveloperID.plist" <<EOF
 EOF
 xcodebuild -exportArchive -archivePath "$DIST/AmberNotes.xcarchive" -exportOptionsPlist "$DIST/ExportDeveloperID.plist" \
   -exportPath "$DIST/export" -allowProvisioningUpdates "${auth[@]}" | grep -E "error|EXPORT" || true
-APP="$DIST/export/Amber Notes.app"
+APP="$DIST/export/Pinto Notes.app"
+[[ $CHANNEL == beta ]] && APP="$DIST/export/Amber Notes Beta.app"
 [[ -d $APP ]] || { echo "Export failed." >&2; exit 1; }
 codesign --verify --deep --strict "$APP"
 
@@ -109,6 +123,11 @@ xcrun stapler staple "$DIST/$FILE"
 spctl -a -vv "$APP" 2>&1 | grep -q "source=Notarized Developer ID" || { echo "The app didn't pass Gatekeeper." >&2; spctl -a -vv "$APP"; exit 1; }
 xcrun stapler validate "$DIST/$FILE" >/dev/null || { echo "The DMG has no notarization ticket." >&2; exit 1; }
 
+if [[ $CHANNEL == beta ]]; then
+  echo "✓ Amber Notes Beta $VERSION ($BUILD) from $COMMIT: $DIST/$FILE"
+  exit 0
+fi
+
 echo "→ Sparkle signature and appcast"
 SIGN=$(ls "$DD"/SourcePackages/artifacts/sparkle/Sparkle/bin/sign_update)
 if [[ -n ${SPARKLE_KEY_FILE:-} ]]; then
@@ -125,16 +144,18 @@ if [[ -n $NOTES ]]; then
 fi
 WEB="$CLEAN/web"
 mkdir -p "$WEB/public/downloads" "$WEB/public/updates"
-# Two copies of the same DMG: Amber-Notes.dmg is what people download (a stable name), and the
+# Two copies of the same DMG: Pinto-Notes.dmg is what people download (a stable name), and the
 # versioned one is what Sparkle fetches, so the appcast's signature and length always match it.
-rm -f "$WEB/public/downloads/"Amber-Notes*.dmg(N)   # old versioned and stable copies; (N): none yet is fine
+# The old names (Amber-Notes.dmg, Amber-Notes-<version>.dmg) are answered with these files by the
+# site (web/next.config.ts), so links and appcasts from before the rename keep working.
+rm -f "$WEB/public/downloads/"{Amber,Pinto}-Notes*.dmg(N)   # old versioned and stable copies; (N): none yet is fine
 cp "$DIST/$FILE" "$WEB/public/downloads/$FILE"
 cp "$DIST/$FILE" "$WEB/public/downloads/$STABLE"
 cat > "$WEB/public/updates/appcast.xml" <<EOF
 <?xml version="1.0" encoding="utf-8"?>
 <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
   <channel>
-    <title>Amber Notes</title>
+    <title>Pinto Notes</title>
     <link>https://ambernotes.app/updates/appcast.xml</link>
     <item>
       <title>Version $VERSION</title>
@@ -158,4 +179,4 @@ if [[ ${SKIP_DEPLOY:-0} != 1 ]]; then
 fi
 [[ ${SKIP_TAG:-0} == 1 ]] || git -C "$MAIN" tag -f "mac-v$VERSION" "$COMMIT"
 
-echo "✓ Amber Notes $VERSION ($BUILD) is live: https://ambernotes.app/download"
+echo "✓ Pinto Notes $VERSION ($BUILD) is live: https://pintonotes.com/download"

@@ -13,3 +13,7 @@ export const SENDER_NAME = "Pinto Notes";
 export const HELLO = `hello@${SENDING_DOMAIN}`;
 /// The sender of the emails from Emil, and where their replies go.
 export const EMIL = `emil@${SENDING_DOMAIN}`;
+/// Where mail for support arrives, and where the server writes when a person has to look at
+/// something (a report of a shared page). An inbox, not a sender: pintonotes.com receives mail
+/// before it can send it.
+export const SUPPORT_INBOX = "hello@pintonotes.com";

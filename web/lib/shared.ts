@@ -1,4 +1,5 @@
 // Reads a shared note through the public RPC and the share-files function.
+import { appURL } from "./app-scheme";
 import { functionRegion } from "./mcp-proxy";
 import type { SharedFile } from "./render";
 
@@ -67,4 +68,4 @@ export function copyableMarkdown(body: string): string {
 /** The universal link for "Use this note" (https://ambernotes.app/open/copy/<slug>). */
 export const copyLink = (slug: string) => `/open/copy/${slug}`;
 /** The app's own link for it, which "Use this note" tries from the note's page. */
-export const copyAppLink = (slug: string) => `ambernotes://copy/${slug}`;
+export const copyAppLink = (slug: string) => appURL(`copy/${slug}`);

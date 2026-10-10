@@ -36,6 +36,7 @@ final class StubSupabase: URLProtocol, @unchecked Sendable {
     nonisolated(unsafe) private static var tables: [String: [[String: Any]]] = [:]
     nonisolated(unsafe) private static var clock = Date.now
     nonisolated(unsafe) private static var _requests: [String] = []
+    nonisolated(unsafe) private static var _requestTimes: [Date] = []
     nonisolated(unsafe) private static var _bodies: [String] = []
     nonisolated(unsafe) private static var _objects: [String: Data] = [:]
     nonisolated(unsafe) private static var _rpcCalls: [(name: String, params: [String: Any])] = []
@@ -48,12 +49,52 @@ final class StubSupabase: URLProtocol, @unchecked Sendable {
         set { lock.withLock { _tooFast = newValue } }
     }
 
-    static func reset() {
-        lock.withLock { tables = [:]; _requests = []; _bodies = []; _objects = [:]; _rpcCalls = []; _rpcAnswers = [:]; _tooFast = false }
+    nonisolated(unsafe) private static var _account: String?
+    /// Row-level security, for tests that switch accounts: the account making the requests sees and
+    /// changes only its own rows, and writing over another account's row is refused (42501), as on
+    /// the real server. Nil (the default): one account, every row visible.
+    static var account: UUID? {
+        get { lock.withLock { _account.flatMap(UUID.init(uuidString:)) } }
+        set { lock.withLock { _account = newValue?.uuidString.lowercased() } }
     }
+
+    nonisolated(unsafe) private static var _sessionLifetime: TimeInterval = 3600
+    nonisolated(unsafe) private static var _refusesRefresh = false
+    nonisolated(unsafe) private static var _failing: [(method: String, path: String, skip: Int, applied: Bool)] = []
+
+    /// How long a session from the auth endpoint lasts; below zero it's expired as it's handed out.
+    static var sessionLifetime: TimeInterval {
+        get { lock.withLock { _sessionLifetime } }
+        set { lock.withLock { _sessionLifetime = newValue } }
+    }
+
+    /// The auth server refuses a refresh token (signed out elsewhere, or it expired).
+    static var refusesRefresh: Bool {
+        get { lock.withLock { _refusesRefresh } }
+        set { lock.withLock { _refusesRefresh = newValue } }
+    }
+
+    /// The next request with this method whose path ends with `path` (after `skip` of them) fails
+    /// as the connection drops: after the server applied it and before the answer came back, or
+    /// (`applied: false`) before it reached the server.
+    static func loseAnswer(_ method: String, _ path: String, skip: Int = 0, applied: Bool = true) {
+        lock.withLock { _failing.append((method, path, skip, applied)) }
+    }
+
+    static func reset() {
+        lock.withLock {
+            tables = [:]; _requests = []; _requestTimes = []; _bodies = []; _objects = [:]; _rpcCalls = []; _rpcAnswers = [:]; _tooFast = false
+            _sessionLifetime = 3600; _refusesRefresh = false; _failing = []; _account = nil
+        }
+    }
+
+    /// Forgets the requests and bodies seen so far; the tables stay.
+    static func resetLog() { lock.withLock { _requests = []; _bodies = [] } }
 
     /// "METHOD /path?query" of every request that reached the server.
     static var requests: [String] { lock.withLock { _requests } }
+    /// Each request with when it reached the server, in order.
+    static var timedRequests: [(request: String, at: Date)] { lock.withLock { Array(zip(_requests, _requestTimes)) } }
     /// Every request body that reached the server, as text (bytes that aren't text come out as
     /// replacement characters).
     static var bodies: [String] { lock.withLock { _bodies } }
@@ -99,7 +140,8 @@ final class StubSupabase: URLProtocol, @unchecked Sendable {
     }
 
     /// A client whose requests go through the fault layer, then here.
-    static func client() -> SupabaseClient {
+    /// `storage`: where the session is kept; pass the same one to a second client to launch again.
+    static func client(storage: AuthLocalStorage = MemoryAuthStorage()) -> SupabaseClient {
         let forward = URLSessionConfiguration.ephemeral
         forward.protocolClasses = [StubSupabase.self]
         NetFault.forward = forward
@@ -107,7 +149,7 @@ final class StubSupabase: URLProtocol, @unchecked Sendable {
             supabaseURL: url,
             supabaseKey: "stub-key",
             options: SupabaseClientOptions(
-                auth: .init(storage: MemoryAuthStorage(), emitLocalSessionAsInitialSession: true),
+                auth: .init(storage: storage, autoRefreshToken: false, emitLocalSessionAsInitialSession: true),
                 global: .init(session: NetFault.session())
             )
         )
@@ -120,6 +162,17 @@ final class StubSupabase: URLProtocol, @unchecked Sendable {
     override func stopLoading() {}
 
     override func startLoading() {
+        let path = request.url?.path ?? ""
+        let lost = Self.lock.withLock { () -> (applied: Bool, Void)? in
+            guard let i = Self._failing.firstIndex(where: { $0.method == (request.httpMethod ?? "GET") && path.hasSuffix($0.path) }) else { return nil }
+            if Self._failing[i].skip > 0 { Self._failing[i].skip -= 1; return nil }
+            return (Self._failing.remove(at: i).applied, ())
+        }
+        if let lost {
+            if lost.applied { _ = Self.handle(request) }
+            client?.urlProtocol(self, didFailWithError: URLError(.networkConnectionLost))
+            return
+        }
         let (status, body) = Self.handle(request)
         let response = HTTPURLResponse(url: request.url!, statusCode: status, httpVersion: "HTTP/1.1", headerFields: ["Content-Type": "application/json"])!
         client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
@@ -134,9 +187,11 @@ final class StubSupabase: URLProtocol, @unchecked Sendable {
         if body == nil, let s = request.httpBodyStream { body = NetFault.read(s) }
         lock.withLock {
             _requests.append("\(method) \(comps.path)?\(comps.query ?? "")")
+            _requestTimes.append(.now)
             if let body { _bodies.append(String(decoding: body, as: UTF8.self)) }
         }
         let path = comps.path
+        if path == "/auth/v1/token" { return token(grant: comps.queryItems?.first { $0.name == "grant_type" }?.value) }
         if path.hasPrefix("/storage/v1/object/") { return storage(method, String(path.dropFirst("/storage/v1/object/".count)), request, body) }
         guard path.hasPrefix("/rest/v1/") else { return (404, Data("{}".utf8)) }
         let name = String(path.dropFirst("/rest/v1/".count))
@@ -157,7 +212,13 @@ final class StubSupabase: URLProtocol, @unchecked Sendable {
         }
         return lock.withLock { () -> (Int, Data) in
             var list = tables[name] ?? []
-            let matches = { (r: [String: Any]) in filters(query).allSatisfy { $0(r) } }
+            let mine = { (r: [String: Any]) in _account == nil || r["_owner"] as? String == _account }
+            let matches = { (r: [String: Any]) in mine(r) && filters(query).allSatisfy { $0(r) } }
+            // As the server's triggers do (pane_over('not_yours')): a row can only point at a folder
+            // or a parent note the server already has.
+            if method == "POST" || method == "PATCH", let missing = danglingReference(name, decodeRows(body)) {
+                return (400, Data(#"{"code":"PT413","message":"That folder or note doesn't exist.","hint":"not_yours","details":"\#(missing)"}"#.utf8))
+            }
             switch method {
             case "GET":
                 var out = list.filter(matches)
@@ -173,6 +234,9 @@ final class StubSupabase: URLProtocol, @unchecked Sendable {
                 for var r in incoming {
                     r["id"] = (r["id"] as? String)?.lowercased()
                     if let i = list.firstIndex(where: { $0["id"] as? String == r["id"] as? String }) {
+                        if !mine(list[i]) {
+                            return (403, Data(#"{"code":"42501","message":"new row violates row-level security policy"}"#.utf8))
+                        }
                         if prefer.contains("ignore-duplicates") { continue }
                         var merged = list[i]
                         for (k, v) in r { merged[k] = v }
@@ -181,6 +245,7 @@ final class StubSupabase: URLProtocol, @unchecked Sendable {
                         out.append(merged)
                     } else {
                         r["version"] = 0
+                        if let owner = _account { r["_owner"] = owner }
                         bump(&r)
                         list.append(r)
                         out.append(r)
@@ -202,6 +267,46 @@ final class StubSupabase: URLProtocol, @unchecked Sendable {
                 return (405, Data("{}".utf8))
             }
         }
+    }
+
+    /// Auth: a password sign-in or a refresh hands out a session for the test's account.
+    private static func token(grant: String?) -> (Int, Data) {
+        if grant == "refresh_token", refusesRefresh {
+            return (400, Data(#"{"code":400,"error_code":"refresh_token_not_found","msg":"Invalid Refresh Token: Refresh Token Not Found"}"#.utf8))
+        }
+        let lifetime = sessionLifetime
+        let expires = Date.now.addingTimeInterval(lifetime)
+        func b64(_ o: [String: Any]) -> String {
+            (try! JSONSerialization.data(withJSONObject: o)).base64EncodedString()
+                .replacingOccurrences(of: "+", with: "-").replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: "=", with: "")
+        }
+        let user = SealedAccount.user.uuidString.lowercased()
+        let jwt = b64(["alg": "HS256", "typ": "JWT"]) + "." + b64(["sub": user, "exp": Int(expires.timeIntervalSince1970), "role": "authenticated"]) + ".sig"
+        let now = stamp(.now)
+        let session: [String: Any] = [
+            "access_token": jwt, "token_type": "bearer", "expires_in": Int(lifetime), "expires_at": expires.timeIntervalSince1970,
+            "refresh_token": "refresh-\(UUID().uuidString)",
+            "user": ["id": user, "aud": "authenticated", "role": "authenticated", "email": "qa@example.com",
+                     "app_metadata": [:] as [String: Any], "user_metadata": [:] as [String: Any], "created_at": now, "updated_at": now],
+        ]
+        return (200, (try? JSONSerialization.data(withJSONObject: session)) ?? Data("{}".utf8))
+    }
+
+    /// The first folder or parent note a row points at that the server doesn't have. Under `lock`.
+    private static func danglingReference(_ table: String, _ rows: [[String: Any]]) -> String? {
+        func has(_ t: String, _ id: Any?) -> Bool {
+            guard let id = (id as? String)?.lowercased() else { return true }   // none, or null
+            return (tables[t] ?? []).contains { ($0["id"] as? String)?.lowercased() == id && (_account == nil || $0["_owner"] as? String == _account) }
+                || rows.contains { ($0["id"] as? String)?.lowercased() == id && t == table }
+        }
+        for r in rows {
+            if table == "notes" || table == "attachments" || table == "folders" {
+                let folderKey = table == "folders" ? "parent_id" : "folder_id"
+                if !has("folders", r[folderKey]) { return "folder" }
+            }
+            if table == "notes", !has("notes", r["parent_id"]) { return "parent" }
+        }
+        return nil
     }
 
     /// The files bucket: uploads (multipart) and downloads by path.
@@ -263,6 +368,10 @@ final class StubSupabase: URLProtocol, @unchecked Sendable {
                     guard let x = r[key] else { return false }
                     return "\(x)".lowercased() == want
                 }
+            }
+            if v.hasPrefix("in.("), v.hasSuffix(")") {
+                let want = Set(v.dropFirst(4).dropLast().split(separator: ",").map { $0.trimmingCharacters(in: CharacterSet(charactersIn: "\" ")).lowercased() })
+                return { r in r[key].map { want.contains("\($0)".lowercased()) } ?? false }
             }
             if v.lowercased() == "is.null" {
                 return { r in r[key] == nil || r[key] is NSNull }

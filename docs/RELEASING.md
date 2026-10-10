@@ -2,6 +2,8 @@
 
 Releases are cut from a version tag. GitHub Actions (`.github/workflows/release.yml`) builds both apps from that tag.
 
+**No App Store submission, TestFlight build for users, Mac release or production server deploy without a passing release gate report for that commit** (`scripts/release-gate.sh <ref> --baseline <last release>`, summaries in `docs/Evidence/release-gate/`, what it checks in `docs/Technical/release-gate.md`).
+
 ## Cut a release
 
 ```sh
@@ -61,6 +63,16 @@ The site reads the public version from `web/content/release.json`, which `script
 - **/connect** shows the QR code page only from 1.2 (`qrConnectLive` in `web/lib/connect.ts`). Apps before 1.2 can't scan the code or answer "Open Amber Notes on this Mac" from that page, so until then /connect shows the page before it (`ConnectFlowV1`: sign in, a notification, a number to type, or the recovery key). To test the QR page with a TestFlight build, add `&qr=1` to the connect address: `https://ambernotes.app/connect?request=<id>&qr=1`.
 
 So the Mac release of 1.2 turns the QR page on for everyone, iPhone included. Run it only once iPhone 1.2 is approved and released on the App Store, or people on iPhone 1.1.2 get a code they can't scan (the page's "Get a notification instead" still works for them). If the App Review notes describe the connect page, update them for the QR page at the same time.
+
+## Copy to change with the next release
+
+Text outside the app that names a Settings path the app changed. It describes the app people have now, so change it once the new app is public, then delete the item here.
+
+- **Settings tabs (#255):** the Privacy & Security section is now the Security tab, and Export Your Notes moved to Account.
+  - `web/content/privacy-policy.md` and `docs/privacy-policy.md`, two places: "Settings → Privacy & Security (→ Export Your Notes)" becomes "Settings → Account → Export Your Notes". This is the privacy policy: show Emil, and update its "Last updated" date.
+  - `web/app/privacy-security/page.tsx`, Export: "Settings → Account → Export Your Notes".
+  - `web/app/blog/back-up-apple-notes/page.tsx` (Export: Settings, Account), `web/app/blog/connect-chatgpt-to-your-notes/page.tsx` and `web/app/blog/encrypted-notes-app-for-ai/page.tsx` (recovery key: Settings, Security).
+  - `supabase/functions/account/export.ts`: the README in the data export says "Settings > Privacy & Security > Export Your Notes"; it becomes "Settings > Account > Export Your Notes" (a function deploy).
 
 ## Backend changes
 

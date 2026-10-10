@@ -1,5 +1,7 @@
 import Foundation
+import CoreText
 import ImageIO
+import PDFKit
 import SwiftData
 import UniformTypeIdentifiers
 
@@ -72,8 +74,129 @@ enum DemoData {
             n.createdAt = n.updatedAt
             n.isPinned = pinned
         }
+        // Captures of files kept in a folder (`-demoFiles`): a "To read" folder of papers, a photo
+        // and a spreadsheet next to a note.
+        if ProcessInfo.processInfo.arguments.contains("-demoFiles") { loadFolderFiles(into: context) }
         try? context.save()
     }
+
+    /// Files in folders as Emil pictures them: Personal holds a note and an app, To Read a book.
+    static func loadFolderFiles(into context: ModelContext) {
+        let personal = context.createFolder(named: "Personal")
+        let todo = context.createNote(in: .folder(personal.id), body: "TODO\n\n- [ ] Renew passport\n- [ ] Call the dentist\n- [x] Pay the electricity bill\n- [ ] Book the train to Gothenburg")
+        todo.updatedAt = .now.addingTimeInterval(-2 * 3600)
+        let habits = context.createNote(in: .folder(personal.id), body: Capture.habitNote())
+        habits.updatedAt = .now.addingTimeInterval(-26 * 3600)
+        if let url = Bundle.main.url(forResource: "sample-habit-tracker", withExtension: "html"), let html = try? String(contentsOf: url, encoding: .utf8) {
+            NotePageStore.shared.setHere(habits.id, .init(html: html, by: "Claude", at: .now))
+        }
+        let toRead = context.createFolder(named: "To Read")
+        if let a = try? FileStore.importData(bookPDF(title: "Fluent Python", chapters: fluentPythonChapters), filename: "Fluent Python.pdf", type: .pdf) {
+            a.folderID = toRead.id
+            a.createdAt = .now.addingTimeInterval(-20 * 60)
+            a.modifiedAt = a.createdAt
+            context.insert(a)
+        }
+        // Captures of every kind the app shows (`-demoTypes <dir>`): each file in that folder.
+        if let i = ProcessInfo.processInfo.arguments.firstIndex(of: "-demoTypes"), i + 1 < ProcessInfo.processInfo.arguments.count {
+            loadKinds(from: URL(fileURLWithPath: ProcessInfo.processInfo.arguments[i + 1]), into: context)
+        }
+    }
+
+    /// Every file in `dir`, in a folder "All kinds".
+    static func loadKinds(from dir: URL, into context: ModelContext) {
+        let folder = context.createFolder(named: "All kinds")
+        let urls = ((try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? []).sorted { $0.lastPathComponent < $1.lastPathComponent }
+        for (i, url) in urls.enumerated() {
+            guard let a = try? FileStore.importFile(at: url) else { continue }
+            a.folderID = folder.id
+            a.createdAt = .now.addingTimeInterval(-Double(i) * 60)
+            a.modifiedAt = a.createdAt
+            context.insert(a)
+        }
+    }
+
+    /// A one-page paper: a title and lines of text, so a preview reads as a document.
+    static func paperPDF(title: String, lines: Int) -> Data {
+        let data = NSMutableData()
+        var box = CGRect(x: 0, y: 0, width: 595, height: 842)
+        guard let consumer = CGDataConsumer(data: data), let ctx = CGContext(consumer: consumer, mediaBox: &box, nil) else { return Data() }
+        ctx.beginPDFPage(nil)
+        ctx.setFillColor(CGColor(gray: 1, alpha: 1))
+        ctx.fill(box)
+        func text(_ s: String, size: CGFloat, bold: Bool, at p: CGPoint) {
+            let font = CTFontCreateWithName((bold ? "Helvetica-Bold" : "Times-Roman") as CFString, size, nil)
+            let line = CTLineCreateWithAttributedString(NSAttributedString(string: s, attributes: [
+                NSAttributedString.Key(kCTFontAttributeName as String): font,
+                NSAttributedString.Key(kCTForegroundColorAttributeName as String): CGColor(gray: 0.1, alpha: 1),
+            ]))
+            ctx.textPosition = p
+            CTLineDraw(line, ctx)
+        }
+        text(title, size: 22, bold: true, at: CGPoint(x: 64, y: 760))
+        if title == "Fluent Python" { text("Clear, concise, and effective programming", size: 13, bold: false, at: CGPoint(x: 64, y: 736)) }
+        let book = title == "Fluent Python"
+        text(book ? "Preface" : "Abstract", size: 12, bold: true, at: CGPoint(x: 64, y: 718))
+        let words = book ? "Python is an easy to learn, powerful programming language, and its simplicity lets you become productive quickly, but this often means you aren't using everything it has to offer. This book shows how to write effective, modern Python by leaning on its best ideas: the data model, sequences, functions as objects, and concurrency." : "The dominant sequence models are based on complex recurrent or convolutional networks. We propose a simpler architecture that relies on attention alone, and it trains faster while reading better."
+        let filler = Array(repeating: words, count: 8).joined(separator: " ").split(separator: " ")
+        var i = 0
+        for row in 0 ..< lines {
+            var s = ""
+            while s.count < 86, i < filler.count { s += (s.isEmpty ? "" : " ") + filler[i]; i = (i + 1) % filler.count }
+            text(s, size: 10.5, bold: false, at: CGPoint(x: 64, y: 696 - CGFloat(row) * 16))
+        }
+        ctx.endPDFPage()
+        ctx.closePDF()
+        return data as Data
+    }
+
+    /// A short book: a title page, then a page per chapter, with a table of contents (for the
+    /// PDF reader's captures and the demo's "Fluent Python.pdf").
+    static func bookPDF(title: String, chapters: [String]) -> Data {
+        let data = NSMutableData()
+        var box = CGRect(x: 0, y: 0, width: 595, height: 842)
+        guard let consumer = CGDataConsumer(data: data), let ctx = CGContext(consumer: consumer, mediaBox: &box, nil) else { return Data() }
+        func text(_ s: String, size: CGFloat, bold: Bool, at p: CGPoint) {
+            let font = CTFontCreateWithName((bold ? "Helvetica-Bold" : "Times-Roman") as CFString, size, nil)
+            let line = CTLineCreateWithAttributedString(NSAttributedString(string: s, attributes: [
+                NSAttributedString.Key(kCTFontAttributeName as String): font,
+                NSAttributedString.Key(kCTForegroundColorAttributeName as String): CGColor(gray: 0.1, alpha: 1),
+            ]))
+            ctx.textPosition = p
+            CTLineDraw(line, ctx)
+        }
+        let words = "Python is an easy to learn, powerful programming language, and its simplicity lets you become productive quickly, but this often means you aren't using everything it has to offer. This book shows how to write effective, modern Python by leaning on its best ideas: the data model, sequences, functions as objects, and concurrency.".split(separator: " ")
+        for (n, chapter) in ([title] + chapters).enumerated() {
+            ctx.beginPDFPage(nil)
+            ctx.setFillColor(CGColor(gray: 1, alpha: 1))
+            ctx.fill(box)
+            text(n == 0 ? title : "\(n). \(chapter)", size: n == 0 ? 30 : 20, bold: true, at: CGPoint(x: 64, y: n == 0 ? 600 : 760))
+            if n == 0 { text("Clear, concise, and effective programming", size: 15, bold: false, at: CGPoint(x: 64, y: 566)) } else {
+                var i = n * 7
+                for row in 0 ..< 38 {
+                    var s = ""
+                    while s.count < 86 { s += (s.isEmpty ? "" : " ") + words[i % words.count]; i += 1 }
+                    text(s, size: 10.5, bold: false, at: CGPoint(x: 64, y: 724 - CGFloat(row) * 16))
+                }
+            }
+            text("\(n + 1)", size: 9, bold: false, at: CGPoint(x: 292, y: 40))
+            ctx.endPDFPage()
+        }
+        ctx.closePDF()
+        guard let doc = PDFDocument(data: data as Data) else { return data as Data }
+        let root = PDFOutline()
+        for (i, chapter) in chapters.enumerated() {
+            guard let page = doc.page(at: i + 1) else { continue }
+            let item = PDFOutline()
+            item.label = chapter
+            item.destination = PDFDestination(page: page, at: CGPoint(x: 0, y: 842))
+            root.insertChild(item, at: i)
+        }
+        doc.outlineRoot = root
+        return doc.dataRepresentation() ?? data as Data
+    }
+
+    static let fluentPythonChapters = ["The Python Data Model", "An Array of Sequences", "Dictionaries and Sets", "Unicode Text Versus Bytes", "Functions as Objects", "Decorators and Closures"]
 
     /// App Store captures: `-uitest -demo -importedLibrary` is a library just imported from Apple
     /// Notes, the one the website's import card shows: Notes 612, Recipes 188, Work 241,

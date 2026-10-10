@@ -28,3 +28,15 @@ Deno.test("finding the note, keys and limits", () => {
   assertEquals(toolErrorKind("Your AI has searched a lot in the last minute. Try again shortly."), "rate_limited");
   assertEquals(toolErrorKind("Something new"), "other");
 });
+
+Deno.test("the file tools' failures get kinds too", () => {
+  assertEquals(toolErrorKind(`old_string isn't in Work/Plan.md. Fetch it again and copy the exact text.`), "old_text_not_found");
+  assertEquals(toolErrorKind(`old_string is in Work/Plan.md 3 times. Add more of the surrounding text so it matches once.`), "old_text_repeated");
+  assertEquals(toolErrorKind("old_string and new_string are the same: nothing to change."), "bad_edits");
+  assertEquals(toolErrorKind("Work/Plan.md changed since you read it. Fetch it again, then make the change."), "version_conflict");
+  assertEquals(toolErrorKind("Read Work/Plan.md with fetch before changing it."), "not_read_first");
+  assertEquals(toolErrorKind(`Nothing at "Work/Plna.md". Use list or search to find it.`), "path_not_found");
+  assertEquals(toolErrorKind(`"Work/Plan.md" already exists. Read it, then change it with edit or write.`), "already_exists");
+  assertEquals(toolErrorKind("To read/Paper.pdf isn't text: edit changes text files."), "not_text");
+  assertEquals(toolErrorKind(`"Work/Plan.md" is in Recently Deleted. Bring it back with restore first.`), "in_trash");
+});

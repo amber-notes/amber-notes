@@ -4,8 +4,9 @@ import ImageIO
 import UniformTypeIdentifiers
 
 /// A file kept in Pane (PDF, spreadsheet, image…). Notes embed it with
-/// `[name](pane-file:<id>)`; the bytes live in the app's container and, sealed with the
-/// account's key, in Storage at `<user id>/<id>`.
+/// `[name](pane-file:<id>)`, or it sits in a folder on its own, next to the folder's notes
+/// (`folderID`). The bytes live in the app's container and, sealed with the account's key,
+/// in Storage at `<user id>/<id>`.
 @Model
 final class Attachment {
     @Attribute(.unique) var id: UUID
@@ -19,6 +20,16 @@ final class Attachment {
     var uploaded: Bool = false
     /// Metadata changed here and not yet pushed.
     var dirty: Bool = true
+    /// The folder it sits in on its own; nil for a file that only notes embed.
+    var folderID: UUID?
+    /// In Recently Deleted (a file in a folder). Deleted for good after 30 days.
+    var trashedAt: Date?
+    /// When its name, folder or state last changed; the list sorts files by it.
+    var modifiedAt: Date?
+    /// How many times its bytes were replaced (by the AI, or edited here); a new number means fetch them again.
+    var contentVersion: Int = 0
+    /// Its bytes were edited on this device and haven't gone up yet.
+    var bytesEdited: Bool = false
 
     init(id: UUID = UUID(), filename: String, contentType: String, size: Int64) {
         self.id = id
@@ -33,6 +44,31 @@ final class Attachment {
     var sizeText: String { ByteCountFormatter.string(fromByteCount: size, countStyle: .file) }
     var kindText: String { type.localizedDescription ?? (filename as NSString).pathExtension.uppercased() }
     var markdown: String { FileStore.markdown(id: id, filename: filename, image: isImage) }
+
+    /// The date the list shows and sorts by.
+    var listDate: Date { modifiedAt ?? createdAt }
+
+    /// The icon for this kind of file, in the list and in a note.
+    var symbol: String {
+        let t = type
+        if t.conforms(to: .pdf) { return "doc.richtext" }
+        if t.conforms(to: .spreadsheet) || ["xlsx", "xls", "csv", "numbers"].contains(ext) { return "tablecells" }
+        if t.conforms(to: .presentation) { return "rectangle.on.rectangle" }
+        if t.conforms(to: .image) { return "photo" }
+        if t.conforms(to: .audiovisualContent) { return "play.rectangle" }
+        if t.conforms(to: .archive) { return "archivebox" }
+        if t.conforms(to: .text) { return "doc.text" }
+        return "doc"
+    }
+
+    private var ext: String { (filename as NSString).pathExtension.lowercased() }
+
+    /// Marks a local change for sync.
+    @MainActor func touch() {
+        modifiedAt = .now
+        dirty = true
+        SyncSignal.changed()
+    }
 }
 
 /// Where attachment bytes live on this device.
@@ -50,6 +86,19 @@ enum FileStore {
 
     static func exists(_ a: Attachment) -> Bool {
         FileManager.default.fileExists(atPath: url(for: a.id, filename: a.filename).path)
+    }
+
+    /// The local copy follows a rename (its name is part of its path here).
+    static func rename(_ id: UUID, from old: String, to new: String) {
+        let from = url(for: id, filename: old), to = url(for: id, filename: new)
+        guard from != to, FileManager.default.fileExists(atPath: from.path) else { return }
+        try? FileManager.default.removeItem(at: to)
+        try? FileManager.default.moveItem(at: from, to: to)
+    }
+
+    /// Removes this device's copy of a file.
+    static func remove(_ a: Attachment) {
+        try? FileManager.default.removeItem(at: url(for: a.id, filename: a.filename).deletingLastPathComponent())
     }
 
     /// Copies a file into Pane and returns its record (not yet inserted).
@@ -88,6 +137,40 @@ enum FileStore {
 }
 
 /// Image heights from their real proportions, for the width images show at.
+/// Sub-notes that are apps show in their parent as a live widget instead of a link (prototype;
+/// see NotePage). Kept here, off the main actor, because embed heights are read while laying out.
+enum NoteWidgets {
+    nonisolated(unsafe) private static var apps: [UUID: CGFloat] = [:]
+    #if os(iOS)
+    static let standard: CGFloat = 300
+    #else
+    static let standard: CGFloat = 320
+    #endif
+    /// Wider than images and cards: an app uses the note's width.
+    static let maxWidth: CGFloat = 920
+
+    /// The widget's height for a sub-note that is an app, nil for any other note.
+    static func height(_ id: UUID) -> CGFloat? { apps[id] }
+    static func isApp(_ id: UUID) -> Bool { apps[id] != nil }
+
+    /// A page can ask for its widget height with <meta name="amber-widget-height" content="260">,
+    /// from 160 to 600 points.
+    static func update(_ id: UUID, html: String?, enabled: Bool = NoteApps.enabled) {
+        guard enabled, let html else { apps[id] = nil; return }
+        var h = standard
+        if let r = html.range(of: #"<meta[^>]*name=["']amber-widget-height["'][^>]*content=["']?(\d+)"#, options: .regularExpression),
+           let n = html[r].split(whereSeparator: { !$0.isNumber }).last.flatMap({ Double($0) }) {
+            h = min(max(CGFloat(n), 160), 600)
+        }
+        apps[id] = h + WidgetMetrics.header
+    }
+}
+
+enum WidgetMetrics {
+    /// The widget's title bar, above the app.
+    static let header: CGFloat = 40
+}
+
 enum ImageSizes {
     nonisolated(unsafe) static var aspect: [UUID: CGFloat] = [:]
     static let maxWidth: CGFloat = 520
@@ -162,7 +245,7 @@ struct LineEmbed: Equatable {
         case .file: 60
         case .image: ImageSizes.height(for: self)
         case .link: 76
-        case .note: 58
+        case .note(let id, _): NoteWidgets.height(id) ?? 58
         }
     }
 

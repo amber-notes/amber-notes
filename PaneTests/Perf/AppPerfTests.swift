@@ -88,6 +88,34 @@ import Testing
         let big = ms(clock.now - start)
         print("PERF switch to a normal note: median \(String(format: "%.1f", normal[normal.count / 2])) ms; to the 5000-line note: \(String(format: "%.1f", big)) ms")
     }
+
+    /// Settings: a click on a tab shows its page at once, the first visit included. Storage's
+    /// numbers come from the server off the main thread; drawing the page only formats them.
+    @Test func switchingSettingsTabs() async throws {
+        let view = try await AppSnapshotTests.settingsFixture()
+        let (w, host) = window(view.frame(width: 520, height: 700), width: 520)
+        defer { w.close(); ProfileStore.shared.showForPreview(name: nil, photo: nil) }
+        host.layoutSubtreeIfNeeded(); w.displayIfNeeded()
+        let clock = ContinuousClock()
+        func show(_ tab: SettingsTab) -> Double {
+            let start = clock.now
+            view.route.tab = tab
+            host.layoutSubtreeIfNeeded()
+            w.displayIfNeeded()
+            return ms(clock.now - start)
+        }
+        var first: [SettingsTab: Double] = [:]
+        for tab in SettingsTab.allCases { first[tab] = show(tab) }
+        var again: [Double] = []
+        for _ in 0..<4 { for tab in SettingsTab.allCases { again.append(show(tab)) } }
+        again.sort()
+        let slowestFirst = first.values.max() ?? 0
+        print("PERF settings tabs: first visit " + SettingsTab.allCases.map { "\($0.rawValue) \(String(format: "%.1f", first[$0] ?? 0))" }.joined(separator: ", ")
+              + " ms; switching back, median \(String(format: "%.1f", again[again.count / 2])) ms, slowest \(String(format: "%.1f", again.last ?? 0)) ms")
+        // A frame is 16 ms; a first visit builds the page, so it gets a little more.
+        #expect(again[again.count / 2] < 16 * PerfBudget.slack, "switching to a page already shown")
+        #expect(slowestFirst < 50 * PerfBudget.slack, "the first visit to a page")
+    }
 }
 #endif
 
@@ -107,5 +135,137 @@ extension AppPerfTests {
             w.displayIfNeeded()
         }
     }
+}
+#endif
+
+#if os(macOS)
+extension AppPerfTests {
+    /// With files in folders the list shows notes and files together. The files are merged into the
+    /// notes' own order instead of every note being wrapped and sorted again: the sections and
+    /// their order must be exactly what sorting everything gives.
+    @Test func notesAndFilesKeepTheSameSectionsAndOrder() throws {
+        let (c, notes) = try library(notes: 2_000, big: false)
+        let ctx = c.mainContext
+        let folder = try #require(notes.first?.folder)
+        notes[40].isPinned = true
+        notes[900].isPinned = true
+        var files: [Pane.Attachment] = []
+        for i in 0..<10 {
+            let a = Pane.Attachment(filename: "File \(i).pdf", contentType: "com.adobe.pdf", size: 1000)
+            a.folderID = folder.id
+            a.modifiedAt = Date().addingTimeInterval(Double(-i * 3600 * 190 - 1800))
+            ctx.insert(a)
+            files.append(a)
+        }
+        try ctx.save()
+        let newestFirst = notes.map { ($0, $0.updatedAt) }.sorted { $0.1 > $1.1 }.map(\.0)
+        let before = DateBucket.sections(newestFirst.map(ListItem.note) + files.map(ListItem.file))
+        let after = DateBucket.sections(newestFirst: ListEntry.merged(notes: newestFirst.map(NoteEntry.init), files: files))
+        #expect(after.map { $0.0 } == before.map { $0.0 }, "the same sections")
+        #expect(after.map { $0.1.map { $0.id } } == before.map { $0.1.map { $0.id } }, "in the same order")
+        #expect(after.first?.0 == "Pinned" && after.first?.1.count == 2)
+    }
+}
+#endif
+
+#if os(macOS)
+extension AppPerfTests {
+    /// The list at 2,000 and 20,000 notes: how long it takes to show first, and how long a save of
+    /// one note takes to show. A save should cost what changed, not the size of the library.
+    @Test(.timeLimit(.minutes(8)), arguments: [2_000, 20_000]) func listShowsASaveAtScale(count: Int) async throws {
+        let (c, notes) = try library(notes: count, big: false)
+        // Ten files in the folder too, as real libraries have: the list then shows notes and files together.
+        if let folder = notes.first?.folder {
+            for i in 0..<10 {
+                let a = Pane.Attachment(filename: "File \(i).pdf", contentType: "com.adobe.pdf", size: 1000)
+                a.folderID = folder.id
+                a.modifiedAt = Date().addingTimeInterval(Double(-i * 3600 * 190 - 1800))
+                c.mainContext.insert(a)
+            }
+            try c.mainContext.save()
+        }
+        let clock = ContinuousClock()
+        let (w, host) = window(NoteListView(scope: .all, selection: .constant([]), onNewNote: {}).modelContainer(c))
+        defer { w.close() }
+        let first = ms(clock.measure { host.layoutSubtreeIfNeeded(); w.displayIfNeeded() })
+        try? await Task.sleep(for: .milliseconds(300))
+        var saves: [Double] = []
+        for i in 0..<9 {
+            let start = clock.now
+            notes[i * 7 + 3].body += " a"
+            notes[i * 7 + 3].touch()
+            // The list hears of the change once the main queue turns, as in the app.
+            try? await Task.sleep(for: .milliseconds(2))
+            host.layoutSubtreeIfNeeded()
+            w.displayIfNeeded()
+            saves.append(ms(clock.now - start))
+            try? await Task.sleep(for: .milliseconds(50))
+        }
+        saves.sort()
+        let save = saves[saves.count / 2]
+        print("PERF list of \(count) notes: first display \(String(format: "%.0f", first)) ms, a save shown \(String(format: "%.1f", save)) ms (median)")
+        let budget = Self.listBudgets[count] ?? (first: 4000, save: 1000)
+        #expect(first < budget.first * PerfBudget.slack, "first display of \(count) notes")
+        #expect(save < budget.save * PerfBudget.slack, "a save shown with \(count) notes")
+    }
+
+    /// The scope of a list in a test, changed the way the sidebar changes it.
+    @MainActor @Observable final class ScopeBox { var scope: Scope = .all }
+    struct ScopedList: View {
+        let box: ScopeBox
+        var body: some View { NoteListView(scope: box.scope, selection: .constant([]), onNewNote: {}) }
+    }
+
+    /// From a folder of 25 notes back to All Notes with 2,000: the list is built new, as it is at
+    /// launch. As one list whose rows changed, SwiftUI sized every row that came back, 3 to 4 s on
+    /// the main thread. The switch back may cost a few first displays, not twenty of them.
+    @Test(.timeLimit(.minutes(5))) func switchingBackToAllNotesBuildsTheListNew() async throws {
+        let (c, notes) = try library(notes: 2_000, big: false)
+        let ctx = c.mainContext
+        let small = ctx.createFolder(named: "Small")
+        for n in notes.prefix(25) { n.folder = small }
+        try ctx.save()
+        let box = ScopeBox()
+        let clock = ContinuousClock()
+        let (w, host) = window(ScopedList(box: box).modelContainer(c))
+        defer { w.close() }
+        func show() async -> Double {
+            let start = clock.now
+            // The list hears of the change once the main queue turns, as in the app.
+            try? await Task.sleep(for: .milliseconds(2))
+            host.layoutSubtreeIfNeeded()
+            w.displayIfNeeded()
+            return ms(clock.now - start)
+        }
+        let first = await show()
+        try? await Task.sleep(for: .milliseconds(300))
+        func table() -> NSTableView? { FileRowClickTests.table(in: host) }
+        let allNotes = try #require(table(), "the list is a table")
+        #expect(allNotes.numberOfRows > 1_000)
+
+        var toFolder: [Double] = [], back: [Double] = []
+        for _ in 0..<3 {
+            box.scope = .folder(small.id)
+            toFolder.append(await show())
+            try? await Task.sleep(for: .milliseconds(200))
+            let inFolder = try #require(table())
+            #expect(inFolder !== allNotes, "a folder is another list, not the same one with other rows")
+            #expect(inFolder.numberOfRows < 100)
+            box.scope = .all
+            back.append(await show())
+            try? await Task.sleep(for: .milliseconds(200))
+            #expect((table()?.numberOfRows ?? 0) > 1_000)
+        }
+        toFolder.sort(); back.sort()
+        print("PERF list of 2000 notes: first display \(String(format: "%.0f", first)) ms, to a folder of 25 \(String(format: "%.0f", toFolder[1])) ms, back to All Notes \(String(format: "%.0f", back[1])) ms (medians of 3)")
+        #expect(back[2] < max(first, 100) * 5, "back to All Notes costs about what showing the list first did")
+        #expect(toFolder[2] < max(first, 100) * 5)
+    }
+
+    /// Milliseconds on a developer's Mac (CI multiplies by its slack of 4). Set from CI's Debug runs
+    /// on 2026-10-08 (171 to 258 and 82 to 88 ms at 2,000; 901 to 997 and 608 to 773 ms at 20,000),
+    /// with three to six times their room: they catch a list that reads the whole library again,
+    /// not a slow runner.
+    static let listBudgets: [Int: (first: Double, save: Double)] = [2_000: (first: 250, save: 100), 20_000: (first: 1000, save: 600)]
 }
 #endif

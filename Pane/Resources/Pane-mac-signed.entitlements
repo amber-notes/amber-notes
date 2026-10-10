@@ -12,10 +12,11 @@
 	<!-- The account's encryption key in iCloud Keychain, shared by the iPhone and Mac apps
 	     (KeychainAccountKeyStore uses this group, the first, by default). -->
 	<key>keychain-access-groups</key>
-	<array><string>$(AppIdentifierPrefix)dev.emilwagman.pane</string></array>
-	<!-- https://ambernotes.app/open/connect opens the app (approving an AI connection). -->
+	<array><string>$(AppIdentifierPrefix)$(PANE_BUNDLE_ID)</string></array>
+	<!-- https://ambernotes.app/open/connect opens the app (approving an AI connection); pintonotes.com
+	     is the new name's address, alongside. -->
 	<key>com.apple.developer.associated-domains</key>
-	<array><string>applinks:ambernotes.app</string></array>
+	<array><string>applinks:$(PANE_APPLINKS_HOST)</string><string>applinks:pintonotes.com</string></array>
 	<!-- Push for AI connection asks. Development here; exporting for TestFlight / the App Store
 	     sets production. -->
 	<key>com.apple.developer.aps-environment</key>

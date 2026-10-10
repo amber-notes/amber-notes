@@ -80,3 +80,67 @@ extension EditorPerfTests {
     }
 }
 #endif
+
+#if os(macOS)
+extension EditorPerfTests {
+    /// Hiding or showing the sidebar widens or narrows the note a little every frame for a quarter
+    /// of a second. Each of those frames has to fit in a frame's time, or the sidebar stutters.
+    /// A note of tables and link cards lays each of them out at the new width every frame: about
+    /// 50 ms a frame on CI in Debug (it was 72 ms when each card was also given its view again).
+    ///
+    /// CI runners differ in speed from run to run (every editor timing in a run can double), so
+    /// there the long notes are held to a multiple of the same run's 80-line note, which a slow
+    /// runner slows just as much, and to a wide absolute ceiling that still fails if everything
+    /// got slower. Locally (no PANE_PERF_SLACK) the strict frame budgets apply.
+    @Test func widthChangeLikeTheSidebar() async {
+        var medians: [String: Double] = [:]
+        for (name, text) in [("80 lines", PerfFixtures.longNote(lines: 80)), ("5000 lines", PerfFixtures.longNote()), ("blocks", PerfFixtures.blockyNote())] {
+            let h = await EditorHarness(text, width: 760, focus: false)
+            h.window.displayIfNeeded()
+            await h.settle(0.3)
+            let clock = ContinuousClock()
+            var steps: [Double] = []
+            // 15 frames from 760 to 990 points wide, and back: the sidebar's width.
+            let widths = (0...15).map { 760 + 230 * Double($0) / 15 }
+            // One pass untimed first: the first layout at each width fills caches the rest reuse.
+            for w in widths {
+                h.window.setContentSize(NSSize(width: w, height: 900))
+                h.scroll.frame.size = NSSize(width: w, height: 900)
+                h.window.contentView?.layoutSubtreeIfNeeded()
+                h.view.layoutCards(animated: false)
+                h.window.displayIfNeeded()
+            }
+            for w in widths.reversed() + widths {
+                steps.append(ms(clock.measure {
+                    h.window.setContentSize(NSSize(width: w, height: 900))
+                    h.scroll.frame.size = NSSize(width: w, height: 900)
+                    h.window.contentView?.layoutSubtreeIfNeeded()
+                    // What the next turn of the run loop does after a resize.
+                    h.view.layoutCards(animated: false)
+                    h.window.displayIfNeeded()
+                }))
+            }
+            steps.sort()
+            medians[name] = steps[steps.count / 2]
+            print("PERF sidebar-like width change [\(name)]: median \(String(format: "%.2f", steps[steps.count / 2])) ms, max \(String(format: "%.2f", steps.last!)) ms a frame")
+            h.close()
+        }
+        let reference = medians["80 lines"] ?? 0
+        // (name, a frame's budget on a developer's Mac, at most this many times the 80-line note).
+        // The tables note ran 6.7 to 7.8 times the 80-line note over three CI runs once the timing
+        // suites had a process of their own (up to 13 times beside the other suites); the ceiling
+        // is what catches a slowdown of everything.
+        for (name, budget, ratio) in [("80 lines", 4.0, 1.0), ("5000 lines", 8.0, 4.0), ("blocks", 16.0, 10.0)] {
+            let median = medians[name] ?? .infinity
+            if PerfBudget.slack > 1 {
+                if name != "80 lines" {
+                    #expect(median < ratio * reference, "[\(name)] stays within \(ratio)× the 80-line note in the same run")
+                }
+                #expect(median < 2 * budget * PerfBudget.slack, "[\(name)] under the ceiling even on a slow runner")
+            } else {
+                #expect(median < budget, "[\(name)] each frame of the sidebar's animation fits in a frame")
+            }
+        }
+    }
+}
+#endif

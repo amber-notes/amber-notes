@@ -1,0 +1,506 @@
+{
+ "values": {
+  "settings": {
+   "servings": 2,
+   "pantry": [
+    "salt",
+    "pepper",
+    "olive oil",
+    "butter",
+    "garlic clove"
+   ],
+   "groupAisles": true
+  }
+ },
+ "collections": {
+  "recipes": [
+   {
+    "id": "lemon-pasta",
+    "name": "Pasta al limone",
+    "minutes": 20,
+    "servings": 2,
+    "tags": [
+     "Quick",
+     "Vegetarian"
+    ],
+    "ingredients": [
+     {
+      "qty": 200,
+      "unit": "g",
+      "item": "spaghetti",
+      "aisle": "Dry goods"
+     },
+     {
+      "qty": 1,
+      "unit": "",
+      "item": "lemon",
+      "aisle": "Produce"
+     },
+     {
+      "qty": 50,
+      "unit": "g",
+      "item": "parmesan",
+      "aisle": "Dairy"
+     },
+     {
+      "qty": 40,
+      "unit": "g",
+      "item": "butter",
+      "aisle": "Dairy"
+     },
+     {
+      "qty": 1,
+      "unit": "",
+      "item": "garlic clove",
+      "aisle": "Produce"
+     },
+     {
+      "qty": 1,
+      "unit": "bunch",
+      "item": "basil",
+      "aisle": "Produce"
+     }
+    ],
+    "steps": [
+     "Boil the pasta in well salted water for 9 minutes.",
+     "Grate the lemon zest and squeeze the juice.",
+     "Melt the butter with the garlic over low heat, 2 minutes.",
+     "Toss the pasta with butter, zest, juice, parmesan and a splash of pasta water until glossy.",
+     "Tear over the basil and serve."
+    ],
+    "created": "{{t-60}}",
+    "photo": {
+     "$seedFile": "photos/lemon-pasta.jpg"
+    }
+   },
+   {
+    "id": "salmon",
+    "name": "Oven salmon with potatoes",
+    "minutes": 35,
+    "servings": 2,
+    "tags": [
+     "Fish"
+    ],
+    "ingredients": [
+     {
+      "qty": 300,
+      "unit": "g",
+      "item": "salmon fillet",
+      "aisle": "Fish"
+     },
+     {
+      "qty": 500,
+      "unit": "g",
+      "item": "small potatoes",
+      "aisle": "Produce"
+     },
+     {
+      "qty": 1,
+      "unit": "",
+      "item": "lemon",
+      "aisle": "Produce"
+     },
+     {
+      "qty": 2,
+      "unit": "dl",
+      "item": "crème fraîche",
+      "aisle": "Dairy"
+     },
+     {
+      "qty": 1,
+      "unit": "bunch",
+      "item": "dill",
+      "aisle": "Produce"
+     },
+     {
+      "qty": 1,
+      "unit": "",
+      "item": "red onion",
+      "aisle": "Produce"
+     }
+    ],
+    "steps": [
+     "Heat the oven to 200°C.",
+     "Halve the potatoes and roast with oil and salt for 25 minutes.",
+     "Lay the salmon on top for the last 15 minutes.",
+     "Stir dill, lemon and red onion into the crème fraîche.",
+     "Serve with the sauce."
+    ],
+    "created": "{{t-59}}",
+    "photo": {
+     "$seedFile": "photos/salmon.jpg"
+    }
+   },
+   {
+    "id": "lentil",
+    "name": "Red lentil stew",
+    "minutes": 30,
+    "servings": 4,
+    "tags": [
+     "Vegetarian",
+     "Batch"
+    ],
+    "ingredients": [
+     {
+      "qty": 3,
+      "unit": "dl",
+      "item": "red lentils",
+      "aisle": "Dry goods"
+     },
+     {
+      "qty": 400,
+      "unit": "g",
+      "item": "crushed tomatoes",
+      "aisle": "Dry goods"
+     },
+     {
+      "qty": 400,
+      "unit": "ml",
+      "item": "coconut milk",
+      "aisle": "Dry goods"
+     },
+     {
+      "qty": 1,
+      "unit": "",
+      "item": "yellow onion",
+      "aisle": "Produce"
+     },
+     {
+      "qty": 2,
+      "unit": "",
+      "item": "garlic clove",
+      "aisle": "Produce"
+     },
+     {
+      "qty": 1,
+      "unit": "tbsp",
+      "item": "curry powder",
+      "aisle": "Spices"
+     },
+     {
+      "qty": 100,
+      "unit": "g",
+      "item": "baby spinach",
+      "aisle": "Produce"
+     }
+    ],
+    "steps": [
+     "Fry the onion and garlic until soft, 5 minutes.",
+     "Add the curry powder and fry for 1 minute.",
+     "Add lentils, tomatoes, coconut milk and 3 dl water. Simmer for 20 minutes.",
+     "Stir in the spinach until it wilts.",
+     "Season with salt and a squeeze of lime."
+    ],
+    "created": "{{t-58}}",
+    "photo": {
+     "$seedFile": "photos/lentil.jpg"
+    }
+   },
+   {
+    "id": "meatballs",
+    "name": "Meatballs with mash",
+    "minutes": 45,
+    "servings": 4,
+    "tags": [
+     "Classic"
+    ],
+    "ingredients": [
+     {
+      "qty": 500,
+      "unit": "g",
+      "item": "minced beef",
+      "aisle": "Meat"
+     },
+     {
+      "qty": 1,
+      "unit": "",
+      "item": "eggs",
+      "aisle": "Dairy"
+     },
+     {
+      "qty": 0.5,
+      "unit": "dl",
+      "item": "breadcrumbs",
+      "aisle": "Dry goods"
+     },
+     {
+      "qty": 1,
+      "unit": "kg",
+      "item": "floury potatoes",
+      "aisle": "Produce"
+     },
+     {
+      "qty": 1,
+      "unit": "dl",
+      "item": "milk",
+      "aisle": "Dairy"
+     },
+     {
+      "qty": 50,
+      "unit": "g",
+      "item": "butter",
+      "aisle": "Dairy"
+     },
+     {
+      "qty": 1,
+      "unit": "jar",
+      "item": "lingonberry jam",
+      "aisle": "Dry goods"
+     }
+    ],
+    "steps": [
+     "Soak the breadcrumbs in 1 dl water for 5 minutes.",
+     "Mix with the mince, egg, salt and pepper. Roll into small balls.",
+     "Boil the potatoes for 20 minutes.",
+     "Fry the meatballs in butter, 8 minutes, turning them.",
+     "Mash the potatoes with milk and butter. Serve with lingonberries."
+    ],
+    "created": "{{t-57}}",
+    "photo": {
+     "$seedFile": "photos/meatballs.jpg"
+    }
+   },
+   {
+    "id": "shakshuka",
+    "name": "Shakshuka",
+    "minutes": 25,
+    "servings": 2,
+    "tags": [
+     "Vegetarian",
+     "Quick"
+    ],
+    "ingredients": [
+     {
+      "qty": 4,
+      "unit": "",
+      "item": "eggs",
+      "aisle": "Dairy"
+     },
+     {
+      "qty": 400,
+      "unit": "g",
+      "item": "crushed tomatoes",
+      "aisle": "Dry goods"
+     },
+     {
+      "qty": 1,
+      "unit": "",
+      "item": "red pepper",
+      "aisle": "Produce"
+     },
+     {
+      "qty": 1,
+      "unit": "",
+      "item": "yellow onion",
+      "aisle": "Produce"
+     },
+     {
+      "qty": 1,
+      "unit": "tsp",
+      "item": "cumin",
+      "aisle": "Spices"
+     },
+     {
+      "qty": 100,
+      "unit": "g",
+      "item": "feta",
+      "aisle": "Dairy"
+     },
+     {
+      "qty": 1,
+      "unit": "",
+      "item": "sourdough loaf",
+      "aisle": "Bakery"
+     }
+    ],
+    "steps": [
+     "Fry the onion and pepper for 8 minutes.",
+     "Add cumin and tomatoes and simmer for 10 minutes.",
+     "Make four hollows and crack in the eggs.",
+     "Cover and cook for 6 minutes.",
+     "Crumble over the feta. Serve with bread."
+    ],
+    "created": "{{t-56}}",
+    "photo": {
+     "$seedFile": "photos/shakshuka.jpg"
+    }
+   },
+   {
+    "id": "tacos",
+    "name": "Halloumi tacos",
+    "minutes": 25,
+    "servings": 4,
+    "tags": [
+     "Vegetarian",
+     "Friday"
+    ],
+    "ingredients": [
+     {
+      "qty": 2,
+      "unit": "pack",
+      "item": "halloumi",
+      "aisle": "Dairy"
+     },
+     {
+      "qty": 8,
+      "unit": "",
+      "item": "small tortillas",
+      "aisle": "Bakery"
+     },
+     {
+      "qty": 1,
+      "unit": "",
+      "item": "avocado",
+      "aisle": "Produce"
+     },
+     {
+      "qty": 0.25,
+      "unit": "",
+      "item": "red cabbage",
+      "aisle": "Produce"
+     },
+     {
+      "qty": 1,
+      "unit": "",
+      "item": "lime",
+      "aisle": "Produce"
+     },
+     {
+      "qty": 2,
+      "unit": "dl",
+      "item": "Greek yoghurt",
+      "aisle": "Dairy"
+     },
+     {
+      "qty": 1,
+      "unit": "bunch",
+      "item": "coriander",
+      "aisle": "Produce"
+     }
+    ],
+    "steps": [
+     "Slice the halloumi and fry until golden, 3 minutes a side.",
+     "Shred the cabbage and toss with lime juice and salt.",
+     "Mash the avocado.",
+     "Warm the tortillas.",
+     "Fill with everything and top with yoghurt and coriander."
+    ],
+    "created": "{{t-55}}",
+    "photo": {
+     "$seedFile": "photos/tacos.jpg"
+    }
+   },
+   {
+    "id": "chicken-curry",
+    "name": "Chicken and coconut curry",
+    "minutes": 35,
+    "servings": 4,
+    "tags": [
+     "Batch"
+    ],
+    "ingredients": [
+     {
+      "qty": 600,
+      "unit": "g",
+      "item": "chicken thighs",
+      "aisle": "Meat"
+     },
+     {
+      "qty": 400,
+      "unit": "ml",
+      "item": "coconut milk",
+      "aisle": "Dry goods"
+     },
+     {
+      "qty": 2,
+      "unit": "tbsp",
+      "item": "red curry paste",
+      "aisle": "Dry goods"
+     },
+     {
+      "qty": 1,
+      "unit": "",
+      "item": "red pepper",
+      "aisle": "Produce"
+     },
+     {
+      "qty": 3,
+      "unit": "dl",
+      "item": "jasmine rice",
+      "aisle": "Dry goods"
+     },
+     {
+      "qty": 1,
+      "unit": "",
+      "item": "lime",
+      "aisle": "Produce"
+     }
+    ],
+    "steps": [
+     "Start the rice.",
+     "Fry the curry paste for 1 minute.",
+     "Add the chicken in pieces and brown, 5 minutes.",
+     "Add coconut milk and pepper. Simmer for 15 minutes.",
+     "Finish with lime juice."
+    ],
+    "created": "{{t-54}}",
+    "photo": {
+     "$seedFile": "photos/chicken-curry.jpg"
+    }
+   },
+   {
+    "id": "soup",
+    "name": "Potato and leek soup",
+    "minutes": 40,
+    "servings": 4,
+    "tags": [
+     "Vegetarian",
+     "Batch"
+    ],
+    "ingredients": [
+     {
+      "qty": 800,
+      "unit": "g",
+      "item": "floury potatoes",
+      "aisle": "Produce"
+     },
+     {
+      "qty": 2,
+      "unit": "",
+      "item": "leeks",
+      "aisle": "Produce"
+     },
+     {
+      "qty": 1,
+      "unit": "l",
+      "item": "vegetable stock",
+      "aisle": "Dry goods"
+     },
+     {
+      "qty": 1,
+      "unit": "dl",
+      "item": "cream",
+      "aisle": "Dairy"
+     },
+     {
+      "qty": 1,
+      "unit": "",
+      "item": "sourdough loaf",
+      "aisle": "Bakery"
+     }
+    ],
+    "steps": [
+     "Slice the leeks and soften in butter, 8 minutes.",
+     "Add potatoes in pieces and the stock.",
+     "Simmer for 20 minutes.",
+     "Blend smooth and stir in the cream.",
+     "Serve with bread."
+    ],
+    "created": "{{t-53}}",
+    "photo": {
+     "$seedFile": "photos/soup.jpg"
+    }
+   }
+  ]
+ }
+}

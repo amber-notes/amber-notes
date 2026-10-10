@@ -126,7 +126,7 @@ import Testing
         ctx.insert(a); ctx.insert(b)
         a.parent = b
         b.parent = a
-        ctx.delete(a)
+        ctx.trash(a)
         #expect(a.deletedAt != nil && b.deletedAt != nil)
     }
 }

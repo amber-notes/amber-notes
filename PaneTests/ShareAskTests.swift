@@ -348,7 +348,7 @@ import Testing
         await s.refresh()
         #expect(s.developer)
         let content = ShareAsk.content(developer: s.developer)
-        #expect(content.title == "Enjoying Amber Notes?")
+        #expect(content.title == "Enjoying Pinto Notes?")
         #expect(content.line == "It\u{2019}s open source.")
         #expect(content.choices == [.starredGitHub, .sharedX])
         #expect(content.choices.map(ShareAsk.buttonTitle) == ["Star on GitHub", "Share on X"])
@@ -370,7 +370,7 @@ import Testing
         await s.refresh()
         #expect(!s.developer)
         let content = ShareAsk.content(developer: false)
-        #expect(content.title == "Enjoying Amber Notes?")
+        #expect(content.title == "Enjoying Pinto Notes?")
         #expect(content.line == "I\u{2019}m building it on my own, and word of mouth is how people find it. If it\u{2019}s been useful, a post would mean a lot.")
         #expect(content.choices.map(ShareAsk.buttonTitle) == ["Share on X", "Share on LinkedIn"])
         _ = s.choose(.sharedX)
@@ -414,7 +414,7 @@ import Testing
 
     @Test func theLinksCarryThePost() throws {
         let x = ShareAsk.xURL.absoluteString
-        #expect(x.hasPrefix("https://x.com/intent/post?text=I%E2%80%99ve%20been%20using%20Amber%20Notes%3A%20a%20simple%20notes%20app"))
+        #expect(x.hasPrefix("https://x.com/intent/post?text=I%E2%80%99ve%20been%20using%20Pinto%20Notes%3A%20a%20simple%20notes%20app"))
         #expect(x.hasSuffix("&url=https%3A%2F%2Fambernotes.app"))
         let text = try #require(URLComponents(url: ShareAsk.xURL, resolvingAgainstBaseURL: false)?.queryItems?.first { $0.name == "text" }?.value)
         #expect(text == ShareAsk.postText)

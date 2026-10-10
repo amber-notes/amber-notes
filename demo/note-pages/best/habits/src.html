@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="amber-widget-height" content="250">
+<meta name="app-settings" content='{"settings":[{"key":"time","label":"Reminder time","type":"time","default":"20:30","help":"For habits with the bell on."},{"key":"range","label":"History","type":"choice","options":["Last 12 months","Last 6 months"],"default":"Last 12 months"},{"key":"celebrate","label":"Celebrate a full day","type":"toggle","default":true,"help":"A small burst when everything is done."}]}'>
+<title>Habits</title>
+<style>
+/*KIT_CSS*/
+.hero { display: flex; align-items: center; gap: 1.1rem; padding: 1.1rem 1.2rem; }
+.ring { width: 5.4rem; height: 5.4rem; flex: none; position: relative; }
+.ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.ring .track { stroke: var(--amber-fill); }
+.ring .bar { stroke: var(--amber-accent); transition: stroke-dashoffset .7s var(--ease-out); }
+.ring .in { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; line-height: 1; }
+.ring .in b { font-size: 1.55rem; font-weight: 700; letter-spacing: -.02em; }
+.ring .in span { font-size: .72rem; color: var(--amber-text-secondary); display: block; margin-top: .15rem; }
+.ring.all .bar { stroke: var(--good); }
+.burst { position: absolute; inset: -10%; pointer-events: none; }
+.burst i { position: absolute; left: 50%; top: 50%; width: .4rem; height: .4rem; border-radius: 50%; background: var(--c); opacity: 0; animation: fly .9s var(--ease-out) forwards; }
+@keyframes fly { 0% { opacity: 1; transform: translate(-50%, -50%) rotate(var(--a)) translateY(0) scale(1); } 100% { opacity: 0; transform: translate(-50%, -50%) rotate(var(--a)) translateY(-3.6rem) scale(.4); } }
+.hero .copy { flex: 1; min-width: 0; }
+.hero .copy h2 { font-size: 1.15rem; font-weight: 700; letter-spacing: -.01em; }
+.hero .copy p { color: var(--amber-text-secondary); font-size: .92rem; margin-top: .25rem; }
+.weekbar { display: flex; gap: .3rem; margin-top: .7rem; }
+.weekbar div { flex: 1; text-align: center; font-size: .66rem; color: var(--amber-text-secondary); }
+.weekbar div i { display: block; height: .38rem; border-radius: 99px; background: var(--amber-fill); margin-bottom: .25rem; overflow: hidden; position: relative; }
+.weekbar div i b { position: absolute; inset: 0; background: var(--amber-accent); transform-origin: left; }
+.weekbar .now { color: var(--amber-text); font-weight: 700; }
+
+.habit { gap: .85rem !important; padding: .55rem 1rem .55rem .75rem !important; min-height: 4.1rem !important; }
+.tick { width: 2.75rem; height: 2.75rem; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--amber-text-secondary) 40%, transparent); background: transparent; display: grid; place-items: center; flex: none; color: var(--amber-on-accent); transition: background .25s var(--ease-out), border-color .25s, transform .15s; }
+.tick svg { width: 1.35rem; height: 1.35rem; stroke-width: 3; stroke-dasharray: 24; stroke-dashoffset: 24; transition: stroke-dashoffset .3s .05s var(--ease-out); }
+.tick[aria-pressed="true"] { background: var(--amber-accent); border-color: var(--amber-accent); }
+.tick[aria-pressed="true"] svg { stroke-dashoffset: 0; }
+.tick:active { transform: scale(.9); }
+.tick.pop { animation: pop .42s var(--ease-pop); }
+.habit .name { font-weight: 600; font-size: 1.02rem; border: 0; background: none; padding: 0; text-align: left; color: inherit; display: block; max-width: 100%; }
+.habit .meta { display: flex; align-items: center; gap: .55rem; font-size: .8rem; color: var(--amber-text-secondary); margin-top: .2rem; flex-wrap: wrap; }
+.habit .meta .fl { display: inline-flex; align-items: center; gap: .15rem; color: var(--amber-accent-text); font-weight: 600; }
+.habit .meta .fl svg { width: .85rem; height: .85rem; }
+.dots { display: inline-flex; gap: 3px; }
+.dots i { width: .42rem; height: .42rem; border-radius: 50%; background: var(--amber-fill); }
+.dots i.on { background: var(--amber-accent); }
+.dots i.today { box-shadow: 0 0 0 1.5px var(--amber-text-secondary); }
+.dots i.later { opacity: .45; }
+.bellb { width: 2.6rem; height: 2.6rem; border: 0; background: none; border-radius: 50%; color: var(--amber-text-secondary); display: grid; place-items: center; flex: none; opacity: .55; transition: color .2s, opacity .2s; }
+.bellb svg { width: 1.15rem; height: 1.15rem; }
+.bellb[aria-pressed="true"] { color: var(--amber-accent-text); opacity: 1; }
+.bellb[aria-pressed="true"] svg { fill: var(--amber-accent-soft); }
+.rowerr { font-size: .8rem; color: var(--amber-danger); padding: 0 1rem .6rem 4.35rem; }
+
+.heat { padding: .9rem 1rem 1rem; }
+.chips { display: flex; gap: .4rem; overflow-x: auto; scrollbar-width: none; padding-bottom: .8rem; margin: 0 -.2rem; padding-left: .2rem; }
+.chips::-webkit-scrollbar { display: none; }
+.chip { border: 0; border-radius: 999px; padding: .35rem .8rem; min-height: 2.1rem; font-size: .85rem; font-weight: 600; background: var(--amber-fill); color: var(--amber-text-secondary); white-space: nowrap; transition: background .2s, color .2s; }
+.chip[aria-pressed="true"] { background: var(--amber-text); color: var(--amber-bg); }
+.heatscroll { overflow-x: auto; scrollbar-width: none; direction: rtl; }
+.heatscroll.scrolls { -webkit-mask-image: linear-gradient(to right, transparent, #000 2.2rem); mask-image: linear-gradient(to right, transparent, #000 2.2rem); }
+.heatscroll::-webkit-scrollbar { display: none; }
+.heatscroll svg { direction: ltr; display: block; }
+.heatscroll text { fill: var(--amber-text-secondary); font: 600 9px var(--amber-font); }
+.l0 { fill: var(--amber-fill); } .l1 { fill: color-mix(in srgb, var(--amber-accent) 28%, var(--amber-fill)); } .l2 { fill: color-mix(in srgb, var(--amber-accent) 52%, var(--amber-fill)); }
+.l3 { fill: color-mix(in srgb, var(--amber-accent) 76%, var(--amber-fill)); } .l4 { fill: var(--amber-accent); } .lx { fill: transparent; stroke: var(--amber-separator); stroke-width: 1; }
+rect.sel { stroke: var(--amber-text); stroke-width: 1.5; }
+.heatfoot { display: flex; align-items: center; gap: .5rem; margin-top: .7rem; font-size: .8rem; color: var(--amber-text-secondary); min-height: 1.3rem; }
+.heatfoot .grow { color: var(--amber-text); }
+.legend { display: inline-flex; gap: 2px; align-items: center; }
+.legend svg { width: 4.6rem; height: .7rem; }
+
+.stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr)); gap: .6rem; }
+.todaygrid { display: grid; gap: 0 1.6rem; }
+@media (min-width: 1100px) { .todaygrid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.stat { background: var(--amber-surface); border-radius: var(--amber-radius); padding: .85rem .95rem; border: 0; text-align: left; color: inherit; }
+.stat h3 { font-size: .86rem; font-weight: 600; overflow-wrap: anywhere; }
+.stat .big { font-size: 1.7rem; font-weight: 700; letter-spacing: -.02em; margin-top: .35rem; }
+.stat .big small { font-size: .8rem; font-weight: 600; color: var(--amber-text-secondary); letter-spacing: 0; }
+.stat p { font-size: .78rem; color: var(--amber-text-secondary); margin-top: .1rem; }
+.spark { display: block; width: 100%; height: 1.6rem; margin-top: .5rem; }
+.spark rect { fill: var(--amber-accent); }
+.spark rect.off { fill: var(--amber-fill); }
+
+.month { display: grid; grid-template-columns: repeat(7, 1fr); gap: .3rem; text-align: center; font-size: .8rem; }
+.month .h { color: var(--amber-text-secondary); font-size: .7rem; font-weight: 600; }
+.month .d { aspect-ratio: 1; display: grid; place-items: center; border-radius: 50%; }
+.month .d.on { background: var(--amber-accent); color: var(--amber-on-accent); font-weight: 700; }
+.month .d.today { box-shadow: inset 0 0 0 2px var(--amber-text); }
+.month .d.fut { opacity: .35; }
+.stepper { display: inline-flex; align-items: center; gap: .6rem; }
+.stepper button { width: 2.4rem; height: 2.4rem; }
+.bigs { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; margin-bottom: 1rem; }
+.bigs div { background: var(--amber-surface); border-radius: var(--amber-radius-small); padding: .7rem; }
+.bigs b { display: block; font-size: 1.5rem; letter-spacing: -.02em; }
+.bigs span { font-size: .75rem; color: var(--amber-text-secondary); }
+@media (prefers-color-scheme: dark) { .sheet .bigs div { background: var(--amber-fill); } }
+
+/* In a parent note, as a widget: just today, big targets. */
+html.compact #app { padding: .5rem .75rem; }
+.mini { display: block; }
+.mini .head { display: flex; align-items: baseline; gap: .5rem; margin: .1rem .25rem .7rem; }
+.mini .head b { font-size: 1.05rem; }
+.mini .grid { display: grid; grid-template-columns: repeat(var(--n, 4), minmax(0, 1fr)); gap: .45rem; }
+.mini .cell { display: flex; flex-direction: column; align-items: center; gap: .35rem; text-align: center; font-size: .78rem; font-weight: 600; background: var(--amber-surface); border-radius: var(--amber-radius); padding: .7rem .25rem .6rem; min-width: 0; }
+.mini .cell span { overflow-wrap: anywhere; line-height: 1.15; }
+.mini .cell small { color: var(--amber-text-secondary); font-weight: 500; font-size: .66rem; line-height: 1.2; }
+
+@media (min-width: 900px) {
+  .hero { padding: 1.4rem 1.5rem; }
+  .ring { width: 6.6rem; height: 6.6rem; }
+}
+</style>
+</head>
+<body>
+<main id="app" aria-live="polite"></main>
+<script>
+/*KIT_JS*/
+const { esc, ico, D, done, col, sheet, announce } = Kit;
+const S = { get: () => Kit.settings() };
+let filter = "All", picked = null, justTicked = null, lastAll = null, errors = {};
+
+const isCompact = () => document.documentElement.classList.contains("amber-widget");
+const sized = () => document.documentElement.classList.toggle("compact", isCompact());
+addEventListener("resize", () => { const was = document.documentElement.classList.contains("compact"); sized(); if (was !== document.documentElement.classList.contains("compact")) render(); });
+
+function model(note) {
+  const t = note.tables.find((t) => col(t, /^date$/i) >= 0);
+  if (!t) return null;
+  const dc = col(t, /^date$/i);
+  const habits = t.columns.map((c, i) => ({ name: c.name, i })).filter((h) => h.i !== dc && !/^(notes?|comment)$/i.test(h.name));
+  const byDate = new Map();
+  t.rows.forEach((r, ri) => { const d = (r[dc] || "").trim(); if (D.parse(d)) byDate.set(d, { r, ri }); });
+  const today = note.today;
+  const isDone = (h, d) => { const x = byDate.get(d); return !!x && done(x.r[h.i]); };
+  const first = [...byDate.keys()].sort()[0] || today;
+  const meta = amber.data.values.habits || {};
+  for (const h of habits) {
+    const m = meta[h.name] || {};
+    h.goal = m.goal || 7; h.bell = !!m.bell;
+    h.today = isDone(h, today);
+    let d = h.today ? today : D.add(today, -1), s = 0;
+    while (isDone(h, d)) { s++; d = D.add(d, -1); }
+    h.streak = s;
+    let best = 0, run = 0;
+    for (let x = first; x <= today; x = D.add(x, 1)) { if (isDone(h, x)) { run++; best = Math.max(best, run); } else run = 0; }
+    h.best = best;
+    const ws = D.weekStart(today);
+    h.week = [...Array(7)].map((_, k) => D.add(ws, k)).map((x) => ({ d: x, on: isDone(h, x), today: x === today, later: x > today }));
+    h.weekDone = h.week.filter((w) => w.on).length;
+    let n30 = 0; for (let k = 0; k < 30; k++) if (isDone(h, D.add(today, -k))) n30++;
+    h.rate30 = n30 / 30;
+    h.last14 = [...Array(14)].map((_, k) => isDone(h, D.add(today, k - 13)));
+    h.total = [...byDate.values()].filter((x) => done(x.r[h.i])).length;
+  }
+  return { t, dc, habits, byDate, today, isDone, first };
+}
+
+function ring(doneN, total) {
+  const r = 42, c = 2 * Math.PI * r, f = total ? doneN / total : 0;
+  return `<div class="ring ${f === 1 ? "all" : ""}" role="img" aria-label="${doneN} of ${total} done today">
+    <svg viewBox="0 0 100 100"><circle class="track" cx="50" cy="50" r="${r}" fill="none" stroke-width="10"/><circle class="bar" cx="50" cy="50" r="${r}" fill="none" stroke-width="10" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${c * (1 - f)}"/></svg>
+    <div class="in"><div><b class="num">${doneN}/${total}</b><span>today</span></div></div><div class="burst" id="burst"></div></div>`;
+}
+
+function heatmap(m) {
+  const months = /6/.test(S.get().range) ? 6 : 12;
+  const weeks = months === 6 ? 27 : 53, cell = 13, gap = 3, top = 16, left = 22;
+  const start = D.add(D.weekStart(m.today), -7 * (weeks - 1));
+  const hs = filter === "All" ? m.habits : m.habits.filter((h) => h.name === filter);
+  let rects = "", labels = "", lastMonth = "";
+  for (let w = 0; w < weeks; w++) {
+    for (let k = 0; k < 7; k++) {
+      const d = D.add(start, w * 7 + k);
+      if (d > m.today) continue;
+      const x = left + w * (cell + gap), y = top + k * (cell + gap);
+      let cls = "lx", tip = "";
+      if (d >= m.first) {
+        const n = hs.filter((h) => m.isDone(h, d)).length, f = hs.length ? n / hs.length : 0;
+        cls = "l" + (f === 0 ? 0 : f <= .25 ? 1 : f <= .5 ? 2 : f < 1 ? 3 : 4);
+        tip = filter === "All" ? `${n} of ${hs.length}` : n ? "Done" : "Not done";
+      }
+      rects += `<rect class="${cls} ${picked === d ? "sel" : ""}" data-d="${d}" data-tip="${tip}" x="${x}" y="${y}" width="${cell}" height="${cell}" rx="3"><title>${D.fmt(d)}${tip ? ": " + tip : ""}</title></rect>`;
+    }
+    const mo = D.fmt(D.add(start, w * 7), { month: "short" });
+    if (mo !== lastMonth && w < weeks - 1) { labels += `<text x="${left + w * (cell + gap)}" y="10">${mo}</text>`; lastMonth = mo; }
+  }
+  ["Mon", "", "Wed", "", "Fri", "", ""].forEach((l, k) => l && (labels += `<text x="0" y="${top + k * (cell + gap) + 10}">${l}</text>`));
+  const W = left + weeks * (cell + gap), H = top + 7 * (cell + gap);
+  const tipD = picked && m.byDate ? picked : null;
+  let foot = `<span class="grow">${m.first > D.add(m.today, -7 * weeks) ? `Since ${D.fmt(m.first, { day: "numeric", month: "long" })}` : ""}</span>`;
+  if (tipD) {
+    const n = hs.filter((h) => m.isDone(h, tipD));
+    foot = `<span class="grow"><b>${D.fmt(tipD, { weekday: "long", day: "numeric", month: "long" })}</b> · ${n.length ? esc(n.map((h) => h.name).join(", ")) : "nothing ticked"}</span>`;
+  }
+  return `<div class="heatscroll" id="heatscroll"><svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Done per day, last ${months} months">${labels}${rects}</svg></div>
+    <div class="heatfoot">${foot}<span class="legend">Less <svg viewBox="0 0 74 11">${[0, 1, 2, 3, 4].map((l) => `<rect class="l${l}" x="${l * 15}" y="0" width="11" height="11" rx="2.5"/>`).join("")}</svg> More</span></div>`;
+}
+
+function screens(note) {
+  const app = document.getElementById("app");
+  const m = model(note);
+  if (!m) {
+    app.innerHTML = `<main class="wrap"><div class="top"><div class="titles"><h1>${esc(note.title || "Habits")}</h1></div></div>
+      <div class="card empty">${ico("flame")}<h3>No habits yet</h3><p>Add a habit and it gets a column in a table in this note. Each day you tick it, a ✓ goes in that day's row.</p><button class="btn primary" id="first">${ico("plus")} Add a habit</button></div></main>`;
+    document.getElementById("first").onclick = () => addHabit(null);
+    return { empty: true };
+  }
+  const n = m.habits.filter((h) => h.today).length, total = m.habits.length;
+  const top = [...m.habits].sort((a, b) => b.streak - a.streak)[0];
+  const ws = D.weekStart(m.today);
+  const weekDays = [...Array(7)].map((_, k) => D.add(ws, k));
+  const dayFrac = (d) => total ? m.habits.filter((h) => m.isDone(h, d)).length / total : 0;
+  const allDone = total && n === total;
+  const headline = allDone ? "Everything's done today" : n === 0 ? (D.diff(m.today, m.first) > 0 ? "A fresh day" : "Day one") : `${total - n} to go today`;
+  const sub = top && top.streak > 1 ? `${esc(top.name)} is on a ${top.streak}-day streak.` : "Tick a habit to start a streak.";
+  const habitRow = (h) => {
+    const goalTxt = h.goal >= 7 ? "" : `${h.weekDone} of ${h.goal} this week`;
+    return `<div class="row habit">
+      <button class="tick ${justTicked === h.name ? "pop" : ""}" data-tick="${esc(h.name)}" aria-pressed="${h.today}" aria-label="${esc(h.name)}, ${h.today ? "done" : "not done"} today">${ico("check")}</button>
+      <div class="grow"><button class="name ellipsis" data-open="${esc(h.name)}">${esc(h.name)}</button>
+        <div class="meta">${h.streak ? `<span class="fl">${ico("flame")}<span class="num">${h.streak}</span>&thinsp;${h.streak === 1 ? "day" : "days"}</span>` : "<span>No streak</span>"}
+        <span class="dots" aria-label="This week: ${h.weekDone} of ${h.goal}">${h.week.map((w) => `<i class="${w.on ? "on" : ""} ${w.today ? "today" : ""} ${w.later ? "later" : ""}"></i>`).join("")}</span>${goalTxt ? `<span>${goalTxt}</span>` : ""}</div></div>
+      <button class="bellb" data-bell="${esc(h.name)}" aria-pressed="${h.bell}" aria-label="Daily reminder for ${esc(h.name)}">${ico("bell")}</button>
+    </div>${errors[h.name] ? `<div class="rowerr" role="alert">${esc(errors[h.name])}</div>` : ""}`;
+  };
+  const statCard = (h) => `<button class="stat" data-open="${esc(h.name)}"><h3 class="ellipsis">${esc(h.name)}</h3>
+    <div class="big num">${h.streak}<small> day streak</small></div><p>Best ${h.best} · ${Math.round(h.rate30 * 100)}% in 30 days</p>
+    <svg class="spark" viewBox="0 0 140 20" preserveAspectRatio="none" aria-hidden="true">${h.last14.map((on, k) => `<rect class="${on ? "" : "off"}" x="${k * 10}" y="${on ? 0 : 12}" width="7" height="${on ? 20 : 8}" rx="2"/>`).join("")}</svg></button>`;
+
+  return {
+    m, allDone,
+    mini: `<div class="mini"><div class="head"><b>Today</b><span class="muted small num">${n} of ${total}</span></div>
+    <div class="grid" style="--n:${Math.min(5, m.habits.length)}">${m.habits.map((h) => `<div class="cell"><button class="tick ${justTicked === h.name ? "pop" : ""}" data-tick="${esc(h.name)}" aria-pressed="${h.today}" aria-label="${esc(h.name)}, ${h.today ? "done" : "not done"} today">${ico("check")}</button><span>${esc(h.name)}</span><small class="num">${h.streak ? h.streak + "-day streak" : "&nbsp;"}</small></div>`).join("")}</div></div>`,
+    today: `    <header class="top"><div class="titles"><h1>${esc(note.title)}</h1><div class="sub">${D.fmt(m.today, { weekday: "long", day: "numeric", month: "long" })}</div></div>
+      <button class="round" id="add" aria-label="Add a habit">${ico("plus")}</button></header>
+<div class="todaygrid"><div>
+        <section class="card hero" aria-label="Today">${ring(n, total)}
+          <div class="copy"><h2>${headline}</h2><p>${sub}</p>
+            <div class="weekbar" aria-label="This week">${weekDays.map((d) => `<div class="${d === m.today ? "now" : ""}"><i><b style="transform:scaleX(${d > m.today ? 0 : dayFrac(d)})"></b></i>${D.fmt(d, { weekday: "narrow" })}</div>`).join("")}</div></div></section>
+        <div class="label"><span class="grow">Today</span></div>
+        <section class="card list">${m.habits.map(habitRow).join("")}</section>
+        <p class="note-line" id="msg" style="margin:.5rem .3rem 0"></p>
+      </div>
+      </div></div>`,
+    progress: `<header class="top"><div class="titles"><h1>Progress</h1><div class="sub">Since ${D.fmt(m.first, { day: "numeric", month: "long" })}</div></div></header>
+        <div class="label" style="margin-top:.2rem"><span class="grow">Streaks</span></div>
+        <section class="stats">${m.habits.map(statCard).join("")}</section>
+    <div class="label"><span class="grow">History</span></div>
+    <section class="card heat"><div class="chips" role="group" aria-label="Show">${["All", ...m.habits.map((h) => h.name)].map((x) => `<button class="chip" data-filter="${esc(x)}" aria-pressed="${filter === x}">${esc(x)}</button>`).join("")}</div>${heatmap(m)}</section>
+`,
+  };
+}
+
+let shell = null;
+function render(note = amber.note) {
+  sized();
+  const app = document.getElementById("app");
+  const v = screens(note);
+  if (v.empty) return;
+  if (isCompact()) { shell = null; app.className = "wrap"; app.innerHTML = v.mini; return; }
+  if (!shell) shell = Kit.app({
+    tabs: [{ id: "today", label: "Today", icon: "check" }, { id: "progress", label: "Progress", icon: "chart" }],
+    screen: (tab, n) => { const x = screens(n); return tab === "today" ? x.today : x.progress; },
+    after: (tab) => { if (tab === "progress") fitHeat(); },
+  });
+  shell.draw(note);
+  if (justTicked && v.allDone && lastAll === false && Kit.on(S.get().celebrate)) burst();
+  lastAll = v.allDone;
+  justTicked = null;
+}
+
+// The year fits when there's room (wide windows); on the phone it scrolls, today at the right.
+function fitHeat() {
+  const hs = document.getElementById("heatscroll"); if (!hs) return;
+  const svg = hs.querySelector("svg"), W = +svg.getAttribute("width"), avail = hs.clientWidth;
+  if (W > avail && avail / W > 0.8) { svg.setAttribute("width", avail); svg.setAttribute("height", Math.round(+svg.getAttribute("height") * avail / W)); }
+  else if (W < avail && avail / W < 1.5) { svg.setAttribute("width", avail); svg.setAttribute("height", Math.round(+svg.getAttribute("height") * avail / W)); }
+  hs.classList.toggle("scrolls", hs.scrollWidth > hs.clientWidth + 1);
+  hs.scrollLeft = hs.scrollWidth;
+}
+addEventListener("resize", () => { clearTimeout(fitHeat.t); fitHeat.t = setTimeout(() => render(), 120); });
+
+function burst() {
+  const b = document.getElementById("burst"); if (!b) return;
+  b.innerHTML = [...Array(12)].map((_, k) => `<i style="--a:${k * 30}deg;--c:var(--c${(k % 6) + 1});animation-delay:${(k % 3) * 30}ms"></i>`).join("");
+  announce("Everything's done today.");
+}
+
+async function tick(name) {
+  const m = model(amber.note); const h = m.habits.find((x) => x.name === name); if (!h) return;
+  justTicked = name; errors[name] = "";
+  const row = m.byDate.get(m.today);
+  const r = row ? await amber.update({ op: "set_cell", table: m.t.index, row: row.ri, col: h.i, value: h.today ? "" : "✓" })
+    : await amber.update({ op: "append_row", table: m.t.index, values: { [m.t.columns[m.dc].name]: m.today, [h.name]: "✓" } });
+  if (!r.ok) { errors[name] = r.error; render(); }
+  else announce(`${name} ${h.today ? "not done" : "done"} today.`);
+}
+
+async function bell(name) {
+  const meta = (amber.data.values.habits || {})[name] || {};
+  errors[name] = "";
+  if (meta.bell) {
+    if (meta.reminder) await amber.device.reminders.delete(meta.reminder);
+    await amber.setData({ values: { habits: { [name]: { bell: false, reminder: null } } } });
+    flash(`Bell off for ${name}. Its reminder is gone from Reminders.`);
+    return;
+  }
+  const time = S.get().time || "20:30";
+  const r = await amber.device.reminders.create({ title: name, notes: "A daily habit, from Habits in Amber Notes.", due: time, repeat: "daily" });
+  if (!r.ok) { errors[name] = r.error; render(); return; }
+  await amber.setData({ values: { habits: { [name]: { bell: true, reminder: r.id } } } });
+  flash(`${name}: a daily reminder at ${time} is in Reminders.`);
+}
+
+let msgTimer;
+function flash(text) { const el = document.getElementById("msg"); if (!el) return; el.textContent = text; clearTimeout(msgTimer); msgTimer = setTimeout(() => (el.textContent = ""), 6000); }
+
+function openHabit(name) {
+  const m = model(amber.note); const h = m.habits.find((x) => x.name === name); if (!h) return;
+  const mo = m.today.slice(0, 8) + "01";
+  const lead = D.wd(mo);
+  const days = [];
+  for (let d = mo; d.slice(0, 7) === mo.slice(0, 7); d = D.add(d, 1)) days.push(d);
+  const body = () => {
+    const goal = ((amber.data.values.habits || {})[name] || {}).goal || 7;
+    return `<div class="bigs"><div><b class="num">${h.streak}</b><span>Current streak</span></div><div><b class="num">${h.best}</b><span>Best streak</span></div><div><b class="num">${h.total}</b><span>Days done</span></div></div>
+    <div class="label" style="margin-top:0">${D.month(m.today)}</div>
+    <div class="month" aria-label="${D.month(m.today)}">${["M", "T", "W", "T", "F", "S", "S"].map((x) => `<div class="h">${x}</div>`).join("")}${"<div></div>".repeat(lead)}${days.map((d) => `<div class="d num ${m.isDone(h, d) ? "on" : ""} ${d === m.today ? "today" : ""} ${d > m.today ? "fut" : ""}" aria-label="${D.fmt(d)}${m.isDone(h, d) ? ", done" : ""}">${+d.slice(8)}</div>`).join("")}</div>
+    <div class="label">Goal</div>
+    <div class="card list"><div class="row"><span class="grow">Days a week</span><span class="stepper"><button class="round" data-goal="-1" aria-label="Fewer days">−</button><b class="num" id="goal" aria-live="polite">${goal}</b><button class="round" data-goal="1" aria-label="More days">+</button></span></div></div>`;
+  };
+  sheet(name, body(), {
+    mount(root) {
+      root.addEventListener("click", async (e) => {
+        const g = e.target.closest("[data-goal]"); if (!g) return;
+        const cur = ((amber.data.values.habits || {})[name] || {}).goal || 7;
+        const next = Math.max(1, Math.min(7, cur + Number(g.dataset.goal)));
+        await amber.setData({ values: { habits: { [name]: { goal: next } } } });
+        root.querySelector("#goal").textContent = next;
+      });
+    },
+  });
+}
+
+// A new habit is a new column: the table is rewritten under its heading, in one edit.
+function addHabit(m) {
+  sheet("New habit", `<form id="nh" class="fields"><label class="field">Name<input id="hn" name="hn" autofocus required maxlength="40" placeholder="Drink water"></label>
+    <label class="field">Days a week<select id="hg" name="hg">${[7, 6, 5, 4, 3, 2, 1].map((x) => `<option value="${x}">${x === 7 ? "Every day" : x}</option>`).join("")}</select></label>
+    <div class="err" id="nerr" role="alert"></div><button class="btn primary block">Add habit</button></form>`, {
+    mount(root, close) {
+      root.querySelector("#nh").onsubmit = async (e) => {
+        e.preventDefault();
+        const name = root.querySelector("#hn").value.trim().replace(/\|/g, "/"), goal = +root.querySelector("#hg").value;
+        const err = (t) => (root.querySelector("#nerr").textContent = t);
+        if (!name) return err("Give it a name.");
+        let r;
+        if (!m) {
+          r = await amber.update({ op: "set_text", heading: "Log", text: `| Date | ${name} |\n| --- | --- |` });
+          if (!r.ok) r = { ok: false, error: "Add a heading named Log to this note, and the habits table goes under it." };
+        } else {
+          if (m.habits.some((h) => h.name.toLowerCase() === name.toLowerCase())) return err("There's already a habit with that name.");
+          r = await addColumn(m, name);
+        }
+        if (!r.ok) return err(r.error);
+        await amber.setData({ values: { habits: { [name]: { goal } } } });
+        close();
+      };
+    },
+  });
+}
+function addColumn(m, name) {
+  return amber.update({ op: "add_column", table: m.t.index, name });
+}
+
+document.addEventListener("click", (e) => {
+  const t = e.target.closest("[data-tick],[data-bell],[data-open],[data-filter],#settings,#add,rect[data-d]");
+  if (!t) return;
+  if (t.dataset.tick) tick(t.dataset.tick);
+  else if (t.dataset.bell) bell(t.dataset.bell);
+  else if (t.dataset.open) openHabit(t.dataset.open);
+  else if (t.dataset.filter) { filter = t.dataset.filter; picked = null; render(); }
+  else if (t.id === "add") addHabit(model(amber.note));
+  else if (t.dataset.d) { picked = picked === t.dataset.d ? null : t.dataset.d; render(); }
+});
+amber.onChange((note) => render(note));
+</script>
+</body>
+</html>

@@ -30,7 +30,7 @@ struct ConsentFooter: View {
     }
 }
 
-/// "Terms of Service · Privacy Policy" for Settings → Account.
+/// "Terms of Service · Privacy Policy" for Settings › General, under About.
 struct LegalLinksRow: View {
     var body: some View {
         HStack(spacing: 6) {
@@ -42,6 +42,7 @@ struct LegalLinksRow: View {
         }
         .font(.footnote)
         .tint(Color(PColor.paneAccent))
+        .buttonStyle(.hoverLink)
         .frame(maxWidth: .infinity, minHeight: 24)
     }
 }

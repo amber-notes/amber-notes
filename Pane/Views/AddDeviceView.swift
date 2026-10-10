@@ -10,13 +10,18 @@ import UIKit
 /// Add a device, in words: the new device's screen, and the sheet on the device that has the key.
 enum AddDeviceCopy {
     static var gateTitle: String { "Open your notes on this \(InstallID.kind)" }
-    static let gateMessage = "On a device where Amber Notes already works, go to Settings \u{203A} Add a device and scan this code."
+    static let gateMessage = "On a device where Pinto Notes already works, go to Settings \u{203A} Security \u{203A} Add a device and scan this code."
+    /// Why the screen is there, before what to do. Only what's known: the key isn't on this device.
+    /// (Not "on another device": a Mac that lost its key may be the account's only one.)
+    static var gateWhy: String { "This \(InstallID.kind) doesn\u{2019}t have the key to this account\u{2019}s notes. Link it to open them here." }
     static let codeLead = "Can\u{2019}t scan? Type this code there:"
+    static let copyCode = "Copy code"
+    static let copiedCode = "Copied"
     static let useRecovery = "Use a recovery key instead"
     static let noDevice = "No device left?"
     static let expired = "This code expired."
     static let newCode = "Show a new code"
-    static let offline = "Can\u{2019}t reach Amber Notes. Connect to the internet to show a code."
+    static let offline = "Can\u{2019}t reach Pinto Notes. Connect to the internet to show a code."
     static let notAccountsKey = "What the other device sent isn\u{2019}t this account\u{2019}s key, so it wasn\u{2019}t used. Here is a new code."
 
     static let noDeviceMessage = "We don\u{2019}t have your key. One of these can still open your notes."
@@ -29,10 +34,10 @@ enum AddDeviceCopy {
 
     static let sheetTitle = "Add a device"
     static let scanMessage = "Point the camera at the code on your new device."
-    static let typeMessage = "Sign in to Amber Notes on the new device, then type the code it shows under its QR code."
+    static let typeMessage = "Sign in to Pinto Notes on the new device, then type the code it shows under its QR code."
     static let typeInstead = "Type the code instead"
     static let scanInstead = "Scan the code instead"
-    static let cameraOff = "Amber Notes can\u{2019}t use the camera. Allow it in Settings \u{203A} Amber Notes, or type the code."
+    static let cameraOff = "Pinto Notes can\u{2019}t use the camera. Allow it in Settings \u{203A} Pinto Notes, or type the code."
     static func confirmTitle(_ kind: String) -> String { "Add this \(kind)?" }
     static let confirmMessage = "It will open all your notes until you remove it in Settings."
     static let warning = "Only add a device that is in front of you. Never use a code that someone sent you."
@@ -50,21 +55,25 @@ enum AddDeviceCopy {
 
 // MARK: The code
 
-/// A QR code, dark on white in both appearances so any camera reads it.
+/// A QR code, dark on white in both appearances so any camera reads it. Drawn at a whole
+/// number of screen pixels per module, so every module is a crisp square: the side shrinks by
+/// less than one module's worth to land on that, and the image is scaled with no smoothing.
 struct QRCodeImage: View {
     let text: String
     var side: CGFloat = 176
     /// The default code's size on screen, with its white margin.
     static let outside: CGFloat = 176 + 2 * 14
+    @Environment(\.displayScale) private var displayScale
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
         Group {
-            if let image = Self.make(text) {
-                Image(decorative: image, scale: 1)
+            // Made at its final size in pixels, so nothing scales it on the way to the screen.
+            if let modules = Self.make(text)?.width,
+               let image = Self.make(text, pixelsPerModule: Self.pixelsPerModule(side, modules: modules, scale: displayScale)) {
+                Image(decorative: image, scale: displayScale)
                     .interpolation(.none)
-                    .resizable()
-                    .frame(width: side, height: side)
+                    .antialiased(false)
             } else {
                 Color.white.frame(width: side, height: side)
             }
@@ -77,17 +86,29 @@ struct QRCodeImage: View {
         .accessibilityIdentifier("addDevice.qr")
     }
 
-    /// One pixel per module, with the quiet zone the generator adds.
-    static func make(_ text: String) -> CGImage? {
+    /// The most whole pixels per module at `scale` that keep the code within `side` points.
+    nonisolated static func pixelsPerModule(_ side: CGFloat, modules: Int, scale: CGFloat) -> Int {
+        guard modules > 0, scale > 0 else { return 1 }
+        return max(1, Int((side * scale / CGFloat(modules)).rounded(.down)))
+    }
+
+    /// The side in points that `pixelsPerModule` gives.
+    nonisolated static func crispSide(_ side: CGFloat, modules: Int, scale: CGFloat) -> CGFloat {
+        CGFloat(pixelsPerModule(side, modules: modules, scale: scale) * modules) / scale
+    }
+
+    /// The code with the quiet zone the generator adds, `pixelsPerModule` pixels to a module,
+    /// enlarged by nearest-neighbour sampling so the edges stay hard.
+    nonisolated static func make(_ text: String, pixelsPerModule: Int = 1) -> CGImage? {
         let filter = CIFilter.qrCodeGenerator()
         filter.message = Data(text.utf8)
         filter.correctionLevel = "M"
         guard let output = filter.outputImage else { return nil }
-        return CIContext().createCGImage(output, from: output.extent)
+        let k = CGFloat(max(1, pixelsPerModule))
+        let scaled = output.samplingNearest().transformed(by: CGAffineTransform(scaleX: k, y: k))
+        return CIContext().createCGImage(scaled, from: scaled.extent.integral)
     }
 }
-
-// MARK: The new device
 
 /// The new device while its code shows: makes the offer, files it, asks every two seconds
 /// whether it was answered, and hands the key to `AccountCrypto` once it opens and checks out.
@@ -240,21 +261,35 @@ struct NewDeviceCodeView: View {
     }
 
     private func codeLines(_ code: String) -> some View {
-        VStack(spacing: 4) {
+        VStack(spacing: 8) {
             Text(AddDeviceCopy.codeLead)
-                .font(.footnote)
+                .font(.subheadline)
                 .foregroundStyle(Color.muted)
                 .fixedSize(horizontal: false, vertical: true)
-            Text(code)
-                .font(.system(.title3, design: .monospaced).weight(.semibold))
+            // The thing to read and type: large, monospaced, its groups apart. Selecting it
+            // copies the code as typed (with its dashes).
+            Self.spaced(code)
+                .font(.system(.title2, design: .monospaced).weight(.semibold))
                 .foregroundStyle(Color.ink)
                 .lineLimit(1)
-                .minimumScaleFactor(0.4)
+                .minimumScaleFactor(0.75)
                 .textSelection(.enabled)
                 .accessibilityLabel(code.map(String.init).joined(separator: " "))
                 .accessibilityIdentifier("addDevice.code")
+            CopyCodeButton(code: code)
         }
         .multilineTextAlignment(.center)
+    }
+
+    /// The code with room around each dash, by kerning only, so a selection copies exactly the
+    /// code (VG9B-70QK-S4QA).
+    static func spaced(_ code: String) -> Text {
+        var text = AttributedString(code)
+        for i in text.characters.indices where text.characters[i] == "-" {
+            text[i..<text.characters.index(after: i)].kern = 8
+            if i > text.startIndex { text[text.characters.index(before: i)..<i].kern = 8 }
+        }
+        return Text(text)
     }
 
     private func message(_ text: String) -> some View {
@@ -264,6 +299,37 @@ struct NewDeviceCodeView: View {
             .multilineTextAlignment(.center)
             .fixedSize(horizontal: false, vertical: true)
             .padding(.top, 8)
+    }
+}
+
+/// Copy code, then "Copied" with a tick for a moment.
+struct CopyCodeButton: View {
+    let code: String
+    @State private var copied = false
+
+    var body: some View {
+        Button {
+            #if os(iOS)
+            UIPasteboard.general.string = code
+            #else
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(code, forType: .string)
+            #endif
+            copied = true
+            Task {
+                try? await Task.sleep(for: .seconds(1.6))
+                copied = false
+            }
+        } label: {
+            Label(copied ? AddDeviceCopy.copiedCode : AddDeviceCopy.copyCode, systemImage: copied ? "checkmark" : "doc.on.doc")
+                .frame(minHeight: 28)
+                .contentShape(.rect)
+        }
+        .buttonStyle(.hoverText)
+        .font(.subheadline.weight(.semibold))
+        .foregroundStyle(.tint)
+        .animation(.snappy(duration: 0.2), value: copied)
+        .accessibilityIdentifier("addDevice.copyCode")
     }
 }
 
@@ -730,7 +796,7 @@ private struct CodeScanner: UIViewRepresentable {
 ///   `new-device`: the code a device without the key shows. `add-device`: the sheet as this device
 ///   opens it (the camera, or the typed code where there's no camera, as on a simulator).
 ///   `add-device-type`, `add-device-confirm`, `add-device-done`: the typed code, the question, "Added".
-///   `key-kept` (safe), `key-kept-unconfirmed`, `key-kept-only`: Privacy & Security in its three
+///   `key-kept` (safe), `key-kept-unconfirmed`, `key-kept-only`: Settings › Security in its three
 ///   states (PaneUITests/AddDeviceUITests taps Remove and Add a device on them).
 ///   `device-added-notice`: what every other device says after one is added. `key-checking`: just
 ///   signed in, on a server that takes the connection and never answers.

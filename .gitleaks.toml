@@ -15,6 +15,8 @@ regexes = [
   # Swift/CryptoKit type name — "P256.KeyAgreement.PrivateKey" is a type declaration in
   # CollabCrypto.swift, not a key value. Gitleaks matches the word "Key" in the property name.
   '''P256\.KeyAgreement\.PrivateKey''',
+  # Release gate reports: metric names ("key": "perf.1.keyAskedAgain"), not keys.
+  '''^(perf|security|storage|network)\.[A-Za-z0-9 .,:-]+$''',
 ]
 paths = [
   # Cross-platform encryption test vectors: fixed, published inputs (the data key is the bytes 1 to 32

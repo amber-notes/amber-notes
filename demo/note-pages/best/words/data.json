@@ -1,0 +1,37 @@
+{
+ "values": {
+  "settings": {
+   "seconds": "30 seconds",
+   "sound": false,
+   "direction": "Swedish to English"
+  }
+ },
+ "collections": {
+  "scores": [
+   {
+    "id": "s1",
+    "score": 420,
+    "best": 7,
+    "matched": 31,
+    "wrong": 4,
+    "created": "{{t-3@19:20}}"
+   },
+   {
+    "id": "s2",
+    "score": 510,
+    "best": 9,
+    "matched": 36,
+    "wrong": 3,
+    "created": "{{t-2@08:05}}"
+   },
+   {
+    "id": "s3",
+    "score": 380,
+    "best": 6,
+    "matched": 29,
+    "wrong": 6,
+    "created": "{{t-1@21:40}}"
+   }
+  ]
+ }
+}

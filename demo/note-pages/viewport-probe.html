@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Viewport probe</title>
+<style> main { padding: 16px var(--amber-gutter); font-size: 1.1rem; } pre { font-size: 1rem; white-space: pre-wrap; } .bottom { position: fixed; left: 0; right: 0; bottom: 0; background: var(--amber-accent); color: var(--amber-on-accent); padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); } </style></head>
+<body><main><input id="f" placeholder="Tap to type" aria-label="Probe field"><pre id="o"></pre></main><div class="bottom">position: fixed; bottom: 0</div>
+<script>
+  const o = document.getElementById("o");
+  const sa = () => { const d = document.createElement("div"); d.style.cssText = "position:fixed;bottom:0;height:env(safe-area-inset-bottom);width:1px"; document.body.appendChild(d); const h = d.getBoundingClientRect().height; d.remove(); return h; };
+  const show = () => { o.textContent = `innerHeight ${innerHeight}\nvisualViewport.height ${Math.round(visualViewport.height)}\nvisualViewport.offsetTop ${Math.round(visualViewport.offsetTop)}\nsafe-area-inset-bottom ${sa()}\nscrollY ${Math.round(scrollY)}`; };
+  addEventListener("resize", show); visualViewport.addEventListener("resize", show); visualViewport.addEventListener("scroll", show);
+  setInterval(show, 300); show();
+  amber.onChange(() => {});
+</script></body></html>

@@ -20,23 +20,48 @@ enum NoteExport {
         var missingFiles: Int
     }
 
+    /// What you share, for Sharing.md: who each shared note is with, its link setting, and the
+    /// templates you published. The notes themselves are exported like any other; the keys that
+    /// lock them aren't, since only your account can open them. Links carry no secret here.
+    struct Sharing: Equatable {
+        struct Person: Equatable {
+            var name: String
+            /// owner, editor or viewer.
+            var role: String
+            var isMe = false
+        }
+        struct SharedNote: Equatable {
+            var note: UUID
+            var people: [Person]
+            /// The link's setting, or nil when the note has no link.
+            var link: ShareState.Access?
+        }
+        struct Template: Equatable {
+            var note: UUID
+            var url: URL
+        }
+        var notes: [SharedNote] = []
+        var templates: [Template] = []
+        var isEmpty: Bool { notes.isEmpty && templates.isEmpty }
+    }
+
     /// Writes the export as a zip in a temporary folder. `fetch` brings a file's bytes to this
     /// device when they're only in the cloud (sync's download).
-    static func make(_ context: ModelContext, vault: NoteVault? = nil, now: Date = .now,
+    static func make(_ context: ModelContext, vault: NoteVault? = nil, now: Date = .now, sharing: Sharing = .init(),
                      fetch: @MainActor (Attachment) async -> Bool = { _ in false }) async throws -> Result {
         let vault = vault ?? NoteVault.shared
         let stamp = now.formatted(.iso8601.year().month().day())
-        let work = FileManager.default.temporaryDirectory.appending(path: "Amber Notes export \(UUID().uuidString)", directoryHint: .isDirectory)
-        let top = work.appending(path: "Amber Notes \(stamp)", directoryHint: .isDirectory)
+        let work = FileManager.default.temporaryDirectory.appending(path: "Pinto Notes export \(UUID().uuidString)", directoryHint: .isDirectory)
+        let top = work.appending(path: "Pinto Notes \(stamp)", directoryHint: .isDirectory)
         try FileManager.default.createDirectory(at: top, withIntermediateDirectories: true)
 
         let notes = ((try? context.fetch(FetchDescriptor<Note>())) ?? [])
             .filter { $0.trashedAt == nil && $0.deletedAt == nil }
             .sorted { $0.createdAt < $1.createdAt }
-        var result = Result(zip: work.appending(path: "Amber Notes \(stamp).zip"), notes: 0, files: 0, skippedLocked: 0, missingFiles: 0)
+        var result = Result(zip: work.appending(path: "Pinto Notes \(stamp).zip"), notes: 0, files: 0, skippedLocked: 0, missingFiles: 0)
 
         // Where each note goes, relative to the top: its folders, then a unique file name.
-        var used = Set<String>()
+        var used: Set<String> = sharing.isEmpty ? [] : ["sharing.md"]
         var paths: [UUID: String] = [:]
         var texts: [UUID: String] = [:]
         for n in notes {
@@ -73,9 +98,46 @@ enum NoteExport {
             result.notes += 1
         }
 
+        if !sharing.isEmpty {
+            try Data(sharingText(sharing, paths: paths, texts: texts, stamp: stamp).utf8).write(to: top.appending(path: "Sharing.md"))
+        }
+
         try FileManager.default.zipItem(at: top, to: result.zip, shouldKeepParent: true)
         try? FileManager.default.removeItem(at: top)
         return result
+    }
+
+    /// Sharing.md: each shared note linked to its exported copy, with its people and link setting,
+    /// then the templates you published.
+    static func sharingText(_ sharing: Sharing, paths: [UUID: String], texts: [UUID: String], stamp: String) -> String {
+        func noteLink(_ id: UUID) -> String {
+            guard let text = texts[id], let path = paths[id] else { return "A note that isn't in this export" }
+            let title = NoteText.title(of: text).replacingOccurrences(of: "]", with: "\\]")
+            return "[\(title)](\(path.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? path))"
+        }
+        func role(_ r: String) -> String {
+            switch r {
+            case "owner": "owner"
+            case "editor": "can edit"
+            case "viewer": "can view"
+            default: r
+            }
+        }
+        var lines = ["# Sharing", "",
+                     "What you shared in Pinto Notes, as of \(stamp). The shared notes are in this export like your other notes."]
+        if !sharing.notes.isEmpty {
+            lines += ["", "## Shared notes"]
+            for n in sharing.notes {
+                lines += ["", "### " + noteLink(n.note), ""]
+                lines.append("- People with the link: " + (n.link?.rawValue ?? "No link"))
+                for p in n.people { lines.append("- \(p.name)\(p.isMe ? " (you)" : ""), \(role(p.role))") }
+            }
+        }
+        if !sharing.templates.isEmpty {
+            lines += ["", "## Templates you published", ""]
+            for t in sharing.templates { lines.append("- \(noteLink(t.note)): \(t.url.absoluteString)") }
+        }
+        return lines.joined(separator: "\n") + "\n"
     }
 
     /// `pane-note:` and `pane-file:` links pointed at the exported copies, relative to the note.

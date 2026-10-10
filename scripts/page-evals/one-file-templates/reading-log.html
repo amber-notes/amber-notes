@@ -1,0 +1,136 @@
+<!doctype html>
+<!-- template: reading-log | Books as cards with ratings, books per month against a yearly goal (set in the app), the average rating, a want-to-read checklist and a form to log a finished book. | A table with Title and Author, optionally Finished (yyyy-mm-dd) and Rating (1-5) columns; checklist items are shown as want-to-read. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root { --bg: var(--amber-bg); --card: var(--amber-surface); --ink: var(--amber-text); --muted: var(--amber-text-secondary); --line: var(--amber-separator); --accent: var(--amber-accent); --accent-ink: var(--amber-on-accent); --field: var(--amber-fill); --star: var(--amber-accent-text); }
+  * { box-sizing: border-box; }
+  body { padding: 20px 18px 96px; max-width: 680px; margin: 0 auto; }
+  h1 { font-size: 28px; letter-spacing: -.02em; margin: 4px 0 12px; }
+  h2 { font-size: 13px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin: 22px 4px 8px; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .stat { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px; }
+  .stat b { display: block; font-size: 26px; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+  .stat span { color: var(--muted); font-size: 13px; }
+  .chart { display: flex; align-items: end; gap: 6px; height: 96px; padding: 12px 14px 0; }
+  .chart .m { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
+  .chart .b { width: 100%; border-radius: 4px 4px 0 0; background: var(--accent); min-height: 2px; }
+  .chart .l { font-size: 11px; color: var(--muted); padding-bottom: 8px; }
+  .books { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  .book { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .spine { height: 6px; border-radius: 3px; margin-bottom: 6px; }
+  .book .t { font-weight: 600; overflow-wrap: anywhere; }
+  .muted { color: var(--muted); font-size: 14px; }
+  .stars { color: var(--star); letter-spacing: 1px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--amber-radius); overflow: hidden; }
+  .item { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-top: 1px solid var(--line); min-height: 48px; }
+  .item:first-child { border-top: 0; }
+  .item input { width: 22px; height: 22px; accent-color: var(--accent); }
+  .item.done span { color: var(--muted); text-decoration: line-through; }
+  form { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px; }
+  label.f { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); min-width: 0; }
+  input:not([type=checkbox]), select { font: inherit; font-size: 16px; color: var(--ink); background: var(--amber-field); border: 1px solid var(--amber-field-border); border-radius: 10px; padding: 10px 12px; min-height: 44px; width: 100%; }
+  button { grid-column: 1 / -1; font: inherit; font-weight: 600; min-height: 44px; border: 0; border-radius: 10px; background: var(--accent); color: var(--accent-ink); }
+  .err { color: var(--amber-danger); padding: 0 16px 12px; min-height: 1em; }
+  .empty { padding: 24px 16px; text-align: center; color: var(--muted); }
+  select { -webkit-appearance: none; appearance: none; padding-right: 28px; background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%); background-position: right 14px center, right 9px center; background-size: 5px 5px; background-repeat: no-repeat; }
+  /* This app's own look (a bookshop: paper, oxblood and a serif); Amber's tokens fill in the rest. */
+  :root { --accent: #7a2e2e; --accent-ink: #ffffff; --card: #f7f1e6; --star: #9a6b00; --field: #efe6d6; --line: rgba(90,60,30,.18); }
+  @media (prefers-color-scheme: dark) { :root { --accent: #e8a0a0; --accent-ink: #2a0d0d; --card: #24201b; --star: #f2c14e; --field: #2f2a23; --line: rgba(255,235,210,.14); } }
+  h1, .book .t, .stat b { font-family: ui-serif, 'New York', Georgia, serif; }
+  .settings { margin-top: 28px; }
+  .settings summary { cursor: pointer; color: var(--muted); min-height: 44px; padding: 11px 4px; }
+  .settings .card { display: grid; gap: 14px; padding: 14px 16px; }
+  .settings label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); min-width: 0; }
+  .settings input, .settings select { font: inherit; font-size: 16px; color: var(--ink); background: var(--amber-field); border: 1px solid var(--amber-field-border); border-radius: 10px; padding: 10px 12px; min-height: 44px; width: 100%; }
+</style>
+</head>
+<body>
+<main id="app" aria-live="polite"></main>
+<script>
+  // Settings live inside the app: a section at the end, saved in values.settings (an AI sets them with update_page_data).
+  const SETTINGS = [{"key": "goal", "label": "Books a year", "type": "number", "default": 24, "help": "0 for no goal"}];
+  const settings = () => Object.assign(Object.fromEntries(SETTINGS.map((s) => [s.key, s.default])), (amber.data.values || {}).settings || {});
+  let settingsOpen = false;
+  function settingsHTML() {
+    const v = settings();
+    const field = (s) => s.type === "choice" ? `<select data-setting="${s.key}">${s.options.map((o) => `<option ${o === v[s.key] ? "selected" : ""}>${esc(o)}</option>`).join("")}</select>`
+      : `<input data-setting="${s.key}" ${s.type === "number" ? 'inputmode="decimal"' : ""} value="${esc(s.type === "list" ? (v[s.key] || []).join(", ") : v[s.key])}">`;
+    return `<details class="settings" id="settings" ${settingsOpen ? "open" : ""}><summary>Settings</summary><div class="card">${SETTINGS.map((s) => `<label>${esc(s.label)}${field(s)}${s.help ? `<span>${esc(s.help)}</span>` : ""}</label>`).join("")}</div></details>`;
+  }
+  function wireSettings() {
+    const box = document.getElementById("settings");
+    box.ontoggle = () => { settingsOpen = box.open; };
+    box.querySelectorAll("[data-setting]").forEach((el) => { el.onchange = () => {
+      const s = SETTINGS.find((x) => x.key === el.dataset.setting), raw = el.value.trim();
+      const value = s.type === "number" ? Number(raw.replace(",", ".")) || 0 : s.type === "list" ? raw.split(",").map((x) => x.trim()).filter(Boolean) : raw;
+      amber.setData({ values: { settings: { [s.key]: value } } }).then((r) => { if (!r.ok) { el.setCustomValidity(r.error); el.reportValidity(); } });
+    }; });
+  }
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  const col = (t, re) => t.columns.findIndex((c) => re.test(c.name));
+  const hue = (s) => [...String(s)].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) % 360, 7);
+  let error = "";
+
+  function render(note) {
+    const app = document.getElementById("app");
+    const t = note.tables.find((t) => col(t, /^(title|book)$/i) >= 0);
+    if (!t) { app.innerHTML = `<h1>${esc(note.title)}</h1><div class="card empty">Add a table with Title, Author, Finished and Rating columns to the note.</div>`; return; }
+    const ti = col(t, /^(title|book)$/i), au = col(t, /author|by/i), fi = col(t, /finish|date|read on/i), ra = col(t, /rating|stars|score/i);
+    const books = t.rows.map((r) => ({ title: r[ti], author: au >= 0 ? r[au] : "", date: fi >= 0 ? r[fi] : "", rating: ra >= 0 ? parseFloat(r[ra]) : NaN }));
+    const rated = books.filter((b) => Number.isFinite(b.rating));
+    const avg = rated.length ? rated.reduce((s, b) => s + b.rating, 0) / rated.length : 0;
+    const year = note.today.slice(0, 4);
+    const months = Array.from({ length: 6 }, (_, k) => { const d = new Date(note.today.slice(0, 7) + "-15T12:00:00Z"); d.setUTCMonth(d.getUTCMonth() - 5 + k); return d.toISOString().slice(0, 7); });
+    const perMonth = months.map((m) => books.filter((b) => String(b.date).startsWith(m)).length);
+    const top = Math.max(1, ...perMonth);
+    const stars = (n) => Number.isFinite(n) ? `<span class="stars" aria-label="${n} out of 5">${"★".repeat(Math.round(n))}${"☆".repeat(Math.max(0, 5 - Math.round(n)))}</span>` : "";
+    const want = note.checklists;
+    app.innerHTML = `
+      <h1>${esc(note.title)}</h1>
+      <div class="stats">
+        <div class="stat"><b>${books.length}</b><span>books</span></div>
+        <div class="stat"><b>${books.filter((b) => String(b.date).startsWith(year)).length}${Number(settings().goal) ? `<span style="font-size:15px;color:var(--muted)"> / ${Number(settings().goal)}</span>` : ""}</b><span>in ${year}</span></div>
+        <div class="stat"><b>${rated.length ? avg.toFixed(1) : "–"}</b><span>average rating</span></div>
+      </div>
+      ${fi >= 0 ? `<h2>Last six months</h2><div class="card chart" role="img" aria-label="Books finished per month: ${months.map((m, k) => `${m} ${perMonth[k]}`).join(", ")}">${months.map((m, k) => `<div class="m"><div class="b" style="height:${(70 * perMonth[k]) / top}px"></div><div class="l">${new Date(m + "-15T12:00:00Z").toLocaleString("en", { month: "short" })}</div></div>`).join("")}</div>` : ""}
+      <h2>Read</h2>
+      <div class="books">${books.slice().reverse().map((b) => `<article class="book"><div class="spine" style="background:hsl(${hue(b.title)} 55% 55%)" aria-hidden="true"></div><div class="t">${esc(b.title)}</div><div class="muted">${esc(b.author)}</div><div class="muted">${esc(b.date)}</div>${stars(b.rating)}</article>`).join("") || `<div class="card empty">No books yet.</div>`}</div>
+      ${want.length ? `<h2>Want to read</h2><div class="card">${want.map((c) => `<label class="item ${c.checked ? "done" : ""}"><input type="checkbox" data-line="${c.line}" ${c.checked ? "checked" : ""}><span>${esc(c.text)}</span></label>`).join("")}</div>` : ""}
+      <h2>Log a book</h2>
+      <div class="card">
+        <form id="add">
+          <label class="f">Title<input name="title" required></label>
+          ${au >= 0 ? `<label class="f">Author<input name="author"></label>` : ""}
+          ${ra >= 0 ? `<label class="f">Rating<select name="rating"><option value="">–</option>${[5, 4, 3, 2, 1].map((n) => `<option>${n}</option>`).join("")}</select></label>` : ""}
+          ${fi >= 0 ? `<label class="f">Finished<input name="date" type="date" value="${note.today}"></label>` : ""}
+          <button>Add book</button>
+        </form>
+        <div class="err" role="alert">${esc(error)}</div>
+      </div>
+      ${settingsHTML()}`;
+    wireSettings();
+
+    app.querySelectorAll("[data-line]").forEach((box) => box.addEventListener("change", async () => {
+      const r = await amber.update({ op: "toggle_checklist", line: Number(box.dataset.line) });
+      error = r.ok ? "" : r.error;
+      if (!r.ok) render(amber.note);
+    }));
+    document.getElementById("add").onsubmit = async (e) => {
+      e.preventDefault();
+      const f = new FormData(e.target);
+      const values = { [t.columns[ti].name]: String(f.get("title")).trim() };
+      if (au >= 0) values[t.columns[au].name] = String(f.get("author") ?? "").trim();
+      if (ra >= 0) values[t.columns[ra].name] = String(f.get("rating") ?? "");
+      if (fi >= 0) values[t.columns[fi].name] = String(f.get("date") || amber.note.today);
+      const r = await amber.update({ op: "append_row", table: t.index, values });
+      error = r.ok ? "" : r.error;
+      render(amber.note);
+    };
+  }
+  amber.onChange(render);
+</script>
+</body>
+</html>

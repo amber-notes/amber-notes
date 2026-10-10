@@ -179,4 +179,4 @@ template path differently from the other templates.
   signs in and the old one doesn't, the link works once, other sessions end, the key, notes and AI
   connection are unchanged.
 - `PaneUITests/PasswordResetUITests` (iPhone simulator, a build pointed at the local stack, a local
-  account in `PANE_RESET_EMAIL`): Forgot password?, Email Me a Link, the sent message.
+  account in `PANE_RESET_EMAIL`): Forgot password?, Email me a link, the sent message.

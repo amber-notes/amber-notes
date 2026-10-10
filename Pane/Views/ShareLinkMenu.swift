@@ -361,7 +361,7 @@ final class MemoryStoppedShares: StoppedShareStore, @unchecked Sendable {
 /// slugs. Builds without the data protection keychain keep it on this device only, as they keep
 /// the data key.
 struct KeychainStoppedShares: StoppedShareStore {
-    static let service = "dev.emilwagman.pane.stopped-shares"
+    static let service = AppIdentity.keychainPrefix + ".stopped-shares"
 
     private static func query(_ account: UUID) -> [String: Any] {
         [kSecClass as String: kSecClassGenericPassword,
@@ -441,6 +441,12 @@ final class ShareLinkStore {
     @discardableResult
     func requestShare() -> Task<Void, Never>? {
         guard let note = noteID else { return nil }
+        // No network: said at once, not after reading what sharing publishes.
+        if !NetworkPath.shared.isUp {
+            state.failed(Self.offline)
+            settleFeedback()
+            return nil
+        }
         if defaults.bool(forKey: Self.askedKey(note)) {
             return Task { await shareAndCopy() }
         }
@@ -532,12 +538,15 @@ final class ShareLinkStore {
         }
     }
 
+    static let offline = OfflineCopy.needsNetwork("share this note")
+
     static func message(for error: Error) -> String {
+        if let u = error as? URLError, SyncEngine.reach(after: u) == .offline { return offline }
         let text = String(describing: error).lowercased()
         if text.contains("no such note") { return "Couldn’t share yet. Try again once the note has synced." }
         if text.contains("note_locked") || text.contains("locked note") { return "Locked notes can’t be shared." }
         if text.contains("not signed in") || text.contains("jwt") { return "Sign in to share notes." }
-        return "Couldn’t reach Amber Notes. Check your connection."
+        return "Couldn’t reach Pinto Notes. Check your connection."
     }
 
     static func copy(_ url: URL?) {
@@ -605,6 +614,7 @@ private struct ShareLinkChrome: ViewModifier {
     private var profileIncomplete: Bool { profile.name == nil || profile.photo == nil }
 
     private func editProfile() {
+        SettingsRoute.shared.open(.account)
         #if os(macOS)
         openSettings()
         #else
@@ -629,6 +639,7 @@ private struct ShareLinkChrome: ViewModifier {
                             .foregroundStyle(.secondary)
                             .padding(.horizontal, 9)
                             .frame(minHeight: 24)
+                            .hoverHighlight(Capsule())
                             .background(.fill.tertiary, in: .capsule)
                             .contentShape(.capsule)
                     }

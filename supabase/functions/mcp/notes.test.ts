@@ -1,6 +1,6 @@
 // Unit tests for the pure markdown helpers: deno test notes.test.ts
 import { assert, assertEquals, assertThrows } from "jsr:@std/assert@1";
-import { appendText, applyEdits, broadenQuery, coerce, findTables, fitLines, isTextType, mimeOf, outline, parseQuery, replaceTable, searchFilter, searchInMemory, setChecklistItem, sliceLines, snippet, sortChecklist, tableMarkdown, titleOf, previewOf } from "./notes.ts";
+import { appendText, applyEdits, broadenQuery, coerce, findTables, fitLines, isTextType, mimeOf, outline, parseQuery, replaceTable, searchFilter, searchInMemory, setChecklistItem, sliceLines, snippet, sortChecklist, tableMarkdown, titleOf, previewOf, wikiLinks } from "./notes.ts";
 
 Deno.test("titles follow the app's rules", () => {
   const cases: [string, string][] = [
@@ -200,4 +200,11 @@ Deno.test("previews leave out a table's column types and other comments, like th
   assertEquals(titleOf("<!-- hidden -->\nTitle"), "Title");
   assertEquals(titleOf("Before <!-- note -->after"), "Before after");
   assertEquals(previewOf("Title\n<!-- an open comment"), "");
+});
+
+Deno.test("wiki links are listed as written, once each, outside code", () => {
+  const body = "Trip\nSee [[Projects/Kitchen remodel|the kitchen]], [[Reading list]] and ![[Kitchen remodel#Budget]].\n" +
+    "Again [[Reading list]] and `[[inline code]]`\n```\n[[in a block]]\n```\n[[]] [[Someday]]";
+  assertEquals(wikiLinks(body), ["Projects/Kitchen remodel", "Reading list", "Kitchen remodel", "Someday"]);
+  assertEquals(wikiLinks("No links here"), []);
 });

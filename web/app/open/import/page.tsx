@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import PlaceCard from "../PlaceCard";
+import { appURL } from "@/lib/app-scheme";
 
 // "Bring your Apple Notes over" in the onboarding emails (https://ambernotes.app/open/import). On a
 // Mac the app opens Import from Apple Notes; on an iPhone it says to do it on the Mac.
@@ -9,7 +10,7 @@ export const metadata: Metadata = { title: "Import your Apple Notes · Pinto Not
 export default function Page() {
   return (
     <PlaceCard
-      href="ambernotes://import"
+      href={appURL("import")}
       title="Bring your Apple Notes over"
       lede="On a Mac, Pinto Notes opens Import from Apple Notes. Your notes come over with their folders, and Apple Notes stays as it is."
       steps={[

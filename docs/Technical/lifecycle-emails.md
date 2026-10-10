@@ -44,6 +44,27 @@ The `connect` email's examples use only what the MCP tools do today (`append_to_
 (folder names are encrypted), and no email ever says a number about the person's notes. An account whose browser connection is waiting
 (`connect_asks`, which expire) gets a last line on typing the number.
 
+## The welcome
+
+One email a couple of minutes after an account is made, whichever way it was made (email, Apple,
+Google): from Emil, what Pinto Notes is (notes on iPhone and Mac that ChatGPT and Claude can read and
+edit, end-to-end encrypted, free), one next step, and "Just reply, I read every email."
+
+- **The step fits where the person is** (`welcomeStep` in `logic.ts`): no AI yet, Connect ChatGPT or
+  Claude (`/open/connect-ai`); an AI but no app, which is someone who signed up through ChatGPT or
+  Claude, Get the app (`/download`); both, one ask to try with Ask ChatGPT and Ask Claude.
+- **When.** `lifecycle_welcome_tick` runs every minute and calls the function's `/welcome` only when
+  an account made 2 to 60 minutes ago has no welcome row and hasn't unsubscribed. The two minutes let
+  the app report its device and an AI connection made while signing up land, so the step is right.
+  An account the function missed within the hour (off or down) never gets one.
+- **Once.** Its `email_sends` row (kind `welcome`) is unique per account, like every other email, and
+  Resend gets the idempotency key `lifecycle-welcome-<account>`.
+- **The same rules otherwise:** LIFECYCLE_ENABLED, LIFECYCLE_SINCE, LIFECYCLE_ONLY, the unsubscribe
+  link and headers, and the staging subject prefix. It ignores the 9 o'clock rule.
+- **With the ladder.** The welcome counts for spacing: the ladder's first email waits its usual 3
+  days after it, so it comes on day 3 instead of day 1, and never the day after the welcome. It isn't
+  counted toward the 6-email cap, and an unanswered welcome isn't part of the silence rule.
+
 ## Where each button goes
 
 Every button leads somewhere specific: into the app through a universal link under `/open/` (the

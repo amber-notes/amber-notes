@@ -24,12 +24,16 @@ jobs:
       - name: gitleaks
         run: |
           curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.28.0/gitleaks_8.28.0_linux_x64.tar.gz | tar -xz gitleaks
-          ./gitleaks git --no-banner --redact -c .gitleaks.toml
+          ./gitleaks git --no-banner --redact -v -c .gitleaks.toml
 
   app:
     name: App tests (macOS)
     runs-on: macos-26
     timeout-minutes: 45
+    env:
+      # The suites that time things (PaneTests/Perf): run apart from the rest.
+      PERF_SKIP: -skip-testing:PaneTests/EditorPerfTests -skip-testing:PaneTests/AppPerfTests -skip-testing:PaneTests/ScanPerfTests -skip-testing:PaneTests/WindowUpdateTests -skip-testing:PaneTests/ListPiecesPerfTests
+      PERF_ONLY: -only-testing:PaneTests/EditorPerfTests -only-testing:PaneTests/AppPerfTests -only-testing:PaneTests/ScanPerfTests -only-testing:PaneTests/WindowUpdateTests -only-testing:PaneTests/ListPiecesPerfTests
     steps:
       - uses: actions/checkout@v4
       - name: Select the newest Xcode
@@ -43,17 +47,35 @@ jobs:
         env:
           # Runners are several times slower than a developer's Mac; see PaneTests/Perf/PerfBudget.swift.
           TEST_RUNNER_PANE_PERF_SLACK: "4"
+          # Snapshot tests that draw windows (ImageViewerSnapshots) run here only, never on a developer's Mac.
+          TEST_RUNNER_PANE_SNAPSHOTS: "1"
         run: |
           set -o pipefail
           mkdir -p build
+          # The timing suites run on their own afterwards (next step), so the snapshot, PDF and
+          # web view suites running beside them in this process can't slow what they measure.
           xcodebuild test -project Pane.xcodeproj -scheme Pane -destination 'platform=macOS' \
-            -only-testing:PaneTests -derivedDataPath build/ci -resultBundlePath build/ci-tests.xcresult \
+            -only-testing:PaneTests $PERF_SKIP -derivedDataPath build/ci -resultBundlePath build/ci-tests.xcresult \
             ENABLE_TESTABILITY=YES ENABLE_HARDENED_RUNTIME=NO \
             CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= PROVISIONING_PROFILE_SPECIFIER= \
-            | tee build/ci-test.log | grep -E "✔ Test run|✘|error:|\*\* TEST" || true
+            | tee build/ci-test.log | grep -E "✔ Test run|✘|error:|PERF|\*\* TEST" || true
           grep -q "\*\* TEST SUCCEEDED \*\*" build/ci-test.log
+      - name: Timing tests, on their own
+        env:
+          TEST_RUNNER_PANE_PERF_SLACK: "4"
+        run: |
+          set -o pipefail
+          # A process of their own, one test at a time, after the build is warm.
+          xcodebuild test-without-building -project Pane.xcodeproj -scheme Pane -destination 'platform=macOS' \
+            $PERF_ONLY -parallel-testing-enabled NO -derivedDataPath build/ci -resultBundlePath build/ci-perf.xcresult \
+            ENABLE_TESTABILITY=YES ENABLE_HARDENED_RUNTIME=NO \
+            CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= PROVISIONING_PROFILE_SPECIFIER= \
+            | tee build/ci-perf.log | grep -E "✔ Test run|✘|error:|PERF|\*\* TEST" || true
+          # test-without-building says TEST EXECUTE SUCCEEDED.
+          grep -qE "\*\* TEST (EXECUTE )?SUCCEEDED \*\*" build/ci-perf.log
       # A failure keeps the whole log and the result bundle: a test host that hangs or crashes
-      # records no issue in the filtered output above, only its name under "Failing tests".
+      # records no issue in the filtered output above, only its name under "Failing tests". The
+      # crash reports say where it died.
       - name: Keep the test results
         if: failure()
         uses: actions/upload-artifact@v4
@@ -62,6 +84,24 @@ jobs:
           path: |
             build/ci-test.log
             build/ci-tests.xcresult
+            build/ci-perf.log
+            build/ci-perf.xcresult
+            ~/Library/Logs/DiagnosticReports/Pane*
+          retention-days: 7
+      # Pictures the snapshot tests attach (FileViewerSnapshots and others): kept after every run, so a
+      # UI change can be looked at without running anything on a developer's screen.
+      - name: Export the snapshots
+        if: always()
+        run: |
+          mkdir -p build/snapshots
+          [ -d build/ci-tests.xcresult ] && xcrun xcresulttool export attachments --path build/ci-tests.xcresult --output-path build/snapshots || true
+      - name: Keep the snapshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: snapshots
+          path: build/snapshots
+          if-no-files-found: ignore
           retention-days: 7
       - name: iOS simulator build
         run: |
@@ -84,13 +124,14 @@ jobs:
         run: >-
           deno test --allow-all
           supabase/functions/_shared/e2ee.test.ts supabase/functions/_shared/log.test.ts supabase/functions/_shared/apns.test.ts supabase/functions/_shared/db.test.ts supabase/functions/_shared/client.test.ts supabase/functions/_shared/region.test.ts
-          supabase/functions/mcp/notes.test.ts supabase/functions/mcp/needs_database.test.ts supabase/functions/mcp/annotations.test.ts supabase/functions/mcp/card.test.ts
+          supabase/functions/mcp/notes.test.ts supabase/functions/mcp/needs_database.test.ts supabase/functions/mcp/annotations.test.ts supabase/functions/mcp/card.test.ts supabase/functions/mcp/instructions.test.ts
           supabase/functions/mcp/oauth.pglite.test.ts supabase/functions/mcp/locked.pglite.test.ts supabase/functions/mcp/e2ee.pglite.test.ts
           supabase/functions/mcp/canary.pglite.test.ts supabase/functions/mcp/sealed_tools.pglite.test.ts supabase/functions/mcp/device_add.pglite.test.ts
-          supabase/functions/mcp/tips.pglite.test.ts supabase/functions/mcp/share_ask.pglite.test.ts supabase/functions/mcp/open_source_ask.pglite.test.ts supabase/functions/mcp/download_counts.pglite.test.ts
+          supabase/functions/mcp/tips.pglite.test.ts supabase/functions/mcp/folder_files.pglite.test.ts supabase/functions/mcp/share_ask.pglite.test.ts supabase/functions/mcp/open_source_ask.pglite.test.ts supabase/functions/mcp/download_counts.pglite.test.ts supabase/functions/mcp/collab.pglite.test.ts
           supabase/functions/share-files/logic.test.ts scripts/e2ee-tool.test.ts
           supabase/functions/account/account.pglite.test.ts supabase/functions/_shared/hash.test.ts
           scripts/auth-emails.test.ts scripts/ops/daily-digest.test.ts supabase/functions/mcp/tool_errors.test.ts supabase/functions/lifecycle/logic.test.ts supabase/functions/lifecycle/emails.test.ts supabase/functions/lifecycle/assets.test.ts supabase/functions/lifecycle/lifecycle.pglite.test.ts
+          supabase/functions/mcp/rename.pglite.test.ts
 
   web:
     name: Share site

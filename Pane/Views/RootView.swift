@@ -34,6 +34,8 @@ struct RootView: View {
     /// Files the import sheet opens with (shared, opened from Files, dropped on the app).
     @State private var importFiles: [URL] = []
     @AppStorage("lastScope") private var lastScopeData: Data = Data()
+    /// Files that weren't added (a kind the app can't show, or over 100 MB), said once.
+    @State private var refusal: FileRefusal?
     @AppStorage("lastNote") private var lastNote: String = ""
 
     /// The single open note, when exactly one is selected.
@@ -43,7 +45,10 @@ struct RootView: View {
     }
 
     var body: some View {
-        imports(lifecycle(split))
+        #if DEBUG
+        RenderProbe.count("RootView")
+        #endif
+        return imports(lifecycle(split))
             .focusedSceneValue(\.newNoteAction, newNote)
             .focusedSceneValue(\.editorController, editor)
             .focusedSceneValue(\.importAction, { showImport = true })
@@ -52,6 +57,12 @@ struct RootView: View {
             .focusedSceneValue(\.deleteNoteAction, deleteAction)
             // A template or shared note to add, from a link.
             .noteSourceHandler()
+            // Collaboration (prototype): an invitation to someone else's note.
+            .modifier(CollabInviteAlert())
+            .onReceive(NotificationCenter.default.publisher(for: FileRefusal.notification)) { n in refusal = n.object as? FileRefusal }
+            .alert(refusal?.title ?? "", isPresented: Binding(get: { refusal != nil }, set: { if !$0 { refusal = nil } })) {
+                Button("OK") {}
+            } message: { Text(refusal?.message ?? "") }
             #if os(iOS)
             .alert("Launch alert", isPresented: $launchAlert) { Button("OK", role: .cancel) {} }
             #endif
@@ -76,6 +87,8 @@ struct RootView: View {
                 #endif
         }
         .environment(editor)
+        .environment(\.importActions, ImportActions(appleNotes: { showImport = true }, spreadsheet: { importingSheet = true },
+                                                     from: { kind in importFiles = []; importing = kind }))
         #if os(macOS)
         // The list column shows its own title; no window title in the bar.
         .toolbar(removing: .title)
@@ -129,7 +142,7 @@ struct RootView: View {
             #if os(iOS)
             .alert("Import on your Mac", isPresented: $importOnMac) {
                 Button("OK") {}
-            } message: { Text("To bring everything at once, use Import from Apple Notes in Amber Notes on your Mac. It syncs here a second later.") }
+            } message: { Text("To bring everything at once, use Import from Apple Notes in Pinto Notes on your Mac. It syncs here a second later.") }
             #endif
     }
 
@@ -241,10 +254,14 @@ struct RootView: View {
                     selectedNote = target
                 }
                     .id(id)
+            } else if let id = selectedNote, let file = context.attachment(id), file.folderID != nil, file.deletedAt == nil {
+                // A file kept in the folder: its preview.
+                FileDetailView(file: file, onNewNote: newNote, onOpenFile: { selectedNote = $0 })
+                    .id(id)
             } else {
                 Group {
                     if selection.count > 1 {
-                        MultipleSelectionView(count: selection.count)
+                        MultipleSelectionView(count: selection.count, items: selection.contains { context.attachment($0) != nil })
                     } else {
                         EmptyDetailView()
                     }
@@ -300,7 +317,17 @@ struct RootView: View {
         #endif
         if title == "-new" { DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { newNote() }; return }
         let all = (try? context.fetch(FetchDescriptor<Note>())) ?? []
-        if let n = all.first(where: { $0.title == title && $0.deletedAt == nil }) { selectedNote = n.id }
+        if let n = all.first(where: { $0.title == title && $0.deletedAt == nil }) {
+            selectedNote = n.id
+        } else if let f = context.folderFiles().first(where: { $0.filename == title }), let folder = f.folderID {
+            // A file kept in a folder, by its name: its folder's list, with the file open.
+            scope = .folder(folder)
+            selectedNote = f.id
+        }
+        // `-folder "To read"`: that folder's list.
+        if let j = args.firstIndex(of: "-folder"), j + 1 < args.count, let f = context.allFolders().first(where: { $0.name == args[j + 1] }) {
+            scope = .folder(f.id)
+        }
     }
 
     /// Shows a note asked for from outside the window, switching to All Notes if it isn't in view.
@@ -314,6 +341,11 @@ struct RootView: View {
     /// Reopen the note you were on; otherwise the one you edited last.
     private func restoreNote() {
         guard selectedNote == nil, !ProcessInfo.processInfo.arguments.contains("-uitest") else { return }
+        // A file kept in a folder reopens like a note.
+        if let id = UUID(uuidString: lastNote), let f = context.attachment(id), f.folderID != nil, f.deletedAt == nil, f.trashedAt == nil {
+            selectedNote = id
+            return
+        }
         if let n = context.noteToReopen(last: UUID(uuidString: lastNote)) { selectedNote = n.id }
     }
 
@@ -335,9 +367,11 @@ struct RootView: View {
 /// What the note pane shows with several notes selected, as in Notes.
 struct MultipleSelectionView: View {
     let count: Int
+    /// Files are among them.
+    var items = false
 
     var body: some View {
-        Text("\(count) Notes Selected")
+        Text(items ? "\(count) Items Selected" : "\(count) Notes Selected")
             .font(.title3)
             .foregroundStyle(.secondary)
             .monospacedDigit()
@@ -356,6 +390,19 @@ struct EmptyDetailView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
+}
+
+/// The import actions, for the folders and the note list. They come through the environment, not
+/// the scene's focused values: those change whenever a view that publishes one updates (the open
+/// note does on every save while you type), and each change rebuilt the folders and the list again.
+struct ImportActions {
+    var appleNotes: () -> Void
+    var spreadsheet: () -> Void
+    var from: (ImportKind) -> Void
+}
+
+extension EnvironmentValues {
+    @Entry var importActions: ImportActions? = nil
 }
 
 // MARK: Focused actions for menus and shortcuts

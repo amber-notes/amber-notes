@@ -41,6 +41,10 @@ enum E2EE {
     static func body(_ id: UUID) -> String { "body:" + id.uuidString.lowercased() }
     static func head(_ id: UUID) -> String { "head:" + id.uuidString.lowercased() }
     static func folder(_ id: UUID) -> String { "folder:" + id.uuidString.lowercased() }
+    /// A note's page (prototype, NotePage).
+    static func page(_ id: UUID) -> String { "page:" + id.uuidString.lowercased() }
+    /// A page's own data (prototype, NotePageData).
+    static func pageData(_ id: UUID) -> String { "page-data:" + id.uuidString.lowercased() }
     static func fileMeta(_ id: UUID) -> String { "file-meta:" + id.uuidString.lowercased() }
     static func file(_ id: UUID) -> String { "file:" + id.uuidString.lowercased() }
     static func wrap(_ purpose: String, user: UUID) -> String { "wrap:\(purpose):" + user.uuidString.lowercased() }
@@ -425,7 +429,7 @@ struct ServerKey: Codable, Equatable, Sendable {
     var recovery_saved_at: Date?
 }
 
-/// How a device came to hold the key, as the list in Privacy & Security says it.
+/// How a device came to hold the key, as the list in Settings › Security says it.
 enum KeyHow: String, Codable, Sendable {
     /// Made on it (the account's first device).
     case made
@@ -507,13 +511,36 @@ final class MemoryAccountKeyStore: AccountKeyStore, @unchecked Sendable {
 /// provisioning profile: `errSecMissingEntitlement`) keep the key on this device only, where the
 /// session is kept (`SessionStorage`); such a device gets the key from the recovery key.
 struct KeychainAccountKeyStore: AccountKeyStore {
-    static let service = "dev.emilwagman.pane.data-key"
+    static let service = AppIdentity.keychainPrefix + ".data-key"
 
     static let dataProtectionAvailable: Bool = {
         var q = query(UUID(), slot: .synced)
         q[kSecMatchLimit as String] = kSecMatchLimitOne
-        return SecItemCopyMatching(q as CFDictionary, nil) != errSecMissingEntitlement
+        let read = SecItemCopyMatching(q as CFDictionary, nil)
+        guard read != errSecMissingEntitlement else { return false }
+        // A read can pass where a write can't: the sandboxed Developer ID beta has no keychain access
+        // group (that needs a provisioning profile), so its synced key was never saved and every
+        // launch asked for the recovery key again. A throwaway synced item, written and removed, says.
+        let probe: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
+                                    kSecAttrService as String: service + ".probe",
+                                    kSecAttrAccount as String: "probe",
+                                    kSecUseDataProtectionKeychain as String: true,
+                                    kSecAttrSynchronizable as String: true]
+        SecItemDelete(probe as CFDictionary)
+        var add = probe
+        add[kSecValueData as String] = Data([0])
+        add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
+        let write = SecItemAdd(add as CFDictionary, nil)
+        SecItemDelete(probe as CFDictionary)
+        return usable(read: read, write: write)
     }()
+
+    /// Whether the data protection keychain can hold the key, from a read and a write of a synced
+    /// item. Only a missing entitlement rules it out: a locked device or a busy keychain is a moment,
+    /// not a reason to move the key somewhere else.
+    nonisolated static func usable(read: OSStatus, write: OSStatus) -> Bool {
+        read != errSecMissingEntitlement && write != errSecMissingEntitlement
+    }
 
     var syncs: Bool { Self.dataProtectionAvailable }
 
@@ -699,7 +726,7 @@ final class AccountCrypto {
     /// "Your notes are encrypted": once per account on each device, when the key is first here.
     private(set) var needsWelcome = false
     /// The account started fresh since this device's key was made, so the recovery key it had is
-    /// void: said once (`recoveryKeyChangeShown`), and in Privacy & Security until the new one is saved.
+    /// void: said once (`recoveryKeyChangeShown`), and in Settings › Security until the new one is saved.
     private(set) var recoveryKeyChanged = false
     private(set) var recoveryKeyChangeNeedsSaying = false
     /// How the key got here, when it arrived while the app was running (nil: it was already here).
@@ -719,6 +746,11 @@ final class AccountCrypto {
     private let helpAfterPolls: Int
     /// How long startup waits for the server before saying it can't reach it (with Try again).
     private let fetchTimeout: Duration
+    /// With the key already on this device, how long startup waits for the server before opening
+    /// the notes anyway (and checking the key once the server answers): a plane's Wi-Fi or a dead
+    /// connection never holds the notes back for the full `fetchTimeout`.
+    private let quickCheck: Duration
+    nonisolated static let defaultQuickCheck: Duration = .seconds(1)
     private let sleep: @Sendable (Duration) async throws -> Void
     /// Bumped whenever what's being worked out changes, so an older answer is ignored.
     private var generation = 0
@@ -727,15 +759,20 @@ final class AccountCrypto {
     /// Set by the sync side: removes the account's files from Storage when it starts fresh (the
     /// rows go with `start_fresh`; Storage objects can't be deleted from SQL).
     var removeAccountFiles: (@MainActor (UUID) async -> Void)?
+    /// Whether there's a network at all (NetworkPath): the retries wait while there isn't, and
+    /// `networkReturned` runs them at once when it's back.
+    var networkUp: @MainActor () -> Bool = { true }
 
     init(store: AccountKeyStore, defaults: UserDefaults = .standard, pollInterval: Duration = .seconds(2),
          helpAfter: Duration = .seconds(20), retryInterval: Duration = .seconds(10), fetchTimeout: Duration = .seconds(12),
+         quickCheck: Duration = AccountCrypto.defaultQuickCheck,
          sleep: @escaping @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) }) {
         self.store = store
         self.defaults = defaults
         self.pollInterval = pollInterval
         self.retryInterval = retryInterval
         self.fetchTimeout = fetchTimeout
+        self.quickCheck = quickCheck
         helpAfterPolls = max(1, Int((helpAfter / pollInterval).rounded()))
         self.sleep = sleep
     }
@@ -745,7 +782,7 @@ final class AccountCrypto {
     var allowsSync: Bool { phase == .ready || phase == .off }
     var dataKey: SymmetricKey? { isReady ? key?.key : nil }
     var keyID: String? { isReady ? key?.keyID : nil }
-    /// The recovery key, for Settings › Privacy & Security (behind Face ID or Touch ID there).
+    /// The recovery key, for Settings › Security (behind Face ID or Touch ID there).
     var recoveryKeyText: String? { isReady ? key?.recoveryText : nil }
     var recoverySavedAt: Date? { serverKey?.recovery_saved_at }
     /// The recovery key is saved somewhere: printed, exported or copied on some device, or typed
@@ -766,6 +803,22 @@ final class AccountCrypto {
         await restart()
     }
 
+    /// Launching signed in: the key this device already holds for the account, opened at once,
+    /// before anything is drawn, so the notes show without a key screen first. `attach` checks it
+    /// with the server quietly afterwards (recheck, and the retries of an unverified key); only a
+    /// key that's really missing or replaced brings the key screens. False when there's no key here.
+    @discardableResult
+    func openHeld(account: UUID) -> Bool {
+        guard self.account == nil, phase == .off else { return false }
+        let decision = KeyStartup.decide(user: account, synced: store.load(account: account, slot: .synced),
+                                         pending: store.load(account: account, slot: .pending),
+                                         local: store.load(account: account, slot: .local), server: .unreachable)
+        guard case .ready(let k, _, _) = decision else { return false }
+        self.account = account
+        open(k, verified: false)
+        return true
+    }
+
     /// Runs startup again (Try again, or after the account's key changed).
     func restart() async {
         stop()
@@ -781,17 +834,25 @@ final class AccountCrypto {
     private func run() async {
         guard let account, let server else { phase = .off; return }
         let gen = generation
+        // What the Keychain holds, read once: whether to wait long, and then the decision.
+        let synced = store.load(account: account, slot: .synced), local = store.load(account: account, slot: .local)
+        let held = synced != nil || local != nil
         let remote: KeyStartup.Server
+        var timedOut = false
         do {
-            let state = try await Self.within(fetchTimeout, sleep: sleep) { try await server.fetch() }
+            let state = try await Self.within(held ? quickCheck : fetchTimeout, sleep: sleep) { try await server.fetch() }
             remote = Self.remote(state)
             serverGeneration = state.generation
-        } catch { remote = .unreachable }
+        } catch {
+            timedOut = error is TimedOut
+            remote = .unreachable
+        }
         guard gen == generation else { return }
         if case .key(let s) = remote { serverKey = s }
-        await carryOut(KeyStartup.decide(user: account, synced: store.load(account: account, slot: .synced),
-                                         pending: store.load(account: account, slot: .pending),
-                                         local: store.load(account: account, slot: .local), server: remote))
+        await carryOut(KeyStartup.decide(user: account, synced: synced, pending: store.load(account: account, slot: .pending),
+                                         local: local, server: remote))
+        // The server was only slow: the check goes on now, not after the first retry interval.
+        if timedOut, phase == .ready, unverified { Task { await recheck() } }
     }
 
     private func carryOut(_ decision: KeyStartup.Decision) async {
@@ -1006,7 +1067,7 @@ final class AccountCrypto {
         store.save(k, account: account, slot: .synced)
         store.remove(account: account, slot: .pending)
         open(k, verified: true, how: .recovery)
-        // Typing the recovery key proves it's saved somewhere: Privacy & Security says so, here
+        // Typing the recovery key proves it's saved somewhere: Settings › Security says so, here
         // and on the account's other devices. Offline, this device remembers and tells the server later.
         if current.recovery_saved_at == nil || recoveryKeyChanged {
             defaults.set(true, forKey: Self.recoveryProvenKey(account))
@@ -1030,6 +1091,8 @@ final class AccountCrypto {
             if deleted {
                 // Every device hears of it (account_notices); this one did it, so it doesn't say so.
                 defaults.set(true, forKey: Self.startedFreshHereKey(account))
+                // What this device holds goes up again under the new key (SyncEngine.adoptKeyIfChanged).
+                defaults.set(true, forKey: SyncEngine.uploadAgainKey(account))
                 await removeAccountFiles?(account)
             }
         }
@@ -1091,7 +1154,7 @@ final class AccountCrypto {
     func forgetKey(account: UUID) {
         for slot in KeySlot.allCases { store.remove(account: account, slot: slot) }
         for key in [welcomedKey(account), Self.recoveryChangedKey(account), Self.recoveryChangeSaidKey(account), Self.startedFreshHereKey(account),
-                    Self.recoveryProvenKey(account)] {
+                    Self.recoveryProvenKey(account), SyncEngine.uploadAgainKey(account)] {
             defaults.removeObject(forKey: key)
         }
         if account == self.account { signedOut() }
@@ -1192,15 +1255,28 @@ final class AccountCrypto {
         }
     }
 
+    /// The network is back: startup or the key check runs now, not at the next retry.
+    func networkReturned() async {
+        switch phase {
+        case .unreachable: await restart()
+        case .ready where unverified: await recheck()
+        default: break
+        }
+    }
+
     /// Offline: startup again every little while, or (ready with a key the server hasn't
-    /// confirmed) the check.
+    /// confirmed) the check. Not while there's no network at all; on a network that lets nothing
+    /// through (a plane's Wi-Fi), less often the longer it lasts: up to every minute.
     private func startRetrying() {
         stop()
         let gen = generation, interval = retryInterval, sleep = sleep
         background = Task { [weak self] in
+            var tries = 0
             while true {
-                do { try await sleep(interval) } catch { return }
+                do { try await sleep(interval * min(1 << min(tries, 3), 6)) } catch { return }
                 guard let self, gen == self.generation else { return }
+                guard self.networkUp() else { continue }
+                tries += 1
                 // In a task of its own: whatever comes next replaces (and cancels) this loop,
                 // and the request mustn't be cancelled with it.
                 switch self.phase {

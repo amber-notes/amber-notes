@@ -28,7 +28,7 @@ struct SetupCard: View {
     @State private var popping = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    static let prompt = "Add \"Call mom\" to my to-do list in Amber Notes"
+    static let prompt = "Add \"Call mom\" to my to-do list in Pinto Notes"
 
     /// What the card shows: a step, or the finish after your AI's first edit.
     enum Page: Hashable { case step(SetupProgress.Step), done }
@@ -134,7 +134,7 @@ struct SetupCard: View {
                 .contentShape(.rect)
                 .padding(-Metrics.closeSlop)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.hoverIcon(cornerRadius: Metrics.closeSize / 2))
         .accessibilityLabel("Hide")
         .accessibilityHint("Hides these steps for good")
         .accessibilityIdentifier("setup.hide")
@@ -251,7 +251,7 @@ struct SetupCard: View {
                 .presentationCompactAdaptation(.popover)
             }
         Button("Start Fresh", action: onStartFresh)
-            .buttonStyle(.borderless)
+            .buttonStyle(.hoverLink)
             .foregroundStyle(.secondary)
             .fixedSize()
             .accessibilityIdentifier("setup.fresh")
@@ -266,7 +266,7 @@ struct SetupCard: View {
             Label(title, systemImage: symbol)
                 .frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
                 .padding(.horizontal, 8)
-                .contentShape(.rect)
+                .hoverHighlight(RoundedRectangle(cornerRadius: 6, style: .continuous))
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("setup.import.\(symbol)")
@@ -409,10 +409,10 @@ struct ShareHowToSheet: View {
                 Section {
                     step(1, "Open a note in Notes", "The Notes app, with the note you want to bring.")
                     step(2, "Tap Share", "The share button at the top, or ⋯ then Send a Copy.")
-                    step(3, "Choose Amber Notes", "If it isn't in the row of apps, swipe to the end and tap More.")
-                    step(4, "Tap Save", "The note appears in Amber Notes, formatting and photos included.")
+                    step(3, "Choose Pinto Notes", "If it isn't in the row of apps, swipe to the end and tap More.")
+                    step(4, "Tap Save", "The note appears in Pinto Notes, formatting and photos included.")
                 } footer: {
-                    Text("To bring everything at once, use Import from Apple Notes in Amber Notes on your Mac. It syncs here a second later.")
+                    Text("To bring everything at once, use Import from Apple Notes in Pinto Notes on your Mac. It syncs here a second later.")
                 }
             }
             .navigationTitle("Share Notes One by One")

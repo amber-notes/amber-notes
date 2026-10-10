@@ -1,0 +1,267 @@
+{
+ "values": {
+  "settings": {
+   "goal": 24,
+   "sort": "Most recent",
+   "covers": true
+  },
+  "books": {
+   "tomorrow, and tomorrow, and tomorrow": {
+    "cover": {
+     "$seedFile": "covers/tomorrow-and-tomorrow-and-tomorrow.jpg"
+    },
+    "olid": "/works/OL26004554W",
+    "year": 2022,
+    "pages": 460,
+    "page": 312,
+    "started": "{{d-12}}"
+   },
+   "the emigrants": {
+    "cover": null,
+    "olid": "/works/OL1379924W",
+    "year": 1978,
+    "pages": 476,
+    "page": 88,
+    "started": "{{d-30}}"
+   },
+   "project hail mary": {
+    "cover": {
+     "$seedFile": "covers/project-hail-mary.jpg"
+    },
+    "olid": "/works/OL21745884W",
+    "year": 2021,
+    "pages": 496
+   },
+   "anxious people": {
+    "cover": {
+     "$seedFile": "covers/anxious-people.jpg"
+    },
+    "olid": "/works/OL20793817W",
+    "year": 2020,
+    "pages": 352
+   },
+   "piranesi": {
+    "cover": {
+     "$seedFile": "covers/piranesi.jpg"
+    },
+    "olid": "/works/OL20893680W",
+    "year": 2020,
+    "pages": 272
+   },
+   "klara and the sun": {
+    "cover": {
+     "$seedFile": "covers/klara-and-the-sun.jpg"
+    },
+    "olid": "/works/OL20883297W",
+    "year": 2019,
+    "pages": 334
+   },
+   "educated": {
+    "cover": {
+     "$seedFile": "covers/educated.jpg"
+    },
+    "olid": "/works/OL18139176W",
+    "year": 2018,
+    "pages": 384
+   },
+   "lessons in chemistry": {
+    "cover": {
+     "$seedFile": "covers/lessons-in-chemistry.jpg"
+    },
+    "olid": "/works/OL25344431W",
+    "year": 2022,
+    "pages": 464
+   },
+   "the midnight library": {
+    "cover": {
+     "$seedFile": "covers/the-midnight-library.jpg"
+    },
+    "olid": "/works/OL20965973W",
+    "year": 2020,
+    "pages": 304
+   },
+   "norwegian wood": {
+    "cover": {
+     "$seedFile": "covers/norwegian-wood.jpg"
+    },
+    "olid": "/works/OL2625457W",
+    "year": 1987,
+    "pages": 389
+   },
+   "the remains of the day": {
+    "cover": {
+     "$seedFile": "covers/the-remains-of-the-day.jpg"
+    },
+    "olid": "/works/OL59048W",
+    "year": 1989,
+    "pages": 254
+   },
+   "station eleven": {
+    "cover": {
+     "$seedFile": "covers/station-eleven.jpg"
+    },
+    "olid": "/works/OL17202418W",
+    "year": 2014,
+    "pages": 352
+   },
+   "the hundred-year-old man who climbed out of the window and disappeared": {
+    "cover": {
+     "$seedFile": "covers/the-hundred-year-old-man-who-climbed-out.jpg"
+    },
+    "olid": "/works/OL25678528W",
+    "year": 2012,
+    "pages": 398
+   },
+   "sapiens": {
+    "cover": {
+     "$seedFile": "covers/sapiens.jpg"
+    },
+    "olid": "/works/OL17075811W",
+    "year": 2011,
+    "pages": 456
+   },
+   "the overstory": {
+    "cover": {
+     "$seedFile": "covers/the-overstory.jpg"
+    },
+    "olid": "/works/OL19074847W",
+    "year": 2018,
+    "pages": 531
+   },
+   "pachinko": {
+    "cover": {
+     "$seedFile": "covers/pachinko.jpg"
+    },
+    "olid": "/works/OL17762217W",
+    "year": 2017,
+    "pages": 512
+   },
+   "middlemarch": {
+    "cover": {
+     "$seedFile": "covers/middlemarch.jpg"
+    },
+    "olid": "/works/OL20867W",
+    "year": 1800,
+    "pages": 793
+   },
+   "the seven husbands of evelyn hugo": {
+    "cover": {
+     "$seedFile": "covers/the-seven-husbands-of-evelyn-hugo.jpg"
+    },
+    "olid": "/works/OL18203673W",
+    "year": 2017,
+    "pages": 400
+   },
+   "circe": {
+    "cover": {
+     "$seedFile": "covers/circe.jpg"
+    },
+    "olid": "/works/OL18012166W",
+    "year": 2018,
+    "pages": 404
+   },
+   "the road": {
+    "cover": {
+     "$seedFile": "covers/the-road.jpg"
+    },
+    "olid": "/works/OL40873W",
+    "year": 2006,
+    "pages": 256
+   },
+   "atomic habits": {
+    "cover": {
+     "$seedFile": "covers/atomic-habits.jpg"
+    },
+    "olid": "/works/OL17930368W",
+    "year": 2016,
+    "pages": 323
+   },
+   "normal people": {
+    "cover": {
+     "$seedFile": "covers/normal-people.jpg"
+    },
+    "olid": "/works/OL20150260W",
+    "year": 2018,
+    "pages": 304
+   },
+   "born a crime": {
+    "cover": {
+     "$seedFile": "covers/born-a-crime.jpg"
+    },
+    "olid": "/works/OL17824318W",
+    "year": 2016,
+    "pages": 304
+   },
+   "the little prince": {
+    "cover": {
+     "$seedFile": "covers/the-little-prince.jpg"
+    },
+    "olid": "/works/OL24259583W",
+    "year": 2003,
+    "pages": 96
+   }
+  }
+ },
+ "collections": {
+  "quotes": [
+   {
+    "id": "q1",
+    "book": "tomorrow, and tomorrow, and tomorrow",
+    "text": "What is a game? It's tomorrow, and tomorrow, and tomorrow. It's the possibility of infinite rebirth, infinite redemption.",
+    "page": 204,
+    "created": "{{t-4}}"
+   },
+   {
+    "id": "q2",
+    "book": "the remains of the day",
+    "text": "What is the point of worrying oneself too much about what one could or could not have done to control the course one's life took?",
+    "page": 243,
+    "created": "{{t-109}}"
+   },
+   {
+    "id": "q3",
+    "book": "station eleven",
+    "text": "Survival is insufficient.",
+    "page": 58,
+    "created": "{{t-95}}"
+   },
+   {
+    "id": "q4",
+    "book": "piranesi",
+    "text": "The Beauty of the House is immeasurable; its Kindness infinite.",
+    "page": 5,
+    "created": "{{t-240}}"
+   }
+  ],
+  "sessions": [
+   {
+    "id": "s1",
+    "book": "tomorrow, and tomorrow, and tomorrow",
+    "from": 212,
+    "to": 246,
+    "created": "{{t-4@22:10}}"
+   },
+   {
+    "id": "s2",
+    "book": "tomorrow, and tomorrow, and tomorrow",
+    "from": 246,
+    "to": 271,
+    "created": "{{t-3@21:40}}"
+   },
+   {
+    "id": "s3",
+    "book": "tomorrow, and tomorrow, and tomorrow",
+    "from": 271,
+    "to": 290,
+    "created": "{{t-2@22:05}}"
+   },
+   {
+    "id": "s4",
+    "book": "tomorrow, and tomorrow, and tomorrow",
+    "from": 290,
+    "to": 312,
+    "created": "{{t-1@21:50}}"
+   }
+  ]
+ }
+}

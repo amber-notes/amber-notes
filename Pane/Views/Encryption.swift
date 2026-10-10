@@ -1,3 +1,4 @@
+import SwiftData
 import SwiftUI
 
 /// After sign-in, before the notes, while this device doesn't have the account's key: a code for
@@ -46,9 +47,19 @@ struct KeyGateView: View {
     /// The code this device shows while it waits to be added.
     @State private var session: NewDeviceSession
 
-    init(crypto: AccountCrypto, backend: Backend, screen: Screen = .auto, session: NewDeviceSession? = nil) {
+    /// How many notes this device holds (Recently Deleted too): they stay through Start fresh and
+    /// go up again under the new key (SyncEngine.adoptKeyIfChanged), and the screen says so.
+    let notesHere: Int
+
+    /// The notes Start fresh keeps on this device, counted as `SyncEngine.markAllForUpload` picks them.
+    static func countNotes(_ context: ModelContext) -> Int {
+        (try? context.fetchCount(FetchDescriptor<Note>(predicate: #Predicate { $0.deletedAt == nil }))) ?? 0
+    }
+
+    init(crypto: AccountCrypto, backend: Backend, screen: Screen = .auto, session: NewDeviceSession? = nil, notesHere: Int = 0) {
         self.crypto = crypto
         self.backend = backend
+        self.notesHere = notesHere
         _screen = State(initialValue: screen)
         _session = State(initialValue: session ?? NewDeviceSession(crypto: crypto, server: backend.client.map { SupabaseAddDevice(client: $0) }))
     }
@@ -58,9 +69,10 @@ struct KeyGateView: View {
 
     var body: some View {
         #if os(macOS)
+        // In the welcome's card window, beside its picture (CardLayout).
         card
             .padding(.horizontal, 36)
-            .padding(.vertical, 48)
+            .padding(.vertical, 32)
             .frame(width: 400)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .containerBackground(for: .window) { Backdrop() }
@@ -81,8 +93,11 @@ struct KeyGateView: View {
 
     @ViewBuilder private var card: some View {
         VStack(spacing: 22) {
+            #if os(iOS)
             // The sign-in card's mark, in the same place, so it stays put from one card to the next.
+            // On the Mac the picture beside the step is the mark, as it is for sign-in.
             AppMark(size: 72)
+            #endif
             // One screen fades into the next while the card eases to its new height: the mark
             // stays put and nothing snaps.
             content
@@ -158,7 +173,7 @@ struct KeyGateView: View {
     /// the rest are small links under it.
     private var addDevice: some View {
         VStack(spacing: 18) {
-            heading(AddDeviceCopy.gateTitle, crypto.phase == .mismatch ? Copy.mismatch + " " + AddDeviceCopy.gateMessage : AddDeviceCopy.gateMessage)
+            heading(AddDeviceCopy.gateTitle, crypto.phase == .mismatch ? Copy.mismatch + " " + AddDeviceCopy.gateMessage : AddDeviceCopy.gateWhy + "\n\n" + AddDeviceCopy.gateMessage)
             NewDeviceCodeView(session: session)
                 .task(id: session.round) { await session.run() }
             VStack(spacing: 10) {
@@ -218,6 +233,7 @@ struct KeyGateView: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
             .frame(minHeight: Row.height)
+            .hoverHighlight(shape)
             .background(Color(Palette.field), in: shape)
             .overlay(shape.strokeBorder(Color(Palette.fieldHairline), lineWidth: 1 / displayScale))
             .contentShape(shape)
@@ -293,7 +309,7 @@ struct KeyGateView: View {
         VStack(spacing: 18) {
             heading("Start fresh?", nil)
             VStack(alignment: .leading, spacing: 10) {
-                ForEach(Copy.startFreshMessage, id: \.self) { line in
+                ForEach(Copy.startFreshMessage(notesHere: notesHere), id: \.self) { line in
                     Text(line)
                         .font(.subheadline)
                         .foregroundStyle(Color.ink)
@@ -392,7 +408,7 @@ struct KeyGateView: View {
         }
         guard Self.sameAccount(before: before, after: after) else {
             await backend.signOut()
-            throw KeyGateFailure(message: "That Google account signs in to a different Amber Notes account. Nothing was deleted.")
+            throw KeyGateFailure(message: "That Google account signs in to a different Pinto Notes account. Nothing was deleted.")
         }
         try await startFreshAfterSignIn()
     }
@@ -459,7 +475,7 @@ struct KeyGateView: View {
 
     private var unreachable: some View {
         VStack(spacing: 18) {
-            heading("Can't reach Amber Notes", Copy.unreachable)
+            heading("Can't reach Pinto Notes", Copy.unreachable)
             mainButton("Try again", id: "e2ee.retry", enabled: true) { await crypto.restart() }
             signOut
         }
@@ -483,7 +499,7 @@ struct KeyGateView: View {
 
     private func quietButton(_ title: String, id: String, muted: Bool = false, action: @escaping () -> Void) -> some View {
         Button(title) { error = nil; action() }
-            .buttonStyle(.plain)
+            .buttonStyle(.hoverLink)
             .font(muted ? .footnote : .subheadline)
             .foregroundStyle(muted ? AnyShapeStyle(Color.muted) : AnyShapeStyle(.tint))
             .frame(minHeight: 28)
@@ -523,13 +539,20 @@ enum KeyCopy {
     static let keychainHelp = "Check that iCloud Keychain is on here and on your other device: Settings › [your name] › iCloud › Passwords and Keychain."
     #endif
     static let recoveryFormat = "28 letters and numbers, in groups of four."
-    static let recoveryHint = "If another device still opens your notes, it shows the key in Settings › Privacy & Security."
+    static let recoveryHint = "If another device still opens your notes, it shows the key in Settings › Security."
     static let mismatch = "The key on this device isn't your account's current key."
-    static let unreachable = "Connect to the internet. This device checks your key with Amber Notes before opening your notes."
-    static let startFreshMessage = [
-        "Without a device that has your key, or a recovery key you saved, the notes stored with Amber Notes can't be opened by anyone, including us. AI connections you approved can still open them until they're disconnected.",
-        "Starting fresh deletes them from our server and disconnects every AI. This device gets a new key and a new recovery key, and your account starts empty.",
-    ]
+    static let unreachable = "Connect to the internet. This device checks your key with Pinto Notes before opening your notes."
+    private static let startFreshWhy = "Without a device that has your key, or a recovery key you saved, the notes stored with Pinto Notes can't be opened by anyone, including us. AI connections you approved can still open them until they're disconnected."
+    /// What Start fresh does, by whether this device holds notes: they stay and go up again under
+    /// the new key (`notesHere`, KeyGateView.countNotes); with none here, the account starts empty.
+    static func startFreshMessage(notesHere: Int) -> [String] {
+        guard notesHere > 0 else {
+            return [startFreshWhy,
+                    "Starting fresh deletes them from our server and disconnects every AI. This device gets a new key and a new recovery key, and your account starts empty."]
+        }
+        return [startFreshWhy,
+                "Starting fresh deletes them from our server. The notes on this \(InstallID.kind) are kept and uploaded again under a new key, with a new recovery key. You lose version history, shared links, AI connections, and files that aren't on this \(InstallID.kind)."]
+    }
     static let signInAgain = "To delete your notes, sign in again first."
 
 }

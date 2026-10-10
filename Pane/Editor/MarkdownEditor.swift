@@ -9,10 +9,13 @@ struct MarkdownEditor: View {
     var autofocus = false
     var identifier = "editor"
     var titleLine = true
+    /// False for a shared note (collaboration prototype): its text arrives through the controller's
+    /// target as it merges, never through `initialText`, which can be a render behind your typing.
+    var followsInitialText = true
     let onChange: (String) -> Void
 
     var body: some View {
-        PlatformEditor(initialText: initialText, header: header, controller: controller, autofocus: autofocus, identifier: identifier, titleLine: titleLine, onChange: onChange)
+        PlatformEditor(initialText: initialText, header: header, controller: controller, autofocus: autofocus, identifier: identifier, titleLine: titleLine, followsInitialText: followsInitialText, onChange: onChange)
     }
 }
 
@@ -48,8 +51,15 @@ final class EditorCore {
     }
 
 
+    /// What a live view shows: when it's the same as last time, the view needn't be given again.
+    enum CardContent: Equatable {
+        case grid(GridTable, focusFirst: Bool, request: GridFocusRequest?, selected: Bool)
+        /// `resolved`: its file is here (one can arrive by sync after the line that shows it).
+        case embed(LineEmbed, controller: ObjectIdentifier?, resolved: Bool)
+    }
+
     /// Every live view to place over the text: cards and embeds, keyed for reuse.
-    func overlays(layout: NSTextLayoutManager?, origin: CGPoint, target: EditorTarget, storage: NSTextStorage, controller: EditorController?, selection: @escaping () -> NSRange?) -> [(key: String, frame: CGRect, view: AnyView)] {
+    func overlays(layout: NSTextLayoutManager?, origin: CGPoint, target: EditorTarget, storage: NSTextStorage, controller: EditorController?, selection: @escaping () -> NSRange?) -> [(key: String, frame: CGRect, view: AnyView, content: CardContent)] {
         guard let tlm = layout, let tcm = tlm.textContentManager, let container = tlm.textContainer else { return [] }
         let width = container.size.width - container.lineFragmentPadding * 2
         func frame(at offset: Int, height: CGFloat, maxWidth: CGFloat = .infinity) -> CGRect? {
@@ -59,7 +69,13 @@ final class EditorCore {
             let y = frag.layoutFragmentFrame.minY + line.typographicBounds.minY + origin.y
             return CGRect(x: origin.x + container.lineFragmentPadding, y: y, width: min(width, maxWidth), height: height)
         }
-        var out: [(String, CGRect, AnyView)] = []
+        func resolved(_ e: LineEmbed) -> Bool {
+            switch e.kind {
+            case .file(let id, _), .image(let id, _): controller?.resolveAttachment(id) != nil
+            case .link, .note: true
+            }
+        }
+        var out: [(String, CGRect, AnyView, CardContent)] = []
         for g in grids {
             // The row handles sit in the margin, so the grid lines up with the text.
             guard var f = frame(at: g.range.location, height: GridMetrics.height(g)) else { continue }
@@ -76,11 +92,12 @@ final class EditorCore {
                 guard edited.index < now.count else { return }
                 target.apply(TextEdit(range: now[edited.index].range, replacement: edited.markdown, caret: -1))
             }
-            out.append(("g\(g.index)", f, AnyView(view)))
+            out.append(("g\(g.index)", f, AnyView(view), .grid(g, focusFirst: focusFirst, request: request, selected: isSelected)))
         }
         for e in embeds {
             // Cards and images share one column width, so their edges line up.
-            let maxW = ImageSizes.maxWidth
+            var maxW = ImageSizes.maxWidth
+            if case .note(let id, _) = e.kind, NoteWidgets.isApp(id) { maxW = NoteWidgets.maxWidth }
             guard let f = frame(at: e.range.location, height: e.height, maxWidth: maxW) else { continue }
             let remove = {
                 let ns = target.currentText as NSString
@@ -88,7 +105,7 @@ final class EditorCore {
                 if NSMaxRange(r) == ns.length, r.location > 0 { r = NSRange(location: r.location - 1, length: r.length + 1) }
                 target.apply(TextEdit(range: r, replacement: "", caret: -1))
             }
-            out.append((e.key, f, AnyView(EmbedView(embed: e, controller: controller, remove: remove))))
+            out.append((e.key, f, AnyView(EmbedView(embed: e, controller: controller, remove: remove)), .embed(e, controller: controller.map(ObjectIdentifier.init), resolved: resolved(e))))
         }
         return out
     }
@@ -129,6 +146,14 @@ final class EditorCore {
         if lastRegions.count > 6 { lastRegions.removeFirst() }
         let blocks = styler.apply(to: storage, active: selection ?? NSRange(location: NSNotFound, length: 0), region: region, structure: structure)
         publish(blocks)
+    }
+
+    /// The library's titles changed (or the note moved): wiki links are coloured again.
+    func setWiki(_ wiki: WikiScope?, storage: NSTextStorage, selection: NSRange?) {
+        guard styler.wiki != wiki else { return }
+        styler.wiki = wiki
+        needsFull = true
+        restyle(storage, selection: selection, force: true)
     }
 
     /// The last few restyle regions, for tests that check incremental styling.
@@ -425,11 +450,13 @@ private struct PlatformEditor: UIViewRepresentable {
     let autofocus: Bool
     let identifier: String
     let titleLine: Bool
+    let followsInitialText: Bool
     let onChange: (String) -> Void
 
     func makeUIView(context: Context) -> PaneTextView {
         let view = PaneTextView(frame: .zero)
         view.core.styler.firstLineIsTitle = titleLine
+        view.core.styler.wiki = controller.wiki
         view.configure(text: initialText, header: header)
         view.accessibilityIdentifier = identifier
         view.core.onChange = onChange
@@ -444,12 +471,23 @@ private struct PlatformEditor: UIViewRepresentable {
     func updateUIView(_ view: PaneTextView, context: Context) {
         view.core.onChange = onChange
         view.setHeader(header)
-        view.syncExternal(initialText)
+        if followsInitialText { view.syncExternal(initialText) }
         if controller.target !== view { controller.target = view }
+        view.setWiki(controller.wiki)
         // Read here so a change to it lays the text out again.
         _ = controller.bottomReserve
+        view.showRemoteCarets(controller.remoteCarets)
         view.setNeedsLayout()
     }
+}
+
+/// A name flag with a little room around the text.
+private final class PaddedLabel: UILabel {
+    override var intrinsicContentSize: CGSize {
+        let s = super.intrinsicContentSize
+        return CGSize(width: s.width + 8, height: s.height + 2)
+    }
+    override func drawText(in rect: CGRect) { super.drawText(in: rect.insetBy(dx: 4, dy: 1)) }
 }
 
 final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestureRecognizerDelegate, UITextDropDelegate {
@@ -508,6 +546,93 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
         headerLabel.frame = CGRect(x: 0, y: DateFold.labelTop, width: bounds.width, height: DateFold.labelHeight)
         foldDate(hasDate)
         layoutCards()
+        layoutRemoteCarets()
+    }
+
+    // MARK: Other people's carets (collaboration prototype)
+
+    private var remoteCarets: [RemoteCaret] = []
+    private var caretViews: [UUID: (bar: UIView, flag: UILabel, selection: [UIView])] = [:]
+
+    /// `amount` of `color` over `ground`, as one opaque colour.
+    static func mix(_ color: UIColor, into ground: UIColor, amount: CGFloat) -> UIColor {
+        var (r1, g1, b1, a1): (CGFloat, CGFloat, CGFloat, CGFloat) = (0, 0, 0, 0)
+        var (r2, g2, b2, a2): (CGFloat, CGFloat, CGFloat, CGFloat) = (0, 0, 0, 0)
+        color.getRed(&r1, green: &g1, blue: &b1, alpha: &a1)
+        ground.getRed(&r2, green: &g2, blue: &b2, alpha: &a2)
+        return UIColor(red: r2 + (r1 - r2) * amount, green: g2 + (g1 - g2) * amount, blue: b2 + (b1 - b2) * amount, alpha: 1)
+    }
+
+    func showRemoteCarets(_ carets: [RemoteCaret]) {
+        guard carets != remoteCarets else { return }
+        remoteCarets = carets
+        layoutRemoteCarets()
+    }
+
+    /// A bar in the person's colour where their caret is, exactly the line's height, and a tint over
+    /// what they've selected. Their first name sits on a small flag that never hides text it can
+    /// avoid: above the line when the line above is empty (or there is none), below it otherwise.
+    /// The flag shows while they type or just after their caret moves, then fades. Not
+    /// hit-testable: you type and tap through them.
+    private func layoutRemoteCarets() {
+        let live = Set(remoteCarets.map(\.id))
+        for (id, v) in caretViews where !live.contains(id) {
+            v.bar.removeFromSuperview(); v.flag.removeFromSuperview(); v.selection.forEach { $0.removeFromSuperview() }
+            caretViews[id] = nil
+        }
+        let ns = text as NSString
+        let length = ns.length
+        for c in remoteCarets {
+            let color = UIColor(c.color)
+            var v = caretViews[c.id] ?? {
+                let bar = UIView(), flag = PaddedLabel()
+                bar.isUserInteractionEnabled = false
+                bar.layer.cornerRadius = 1
+                flag.isUserInteractionEnabled = false
+                flag.font = .systemFont(ofSize: 10, weight: .semibold)
+                flag.textColor = .white
+                flag.layer.cornerRadius = 3
+                flag.layer.masksToBounds = true
+                addSubview(bar); addSubview(flag)
+                return (bar, flag as UILabel, [])
+            }()
+            v.bar.backgroundColor = color
+            v.flag.backgroundColor = color
+            v.flag.text = c.name
+            let loc = min(c.range.location, length), end = min(NSMaxRange(c.range), length)
+            guard let pos = position(from: beginningOfDocument, offset: loc) else { continue }
+            let rect = caretRect(for: pos)
+            let line = ns.lineRange(for: NSRange(location: loc, length: 0))
+            let roomAbove = line.location == 0
+                || ns.substring(with: ns.lineRange(for: NSRange(location: line.location - 1, length: 0))).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            let size = v.flag.intrinsicContentSize
+            let flagY = roomAbove ? rect.minY - size.height - 1 : rect.maxY + 1
+            // The caret and its flag jump to where the character is, in the same pass as the text
+            // change: a caret is tied to a character, so it never glides.
+            UIView.performWithoutAnimation {
+                v.bar.frame = CGRect(x: rect.minX - 1, y: rect.minY, width: 2, height: rect.height)
+                v.flag.frame = CGRect(x: min(rect.minX - 1, self.bounds.width - size.width - 4), y: flagY, width: size.width, height: size.height)
+            }
+            // Only the flag fades, a moment after they stop.
+            let alpha: CGFloat = c.showsName ? 1 : 0
+            if v.flag.alpha != alpha {
+                if alpha == 1 { v.flag.alpha = 1 } else { UIView.animate(withDuration: 0.6) { v.flag.alpha = 0 } }
+            }
+            v.selection.forEach { $0.removeFromSuperview() }
+            v.selection = []
+            if end > loc, let a = position(from: beginningOfDocument, offset: loc), let b = position(from: beginningOfDocument, offset: end),
+               let range = textRange(from: a, to: b) {
+                for r in selectionRects(for: range) where r.rect.width > 0 {
+                    let tint = UIView(frame: r.rect)
+                    // Solid, not see-through: the person's colour mixed into the page, behind the text.
+                    tint.backgroundColor = Self.mix(color, into: Palette.page.resolvedColor(with: traitCollection), amount: 0.2)
+                    tint.isUserInteractionEnabled = false
+                    insertSubview(tint, at: 0)
+                    v.selection.append(tint)
+                }
+            }
+            caretViews[c.id] = v
+        }
     }
 
     /// Keeps a short note scrollable by the date's height, and opens every note scrolled past it.
@@ -693,6 +818,7 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
         lastReported = text
         remember(text)
         core.onChange(text)
+        controller?.typingChanged(text: text, selection: editingSelection)
     }
 
     /// The last body we reported or received, to tell outside edits from our own.
@@ -788,9 +914,12 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
             return
         }
         core.restyle(textStorage, selection: editingSelection, force: false)
+        controller?.typingChanged(text: text, selection: editingSelection)
     }
 
     private var editingSelection: NSRange? { isFirstResponder ? selectedRange : nil }
+
+    func setWiki(_ wiki: WikiScope?) { core.setWiki(wiki, storage: textStorage, selection: editingSelection) }
 
     func textViewDidBeginEditing(_ textView: UITextView) {
         controller?.isEditing = true
@@ -799,6 +928,7 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
 
     func textViewDidEndEditing(_ textView: UITextView) {
         controller?.isEditing = false
+        controller?.typingChanged(text: text, selection: nil)
         core.restyle(textStorage, selection: nil, force: true)
     }
 
@@ -807,6 +937,7 @@ final class PaneTextView: UITextView, UITextViewDelegate, EditorTarget, UIGestur
         switch LinkPolicy.action(for: url) {
         case .open(let url): return UIAction { _ in UIApplication.shared.open(url) }
         case .note(let id): return UIAction { [weak self] _ in self?.controller?.openNote(id) }
+        case .wiki(let target): return UIAction { [weak self] _ in self?.controller?.openWiki(target) }
         case .nothing: return nil
         }
     }
@@ -964,6 +1095,7 @@ private struct PlatformEditor: NSViewRepresentable {
     let autofocus: Bool
     let identifier: String
     let titleLine: Bool
+    let followsInitialText: Bool
     let onChange: (String) -> Void
 
     func makeNSView(context: Context) -> NSScrollView {
@@ -974,6 +1106,7 @@ private struct PlatformEditor: NSViewRepresentable {
         scroll.scrollerStyle = .overlay
         let view = PaneTextView(frame: .zero)
         view.core.styler.firstLineIsTitle = titleLine
+        view.core.styler.wiki = controller.wiki
         view.configure(text: initialText, header: header)
         view.setAccessibilityIdentifier(identifier)
         view.core.onChange = onChange
@@ -989,8 +1122,9 @@ private struct PlatformEditor: NSViewRepresentable {
         guard let view = scroll.documentView as? PaneTextView else { return }
         view.core.onChange = onChange
         view.setHeader(header)
-        view.syncExternal(initialText)
+        if followsInitialText { view.syncExternal(initialText) }
         if controller.target !== view { controller.target = view }
+        view.setWiki(controller.wiki)
     }
 }
 
@@ -1064,11 +1198,18 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
         let inset = NSSize(width: 20, height: headerLabel.stringValue.isEmpty ? 14 : 44)
         if textContainerInset != inset { textContainerInset = inset }
         headerLabel.frame = NSRect(x: 0, y: 14, width: newSize.width, height: 16)
-        DispatchQueue.main.async { [weak self] in self?.layoutCards() }
+        // Straight to their new places: while the width changes (the sidebar sliding, the window
+        // being resized) the cards follow the text instead of gliding after it.
+        DispatchQueue.main.async { [weak self] in self?.layoutCards(animated: false) }
     }
 
-    /// Places live views (cards, files, links) over their reserved lines.
-    func layoutCards() {
+    /// What each live view last showed, so one whose content is the same isn't given it again.
+    private var cardContent: [String: EditorCore.CardContent] = [:]
+
+    /// Places live views (cards, files, links) over their reserved lines. A view whose content is
+    /// unchanged only moves: giving every card its view again, and animating each one, on every
+    /// frame of a width change made a note of tables stall.
+    func layoutCards(animated: Bool = true) {
         guard let storage = textStorage else { return }
         let items = core.overlays(layout: textLayoutManager, origin: textContainerOrigin,
                                   target: self, storage: storage, controller: controller) { [weak self] in self?.editingSelection }
@@ -1076,6 +1217,7 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
         for (k, host) in cardHosts where !live.contains(k) {
             host.removeFromSuperview()
             cardHosts[k] = nil
+            cardContent[k] = nil
         }
         for item in items {
             let host = cardHosts[item.key] ?? {
@@ -1086,11 +1228,15 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
                 cardHosts[item.key] = h
                 return h
             }()
-            host.rootView = item.view
+            if cardContent[item.key] != item.content {
+                host.rootView = item.view
+                cardContent[item.key] = item.content
+            }
             if host.frame != item.frame {
                 NSAnimationContext.runAnimationGroup { ctx in
-                    ctx.duration = 0.22
-                    ctx.allowsImplicitAnimation = true
+                    // Zero duration also ends a glide still under way.
+                    ctx.duration = animated ? 0.22 : 0
+                    ctx.allowsImplicitAnimation = animated
                     host.animator().frame = item.frame
                 }
             }
@@ -1179,12 +1325,25 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
         switch LinkPolicy.action(for: link) {
         case .open(let url): NSWorkspace.shared.open(url)
         case .note(let id): controller?.openNote(id)
+        case .wiki(let target): controller?.openWiki(target)
         case .nothing: NSSound.beep()
         }
         return true
     }
 
     func textView(_ textView: NSTextView, doCommandBy selector: Selector) -> Bool {
+        if let c = controller, !c.wikiSuggestions.isEmpty {
+            switch selector {
+            case #selector(moveDown(_:)): c.wikiChoice = min(c.wikiChoice + 1, c.wikiSuggestions.count - 1); return true
+            case #selector(moveUp(_:)): c.wikiChoice = max(c.wikiChoice - 1, 0); return true
+            case #selector(insertNewline(_:)), #selector(insertTab(_:)):
+                c.completeWiki(c.wikiSuggestions[min(c.wikiChoice, c.wikiSuggestions.count - 1)])
+                layoutWikiSuggestions()
+                return true
+            case #selector(cancelOperation(_:)): c.dismissWikiSuggestions(); layoutWikiSuggestions(); return true
+            default: break
+            }
+        }
         switch selector {
         case #selector(insertNewline(_:)):
             if let e = ListEditing.returnKey(in: string, selection: selectedRange()) { apply(e); return true }
@@ -1216,6 +1375,8 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
         lastReported = string
         remember(string)
         core.onChange(string)
+        controller?.typingChanged(text: string, selection: editingSelection)
+        layoutWikiSuggestions()
     }
 
     /// The last body we reported or received, to tell outside edits from our own.
@@ -1262,6 +1423,9 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
         tlm.ensureLayout(for: range)
         layoutCards()
     }
+
+    /// Other people's carets aren't drawn on the Mac yet (collaboration prototype).
+    func showRemoteCarets(_ carets: [RemoteCaret]) {}
 
     func syncExternal(_ new: String) {
         guard new != lastReported else { return }
@@ -1312,9 +1476,46 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
             return
         }
         core.restyle(storage, selection: editingSelection, force: false)
+        controller?.typingChanged(text: string, selection: editingSelection)
+        layoutWikiSuggestions()
+    }
+
+    // MARK: Wiki link suggestions
+
+    private var wikiHost: NSHostingView<WikiSuggestionList>?
+
+    /// Shows the titles for the `[[link` being typed just under it, or takes them away.
+    func layoutWikiSuggestions() {
+        guard let controller, let q = controller.wikiQuery, !controller.wikiSuggestions.isEmpty else {
+            wikiHost?.removeFromSuperview()
+            wikiHost = nil
+            return
+        }
+        let host = wikiHost ?? {
+            let h = NSHostingView(rootView: WikiSuggestionList(controller: controller))
+            h.sizingOptions = []
+            addSubview(h)
+            wikiHost = h
+            return h
+        }()
+        guard let tlm = textLayoutManager, let tcm = tlm.textContentManager,
+              let loc = tcm.location(tcm.documentRange.location, offsetBy: max(q.location - 2, 0)) else { return }
+        var caret: CGRect?
+        tlm.enumerateTextSegments(in: NSTextRange(location: loc), type: .standard, options: []) { _, r, _, _ in caret = r; return false }
+        // Under the line the link is on (its paragraph may wrap onto several).
+        guard let caret, let frag = tlm.textLayoutFragment(for: loc) else { return }
+        let inFrag = tcm.offset(from: frag.rangeInElement.location, to: loc)
+        let lines = frag.textLineFragments
+        let line = lines.first { NSLocationInRange(inFrag, $0.characterRange) } ?? lines.last
+        let bottom = frag.layoutFragmentFrame.minY + (line?.typographicBounds.maxY ?? frag.layoutFragmentFrame.height) + textContainerOrigin.y
+        let size = WikiSuggestionList.size(rows: controller.wikiSuggestions.count)
+        let x = min(max(caret.minX + textContainerOrigin.x - 8, 0), max(bounds.width - size.width, 0))
+        host.frame = CGRect(origin: CGPoint(x: x, y: bottom + 4), size: size)
     }
 
     private var editingSelection: NSRange? { window?.firstResponder === self ? selectedRange() : nil }
+
+    func setWiki(_ wiki: WikiScope?) { if let storage = textStorage { core.setWiki(wiki, storage: storage, selection: editingSelection) } }
 
     override func becomeFirstResponder() -> Bool {
         let ok = super.becomeFirstResponder()
@@ -1330,6 +1531,8 @@ final class PaneTextView: NSTextView, NSTextViewDelegate, EditorTarget {
         if ok, let storage = textStorage {
             controller?.isEditing = false
             core.restyle(storage, selection: nil, force: true)
+            controller?.typingChanged(text: string, selection: nil)
+            layoutWikiSuggestions()
         }
         return ok
     }

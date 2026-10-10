@@ -1,8 +1,10 @@
 #!/bin/zsh
-# Builds the Amber Notes DMG with its styled window: dmgbuild writes the window settings
+# Builds the Pinto Notes DMG with its styled window: dmgbuild writes the window settings
 # (.DS_Store), background and volume icon straight into the image. No Finder, no AppleScript.
 #
-#   scripts/dmg/build-dmg.sh <Amber Notes.app> <out.dmg> [background: warm (default) | white]
+#   scripts/dmg/build-dmg.sh <Pinto Notes.app> <out.dmg> [background: warm (default) | white]
+#
+# The volume is named after the app ("Pinto Notes", or "Amber Notes Beta").
 #
 # dmgbuild lives in a venv at build/dmg-venv, created on first use, and runs through
 # scripts/dmg/run-dmgbuild.py, which works around hdiutil convert failing on this Mac.
@@ -15,4 +17,4 @@ VENV="$REPO/build/dmg-venv"
 [[ -x $VENV/bin/dmgbuild ]] || { python3 -m venv "$VENV" && "$VENV/bin/pip" install -q dmgbuild==1.6.7; }
 [[ -f $REPO/brand/dmg/$BG/background.tiff ]] || { echo "No background $BG in brand/dmg." >&2; exit 1; }
 "$VENV/bin/python" "$REPO/scripts/dmg/run-dmgbuild.py" -s "$REPO/scripts/dmg/settings.py" -D repo="$REPO" -D app="$APP" -D background="$BG" \
-  "Amber Notes" "$OUT" >/dev/null
+  "$(basename "$APP" .app)" "$OUT" >/dev/null

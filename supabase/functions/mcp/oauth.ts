@@ -249,6 +249,20 @@ export function claimsATrustedName(name: string): boolean {
   return ["chatgpt", "openai", "claude", "anthropic", "amber", "pinto"].some((w) => flat.includes(w));
 }
 
+/// Where ChatGPT, Claude and Pinto Notes really receive sign-ins or serve pages: these domains and
+/// anything under them.
+const TRUSTED_DOMAINS = ["chatgpt.com", "openai.com", "claude.ai", "claude.com", "anthropic.com", "pintonotes.com", "ambernotes.app"];
+
+/// A return address whose host spells one of their names without being on one of their domains
+/// (claude.ai.example.net, chatgpt-login.example). The consent screen titles an unverified app by
+/// its host, so such a host would read like the AI itself. Loopback addresses name nobody.
+export function hostClaimsATrustedName(redirectURI: string): boolean {
+  const host = new URL(redirectURI).hostname.toLowerCase().replace(/\.$/, "");
+  if (LOOPBACK.has(host) || TRUSTED_DOMAINS.some((d) => host === d || host.endsWith("." + d))) return false;
+  const flat = host.replace(/[^a-z0-9]/g, "").replace(/0/g, "o").replace(/1/g, "l").replace(/4/g, "a");
+  return ["chatgpt", "openai", "claude", "anthropic", "pintonotes", "ambernotes"].some((w) => flat.includes(w));
+}
+
 /// A registered name made safe to show: no control, format or direction characters, one line, short.
 export function cleanName(raw: string): string {
   return raw.normalize("NFKC").replace(/[\t\n\r\p{Zl}\p{Zp}]/gu, " ").replace(/[\p{Cc}\p{Cf}]/gu, "")
@@ -298,7 +312,7 @@ function protectedResource(base: string) {
     authorization_servers: [base],
     scopes_supported: SCOPES,
     bearer_methods_supported: ["header"],
-    resource_name: "Amber Notes",
+    resource_name: "Pinto Notes",
   };
 }
 
@@ -371,6 +385,9 @@ async function register(req: Request, sql: Sql): Promise<Response> {
   if (!uris.length || uris.length > 10) return oauthError("invalid_redirect_uri", "Give between 1 and 10 redirect_uris.");
   const bad = uris.find((u) => !validRedirect(u) || u.length > 2000);
   if (bad) return oauthError("invalid_redirect_uri", `Redirect URIs must be https, or http on localhost: ${bad}`);
+  // The host is the title on the consent screen, so it may not borrow a name the client_name may not.
+  const borrowed = uris.find((u) => hostClaimsATrustedName(u));
+  if (borrowed) return oauthError("invalid_redirect_uri", `This redirect address uses the name of ChatGPT, Claude or Pinto Notes on a domain that isn't theirs: ${borrowed}`);
   const grants = Array.isArray(body.grant_types) ? body.grant_types.map(String) : ["authorization_code"];
   if (grants.some((g) => !["authorization_code", "refresh_token"].includes(g))) {
     return oauthError("invalid_client_metadata", "Only authorization_code and refresh_token grants are supported.");
@@ -489,13 +506,13 @@ async function claim(sql: Sql, r: RequestRow, user: string): Promise<boolean> {
 }
 
 const EXPIRED = "This request has expired. Start connecting again from the other app.";
-const NOT_YOURS = "Another Amber Notes account is answering this request. Start connecting again from the other app.";
+const NOT_YOURS = "Another Pinto Notes account is answering this request. Start connecting again from the other app.";
 
 /// What the app and the web page show on the consent screen.
 async function describeRequest(req: Request, sql: Sql): Promise<Response> {
   if (!allowedOrigin(req)) return json({ error: "Not allowed from this site." }, 403);
   const user = await sessionUser(req);
-  if (!user) return json({ error: "Sign in to Amber Notes first." }, 401);
+  if (!user) return json({ error: "Sign in to Pinto Notes first." }, 401);
   if (await limited(sql, req, "request")) return json({ error: "Too many attempts. Wait a few minutes and try again." }, 429);
   const r = await pending(sql, new URL(req.url).searchParams.get("id") ?? "");
   if (!r) return json({ error: EXPIRED }, 404);
@@ -554,7 +571,7 @@ const RAW_P256 = /^[A-Za-z0-9+/]{86}[AEIMQUYcgkosw048]=$/;
 async function ask(req: Request, sql: Sql): Promise<Response> {
   if (!allowedOrigin(req)) return json({ error: "Not allowed from this site." }, 403);
   const user = await sessionUser(req);
-  if (!user) return json({ error: "Sign in to Amber Notes first." }, 401);
+  if (!user) return json({ error: "Sign in to Pinto Notes first." }, 401);
   if (await limited(sql, req, "request")) return json({ error: "Too many attempts. Wait a few minutes and try again." }, 429);
   const body = await req.json().catch(() => ({})) as { id?: string; browser_key?: unknown; from?: unknown; pickup_hash?: unknown; match_commit?: unknown };
   const key = typeof body.browser_key === "string" ? body.browser_key : "";
@@ -667,7 +684,7 @@ export async function notifyDevices(sql: Sql, user: string, requestId: string): 
       where user_id = ${user} and updated_at > now() - interval '90 days'`;
     // Fixed words: not even the name the app gives itself, which anyone can choose.
     const payload = {
-      aps: { alert: { title: "An AI connection request", body: "Open Amber Notes to see it." }, sound: "default", "thread-id": "connect" },
+      aps: { alert: { title: "An AI connection request", body: "Open Pinto Notes to see it." }, sound: "default", "thread-id": "connect" },
       ask: requestId,
     };
     const outcomes = await Promise.all(tokens.map(async (t) => ({ t, outcome: await send({ token: t.token, environment: t.environment, payload, collapseId: requestId }) })));
@@ -686,12 +703,12 @@ export async function notifyDevices(sql: Sql, user: string, requestId: string): 
 async function deviceNonce(req: Request, sql: Sql): Promise<Response> {
   if (!allowedOrigin(req)) return json({ error: "Not allowed from this site." }, 403);
   const user = await sessionUser(req);
-  if (!user) return json({ error: "Sign in to Amber Notes first." }, 401);
+  if (!user) return json({ error: "Sign in to Pinto Notes first." }, 401);
   if (await limited(sql, req, "request")) return json({ error: "Too many attempts. Wait a few minutes and try again." }, 429);
   const body = await req.json().catch(() => ({})) as { id?: unknown; nonce?: unknown };
   const id = typeof body.id === "string" && UUID.test(body.id) ? body.id : "";
   const nonce = typeof body.nonce === "string" ? body.nonce : "";
-  if (!NONCE.test(nonce)) return json({ error: "Update Amber Notes to connect an AI." }, 400);
+  if (!NONCE.test(nonce)) return json({ error: "Update Pinto Notes to connect an AI." }, 400);
   if (!id) return json({ error: EXPIRED }, 404);
   const [set] = await sql<{ device_nonce: string }[]>`
     update public.connect_asks a set device_nonce = ${nonce}
@@ -847,7 +864,7 @@ const SCAN_CHANGED = "This code changed on your computer. Scan it again.";
 async function decide(req: Request, sql: Sql): Promise<Response> {
   if (!allowedOrigin(req)) return json({ error: "Not allowed from this site." }, 403);
   const user = await sessionUser(req);
-  if (!user) return json({ error: "Sign in to Amber Notes first." }, 401);
+  if (!user) return json({ error: "Sign in to Pinto Notes first." }, 401);
   if (await limited(sql, req, "decide")) return json({ error: "Too many attempts." }, 429);
   const body = await req.json().catch(() => ({})) as { id?: string; allow?: boolean; write?: boolean; redirect_uri?: unknown; code_hash?: unknown; code_wrap?: unknown; handoff?: unknown; wrong_number?: unknown; scan?: unknown };
   const r = await pending(sql, String(body.id ?? ""));
@@ -860,12 +877,12 @@ async function decide(req: Request, sql: Sql): Promise<Response> {
   const codeWrap = typeof body.code_wrap === "string" ? body.code_wrap : "";
   if (allow) {
     const [key] = await sql<{ key_id: string }[]>`select key_id from public.account_keys where user_id = ${user}`;
-    if (!key) return json({ error: "Set up Amber Notes on this device first." }, 409);
+    if (!key) return json({ error: "Set up Pinto Notes on this device first." }, 409);
     if (!/^[0-9a-f]{64}$/.test(codeHash) || codeWrap.length > 300 || !/^amb2\.[0-9a-f]{16}\.[A-Za-z0-9+/]+={0,2}$/.test(codeWrap)) {
-      return json({ error: "Update Amber Notes to connect an AI." }, 400);
+      return json({ error: "Update Pinto Notes to connect an AI." }, 400);
     }
     if (codeWrap.split(".")[1] !== key.key_id) {
-      return json({ error: "This device has an old key for your notes. Open Amber Notes again to get the current one." }, 409);
+      return json({ error: "This device has an old key for your notes. Open Pinto Notes again to get the current one." }, 409);
     }
   }
   // Asked from a browser: a device's code goes to that page, sealed to its key, and the device
@@ -882,7 +899,7 @@ async function decide(req: Request, sql: Sql): Promise<Response> {
   }
   const fromPage = req.headers.get("origin") === new URL(connectPage()).origin;
   const handoff = typeof body.handoff === "string" && !fromPage ? body.handoff : "";
-  if (asked && allow && !fromPage && (!HANDOFF.test(handoff) || handoff.length > 600)) return json({ error: "Update Amber Notes to connect an AI." }, 400);
+  if (asked && allow && !fromPage && (!HANDOFF.test(handoff) || handoff.length > 600)) return json({ error: "Update Pinto Notes to connect an AI." }, 400);
 
   // The issuer the client started with: the address its /authorize went through. Built as
   // clientRedirect documents, the same way the device builds what it seals.
@@ -935,7 +952,7 @@ async function decide(req: Request, sql: Sql): Promise<Response> {
   if (!answered) return json({ error: EXPIRED }, 404);
   if (!allow) {
     u.searchParams.set("error", "access_denied");
-    u.searchParams.set("error_description", "The person declined in Amber Notes.");
+    u.searchParams.set("error_description", "The person declined in Pinto Notes.");
   }
   if (asked) {
     // A scanned ask becomes the account's that answered it, like one it asked for.
@@ -951,7 +968,7 @@ async function decide(req: Request, sql: Sql): Promise<Response> {
 async function release(req: Request, sql: Sql): Promise<Response> {
   if (!allowedOrigin(req)) return json({ error: "Not allowed from this site." }, 403);
   const user = await sessionUser(req);
-  if (!user) return json({ error: "Sign in to Amber Notes first." }, 401);
+  if (!user) return json({ error: "Sign in to Pinto Notes first." }, 401);
   if (await limited(sql, req, "request")) return json({ error: "Too many attempts. Wait a few minutes and try again." }, 429);
   const body = await req.json().catch(() => ({})) as { id?: string };
   const id = String(body.id ?? "");

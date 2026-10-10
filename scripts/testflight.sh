@@ -12,11 +12,22 @@
 #
 # CI (GitHub Actions) sets IN_PLACE=1 to build the current checkout instead of the clean one,
 # and passes the key as ASC_KEY_PATH / ASC_KEY_ID / ASC_ISSUER_ID and the version as VERSION.
+#
+# CHANNEL=beta uploads Amber Notes Beta (Config/Beta.xcconfig, the staging backend;
+# docs/Technical/staging.md) from the current checkout, to its own App Store Connect app.
 set -euo pipefail
 MAIN="$(cd "$(dirname "$0")/.." && pwd)"
 CLEAN="$MAIN/../AmberNotes-install"
 OUT="$MAIN/build/testflight"
 IN_PLACE=${IN_PLACE:-0}
+CHANNEL=${CHANNEL:-release}
+beta=()
+NAME="Pinto Notes"
+if [[ $CHANNEL == beta ]]; then
+  IN_PLACE=1; OUT="$MAIN/build/testflight-beta"; NAME="Amber Notes Beta"
+  [[ -f $MAIN/Config/Backend.staging.local.xcconfig ]] || { echo "No Config/Backend.staging.local.xcconfig: run scripts/staging.sh app-config first." >&2; exit 1; }
+  beta=(-xcconfig "$MAIN/Config/Beta.xcconfig")
+fi
 [[ $IN_PLACE == 1 ]] && CLEAN="$MAIN"
 [[ -n ${DEVELOPER_DIR:-} ]] || export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 WHICH=${1:-both}
@@ -63,7 +74,7 @@ ship() {
   local archive="$OUT/$platform-$BUILD.xcarchive"
   echo "→ $platform build $BUILD: archiving"
   xcodebuild archive -project "$CLEAN/Pane.xcodeproj" -scheme Pane -configuration Release \
-    -destination "$dest" -archivePath "$archive" -allowProvisioningUpdates "${auth[@]}" \
+    -destination "$dest" -archivePath "$archive" -allowProvisioningUpdates "${auth[@]}" "${beta[@]}" \
     DEVELOPMENT_TEAM=$TEAM CODE_SIGN_STYLE=Automatic CODE_SIGN_IDENTITY="Apple Development" \
     PROVISIONING_PROFILE_SPECIFIER= CURRENT_PROJECT_VERSION=$BUILD ${VERSION:+MARKETING_VERSION=$VERSION} "$@" \
     > "$OUT/$platform-$BUILD-archive.log" 2>&1 || { grep -E " error: " "$OUT/$platform-$BUILD-archive.log" | head -20; return 1; }
@@ -74,8 +85,8 @@ ship() {
   echo "✓ $platform build $BUILD $([[ $UPLOAD == 1 ]] && echo "uploaded" || echo "exported to $OUT/$platform-$BUILD-export")"
 }
 
-# The Mac app installs as "Amber Notes.app" (dev builds keep the Pane product name), sandboxed.
-macArgs=(PANE_MAC_ENTITLEMENTS=Pane-mac-appstore.entitlements "PANE_PRODUCT_NAME=Amber Notes")
+# The Mac app installs as "Pinto Notes.app" (dev builds keep the Pane product name), sandboxed.
+macArgs=(PANE_MAC_ENTITLEMENTS=Pane-mac-appstore.entitlements "PANE_PRODUCT_NAME=$NAME")
 
 case $WHICH in
   ios)  ship ios 'generic/platform=iOS' ;;

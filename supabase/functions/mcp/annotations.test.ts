@@ -16,14 +16,15 @@ Deno.test("every tool has a title, also in annotations, and all three hints as e
 Deno.test("tools that change or remove anything already there are destructive", () => {
   const destructive = tools.filter((t) => t.annotations.destructiveHint).map((t) => t.name).sort();
   assertEquals(destructive, [
-    "delete_folder", "delete_note", "delete_table_row", "edit_note", "log_table_row", "move_note", "pin_note", "rename_folder",
-    "replace_note_body", "restore_revision", "set_checklist_item",
+    "create_app", "delete_app_file", "delete_folder", "delete_note", "delete_table_row", "delete_table_rows", "edit_app_file", "edit_note", "edit_note_page", "edit_table_columns", "log_table_row",
+    "move_app_file", "move_note", "pin_note", "rename_folder", "replace_note_body", "restore_revision", "set_checklist_item", "set_note_page",
+    "update_checklist_items", "update_page_data", "update_table_rows", "write_app_file",
   ]);
 });
 
 Deno.test("only tools that just add are non-destructive writes", () => {
   const additive = tools.filter((t) => !t.annotations.readOnlyHint && !t.annotations.destructiveHint).map((t) => t.name).sort();
-  assertEquals(additive, ["append_to_note", "create_folder", "create_note", "create_sub_note", "restore_note"]);
+  assertEquals(additive, ["add_checklist_items", "add_table_rows", "append_to_note", "create_folder", "create_note", "create_sub_note", "restore_note"]);
 });
 
 Deno.test("names are unique, short and snake_case", () => {

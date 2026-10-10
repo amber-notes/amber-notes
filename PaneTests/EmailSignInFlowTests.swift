@@ -1,4 +1,5 @@
 import Foundation
+import Supabase
 import Testing
 @testable import Pane
 
@@ -29,7 +30,7 @@ import Testing
         f.finishCheck(.password)
         #expect(f.step == .signIn(fallback: false))
         #expect(f.showsPassword)
-        #expect(f.buttonTitle == "Sign In")
+        #expect(f.buttonTitle == "Sign in")
         #expect(!f.buttonEnabled)
         f.password = "x"
         #expect(f.buttonEnabled)
@@ -41,7 +42,7 @@ import Testing
         _ = f.beginCheck()
         f.finishCheck(.new)
         #expect(f.step == .create)
-        #expect(f.buttonTitle == "Create Account")
+        #expect(f.buttonTitle == "Create account")
         f.password = "short"
         #expect(!f.buttonEnabled)
         f.password = "twelve chars"
@@ -122,7 +123,7 @@ import Testing
         #expect(!f.showsPassword)
         #expect(f.emailLocked, "the link goes to the email already typed")
         #expect(!f.showsApple, "a password account stays on the password path")
-        #expect(f.buttonTitle == "Email Me a Link")
+        #expect(f.buttonTitle == "Email me a link")
         let first = f.beginReset()
         let second = f.beginReset()
         #expect(first)
@@ -131,7 +132,7 @@ import Testing
         f.finishReset(sent: true)
         #expect(f.step == .forgotSent)
         #expect(!f.showsApple)
-        #expect(f.buttonTitle == "Back to Sign In")
+        #expect(f.buttonTitle == "Back to sign in")
         f.backToSignIn()
         #expect(f.step == .signIn(fallback: false))
         #expect(f.showsPassword)
@@ -162,6 +163,126 @@ import Testing
         #expect(!f.offersReset, "not before the email is checked")
         f.forgotPassword()
         #expect(f.step == .email)
+    }
+
+    // MARK: Email confirmation (docs/Technical/email-confirmation.md)
+
+    @Test func aSignUpThatNeedsConfirmingAsksForTheCode() {
+        var f = EmailSignInFlow(email: "new@example.com")
+        _ = f.beginCheck()
+        f.finishCheck(.new)
+        f.password = "twelve chars"
+        let sent = Date(timeIntervalSince1970: 1_000)
+        f.needsConfirmation(sentAt: sent)
+        #expect(f.step == .confirm)
+        #expect(f.password.isEmpty, "the code signs in; the password isn't kept")
+        #expect(!f.showsPassword)
+        #expect(!f.showsApple)
+        #expect(!f.showsEmailField, "the address shows as text, with Use a different email")
+        #expect(f.emailLocked)
+        #expect(f.action == .verify)
+        #expect(f.buttonTitle == "Confirm")
+        #expect(!f.offersReset)
+    }
+
+    @Test func theCodeTakesSixDigitsAndNothingElse() {
+        var f = EmailSignInFlow(step: .confirm, email: "new@example.com")
+        f.code = "12 3-4a"
+        #expect(f.code == "1234")
+        #expect(!f.buttonEnabled)
+        f.code = "123456789"
+        #expect(f.code == "123456", "a paste of more keeps the first six")
+        #expect(f.buttonEnabled)
+        f.code = "١٢٣٤٥٦"
+        #expect(f.code.isEmpty, "only ASCII digits: the server's code is")
+    }
+
+    @Test func aPastedCodeWithASpaceFillsAllSixBoxes() {
+        var f = EmailSignInFlow(step: .confirm, email: "new@example.com")
+        f.code = "123 456"
+        #expect(f.code == "123456")
+        let (digits, active) = CodeBoxes.slots(f.code)
+        #expect(digits == ["1", "2", "3", "4", "5", "6"])
+        #expect(active == nil, "no box left to fill")
+        #expect(f.buttonEnabled)
+    }
+
+    @Test func theNextBoxToFillIsTheActiveOne() {
+        #expect(CodeBoxes.slots("").active == 0)
+        let (digits, active) = CodeBoxes.slots("70")
+        #expect(digits == ["7", "0", nil, nil, nil, nil])
+        #expect(active == 2)
+        var f = EmailSignInFlow(step: .confirm, email: "new@example.com", code: "704")
+        f.code.removeLast()
+        #expect(CodeBoxes.slots(f.code).active == 2, "backspace goes back one box")
+    }
+
+    @Test func resendWaitsAMinuteAfterEachCode() {
+        let sent = Date(timeIntervalSince1970: 1_000)
+        var f = EmailSignInFlow(email: "new@example.com")
+        _ = f.beginCheck()
+        f.finishCheck(.new)
+        f.needsConfirmation(sentAt: sent)
+        #expect(f.resendWait(now: sent) == 60)
+        #expect(f.resendWait(now: sent.addingTimeInterval(59.2)) == 1)
+        #expect(f.resendWait(now: sent.addingTimeInterval(60)) == 0)
+        f.code = "123"
+        f.codeResent(at: sent.addingTimeInterval(61))
+        #expect(f.code.isEmpty, "the old code is no good")
+        #expect(f.resendWait(now: sent.addingTimeInterval(61)) == 60)
+    }
+
+    @Test func signingInBeforeConfirmingGoesToTheCodeWithResendReady() {
+        var f = EmailSignInFlow(email: "you@example.com")
+        _ = f.beginCheck()
+        f.finishCheck(.password)
+        f.password = "secret"
+        f.needsConfirmation(sentAt: nil)
+        #expect(f.step == .confirm)
+        #expect(f.password.isEmpty)
+        #expect(f.resendWait(now: .now) == 0, "no code went out yet: the screen sends one straight away")
+    }
+
+    @Test func useADifferentEmailLeavesTheCodeScreen() {
+        var f = EmailSignInFlow(email: "new@example.com")
+        _ = f.beginCheck()
+        f.finishCheck(.new)
+        f.needsConfirmation(sentAt: .now)
+        f.code = "12345"
+        f.back()
+        #expect(f.step == .email)
+        #expect(f.code.isEmpty)
+        #expect(f.codeSentAt == nil)
+        #expect(f.showsApple)
+    }
+
+    @Test func onlyASignUpOrSignInLeadsToTheCode() {
+        for step: EmailSignInFlow.Step in [.email, .checking, .apple, .forgot(sending: false), .forgotSent] {
+            var f = EmailSignInFlow(step: step, email: "you@example.com")
+            f.needsConfirmation(sentAt: .now)
+            #expect(f.step == step)
+        }
+        var f = EmailSignInFlow(step: .email, email: "you@example.com")
+        f.codeResent(at: .now)
+        #expect(f.codeSentAt == nil, "a resend answer after leaving changes nothing")
+    }
+
+    @Test func confirmationErrorsSayWhatToDo() {
+        func api(_ code: String, _ message: String) -> AuthError {
+            .api(message: message, errorCode: ErrorCode(rawValue: code), underlyingData: Data(),
+                 underlyingResponse: HTTPURLResponse(url: URL(string: "https://x.supabase.co")!, statusCode: 400, httpVersion: nil, headerFields: nil)!)
+        }
+        #expect(Backend.isEmailNotConfirmed(api("email_not_confirmed", "Email not confirmed")))
+        #expect(!Backend.isEmailNotConfirmed(api("invalid_credentials", "Invalid login credentials")))
+        #expect(Backend.confirmMessage(for: api("otp_expired", "Token has expired or is invalid")).contains("Resend code"))
+        #expect(Backend.confirmMessage(for: api("over_email_send_rate_limit", "For security purposes, you can only request this after 42 seconds.")).contains("Wait a minute"))
+        #expect(Backend.confirmMessage(for: URLError(.notConnectedToInternet)).contains("connection"))
+        let unsent = api("unexpected_failure", "Error sending confirmation email")
+        #expect(Backend.message(for: unsent, signingUp: true) == "Couldn't send the email with your code. Try again in a minute.")
+        #expect(Backend.confirmMessage(for: unsent) == "Couldn't send the email with your code. Try again in a minute.")
+        for m in [Backend.confirmMessage(for: api("otp_expired", "")), Backend.confirmMessage(for: api("x", "y")), SignInView.confirmLine, SignInView.confirmTitle] {
+            #expect(!m.contains("\u{2014}") && !m.contains("\u{2013}"), "no dashes in what people read")
+        }
     }
 
     @MainActor @Test func theResetRequestIsAPlainRecoverWithNoPKCE() throws {

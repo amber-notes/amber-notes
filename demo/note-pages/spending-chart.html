@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="amber-widget-height" content="250">
+<title>Spending by month</title>
+<style>
+  main { max-width: var(--amber-content-max); margin: 0 auto; padding: 12px var(--amber-gutter) 16px; }
+  .top { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+  .total { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .muted { color: var(--amber-text-secondary); font-size: 14px; }
+  svg { display: block; width: 100%; height: 150px; margin-top: 10px; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; color: var(--amber-text-secondary); margin-top: 6px; }
+  .legend i { display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 5px; vertical-align: 0; }
+  .c0 { fill: var(--amber-accent); background: var(--amber-accent); } .c1 { fill: #3f8f6b; background: #3f8f6b; }
+  .c2 { fill: #4b74c9; background: #4b74c9; } .c3 { fill: #b5579a; background: #b5579a; }
+  text { fill: var(--amber-text-secondary); font: 11px var(--amber-font); }
+</style></head>
+<body><main id="app"></main>
+<script>
+  const kr = (n) => Math.round(n).toLocaleString("sv-SE") + " kr";
+  amber.onChange((note) => {
+    const t = note.tables[0];
+    const app = document.getElementById("app");
+    if (!t) { app.textContent = "Add a table: Month, then a column per category."; return; }
+    const cats = t.columns.slice(1).map((c) => c.name);
+    const rows = t.rows.map((r) => ({ m: r[0], v: r.slice(1).map((x) => parseFloat(String(x).replace(/\s/g, "")) || 0) }));
+    const sums = rows.map((r) => r.v.reduce((a, b) => a + b, 0));
+    const max = Math.max(1, ...sums), total = sums.reduce((a, b) => a + b, 0);
+    const W = 600, H = 150, gap = 8, bw = (W - gap * (rows.length - 1)) / rows.length;
+    let bars = "";
+    rows.forEach((r, i) => {
+      let y = H - 18;
+      r.v.forEach((v, k) => { const h = (v / max) * (H - 26); y -= h; bars += `<rect class="c${k % 4}" x="${i * (bw + gap)}" y="${y}" width="${bw}" height="${h}" rx="3"/>`; });
+      bars += `<text x="${i * (bw + gap) + bw / 2}" y="${H - 3}" text-anchor="middle">${r.m.slice(0, 3)}</text>`;
+    });
+    app.innerHTML = `
+      <div class="top"><div class="total">${kr(total)}</div><div class="muted">this year · ${kr(total / Math.max(1, rows.length))} a month</div></div>
+      <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Spending per month by category">${bars}</svg>
+      <div class="legend">${cats.map((c, k) => `<span><i class="c${k % 4}"></i>${c}</span>`).join("")}</div>`;
+  });
+</script></body></html>

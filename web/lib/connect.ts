@@ -35,17 +35,17 @@
 // Sign in with Apple comes back to /connect?request=<id>[&recover=1]&code=<one-time code>, so
 // Supabase must list https://pintonotes.com/connect** among its redirect URLs.
 
+import { APP_LINK_ORIGIN, appURL } from "./app-scheme";
 import { MCP_URL, OLD_MCP_URL } from "./facts";
-import { APP_LINK_URL } from "./site";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const validRequest = (id: string | undefined): id is string => !!id && UUID.test(id);
 
 /// The universal link: opens the app's consent sheet for the request where the app is installed.
-export const universalLink = (id: string) => `${APP_LINK_URL}/open/connect?request=${id.toLowerCase()}`;
+export const universalLink = (id: string) => `${APP_LINK_ORIGIN}/open/connect?request=${id.toLowerCase()}`;
 
 /// The app's own scheme, for when the universal link stays in the browser.
-export const appLink = (id: string) => `ambernotes://connect?request=${id.toLowerCase()}`;
+export const appLink = (id: string) => appURL(`connect?request=${id.toLowerCase()}`);
 
 /// The scan secret and key fingerprint a QR code carries in its fragment (#s=<22>&k=<43>), as
 /// "#s=…&k=…", or null for anything else. The fragment never reaches a server, so /open/connect reads
@@ -143,9 +143,14 @@ export const startsWithWrite = (r: Pick<ConnectRequest, "wants_write">) => r.wan
 export const destination = (host: string, loopback: boolean) => (loopback ? "an app on this computer" : host);
 
 /// A sign-in failure from Supabase Auth, in plain words.
+/// Signing in on the web to an account whose email isn't confirmed yet.
+export const EMAIL_NOT_CONFIRMED = "This email isn't confirmed yet. Open Amber Notes on your iPhone or Mac, sign in, and type the code we email you. Then connect again.";
+
 export function signInError(status: number, body: { error_code?: string } | null): string {
   if (status === 429) return "Too many attempts. Wait a few minutes and try again.";
-  if (body?.error_code === "email_not_confirmed") return "Confirm your email first, then sign in.";
+  // An account that never typed its confirmation code has never signed in, so it has no notes'
+  // key yet: only the app can finish it (docs/Technical/email-confirmation.md).
+  if (body?.error_code === "email_not_confirmed") return EMAIL_NOT_CONFIRMED;
   if (body?.error_code === "invalid_credentials" || status === 400) return "The email or password isn't right.";
   return "Couldn't sign in. Check your connection and try again.";
 }

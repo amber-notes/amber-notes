@@ -548,8 +548,9 @@ final class NoteVault {
     }
 
     /// A new locked note holding `text`, sealed for its own id: a conflicted copy of a locked note.
-    func sealedCopy(of text: String, in folder: Folder?, at date: Date) throws -> Note {
+    func sealedCopy(of text: String, in folder: Folder?, at date: Date, id: UUID? = nil) throws -> Note {
         let copy = Note(body: "", folder: folder)
+        if let id { copy.id = id }
         try write(text, to: copy)
         copy.createdAt = date
         copy.updatedAt = date
@@ -597,7 +598,7 @@ final class MemoryKeyStore: LockKeyStore, @unchecked Sendable {
 /// The derived key in the Keychain, readable only after Face ID or Touch ID on this device, and
 /// gone when the enrolled faces or fingers change (`.biometryCurrentSet`).
 struct KeychainKeyStore: LockKeyStore {
-    static let service = "dev.emilwagman.pane.notes-lock"
+    static let service = AppIdentity.keychainPrefix + ".notes-lock"
 
     var biometryName: String? {
         let context = LAContext()

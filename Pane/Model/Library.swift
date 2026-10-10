@@ -33,9 +33,9 @@ extension UTType {
     static let paneItem = UTType(exportedAs: "dev.emilwagman.pane.item")
 }
 
-/// A note or folder being dragged inside the app.
+/// A note, folder or file being dragged inside the app.
 struct PaneDragItem: Codable, Transferable {
-    enum Kind: String, Codable { case note, folder }
+    enum Kind: String, Codable { case note, folder, file }
     var kind: Kind
     var id: UUID
     /// The rest of a multi-selection dragged together with `id` (notes only).
@@ -130,6 +130,36 @@ extension ModelContext {
         return n
     }
 
+    /// Sub-notes made before the parent was recorded (older builds, imports) get it from the link
+    /// in their parent's text, so every device and the AI see the same tree (notes.parent_id).
+    /// Only a missing parent is filled in; one already set is never changed. Returns how many.
+    @discardableResult
+    func backfillSubNoteParents() -> Int {
+        // The store picks the notes whose text links a note, and then the few notes they link:
+        // reading every note's text here held up each return to the app (and launch), about
+        // 1.5 s with 20,000 notes.
+        let linking = (try? fetch(FetchDescriptor<Note>(predicate: #Predicate { $0.deletedAt == nil && $0.body.contains("pane-note:") }))) ?? []
+        var parentOf: [UUID: UUID] = [:]
+        for parent in linking where !parent.isLocked {
+            for m in parent.body.matches(of: /pane-note:([0-9a-fA-F-]{36})/) {
+                guard let id = UUID(uuidString: String(m.1)), id != parent.id, parentOf[id] == nil else { continue }
+                parentOf[id] = parent.id
+            }
+        }
+        guard !parentOf.isEmpty else { return 0 }
+        let ids = Array(parentOf.keys)
+        let orphans = (try? fetch(FetchDescriptor<Note>(predicate: #Predicate { ids.contains($0.id) && $0.deletedAt == nil && $0.parentID == nil }))) ?? []
+        var filled = 0
+        for child in orphans {
+            guard let parent = parentOf[child.id] else { continue }
+            child.parentID = parent
+            child.dirty = true
+            filled += 1
+        }
+        if filled > 0 { try? save(); SyncSignal.changed() }
+        return filled
+    }
+
     /// True when a sub-note is still linked from its parent, so it lives there, not in the list.
     func isNested(_ note: Note) -> Bool {
         guard let pid = note.parentID, let parent = self.note(pid), parent.deletedAt == nil else { return false }
@@ -200,14 +230,22 @@ extension ModelContext {
         try? save()
     }
 
-    /// Deleting a folder sends its notes (and sub-folders' notes) to Recently Deleted.
-    func delete(_ folder: Folder) {
+    /// Deleting a folder sends its notes and files (and sub-folders') to Recently Deleted, and the
+    /// deletion goes up with the next sync.
+    func trash(_ folder: Folder) {
         // Marked first, so a loop of folders can't recurse forever.
         folder.deletedAt = .now
         folder.touch()
-        for child in folder.liveChildren { delete(child) }
+        for child in folder.liveChildren { trash(child) }
         for note in folder.liveNotes { trash(note) }
+        for file in files(in: folder.id) { trash(file) }
         try? save()
+    }
+
+    /// Removes a folder from this device for good, without telling the server (SwiftData's delete).
+    func erase(_ folder: Folder) {
+        func remove<T: PersistentModel>(_ m: T) { delete(m) }
+        remove(folder)
     }
 
     /// Apple Notes keeps deleted notes for 30 days.
@@ -215,26 +253,31 @@ extension ModelContext {
         let cutoff = Date.now.addingTimeInterval(-30 * 24 * 3600)
         let old = ((try? fetch(FetchDescriptor<Note>())) ?? []).filter { ($0.trashedAt ?? .distantFuture) < cutoff && $0.deletedAt == nil }
         old.forEach(purge)
+        purgeExpiredTrashedFiles()
     }
 
-    /// Imports dropped files: markdown and text become notes; anything else
-    /// (PDFs, spreadsheets, images…) becomes a note holding the file.
+    /// Imports dropped files: markdown and text become notes; anything else (PDFs,
+    /// spreadsheets, images…) is kept in the folder as a file of its own. Returns what was made.
     @discardableResult
-    func importFiles(_ urls: [URL], into scope: Scope) -> [Note] {
-        var made: [Note] = []
+    func importFiles(_ urls: [URL], into scope: Scope) -> [UUID] {
+        var made: [UUID] = []
         for url in urls {
             let ext = url.pathExtension.lowercased()
+            // A folder from Finder: a folder here, with its files.
+            if (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true, !FileKinds.isPackageDocument(url) {
+                let parent: Folder? = { if case .folder(let id) = scope { return folder(id) } else { return nil } }()
+                made += addFolder(url, into: parent).map(\.id)
+                continue
+            }
             if ["md", "markdown", "txt", "text"].contains(ext) {
                 let access = url.startAccessingSecurityScopedResource()
                 defer { if access { url.stopAccessingSecurityScopedResource() } }
                 guard let text = try? String(contentsOf: url, encoding: .utf8) else { continue }
                 let name = url.deletingPathExtension().lastPathComponent
                 let body = NoteText.title(of: text) == name || text.hasPrefix("# ") ? text : "# \(name)\n\n\(text)"
-                made.append(createNote(in: scope, body: body))
-            } else if let a = try? FileStore.importFile(at: url) {
-                insert(a)
-                let title = (a.filename as NSString).deletingPathExtension
-                made.append(createNote(in: scope, body: "\(title)\n\n\(a.markdown)\n"))
+                made.append(createNote(in: scope, body: body).id)
+            } else {
+                made += addFiles([url], to: folderForFiles(scope)).map(\.id)
             }
         }
         try? save()
@@ -252,9 +295,9 @@ extension ModelContext {
         try? fetch(FetchDescriptor<Attachment>(predicate: #Predicate { $0.id == id })).first
     }
 
-    /// Copies files into Pane for embedding in a note.
+    /// Copies files into Pane for embedding in a note (kinds the app can't show are refused).
     func addAttachments(_ urls: [URL]) -> [Attachment] {
-        let files = urls.compactMap { try? FileStore.importFile(at: $0) }
+        let files = FileKinds.accept(urls).compactMap { try? FileStore.importFile(at: $0) }
         files.forEach(insert)
         try? save()
         SyncSignal.changed()
@@ -262,11 +305,33 @@ extension ModelContext {
     }
 }
 
+/// What the list groups by date: notes, and files kept in folders.
+protocol DatedListItem {
+    var listDate: Date { get }
+    var pinnedInList: Bool { get }
+}
+
+extension Note: DatedListItem {
+    var listDate: Date { updatedAt }
+    var pinnedInList: Bool { isPinned && trashedAt == nil }
+}
+
+extension Attachment: DatedListItem {
+    var pinnedInList: Bool { false }
+}
+
 /// Grouping of the note list by recency, like Apple Notes.
 enum DateBucket {
-    static func sections(_ notes: [Note], now: Date = .now, calendar: Calendar = .current) -> [(String, [Note])] {
-        var pinned: [Note] = []
-        var groups: [(key: String, order: Date, notes: [Note])] = []
+    static func sections<Item: DatedListItem>(_ notes: [Item], now: Date = .now, calendar: Calendar = .current) -> [(String, [Item])] {
+        // Each date read once: model properties aren't free, and a sort reads them often.
+        sections(newestFirst: notes.map { ($0, $0.listDate) }.sorted { $0.1 > $1.1 }, now: now, calendar: calendar)
+    }
+
+    /// The same, for items already in order, newest first, each with its date: nothing is sorted
+    /// or read again (the list hands over its notes in this order already).
+    static func sections<Item: DatedListItem>(newestFirst dated: [(Item, Date)], now: Date = .now, calendar: Calendar = .current) -> [(String, [Item])] {
+        var pinned: [Item] = []
+        var groups: [(key: String, order: Date, notes: [Item])] = []
         var index: [String: Int] = [:]
         let today = calendar.startOfDay(for: now)
         func daysBack(_ n: Int) -> Date { calendar.date(byAdding: .day, value: -n, to: today) ?? today.addingTimeInterval(Double(-n) * 86400) }
@@ -274,10 +339,8 @@ enum DateBucket {
         let yesterday = daysBack(1), week = daysBack(7), month30 = daysBack(30)
         var monthKeys: [Int: (String, Date)] = [:]
         let thisYear = calendar.component(.year, from: now)
-        // Each date read once: model properties aren't free, and a sort reads them often.
-        let dated = notes.map { ($0, $0.updatedAt) }.sorted { $0.1 > $1.1 }
         for (n, d) in dated {
-            if n.isPinned && n.trashedAt == nil { pinned.append(n); continue }
+            if n.pinnedInList { pinned.append(n); continue }
             let key: String
             let order: Date
             if d >= today { key = "Today"; order = today }
@@ -296,7 +359,7 @@ enum DateBucket {
             }
             if let i = index[key] { groups[i].notes.append(n) } else { index[key] = groups.count; groups.append((key, order, [n])) }
         }
-        var result: [(String, [Note])] = []
+        var result: [(String, [Item])] = []
         if !pinned.isEmpty { result.append(("Pinned", pinned)) }
         result += groups.sorted { $0.order > $1.order }.map { ($0.key, $0.notes) }
         return result

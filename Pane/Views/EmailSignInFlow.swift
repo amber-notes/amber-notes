@@ -30,16 +30,33 @@ struct EmailSignInFlow: Equatable {
         case forgot(sending: Bool)
         /// The link was asked for. The words are the same whether or not an account uses the email.
         case forgotSent
+        /// "Check your email": a new account (or one signing in before it was confirmed) types the
+        /// 6-digit code the confirmation email carries (docs/Technical/email-confirmation.md).
+        case confirm
     }
 
     /// What the full-width button does right now.
-    enum Action: Equatable { case check, signIn, create, sendReset, backToSignIn }
+    enum Action: Equatable { case check, signIn, create, sendReset, backToSignIn, verify }
 
     static let minimumPassword = 12
+    /// The confirmation code's digits (the project's mailer_otp_length).
+    static let codeLength = 6
+    /// How long Resend code waits after a code goes out: Supabase sends one email a minute per
+    /// address (smtp_max_frequency).
+    static let resendCooldown: TimeInterval = 60
 
     var step: Step = .email
     var email = ""
     var password = ""
+    /// The code being typed or filled in by iOS from the email: digits only, at most six.
+    var code = "" {
+        didSet {
+            let digits = String(code.filter(\.isASCII).filter(\.isNumber).prefix(Self.codeLength))
+            if digits != code { code = digits }
+        }
+    }
+    /// When the last code went out, for Resend code's cooldown.
+    var codeSentAt: Date?
 
     var trimmedEmail: String { email.trimmingCharacters(in: .whitespacesAndNewlines) }
 
@@ -60,7 +77,7 @@ struct EmailSignInFlow: Equatable {
     /// it back).
     var showsApple: Bool {
         switch step {
-        case .signIn, .create, .forgot, .forgotSent: false
+        case .signIn, .create, .forgot, .forgotSent, .confirm: false
         default: true
         }
     }
@@ -80,16 +97,18 @@ struct EmailSignInFlow: Equatable {
         case .apple: nil
         case .forgot: .sendReset
         case .forgotSent: .backToSignIn
+        case .confirm: .verify
         }
     }
 
     var buttonTitle: String? {
         switch action {
         case .check: "Continue"
-        case .signIn: "Sign In"
-        case .create: "Create Account"
-        case .sendReset: "Email Me a Link"
-        case .backToSignIn: "Back to Sign In"
+        case .signIn: "Sign in"
+        case .create: "Create account"
+        case .sendReset: "Email me a link"
+        case .backToSignIn: "Back to sign in"
+        case .verify: "Confirm"
         case nil: nil
         }
     }
@@ -101,6 +120,7 @@ struct EmailSignInFlow: Equatable {
         case .signIn: !password.isEmpty
         case .create: password.count >= Self.minimumPassword
         case .forgot(sending: false), .forgotSent: true
+        case .confirm: code.count == Self.codeLength
         }
     }
 
@@ -134,6 +154,35 @@ struct EmailSignInFlow: Equatable {
     mutating func back() {
         step = .email
         password = ""
+        code = ""
+        codeSentAt = nil
+    }
+
+    /// Sign-up answered "confirm your email first", or signing in found the email not confirmed
+    /// yet: the code screen. `sentAt` is when a code went out (nil when none did, so Resend code
+    /// is ready at once). The password isn't needed again: the code signs you in.
+    mutating func needsConfirmation(sentAt: Date?) {
+        switch step {
+        case .create, .signIn: break
+        default: return
+        }
+        step = .confirm
+        password = ""
+        code = ""
+        codeSentAt = sentAt
+    }
+
+    /// Seconds until Resend code works again; 0 when it does.
+    func resendWait(now: Date) -> Int {
+        guard let sent = codeSentAt else { return 0 }
+        return max(0, Int((sent.addingTimeInterval(Self.resendCooldown).timeIntervalSince(now)).rounded(.up)))
+    }
+
+    /// A new code went out.
+    mutating func codeResent(at: Date) {
+        guard step == .confirm else { return }
+        codeSentAt = at
+        code = ""
     }
 
     /// "Forgot password?".

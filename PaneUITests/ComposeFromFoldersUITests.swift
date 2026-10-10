@@ -19,7 +19,7 @@ final class ComposeFromFoldersUITests: XCTestCase {
         try? XCUIScreen.main.screenshot().pngRepresentation.write(to: URL(fileURLWithPath: "\(dir)/compose-\(name).png"))
     }
 
-    var folderList: XCUIElement { app.navigationBars["Amber Notes"] }
+    var folderList: XCUIElement { app.navigationBars["Pinto Notes"] }
 
     /// Launches the way 1.1.1 was opened after unlocking: a note to restore and an alert on top.
     func launchUnderAlert() {

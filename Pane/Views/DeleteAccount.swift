@@ -6,6 +6,7 @@ import Supabase
 /// this device. The App Store requires it for apps where you can create an account.
 struct DeleteAccountButton: View {
     let backend: Backend
+    @Environment(\.networkReach) private var reach
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     @State private var asking = false
@@ -19,13 +20,18 @@ struct DeleteAccountButton: View {
                 if working { ProgressView().controlSize(.small) }
             }
         }
-        .disabled(working)
+        .disabled(working || reach != .online)
         .accessibilityIdentifier("settings.deleteAccount")
-        .confirmationDialog("Delete your Amber Notes account?", isPresented: $asking, titleVisibility: .visible) {
+        .confirmationDialog("Delete your Pinto Notes account?", isPresented: $asking, titleVisibility: .visible) {
             Button("Delete Account and All Notes", role: .destructive) { Task { await delete() } }
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("Every note, folder, file, earlier version, AI connection and share link is deleted from the cloud and from this device, with the key that opens them. This can't be undone. To keep a copy, export your notes first.")
+        }
+        if reach != .online, !working {
+            Text(OfflineCopy.needsNetwork("delete your account"))
+                .foregroundStyle(.secondary)
+                .font(.callout)
         }
         if let error {
             Label(error, systemImage: "exclamationmark.triangle.fill")
@@ -88,7 +94,7 @@ extension ModelContext {
     /// Forgets every note, folder and file on this device (after the account is gone).
     @MainActor func wipeLocalLibrary(files: URL? = nil) {
         // One by one (a batch delete refuses rows that other rows still point at), and through
-        // `erase` so it's SwiftData's delete, not Library's delete(folder) that moves to Recently Deleted.
+        // `erase` so it's SwiftData's delete, not Library's trash(folder) that moves to Recently Deleted.
         func erase<T: PersistentModel>(_ type: T.Type) {
             for m in (try? fetch(FetchDescriptor<T>())) ?? [] { delete(m) }
         }
@@ -98,6 +104,8 @@ extension ModelContext {
         try? save()
         try? FileManager.default.removeItem(at: files ?? FileStore.root)
         AIEditStore.shared.forgetAll()
+        NotePageStore.shared.forgetAll()
+        NotePageDataStore.shared.forgetAll()
     }
 }
 
@@ -149,7 +157,7 @@ struct ExportNotesButton: View {
         defer { working = false }
         DebouncedSave.flushAll()
         do {
-            made = try await NoteExport.make(context, fetch: { a in await sync?.download(a) ?? false })
+            made = try await NoteExport.make(context, sharing: CollabStore.shared?.exportSharing() ?? .init(), fetch: { a in await sync?.download(a) ?? false })
             saving = true
         } catch {
             message = "Couldn't export your notes: \(error.localizedDescription)"

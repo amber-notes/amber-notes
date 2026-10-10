@@ -1,3 +1,4 @@
+import { APP_SCHEME } from "./app-scheme";
 import type { SiteEvent } from "./posthog";
 
 // "Use template" and "Use this note" open Amber Notes from the page they're on (app/OpenInApp.tsx).
@@ -7,7 +8,7 @@ import type { SiteEvent } from "./posthog";
 // tries the app there (next.config.ts). Everything here is decided without a browser, for the tests.
 
 /// The app links these buttons may try. Anything else is never handed to the browser.
-const APP_LINK = /^ambernotes:\/\/(template|copy)\/([A-Za-z0-9_-]{1,64})$/;
+const APP_LINK = new RegExp(`^${APP_SCHEME}:\\/\\/(template|copy)\\/([A-Za-z0-9_-]{1,64})$`);
 
 export const validAppLink = (href: string) => APP_LINK.test(href);
 

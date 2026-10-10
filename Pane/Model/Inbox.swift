@@ -4,7 +4,7 @@ import Foundation
 /// The share extension writes items into the shared App Group container; the app
 /// turns each into a note the next time it's active.
 enum Inbox {
-    static let appGroup = "group.dev.emilwagman.pane"
+    static let appGroup = AppIdentity.appGroup
 
     struct Item: Codable {
         var id = UUID()
@@ -12,6 +12,16 @@ enum Inbox {
         /// Files copied next to item.json, embedded at the end of the note.
         var files: [String] = []
         var createdAt = Date()
+        /// The folder picked in the share sheet. Files shared without text are kept there on
+        /// their own; text becomes a note there. Nil: the default folder.
+        var folder: UUID?
+    }
+
+    /// A folder the share sheet offers: the app lists them here each time it opens or leaves.
+    struct FolderChoice: Codable, Hashable, Identifiable {
+        var id: UUID
+        /// Its path, "Work/Clients".
+        var name: String
     }
 
     static var root: URL? {
@@ -30,9 +40,9 @@ enum Inbox {
     nonisolated(unsafe) static var rootOverride: URL?
 
     /// Writes an item (called by the share extension).
-    static func add(markdown: String, files: [URL]) throws {
+    static func add(markdown: String, files: [URL], folder: UUID? = nil) throws {
         guard let root else { throw CocoaError(.fileNoSuchFile) }
-        var item = Item(markdown: markdown)
+        var item = Item(markdown: markdown, folder: folder)
         let dir = root.appending(path: item.id.uuidString, directoryHint: .isDirectory)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         for f in files {
@@ -55,4 +65,24 @@ enum Inbox {
     }
 
     static func remove(_ dir: URL) { try? FileManager.default.removeItem(at: dir) }
+
+    /// Where the app leaves its folder list for the share sheet, next to the inbox.
+    private static var foldersFile: URL? { root?.deletingLastPathComponent().appending(path: "Folders.json") }
+
+    static func saveFolders(_ folders: [FolderChoice]) {
+        guard let url = foldersFile, folders != self.folders() else { return }
+        try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try? JSONEncoder().encode(folders).write(to: url, options: .atomic)
+    }
+
+    static func folders() -> [FolderChoice] {
+        guard let url = foldersFile, let data = try? Data(contentsOf: url) else { return [] }
+        return (try? JSONDecoder().decode([FolderChoice].self, from: data)) ?? []
+    }
+
+    /// The folder last picked in the share sheet.
+    static var lastFolder: UUID? {
+        get { UserDefaults(suiteName: appGroup)?.string(forKey: "shareFolder").flatMap(UUID.init(uuidString:)) }
+        set { UserDefaults(suiteName: appGroup)?.set(newValue?.uuidString, forKey: "shareFolder") }
+    }
 }

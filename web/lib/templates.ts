@@ -2,6 +2,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { renderNote, summary, withoutTitle } from "./render";
 import { APP_LINK_URL, SITE_URL } from "./site";
+import { appURL } from "./app-scheme";
 
 /// The template library. A template is a note structure plus the instructions that let ChatGPT,
 /// Claude or Claude Code fill it in through the Amber Notes MCP tools. Each one is a JSON file in
@@ -101,7 +102,7 @@ export const templatePath = (slug: string) => `/templates/${slug}`;
 export const useLink = (slug: string) => `${APP_LINK_URL}/open/template/${slug}`;
 /// The same, as the site's own buttons link it: a path, so a preview or local build stays on itself.
 export const usePath = (slug: string) => `/open/template/${slug}`;
-export const appLink = (slug: string) => `ambernotes://template/${slug}`;
+export const appLink = (slug: string) => appURL(`template/${slug}`);
 
 export const noteTitle = (t: Template) => t.note.split("\n")[0];
 
@@ -140,6 +141,8 @@ export function publicTemplate(t: Template) {
     instructions: instructions(t),
     example: t.example,
     url: `${SITE_URL}${templatePath(t.slug)}`,
+    // The first thing to ask your AI, shown when the note first opens in the app.
+    ask: t.asks[0],
   };
 }
 

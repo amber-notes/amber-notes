@@ -60,7 +60,7 @@ private let habitJSON = """
   "folder": "Habits",
   "note": "Habit tracker\\n\\n<!-- pane-table: Date=date; Walk=choice Yes|No -->\\n| Date | Walk |\\n| --- | --- |",
   "instructions": [
-    { "client": "chatgpt", "name": "ChatGPT", "prompt": "In Amber Notes, use the note 'Habit tracker'." },
+    { "client": "chatgpt", "name": "ChatGPT", "prompt": "In Pinto Notes, use the note 'Habit tracker'." },
     { "client": "claude", "name": "Claude", "prompt": "Claude prompt" },
     { "client": "broken" },
     { "client": "claude-code", "name": "Claude Code", "prompt": "Claude Code prompt" }
@@ -172,6 +172,20 @@ private final class NoteSourceFixtureToken {}
         let draft = try await s.draft(for: NoteSourceLink(kind: .template, slug: "habit-tracker"))
         #expect(draft.title == "Habit tracker" && draft.folder == "Habits" && draft.instructions.count == 3)
         #expect(draft.body.hasPrefix("Habit tracker\n\n<!-- pane-table:"))
+    }
+
+    /// Apps aren't released (NoteApps): off, an app template is its note, and its app is never fetched.
+    @Test func anAppTemplateIsItsNoteWhileNoteAppsAreOff() async throws {
+        let host = "t1b.stub.test"
+        var s = source(host) { req in
+            #expect(req.url?.path == "/templates/habit-tracker.json")
+            return (200, Data(habitJSON.replacingOccurrences(of: #""folder": "Habits","#, with: #""folder": "Habits", "app": "/templates/habit-tracker.app.json","#).utf8))
+        }
+        s.apps = false
+        let draft = try await s.draft(for: NoteSourceLink(kind: .template, slug: "habit-tracker"))
+        #expect(draft.appProject == nil && draft.preview == nil)
+        #expect(draft.body.hasPrefix("Habit tracker\n\n<!-- pane-table:"))
+        #expect(StubSite.requests(host).count == 1)
     }
 
     @Test func unknownTemplateIsNotFound() async {

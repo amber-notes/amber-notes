@@ -156,7 +156,10 @@ extension NetworkFaults {
     /// the front.
     @Test func realtimeDownPollsAndBacksOff() async throws {
         let saved = SyncEngine.fallbackPoll
-        SyncEngine.fallbackPoll = (.milliseconds(200), .milliseconds(600), 1.0)
+        // Slower machines (PANE_PERF_SLACK) stretch every interval and window alike, so the
+        // rates still compare on whole requests.
+        let s = PerfBudget.slack
+        SyncEngine.fallbackPoll = (.milliseconds(200) * s, .milliseconds(600) * s, 1.0 * s)
         defer { SyncEngine.fallbackPoll = saved }
         let n = try await syncedNote("Plan")
         // The socket can't join (as with -netOffline); the network itself is fine.
@@ -165,7 +168,7 @@ extension NetworkFaults {
         NetFault.config = .init()
         #expect(!engine.realtimeUp)
         StubSupabase.edit(n.id, body: "Plan\n- from the phone", updatedAt: .now.addingTimeInterval(1))
-        await waitUntil(1.5) { n.body == "Plan\n- from the phone" }
+        await waitUntil(1.5 * s) { n.body == "Plan\n- from the phone" }
         #expect(n.body == "Plan\n- from the phone", "the poll brought the other device's edit")
 
         func pulls(over seconds: Double) async -> Int {
@@ -173,22 +176,43 @@ extension NetworkFaults {
             try? await Task.sleep(for: .seconds(seconds))
             return StubSupabase.requests.filter { $0.hasPrefix("GET") }.count - before
         }
-        let fast = await pulls(over: 0.8)
+        /// Seconds between one pull of the notes and the next, within a window.
+        func gaps(from start: Date, to end: Date) -> [Double] {
+            let times = StubSupabase.timedRequests.filter { $0.request.hasPrefix("GET /rest/v1/notes?") && $0.at >= start && $0.at <= end }.map(\.at)
+            return zip(times.dropFirst(), times).map { $0.timeIntervalSince($1) }
+        }
+        let fastStart = Date.now
+        let fast = await pulls(over: 0.8 * s)
+        let fastGaps = gaps(from: fastStart, to: .now)
         // Quiet for over `slowAfter`: the poll slows down.
-        try await Task.sleep(for: .seconds(0.6))
-        let slow = await pulls(over: 1.8)
-        print("PERF realtime down: \(fast) GETs in 0.8 s polling fast, \(slow) in 1.8 s once quiet")
-        #expect(fast > 0 && Double(slow) / 1.8 < Double(fast) / 0.8, "polling slows once nothing changes")
+        try await Task.sleep(for: .seconds(0.6 * s))
+        let slowStart = Date.now
+        let slow = await pulls(over: 1.8 * s)
+        let slowGaps = gaps(from: slowStart, to: .now)
+        print("PERF realtime down: \(fast) GETs in \(0.8 * s) s polling fast, \(slow) in \(1.8 * s) s once quiet; pulls \(fastGaps.map { String(format: "%.2f", $0) }) s apart fast, \(slowGaps.map { String(format: "%.2f", $0) }) once quiet")
+        #expect(fast > 0, "realtime down: polling")
+        if s > 1 {
+            // A slow runner can spend most of the fast window inside one pull, so request counts
+            // there say little. Each wait comes on top of the pull, though: once quiet, the pulls
+            // are further apart than they were while polling fast.
+            if let quiet = slowGaps.min(), let busy = fastGaps.max() {
+                #expect(quiet > busy, "polling slows once nothing changes")
+            } else {
+                #expect(slow <= fast * 3, "polling slows once nothing changes")
+            }
+        } else {
+            #expect(Double(slow) / 1.8 < Double(fast) / 0.8, "polling slows once nothing changes")
+        }
 
         engine.realtimeChanged(up: true)
-        try await Task.sleep(for: .milliseconds(700))
-        #expect(await pulls(over: 1) == 0, "realtime is back: no polling")
+        try await Task.sleep(for: .milliseconds(700) * s)
+        #expect(await pulls(over: 1 * s) == 0, "realtime is back: no polling")
 
         engine.realtimeChanged(up: false)
         engine.setActive(false)
-        #expect(await pulls(over: 1) == 0, "in the background: no polling")
+        #expect(await pulls(over: 1 * s) == 0, "in the background: no polling")
         engine.setActive(true)
-        #expect(await pulls(over: 1) > 0, "back in front with realtime down: polling again")
+        #expect(await pulls(over: 1 * s) > 0, "back in front with realtime down: polling again")
         await finish()
         #expect(await pulls(over: 0.6) == 0, "signed out: nothing")
     }

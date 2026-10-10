@@ -75,7 +75,7 @@ enum WhatsNew {
         if defaults.string(forKey: AccountLibrary.ownerKey) != nil { return true }
         if defaults.dictionaryRepresentation().keys.contains(where: { $0.hasPrefix("syncCursor.") }) { return true }
         let notes = (try? context.fetch(FetchDescriptor<Note>())) ?? []
-        return notes.contains { $0.deletedAt == nil && $0.body != Seed.welcome }
+        return notes.contains { $0.deletedAt == nil && $0.body != Seed.welcome && !$0.body.contains(Seed.sampleAppLine) }
     }
 
     /// The card's quiet button.
@@ -153,12 +153,30 @@ final class WhatsNewStore {
     }
 }
 
-/// Settings opened at a section (the card's "Reconnect your AI" opens Connect an AI).
+/// Which page Settings shows. The Mac keeps its last tab for next time; links, cards and the
+/// storage warning open Settings at a page (the card's "Reconnect your AI" opens AI).
 @MainActor
 @Observable
 final class SettingsRoute {
     static let shared = SettingsRoute()
-    static let connectAI = "settings.connectAI"
-    /// The section to scroll to once Settings is showing; cleared when it has.
-    var target: String?
+    static let key = "settings.tab"
+    @ObservationIgnored private let defaults: UserDefaults
+
+    /// The Mac's tab, remembered across launches.
+    var tab: SettingsTab { didSet { if tab != oldValue { defaults.set(tab.rawValue, forKey: Self.key) } } }
+    /// iPhone: the page to open once Settings is showing; cleared when it has.
+    var target: SettingsTab?
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        tab = defaults.string(forKey: Self.key).flatMap(SettingsTab.init) ?? .general
+    }
+
+    /// Settings at `tab`: the Mac's window switches to it, iPhone opens its page.
+    func open(_ tab: SettingsTab) {
+        self.tab = tab
+        #if os(iOS)
+        target = tab
+        #endif
+    }
 }

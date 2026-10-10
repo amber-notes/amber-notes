@@ -7,7 +7,7 @@ final class HomeScreenTests: XCTestCase {
         let board = XCUIApplication(bundleIdentifier: "com.apple.springboard")
         XCUIDevice.shared.press(.home)
         Thread.sleep(forTimeInterval: 1)
-        let icon = board.icons["Amber Notes"]
+        let icon = board.icons["Pinto Notes"]
         var tries = 0
         while !icon.isHittable && tries < 4 { board.swipeLeft(); Thread.sleep(forTimeInterval: 0.8); tries += 1 }
         let shot = XCUIScreen.main.screenshot()

@@ -8,6 +8,8 @@ import Testing
     @Test func tooFastWaitsAndLimitsSetTheRowAside() {
         #expect(SyncEngine.refusal(PostgrestError(code: "PT429", message: "Too many changes too quickly.")) == .tooFast)
         #expect(SyncEngine.refusal(PostgrestError(code: "PT413", message: "This note is too long")) == .refused("This note is too long"))
+        // Points at a folder or note the server doesn't have yet: tried again, never set aside.
+        #expect(SyncEngine.refusal(PostgrestError(hint: "not_yours", code: "PT413", message: "That folder or note doesn't exist.")) == .waits)
         #expect(SyncEngine.refusal(PostgrestError(code: "22P05", message: "unsupported Unicode escape sequence")) != nil)
         #expect(SyncEngine.refusal(StorageError(statusCode: "413", message: "Payload too large")) == .refused("Payload too large"))
         #expect(SyncEngine.refusal(StorageError(statusCode: "429", message: "slow down")) == .tooFast)
