@@ -219,6 +219,7 @@
 		5A6B5361EE0A109041FCF3A9 /* ShareModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE451C95D74DA3569B6F557A /* ShareModel.swift */; };
 		5AF7EC6DB93FFA40B9D54CFA /* EmailConfirmUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81F7D97727CE36EF026FC374 /* EmailConfirmUITests.swift */; };
 		5BB1A82995AEA7369C1475CE /* NoteSourceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 672E87D77CAD63F58ED84550 /* NoteSourceTests.swift */; };
+		5C1FF8DBA7600470AC5B653F /* KeyFault.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52C244999D8DFA81130C0CCD /* KeyFault.swift */; };
 		5C6E98AB33671AE17E68D216 /* NotePageNetwork.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97049D2AEE2C89B14A54B08B /* NotePageNetwork.swift */; };
 		5CABF6503D037751767E8C01 /* ListTitleUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E10AB39932C3189F22847302 /* ListTitleUITests.swift */; };
 		5CCE3E781F4A728571FABEE1 /* ImageViewer.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEF0851FCB14FCFAF85EB6EC /* ImageViewer.swift */; };
@@ -553,6 +554,7 @@
 		FBF5B7BADDA766A8494FB5CD /* ImportSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F30A429F7F8E70DCBAAD7C3 /* ImportSyncTests.swift */; };
 		FC11CF19B31981BD86D50ED2 /* LaunchInPlaceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76FDE29F7B48D0B16295EB03 /* LaunchInPlaceTests.swift */; };
 		FC8C67F0982505EE55E55C73 /* topojson.js in Resources */ = {isa = PBXBuildFile; fileRef = 1B6942657FF41A9E90A2C2DA /* topojson.js */; };
+		FCC39A428F5152919B99B556 /* KeyFault.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52C244999D8DFA81130C0CCD /* KeyFault.swift */; };
 		FCF1189A7391FEBD04B20565 /* NoteSourceSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7FCC3B1CE1BD0C5DAF0E77D /* NoteSourceSheet.swift */; };
 		FE035E6233F82BEC84340C7B /* MultiSelectUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F8A7B3764A579BE5457612D /* MultiSelectUITests.swift */; };
 		FE1601E04DEF44C46A22A314 /* LockedNotes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90E829D2CD7ABD9B9531761D /* LockedNotes.swift */; };
@@ -725,6 +727,7 @@
 		527730BB3E3E09A863D6895A /* NetFaultTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetFaultTests.swift; sourceTree = "<group>"; };
 		529388344853209DFB22B984 /* PaneDirect.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PaneDirect.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		52A05065D6AC46E02DC096AF /* StubSupabase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StubSupabase.swift; sourceTree = "<group>"; };
+		52C244999D8DFA81130C0CCD /* KeyFault.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyFault.swift; sourceTree = "<group>"; };
 		52D415B84CA735B3B8845F5E /* preact-hooks.module.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "preact-hooks.module.js"; sourceTree = "<group>"; };
 		52D997E7DDEDD95A01EC24BA /* Backend.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Backend.xcconfig; sourceTree = "<group>"; };
 		5332127DF1E521C349721FC0 /* HTMLPreviewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTMLPreviewTests.swift; sourceTree = "<group>"; };
@@ -1090,6 +1093,7 @@
 				CE38BE2414E2D6EFB432A70C /* InboxImport.swift */,
 				39A273CF66124CF6366B545E /* KeepImport.swift */,
 				9E0AC08F58F5BE90DD5AAD44 /* KeyDevices.swift */,
+				52C244999D8DFA81130C0CCD /* KeyFault.swift */,
 				BEFA368EF8F56909D229B913 /* Library.swift */,
 				CF48ED6B1189F45C1C4DCCEA /* LocalUpkeep.swift */,
 				4C463F2C3009AF9A4D91619E /* MarkdownImport.swift */,
@@ -2135,6 +2139,7 @@
 				3DA2E4E96D0FFDFD48511D86 /* InboxImport.swift in Sources */,
 				043A7E7913936E42EC112695 /* KeepImport.swift in Sources */,
 				17952D9B18FCF13C16B334ED /* KeyDevices.swift in Sources */,
+				FCC39A428F5152919B99B556 /* KeyFault.swift in Sources */,
 				01F8A032F59404B7F22B1A3F /* LegalLinks.swift in Sources */,
 				2FA68FA597287DDE2B9834A4 /* Library.swift in Sources */,
 				64823E1DF5CB4EF7EB81A4D4 /* LinkPolicy.swift in Sources */,
@@ -2340,6 +2345,7 @@
 				F1C2942FAA33AFE6D43248BB /* InboxImport.swift in Sources */,
 				4E2EFB68D9E42B2267AE915F /* KeepImport.swift in Sources */,
 				4FC4BAB52328E4AB05251F6D /* KeyDevices.swift in Sources */,
+				5C1FF8DBA7600470AC5B653F /* KeyFault.swift in Sources */,
 				A4E5F8D6483FDF064391E9F8 /* LegalLinks.swift in Sources */,
 				DBC62BFCC2DF7231ECCD9438 /* Library.swift in Sources */,
 				DDC0348B16FCBC014A41FD3E /* LinkPolicy.swift in Sources */,
