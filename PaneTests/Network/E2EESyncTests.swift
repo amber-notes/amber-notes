@@ -175,7 +175,9 @@ extension NetworkFaults {
         let n = a.context.createNote(in: .folder(folder.id), body: "Note\n\(inNote.markdown)")
         n.dirty = true
         await a.engine.sync()
-        #expect(file.uploaded && inNote.uploaded && StubSupabase.rows("attachments").count == 2)
+        #expect(file.uploaded)
+        #expect(inNote.uploaded)
+        #expect(StubSupabase.rows("attachments").count == 2)
         // The other device has none of the bytes.
         removeLocalCopy(file); removeLocalCopy(inNote)
 
@@ -183,15 +185,24 @@ extension NetworkFaults {
         await b.engine.sync()
         let theirs = try #require(b.context.attachment(file.id)), theirsInNote = try #require(b.context.attachment(inNote.id))
         #expect(theirs.folderID == folder.id, "it's in the folder")
-        #expect(theirs.uploaded && !theirs.dirty && theirsInNote.uploaded && !theirsInNote.dirty, "known to be on the server, nothing to send")
+        #expect(theirs.uploaded, "known to be on the server")
+        #expect(!theirs.dirty, "nothing to send")
+        #expect(theirsInNote.uploaded)
+        #expect(!theirsInNote.dirty)
         #expect(theirsInNote.folderID == nil)
         // Fetched and opened there, then another sync: the row on the server is as the first device left it.
-        let before = StubSupabase.rows("attachments").first { ($0["id"] as? String)?.lowercased() == file.id.uuidString.lowercased() }
-        #expect(await b.engine.download(theirs))
+        func serverRow() -> [String: Any]? {
+            let id = file.id.uuidString.lowercased()
+            return StubSupabase.rows("attachments").first { row in (row["id"] as? String)?.lowercased() == id }
+        }
+        let folderBefore = serverRow()?["folder_id"] as? String, createdBefore = serverRow()?["created_at"] as? String
+        let fetched = await b.engine.download(theirs)
+        #expect(fetched)
         await b.engine.sync()
-        let after = StubSupabase.rows("attachments").first { ($0["id"] as? String)?.lowercased() == file.id.uuidString.lowercased() }
-        #expect(after?["folder_id"] as? String == before?["folder_id"] as? String && after?["folder_id"] != nil)
-        #expect(after?["created_at"] as? String == before?["created_at"] as? String)
+        let folderAfter = serverRow()?["folder_id"] as? String, createdAfter = serverRow()?["created_at"] as? String
+        #expect(folderBefore != nil)
+        #expect(folderAfter == folderBefore)
+        #expect(createdAfter == createdBefore)
         removeLocalCopy(file)
         await a.engine.stop(); await b.engine.stop()
     }
@@ -213,14 +224,19 @@ extension NetworkFaults {
         // As the earlier build left it.
         theirs.folderID = nil; theirs.uploaded = false; theirs.dirty = true
         await b.engine.sync()
-        #expect(theirs.folderID == folder.id && theirs.uploaded && !theirs.dirty)
+        #expect(theirs.folderID == folder.id)
+        #expect(theirs.uploaded)
+        #expect(!theirs.dirty)
         // A file really added on this device and not sent yet is not touched by that.
         let mine = try attach("new here", named: "mine.txt", to: b.context)
         defer { removeLocalCopy(mine) }
         mine.folderID = folder.id
-        #expect(mine.dirty && !mine.uploaded)
+        #expect(mine.dirty)
+        #expect(!mine.uploaded)
         await b.engine.sync()
-        #expect(mine.uploaded && mine.folderID == folder.id && StubSupabase.rows("attachments").count == 2)
+        #expect(mine.uploaded)
+        #expect(mine.folderID == folder.id)
+        #expect(StubSupabase.rows("attachments").count == 2)
         await a.engine.stop(); await b.engine.stop()
     }
 
@@ -241,7 +257,8 @@ extension NetworkFaults {
         let huge = file("huge.png", "public.png", size: EditorController.autoImageMaxBytes + 1)
         let elsewhere = file("other-note.png", "public.png")
         let body = ["Trip", here.markdown, away.markdown, pdf.markdown, unsent.markdown, huge.markdown, away.markdown, failing.markdown].joined(separator: "\n")
-        #expect(EditorController.imageIDs(in: body) == [here.id, away.id, unsent.id, huge.id, failing.id], "images only, each once, in order")
+        let shown: [UUID] = [here.id, away.id, unsent.id, huge.id, failing.id]
+        #expect(EditorController.imageIDs(in: body) == shown, "images only, each once, in order")
 
         let controller = EditorController()
         controller.resolveAttachment = { a.context.attachment($0) }
@@ -256,16 +273,17 @@ extension NetworkFaults {
         }
         let note = UUID()
         await controller.fetchMissingImages(note: note, body: body)
-        #expect(fetched == [away.id, failing.id])
+        let firstOpen: [UUID] = [away.id, failing.id]
+        #expect(fetched == firstOpen)
         #expect(!fetched.contains(elsewhere.id))
         #expect(controller.imagesArrived == 1, "the one that arrived is drawn")
         // Still open (a sync came in): nothing is asked for twice, the failed one included.
         await controller.fetchMissingImages(note: note, body: body)
-        #expect(fetched == [away.id, failing.id])
+        #expect(fetched == firstOpen)
         // Opened again later: the one that failed gets another try; the one that's here doesn't.
         await controller.fetchMissingImages(note: UUID(), body: "No pictures")
         await controller.fetchMissingImages(note: note, body: body)
-        #expect(fetched == [away.id, failing.id, failing.id])
+        #expect(fetched == firstOpen + [failing.id])
         await a.engine.stop()
     }
 
