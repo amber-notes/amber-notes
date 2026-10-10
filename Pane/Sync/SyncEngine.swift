@@ -673,6 +673,9 @@ final class SyncEngine {
     /// published to every page it's on. A share row that
     /// doesn't verify isn't here: it's never published to, and the note doesn't show as shared.
     private(set) var liveShares: [UUID: Bool] = [:]
+    /// The slugs of those links, so an open note can show its link (Copy Link, Stop Sharing)
+    /// from what every sync already checked, without a lookup of its own.
+    private(set) var liveSlugs: [UUID: String] = [:]
     private var publishQueue: Set<UUID> = []
     private var publishTask: Task<Void, Never>?
     /// Publishes scheduled and not finished (tests wait for them: `publishesSettled`). One replaced
@@ -694,6 +697,8 @@ final class SyncEngine {
         }
         let next = Dictionary(verified.map { ($0.note_id, $0.include_subnotes) }, uniquingKeysWith: { a, _ in a })
         if next != liveShares { liveShares = next }
+        let slugs = Dictionary(verified.map { ($0.note_id, $0.slug) }, uniquingKeysWith: { a, _ in a })
+        if slugs != liveSlugs { liveSlugs = slugs }
     }
 
     /// Waits until the page publishing scheduled so far has run (a newer one replaces an older one).
@@ -706,8 +711,9 @@ final class SyncEngine {
     }
 
     /// Sharing changed on this device (Share Link, sub-notes, Stop Sharing).
-    func shareChanged(_ note: UUID, includesSubNotes: Bool?) {
+    func shareChanged(_ note: UUID, includesSubNotes: Bool?, slug: String? = nil) {
         liveShares[note] = includesSubNotes
+        liveSlugs[note] = includesSubNotes == nil ? nil : slug ?? liveSlugs[note]
     }
 
     /// The shared notes whose pages show this one: itself, and each shared note whose link

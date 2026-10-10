@@ -86,7 +86,7 @@ enum WhatsNew {
         case changelog
     }
 
-    static let changelogURL = URL(string: "https://ambernotes.app/changelog")!
+    static let changelogURL = URL(string: "https://pintonotes.com/changelog")!
 
     /// 1.1 encrypted everything, and AI connections from before it stopped working. An account
     /// whose AI has edited notes but has nothing connected now had one of those.

@@ -11,7 +11,10 @@ rm -rf "$OUT" && mkdir -p "$OUT"
 
 # US English (US dates, 1,284), whatever this Mac's region is. The same build settings as qa-test.sh.
 export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
-TEST_RUNNER_AMBER_STORE_FRAMES="$OUT" xcodebuild -project Pane.xcodeproj -scheme Pane -configuration Debug -destination 'platform=macOS' \
+# The store shows the released app: notes that are apps (a prototype) stay off, as in Release.
+defaults write dev.emilwagman.pane noteApps -bool NO
+# AMBER_DEMO_FRAMES is the switch that allows window-server captures (CI and the test Mac only).
+TEST_RUNNER_AMBER_DEMO_FRAMES="$OUT" TEST_RUNNER_AMBER_STORE_FRAMES="$OUT" xcodebuild -project Pane.xcodeproj -scheme Pane -configuration Debug -destination 'platform=macOS' \
   -derivedDataPath build/ddqa -testLanguage en -testRegion US \
   ENABLE_TESTABILITY=YES ENABLE_HARDENED_RUNTIME=NO ONLY_ACTIVE_ARCH=YES SWIFT_ACTIVE_COMPILATION_CONDITIONS='$(inherited) QA' \
   CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= PROVISIONING_PROFILE_SPECIFIER= \
@@ -31,6 +34,7 @@ while kill -0 $test_pid 2>/dev/null; do
   sleep 0.2
 done
 wait $test_pid || true
+defaults delete dev.emilwagman.pane noteApps 2>/dev/null || true
 rm -f "$OUT"/shot-*(N)
 grep -E "Test run with|TEST (SUCC|FAIL)|error:" "$OUT/test.txt" || tail -5 "$OUT/test.txt"
 ls "$OUT"/*.png

@@ -2,8 +2,8 @@ import SwiftUI
 
 /// Amber Notes' terms and privacy policy, on the share site.
 enum Legal {
-    static let terms = URL(string: "https://ambernotes.app/terms")!
-    static let privacy = URL(string: "https://ambernotes.app/privacy")!
+    static let terms = URL(string: "https://pintonotes.com/terms")!
+    static let privacy = URL(string: "https://pintonotes.com/privacy")!
 
     /// "By continuing, you agree to the Terms of Service and Privacy Policy." with both names as links.
     static var consentSentence: AttributedString {

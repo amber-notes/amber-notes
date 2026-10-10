@@ -83,7 +83,7 @@ struct KeychainDeviceIdentityStore: DeviceIdentityStore {
         guard KeychainAccountKeyStore.dataProtectionAvailable else { return (try? Self.fallback.store(key: "device-identity", value: data)) != nil }
         var update = query
         update[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-        update[kSecAttrLabel as String] = "Amber Notes device"
+        update[kSecAttrLabel as String] = "Pinto Notes device"
         update[kSecValueData as String] = data
         // Change the item in place when it's there, so a failed write never leaves none.
         let changed = SecItemUpdate(query as CFDictionary, [kSecValueData as String: data] as CFDictionary)
