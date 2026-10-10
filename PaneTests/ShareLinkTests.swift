@@ -201,6 +201,23 @@ private actor FakeShareLinks: ShareLinkService {
         #expect(ShareLinkStore.disagrees(listed: false, state: store.state))
         await store.load(note: note, service: fake, again: true)
         #expect(store.state.phase == .notShared)
+        // What the account's list already checked is taken as it is, with no request: a link made
+        // on another device shows even when this note's own lookup never gets through.
+        let quiet = FakeShareLinks()
+        await quiet.failLookups(CancellationError())
+        let other = ShareLinkStore()
+        other.baseURL = URL(string: "https://pintonotes.com")
+        await other.load(note: note, service: quiet)
+        other.follow(note: UUID(), listed: ("EEEEEEEEEEEEEEEEEEEEEEEE", false))
+        #expect(other.state.slug == nil, "another note's link isn't this one's")
+        other.follow(note: note, listed: ("EEEEEEEEEEEEEEEEEEEEEEEE", true))
+        #expect(other.state.phase == .shared(slug: "EEEEEEEEEEEEEEEEEEEEEEEE", includesSubNotes: true))
+        #expect(other.url?.absoluteString == "https://pintonotes.com/n/EEEEEEEEEEEEEEEEEEEEEEEE")
+        other.follow(note: note, listed: nil)
+        #expect(other.state.slug != nil, "the list not knowing (yet) takes nothing away")
+        await other.stopSharing()
+        #expect(other.state.phase == .notShared)
+        #expect(await quiet.calls == ["current", "unshare"])
         // Not while this device is in the middle of sharing or stopping.
         var working = ShareLinkState()
         working.begin("Creating link…")
