@@ -83,7 +83,7 @@ Deno.test("a paper-cut picture on top of every email, and real captures only ins
     assertEquals(pics.filter((p) => p.startsWith("hero-")).length, 1, `${e.kind}: one hero`);
     assert(pics[1].startsWith("hero-"), `${e.kind}: the hero comes first, after the mark`);
     for (const p of pics.filter((p) => !p.startsWith("hero-"))) assert(captures.includes(p), `${e.kind}: ${p}`);
-    assertStringIncludes(e.html, "From Emil");
+    assert(!e.html.includes("From Emil"), `${e.kind}: no line above the title; his name is in the sender and the sign-off`);
   }
 });
 
