@@ -38,7 +38,7 @@ Deno.test("a report sends one plain email to support: the page, the time, the re
   const r = await reportNotices({ sql: sqlFor(pg), send: box.send, cfg });
   assertEquals(r, { new: 1, pages: 1, sent: true, waiting: false, failed: false });
   const [m] = box.sent;
-  assertEquals([m.to, m.from, m.subject], ["hello@pintonotes.com", "Pinto Notes <hello@ambernotes.app>", "A shared page was reported"]);
+  assertEquals([m.to, m.from, m.subject], ["hello@pintonotes.com", "Pinto Notes <hello@pintonotes.com>", "A shared page was reported"]);
   assertStringIncludes(m.text, `https://pintonotes.com/n/${slug}`);
   assertStringIncludes(m.text, "It shows my home address.");
   assert(/Reported \d{1,2} [A-Z][a-z]+ \d{4}, \d\d:\d\d UTC/.test(m.text), m.text);
