@@ -180,3 +180,5 @@ has measured these on a developer's Mac yet, where the limit is the constant its
   changing any layout doesn't show up, though its CPU does.
 - Frames are display-link callbacks on the main thread, so they measure the main thread's
   responsiveness, not GPU frame time.
+
+<!-- CI proof for the path filter: a change in docs/ only. Never merged. -->
