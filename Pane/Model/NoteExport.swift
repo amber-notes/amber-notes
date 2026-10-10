@@ -81,10 +81,11 @@ enum NoteExport {
         // embed goes under Files/.
         var filePaths: [UUID: String] = [:]
         var missing: Set<UUID> = []
-        func place(_ a: Attachment) async throws {
+        @MainActor func place(_ a: Attachment) async throws {
             guard filePaths[a.id] == nil, !missing.contains(a.id) else { return }
             if !FileStore.exists(a), !(await fetch(a)) { missing.insert(a.id); result.missingFiles += 1; return }
-            let home = a.folderID.flatMap { context.folder($0) }.map { folderPath($0) } ?? ["Files"]
+            var home = ["Files"]
+            if let id = a.folderID, let folder = context.folder(id) { home = folderPath(folder) }
             let path = unique(home + [safeName(a.filename)], in: &used)
             let dest = top.appending(path: path)
             try FileManager.default.createDirectory(at: dest.deletingLastPathComponent(), withIntermediateDirectories: true)
