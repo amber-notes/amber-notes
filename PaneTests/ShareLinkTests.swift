@@ -141,6 +141,14 @@ private actor FakeShareLinks: ShareLinkService {
         #expect(used == [.shareLink])
     }
 
+    /// The warning before sharing names the site the link is on, as the link says it.
+    @Test func theWarningNamesTheSiteTheLinkIsOn() {
+        #expect(ShareLinkConfig.siteName(URL(string: "https://pintonotes.com")) == "pintonotes.com")
+        #expect(ShareLinkConfig.siteName(URL(string: "https://www.PintoNotes.com/")) == "pintonotes.com")
+        #expect(ShareLinkConfig.siteName(URL(string: "https://ambernotes.app")) == "ambernotes.app")
+        #expect(ShareLinkConfig.siteName(nil) == "pintonotes.com")
+    }
+
     @Test func productionNeverHandsOutALocalLink() {
         let local = URL(string: "http://localhost:5210")!, site = URL(string: "https://ambernotes.app")!
         #expect(ShareLinkConfig.usable(local, backend: URL(string: "http://127.0.0.1:56421")))

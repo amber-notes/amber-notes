@@ -164,9 +164,9 @@ enum NoteSourceError: Error, Equatable, Sendable {
 
     var message: String {
         switch self {
-        case .badLink(.template): "Open the template again from ambernotes.app/templates."
+        case .badLink(.template): "Open the template again from pintonotes.com/templates."
         case .badLink(.copy): "Ask for the link again, or open the shared page and choose Use this note."
-        case .notFound(.template): "It may have been renamed. Find it again at ambernotes.app/templates."
+        case .notFound(.template): "It may have been renamed. Find it again at pintonotes.com/templates."
         case .notFound(.copy): "The person who shared it stopped sharing, or the link has changed."
         case .offline: "Connect to the internet, then try again."
         case .unavailable: "Something went wrong on the way. Try again in a moment."

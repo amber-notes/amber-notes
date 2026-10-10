@@ -576,8 +576,8 @@ struct KeychainAccountKeyStore: AccountKeyStore {
         var q = Self.query(account, slot: slot)
         q[kSecAttrSynchronizable as String] = slot == .synced
         q[kSecAttrAccessible as String] = slot == .synced ? kSecAttrAccessibleAfterFirstUnlock : kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-        q[kSecAttrLabel as String] = slot == .previous ? "Amber Notes encryption key (before starting fresh)"
-            : slot == .local ? "Amber Notes encryption key (this device)" : "Amber Notes encryption key"
+        q[kSecAttrLabel as String] = slot == .previous ? "Pinto Notes encryption key (before starting fresh)"
+            : slot == .local ? "Pinto Notes encryption key (this device)" : "Pinto Notes encryption key"
         q[kSecValueData as String] = key.encoded
         return SecItemAdd(q as CFDictionary, nil) == errSecSuccess
     }

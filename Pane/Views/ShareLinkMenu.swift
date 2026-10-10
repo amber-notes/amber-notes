@@ -24,6 +24,13 @@ enum ShareLinkConfig {
     }
 
     static func url(slug: String, base: URL? = baseURL) -> URL? { base?.appending(path: "n").appending(path: slug) }
+
+    /// The site a share link is on, as the link itself says it ("pintonotes.com"), for the warning
+    /// before sharing: it names the host of the link the person is about to hand out.
+    static func siteName(_ base: URL? = baseURL) -> String {
+        guard let host = base?.host?.lowercased(), !host.isEmpty else { return "pintonotes.com" }
+        return host.hasPrefix("www.") ? String(host.dropFirst(4)) : host
+    }
 }
 
 /// A note's link, as the menu and the indicator see it. Pure, so it's unit-tested.
@@ -398,7 +405,7 @@ struct KeychainStoppedShares: StoppedShareStore {
         var q = Self.query(account)
         q[kSecAttrSynchronizable as String] = true
         q[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
-        q[kSecAttrLabel as String] = "Amber Notes stopped share links"
+        q[kSecAttrLabel as String] = "Pinto Notes stopped share links"
         q[kSecValueData as String] = data
         return SecItemAdd(q as CFDictionary, nil) == errSecSuccess
     }
@@ -675,10 +682,10 @@ private struct ShareLinkChrome: ViewModifier {
             } message: { step in
                 switch step {
                 case .createLink:
-                    Text("Sharing puts a readable copy of this note and its files on ambernotes.app, outside your encryption, until you stop sharing. Anyone with the link can read it without signing in, and it may be passed on. The page shows your name and photo, and your email unless Apple hides it. Your edits show there as they sync."
+                    Text("Sharing puts a readable copy of this note and its files on \(ShareLinkConfig.siteName(store.baseURL)), outside your encryption, until you stop sharing. Anyone with the link can read it without signing in, and it may be passed on. The page shows your name and photo, and your email unless Apple hides it. Your edits show there as they sync."
                          + (profileIncomplete ? "\n\nAdd your name and photo so people know the page is from you." : ""))
                 case .includeSubNotes:
-                    Text("Readable copies of the sub-notes in this note go on ambernotes.app too, for anyone with the link, until you stop sharing. Locked sub-notes are never included.")
+                    Text("Readable copies of the sub-notes in this note go on \(ShareLinkConfig.siteName(store.baseURL)) too, for anyone with the link, until you stop sharing. Locked sub-notes are never included.")
                 }
             }
             #if os(iOS)
