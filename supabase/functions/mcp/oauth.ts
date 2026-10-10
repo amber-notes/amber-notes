@@ -249,6 +249,20 @@ export function claimsATrustedName(name: string): boolean {
   return ["chatgpt", "openai", "claude", "anthropic", "amber", "pinto"].some((w) => flat.includes(w));
 }
 
+/// Where ChatGPT, Claude and Pinto Notes really receive sign-ins or serve pages: these domains and
+/// anything under them.
+const TRUSTED_DOMAINS = ["chatgpt.com", "openai.com", "claude.ai", "claude.com", "anthropic.com", "pintonotes.com", "ambernotes.app"];
+
+/// A return address whose host spells one of their names without being on one of their domains
+/// (claude.ai.example.net, chatgpt-login.example). The consent screen titles an unverified app by
+/// its host, so such a host would read like the AI itself. Loopback addresses name nobody.
+export function hostClaimsATrustedName(redirectURI: string): boolean {
+  const host = new URL(redirectURI).hostname.toLowerCase().replace(/\.$/, "");
+  if (LOOPBACK.has(host) || TRUSTED_DOMAINS.some((d) => host === d || host.endsWith("." + d))) return false;
+  const flat = host.replace(/[^a-z0-9]/g, "").replace(/0/g, "o").replace(/1/g, "l").replace(/4/g, "a");
+  return ["chatgpt", "openai", "claude", "anthropic", "pintonotes", "ambernotes"].some((w) => flat.includes(w));
+}
+
 /// A registered name made safe to show: no control, format or direction characters, one line, short.
 export function cleanName(raw: string): string {
   return raw.normalize("NFKC").replace(/[\t\n\r\p{Zl}\p{Zp}]/gu, " ").replace(/[\p{Cc}\p{Cf}]/gu, "")
@@ -371,6 +385,9 @@ async function register(req: Request, sql: Sql): Promise<Response> {
   if (!uris.length || uris.length > 10) return oauthError("invalid_redirect_uri", "Give between 1 and 10 redirect_uris.");
   const bad = uris.find((u) => !validRedirect(u) || u.length > 2000);
   if (bad) return oauthError("invalid_redirect_uri", `Redirect URIs must be https, or http on localhost: ${bad}`);
+  // The host is the title on the consent screen, so it may not borrow a name the client_name may not.
+  const borrowed = uris.find((u) => hostClaimsATrustedName(u));
+  if (borrowed) return oauthError("invalid_redirect_uri", `This redirect address uses the name of ChatGPT, Claude or Pinto Notes on a domain that isn't theirs: ${borrowed}`);
   const grants = Array.isArray(body.grant_types) ? body.grant_types.map(String) : ["authorization_code"];
   if (grants.some((g) => !["authorization_code", "refresh_token"].includes(g))) {
     return oauthError("invalid_client_metadata", "Only authorization_code and refresh_token grants are supported.");
