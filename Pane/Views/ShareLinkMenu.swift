@@ -658,6 +658,7 @@ private struct ShareLinkChrome: ViewModifier {
     @Environment(Backend.self) private var backend: Backend?
     @Environment(\.modelContext) private var context
     @Environment(SyncEngine.self) private var sync: SyncEngine?
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var profile = ProfileStore.shared
     #if os(macOS)
     @Environment(\.openSettings) private var openSettings
@@ -678,6 +679,27 @@ private struct ShareLinkChrome: ViewModifier {
         #endif
     }
 
+    private var showsMarker: Bool {
+        store.state.slug != nil && store.state.feedback == nil && !note.isLocked && note.trashedAt == nil
+    }
+
+    private var marker: some View {
+        Button { Task { await store.shareAndCopy() } } label: {
+            Label("Shared", systemImage: "link")
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 9)
+                .frame(minHeight: 24)
+                .hoverHighlight(Capsule())
+                .background(.fill.tertiary, in: .capsule)
+                .contentShape(.capsule)
+        }
+        .buttonStyle(.plain)
+        .help("Anyone with the link can read this note. Click to copy the link.")
+        .accessibilityLabel("Shared. Copy link")
+        .accessibilityIdentifier("share.indicator")
+    }
+
     func body(content: Content) -> some View {
         content
             .overlay(alignment: .bottom) {
@@ -687,25 +709,21 @@ private struct ShareLinkChrome: ViewModifier {
                 .padding(.bottom, 20)
                 .animation(.snappy(duration: 0.22), value: store.state.feedback)
             }
+            // At the accessibility text sizes the title fills the width and the marker grows with
+            // the text, so it sat on the title: there it gets a row of its own above the note.
+            .safeAreaInset(edge: .top, spacing: 0) {
+                if showsMarker, typeSize.isAccessibilitySize {
+                    HStack { Spacer(minLength: 0); marker }
+                        .padding(.top, 4)
+                        .padding(.trailing, 14)
+                }
+            }
             .overlay(alignment: .topTrailing) {
-                if store.state.slug != nil, store.state.feedback == nil, !note.isLocked, note.trashedAt == nil {
-                    Button { Task { await store.shareAndCopy() } } label: {
-                        Label("Shared", systemImage: "link")
-                            .font(.caption.weight(.medium))
-                            .foregroundStyle(.secondary)
-                            .padding(.horizontal, 9)
-                            .frame(minHeight: 24)
-                            .hoverHighlight(Capsule())
-                            .background(.fill.tertiary, in: .capsule)
-                            .contentShape(.capsule)
-                    }
-                    .buttonStyle(.plain)
-                    .help("Anyone with the link can read this note. Click to copy the link.")
-                    .accessibilityLabel("Shared. Copy link")
-                    .accessibilityIdentifier("share.indicator")
-                    .padding(.top, 10)
-                    .padding(.trailing, 14)
-                    .transition(.opacity)
+                if showsMarker, !typeSize.isAccessibilitySize {
+                    marker
+                        .padding(.top, 10)
+                        .padding(.trailing, 14)
+                        .transition(.opacity)
                 }
             }
             .alert(alertTitle, isPresented: Binding(get: { store.confirming != nil }, set: { if !$0 { store.confirming = nil } }), presenting: store.confirming) { step in
