@@ -10,7 +10,11 @@ private actor FakeShareLinks: ShareLinkService {
     var failing = false
     var nextSlug = "AAAAAAAAAAAAAAAAAAAAAAAA"
 
-    func current(note: UUID) async throws -> (slug: String, includesSubNotes: Bool)? { calls.append("current"); return live }
+    func current(note: UUID) async throws -> (slug: String, includesSubNotes: Bool)? {
+        calls.append("current")
+        if let lookupError { throw lookupError }
+        return live
+    }
     func share(note: UUID, includeSubNotes: Bool) async throws -> String {
         calls.append("share \(includeSubNotes)")
         if failing { throw NSError(domain: "test", code: 1, userInfo: [NSLocalizedDescriptionKey: "no such note"]) }
@@ -20,6 +24,9 @@ private actor FakeShareLinks: ShareLinkService {
     }
     func unshare(note: UUID) async throws { calls.append("unshare"); live = nil; nextSlug = "BBBBBBBBBBBBBBBBBBBBBBBB" }
     func fail() { failing = true }
+    /// The next lookups fail this way (a dropped connection, a cancelled request).
+    var lookupError: (any Error)?
+    func failLookups(_ error: (any Error)?) { lookupError = error }
     func seed(_ slug: String, _ subs: Bool) { live = (slug, subs) }
 }
 
@@ -147,6 +154,57 @@ private actor FakeShareLinks: ShareLinkService {
         #expect(ShareLinkConfig.siteName(URL(string: "https://www.PintoNotes.com/")) == "pintonotes.com")
         #expect(ShareLinkConfig.siteName(URL(string: "https://ambernotes.app")) == "ambernotes.app")
         #expect(ShareLinkConfig.siteName(nil) == "pintonotes.com")
+    }
+
+    /// A link made on another device: the note's one lookup failed or was cancelled as it opened.
+    /// That isn't kept as "not shared": the next look asks again, and the note shows Shared with
+    /// Copy Link and Stop Sharing, which stops that same link.
+    @Test func aLinkFromAnotherDeviceShowsAfterAFailedFirstLookup() async {
+        for error in [CancellationError() as any Error, URLError(.networkConnectionLost)] {
+            let fake = FakeShareLinks()
+            await fake.seed("CCCCCCCCCCCCCCCCCCCCCCCC", false)
+            await fake.failLookups(error)
+            let store = ShareLinkStore()
+            store.baseURL = URL(string: "https://pintonotes.com")
+            let note = UUID()
+            await store.load(note: note, service: fake)
+            #expect(store.state.slug == nil, "nothing known yet: Share Link is offered")
+            await fake.failLookups(nil)
+            // The view asks again for the same note (it appeared again).
+            await store.load(note: note, service: fake)
+            #expect(store.state.phase == .shared(slug: "CCCCCCCCCCCCCCCCCCCCCCCC", includesSubNotes: false))
+            #expect(store.url?.absoluteString == "https://pintonotes.com/n/CCCCCCCCCCCCCCCCCCCCCCCC", "the address is rebuilt from the slug")
+            // Answered: it isn't asked a third time.
+            await store.load(note: note, service: fake)
+            #expect(await fake.calls == ["current", "current"])
+            await store.stopSharing()
+            #expect(store.state.phase == .notShared)
+            #expect(await fake.calls == ["current", "current", "unshare"])
+        }
+    }
+
+    /// The account's list of live links (every sync) and the open note disagree: the note asks again.
+    @Test func theNoteFollowsTheAccountsLiveLinks() async {
+        let fake = FakeShareLinks()
+        let store = ShareLinkStore()
+        let note = UUID()
+        await store.load(note: note, service: fake)
+        #expect(store.state.phase == .notShared && !ShareLinkStore.disagrees(listed: false, state: store.state))
+        // Shared on another device: the list learns it at the next sync.
+        await fake.seed("DDDDDDDDDDDDDDDDDDDDDDDD", true)
+        #expect(ShareLinkStore.disagrees(listed: true, state: store.state))
+        await store.load(note: note, service: fake, again: true)
+        #expect(store.state.phase == .shared(slug: "DDDDDDDDDDDDDDDDDDDDDDDD", includesSubNotes: true))
+        #expect(!ShareLinkStore.disagrees(listed: true, state: store.state))
+        // Stopped on another device.
+        try? await fake.unshare(note: note)
+        #expect(ShareLinkStore.disagrees(listed: false, state: store.state))
+        await store.load(note: note, service: fake, again: true)
+        #expect(store.state.phase == .notShared)
+        // Not while this device is in the middle of sharing or stopping.
+        var working = ShareLinkState()
+        working.begin("Creating link…")
+        #expect(!ShareLinkStore.disagrees(listed: true, state: working))
     }
 
     @Test func productionNeverHandsOutALocalLink() {

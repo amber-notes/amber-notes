@@ -467,22 +467,39 @@ final class ShareLinkStore {
         await shareAndCopy()
     }
 
-    /// Called when the note on screen changes.
-    func load(note: UUID, service: ShareLinkService?) async {
-        // Same note, same account situation: keep what's shown.
-        if noteID == note, (service == nil) == (self.service == nil) { return }
+    /// Whether the server answered for this note: only an answer is kept. A lookup that failed
+    /// or was cancelled (the note's view going away mid-request) is asked again, so a note that
+    /// is shared never stays "not shared" for as long as it's open.
+    private var answered = false
+
+    /// Called when the note on screen changes, and (`again`) when the list of this account's live
+    /// links says something else than this note shows: a link made or stopped on another device.
+    func load(note: UUID, service: ShareLinkService?, again: Bool = false) async {
+        let same = noteID == note && (service == nil) == (self.service == nil)
+        // Same note, same account situation, and the server's answer is here: keep what's shown.
+        if same, answered, !again { return }
+        // Not while something is under way here (Share Link, Stop Sharing): that sets the state itself.
+        if same, state.isWorking { return }
         noteID = note
         self.service = service
-        state = ShareLinkState()
+        if !same { state = ShareLinkState(); answered = false }
         guard let service else { return }
         do {
             let found = try await service.current(note: note)
-            guard noteID == note else { return }
+            guard noteID == note, !state.isWorking else { return }
             state.phase = found.map { .shared(slug: $0.slug, includesSubNotes: $0.includesSubNotes) } ?? .notShared
+            answered = true
         } catch {
             // Offline or signed out: the menu still offers Share Link and reports what goes wrong.
-            if noteID == note { state.phase = .notShared }
+            // Not an answer: the next call asks again.
+            if noteID == note, !answered { state.phase = .notShared }
         }
+    }
+
+    /// Whether the account's list of live links says something else than the note shows, while
+    /// nothing is under way here.
+    nonisolated static func disagrees(listed: Bool, state: ShareLinkState) -> Bool {
+        !state.isWorking && listed != (state.slug != nil)
     }
 
     /// The note was locked: the server stops its link when that syncs.
@@ -695,6 +712,12 @@ private struct ShareLinkChrome: ViewModifier {
             #endif
             .task(id: note.id) {
                 await store.load(note: note.id, service: backend?.client.map { SupabaseShareLinks(client: $0, container: context.container, sync: sync) })
+            }
+            // The list of this account's live links (checked on every sync) and this note disagree:
+            // a link made or stopped on another device, or a lookup here that didn't get through.
+            .task(id: sync?.liveShares[note.id] != nil) {
+                guard ShareLinkStore.disagrees(listed: sync?.liveShares[note.id] != nil, state: store.state), store.noteID == note.id else { return }
+                await store.load(note: note.id, service: backend?.client.map { SupabaseShareLinks(client: $0, container: context.container, sync: sync) }, again: true)
             }
     }
 
