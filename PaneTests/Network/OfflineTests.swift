@@ -75,6 +75,56 @@ extension NetworkFaults {
         #expect(backend.userID == nil)
     }
 
+    // MARK: Signing out
+
+    private var signOuts: [String] { StubSupabase.requests.filter { $0.contains("/auth/v1/logout") } }
+
+    /// Sign Out ends this session on the server, so a copy of its tokens left anywhere (a backup, a
+    /// Keychain item that couldn't be deleted) is dead, and only this one: the account's other
+    /// devices stay signed in.
+    @Test func signingOutEndsThisSessionOnTheServerAndNoOther() async throws {
+        let storage = MemoryAuthStorage()
+        let client = StubSupabase.client(storage: storage)
+        try await client.auth.signIn(email: "qa@example.com", password: "a-long-password")
+        let backend = Backend(testClient: client, email: "qa@example.com", userID: SealedAccount.user)
+        await backend.signOut()
+        #expect(signOuts == ["POST /auth/v1/logout?scope=local"], "this session only, never every device's")
+        #expect(StubSupabase.endedSessions == 1)
+        #expect(client.auth.currentSession == nil, "and nothing is kept here")
+    }
+
+    /// The access token ran out (an hour after the last refresh). The server answers a sign-out
+    /// made with it 401 and ends nothing, which the client lets pass: the session stayed alive for
+    /// whoever held its refresh token. Mac 1.2 signed itself back in that way. Now the session is
+    /// refreshed first, so the server takes the sign-out.
+    @Test func signingOutWithAnExpiredSessionStillEndsItOnTheServer() async throws {
+        let storage = MemoryAuthStorage()
+        let client = StubSupabase.client(storage: storage)
+        StubSupabase.sessionLifetime = -120
+        try await client.auth.signIn(email: "qa@example.com", password: "a-long-password")
+        StubSupabase.sessionLifetime = 3600
+        StubSupabase.resetLog()
+        let backend = Backend(testClient: client, email: "qa@example.com", userID: SealedAccount.user)
+        await backend.signOut()
+        let auth = StubSupabase.requests.filter { $0.contains("/auth/v1/") }
+        #expect(auth == ["POST /auth/v1/token?grant_type=refresh_token", "POST /auth/v1/logout?scope=local"])
+        #expect(StubSupabase.endedSessions == 1, "the server ended it")
+        #expect(client.auth.currentSession == nil)
+    }
+
+    /// Offline, the device still signs out; the server can't be told.
+    @Test func signingOutOfflineStillSignsOutHere() async throws {
+        let storage = MemoryAuthStorage()
+        let client = StubSupabase.client(storage: storage)
+        try await client.auth.signIn(email: "qa@example.com", password: "a-long-password")
+        NetFault.config = .init(offline: true)
+        let backend = Backend(testClient: client, email: "qa@example.com", userID: SealedAccount.user)
+        await backend.signOut()
+        NetFault.config = .init()
+        #expect(client.auth.currentSession == nil)
+        #expect(StubSupabase.endedSessions == 0)
+    }
+
     @Test func refreshErrorsThatKeepTheSession() {
         #expect(Backend.keepsSession(afterRefreshError: URLError(.notConnectedToInternet)))
         #expect(Backend.keepsSession(afterRefreshError: URLError(.timedOut)))
